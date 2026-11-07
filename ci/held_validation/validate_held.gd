@@ -55,7 +55,7 @@ func run() -> void:
 	if not require_ok(storage == original_storage and Held._snapshot(player, false) == tracks, "Actual instance not equal to untouched source"): return
 	var preserved: PackedByteArray = Held._snapshot(player, true)
 	var result: Dictionary = Held.apply(scene, player, skeleton, SOURCE, PROPOSAL, PROPOSAL_SHA)
-	if not require_ok(result.get("completed", false), "Apply failed; no packing allowed"): return
+	if not require_ok(result.get("completed", false), "Apply failed; no packing allowed; code=" + str(result.get("failure_code", "HELD_UNSPECIFIED"))): return
 	if not require_ok(selected_ok(player, plan) and Held._snapshot(player, true) == preserved, "Selected or preserved keys mismatch"): return
 	if not require_ok(Preservation.snapshot(scene) == storage and Preservation.snapshot(untouched) == original_storage and Held._snapshot(original_player, false) == tracks, "Stored scene or shared source mutation"): return
 	var corrected: PackedByteArray = Held._snapshot(player, false)
