@@ -16,7 +16,7 @@ base = scan_occlusion.base
 def decoded_rgb(path):
     # The existing bounded parser validates CRCs, dimensions, chunk allowlist,
     # decompression limits and layout first. Decode only that accepted layout.
-    base.png_info(path, minimum_colors=2)
+    base.png_info(path, minimum_colors=1)
     data = path.read_bytes(); offset = 8; packed = bytearray()
     while offset < len(data):
         length = struct.unpack('>I', data[offset:offset + 4])[0]

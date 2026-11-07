@@ -383,14 +383,20 @@ def run(args):
     require(lock.get('reviewed_for_execution') is True, 'Draft lock is not approved for execution')
     require(os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted',
             'Only an isolated GitHub-hosted runner is within this draft scope')
-    require((args.width, args.height) in [(390, 844), (844, 390)], 'Unreviewed viewport')
     contract = lock['capture_contract']
+    require((args.width, args.height) in ([(390, 600)] if contract['mode'] == 'occlusion_matrix' else [(390, 844), (844, 390)]), 'Unreviewed viewport')
     require(contract in [
         {'mode': 'gameplay', 'kind': 'genuine_native_game_viewport', 'frame_count': 10},
         {'mode': 'rig_studies', 'kind': 'native_controlled_rig_study', 'frame_count': 25},
-        {'mode': 'occlusion', 'kind': 'native_controlled_occlusion_fixture', 'frame_count': 6}], 'Unreviewed capture contract')
+        {'mode': 'occlusion', 'kind': 'native_controlled_occlusion_fixture', 'frame_count': 6},
+        {'mode': 'occlusion_matrix', 'kind': 'native_controlled_occlusion_matrix', 'frame_count': 67},
+        {'mode': 'occlusion_lifecycle', 'kind': 'native_controlled_occlusion_lifecycle', 'frame_count': 42}], 'Unreviewed capture contract')
     require(contract['mode'] != 'rig_studies' or (args.width,args.height) == (844,390), 'Rig study viewport differs')
     require(contract['mode'] != 'occlusion' or (args.width,args.height) == (390,844), 'Occlusion viewport differs')
+    require(contract['mode'] != 'occlusion_lifecycle' or (args.width,args.height) == (390,844), 'Lifecycle launch viewport differs')
+    expected_views = ([[390,600]] * 67 if contract['mode'] == 'occlusion_matrix' else
+        [[390,844]] * 7 + [[844,390]] * 7 + [[390,600]] * 7 + [[390,844]] * 21 if contract['mode'] == 'occlusion_lifecycle' else
+        [[args.width,args.height]] * contract['frame_count'])
     project = args.project.resolve()
     out, private = args.output.resolve(), args.private.resolve()
     require(not out.exists() and not private.exists(), 'Output and private directory must be new')
@@ -458,6 +464,7 @@ def run(args):
                'system_before': before, 'limits': {'timeout_seconds': 120, 'minimum_available_kib': 1048576,
                    'aggregate_rss_kib': 3145728, 'godot_rss_kib': 2621440, 'xvfb_rss_kib': 524288},
                'fixed_fps': 30, 'expected_framebuffer': [args.width, args.height],
+               'expected_framebuffer_sequence': expected_views,
                'not_verified': ['Web', 'Safari', 'physical iPhone', 'mobile GPU', 'FPS', 'touch input', 'visual quality']}
     children = {}
     tracked_descendants = []
@@ -590,10 +597,10 @@ def run(args):
         report = json.loads((frame_dir / 'capture-report.json').read_text())
         require(report.get('passed') is True and report['build'] == lock['build'], 'Capture report failed/identity mismatch')
         require(report.get('frame_count') == contract['frame_count'] == len(report.get('frames', [])), 'Incomplete capture sequence')
-        for item in report['frames']:
+        for frame_index, item in enumerate(report['frames']):
             require(item['capture_kind'] == contract['kind'], 'Capture scenario kind differs')
             require(item['display'] == 'X11' and 'llvmpipe' in item['adapter_name'].lower(), 'Wrong/dummy renderer')
-            require(item['framebuffer'] == [args.width, args.height], 'Wrong framebuffer size')
+            require(item['framebuffer'] == expected_views[frame_index], 'Wrong framebuffer size')
             require(item['game_sha256'] == source['scripts/game.gd'], 'Screenshot source identity differs')
         # A pass here means evidence production only. Pixel/animation/human quality review follows.
         receipt['capture_completed'] = True

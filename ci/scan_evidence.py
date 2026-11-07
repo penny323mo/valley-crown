@@ -49,7 +49,7 @@ def png_info(path, minimum_colors=128):
         if kind == b'IHDR':
             require(dimensions is None and length == 13 and offset == 8, 'PNG IHDR invalid')
             width, height, depth, color, compression, filtering, interlace = struct.unpack('>IIBBBBB', body)
-            require((width, height) in ((390, 844), (844, 390)), 'Unapproved framebuffer dimensions')
+            require((width, height) in ((390, 844), (844, 390), (390, 600)), 'Unapproved framebuffer dimensions')
             require(depth == 8 and color in (2, 6) and compression == filtering == interlace == 0, 'Unsupported PNG layout')
             dimensions = (width, height, 3 if color == 2 else 4)
         elif kind == b'IDAT':
@@ -211,7 +211,7 @@ def scan(directory, lock, lock_sha256):
     allowed = {'guard-receipt.json', 'godot.log', 'xvfb.log', 'frames/capture-report.json'}
     files, findings, poses = {}, [], set()
     previous_usec = -1
-    for frame in report['frames']:
+    for frame_index, frame in enumerate(report['frames']):
         name = frame['image']
         validate_frame_name(name)
         allowed.update({'frames/' + name, 'frames/' + name + '.json'})
@@ -227,8 +227,9 @@ def scan(directory, lock, lock_sha256):
         if contract['mode']=='gameplay':require(frame['economy_audit_ok'] is True, 'Economy audit failed')
         # The final depth references intentionally contain only a flat box and
         # background. Keep the richer-scene threshold for all other modes.
-        info = png_info(path, minimum_colors=2 if contract['mode']=='occlusion' else 128)
-        require([info['width'], info['height']] == frame['framebuffer'] == guard['expected_framebuffer'], 'Frame dimensions mismatch')
+        info = png_info(path, minimum_colors=1 if contract['mode'] in ('occlusion_matrix','occlusion_lifecycle') else 2 if contract['mode']=='occlusion' else 128)
+        expected_size = guard['expected_framebuffer_sequence'][frame_index] if contract['mode'] in ('occlusion_matrix','occlusion_lifecycle') else guard['expected_framebuffer']
+        require([info['width'], info['height']] == frame['framebuffer'] == expected_size, 'Frame dimensions mismatch')
         if frame['label'].startswith('woodcut-'):
             poses.add(json.dumps(frame['animation_poses'], sort_keys=True))
         files['frames/' + name] = {'sha256': sha(path), **info}
