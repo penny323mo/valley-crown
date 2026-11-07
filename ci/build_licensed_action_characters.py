@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+"""HOSTED BLENDER ONLY: assemble/retarget vetted CC0 inputs into original RTS units.
+This is a prototype authoring recipe. Asset acceptance requires reopened deformation
+checks plus real Godot contact/texture/silhouette review. Never installs into live.
+"""
+import argparse, hashlib, json, math, sys
+from pathlib import Path
+import bpy, bmesh
+from mathutils import Matrix, Quaternion, Vector
+KINDS=('villager','spearman','archer','scout')
+KEEP=['root','pelvis','spine_01','spine_02','spine_03','neck_01','Head','clavicle_l','upperarm_l','lowerarm_l','hand_l','clavicle_r','upperarm_r','lowerarm_r','hand_r','thigh_l','calf_l','foot_l','ball_l','thigh_r','calf_r','foot_r','ball_r']
+KAY={'root':'root','pelvis':'hips','spine_01':'spine','spine_02':'spine','spine_03':'chest','neck_01':'head','Head':'head','upperarm_l':'upperarm.l','lowerarm_l':'lowerarm.l','hand_l':'hand.l','upperarm_r':'upperarm.r','lowerarm_r':'lowerarm.r','hand_r':'hand.r','thigh_l':'upperleg.l','calf_l':'lowerleg.l','foot_l':'foot.l','ball_l':'toes.l','thigh_r':'upperleg.r','calf_r':'lowerleg.r','foot_r':'foot.r','ball_r':'toes.r'}
+DURATION={'idle':2.4,'walk':.85,'carry_walk':1.0,'gather_wood':1.3,'gather_food':1.6,'build':1.1,'repair':1.4,'attack':1.0,'hit':.40,'death':1.5}
+PROPS={'villager':['axe','hammer','sickle'],'spearman':['spear','shield'],'archer':['bow'],'scout':['sword']}
+FPS=24
+
+def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+def import_gltf(path):
+    before=set(bpy.data.objects); actions=set(bpy.data.actions)
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    objects=sorted(set(bpy.data.objects)-before,key=lambda o:o.name)
+    rigs=[o for o in objects if o.type=='ARMATURE']
+    return objects,rigs,sorted(set(bpy.data.actions)-actions,key=lambda a:a.name)
+
+def activate(obj):
+    bpy.ops.object.select_all(action='DESELECT');obj.select_set(True);bpy.context.view_layer.objects.active=obj
+
+def remove_objects(objects):
+    for o in objects:
+        if o.name in bpy.data.objects:bpy.data.objects.remove(o,do_unlink=True)
+
+def verify_inputs(root,expected_sha):
+    manifest_path=root/'input-manifest.json'
+    assert sha(manifest_path)==expected_sha,'Unexpected input manifest bytes'
+    manifest=json.loads(manifest_path.read_text())
+    expected=set(manifest['files'])|{'input-manifest.json'}
+    actual=set()
+    for file in root.rglob('*'):
+        assert not file.is_symlink(),'Symlink input forbidden'
+        if file.is_file():actual.add(file.relative_to(root).as_posix())
+    assert actual==expected,{'missing':sorted(expected-actual),'unexpected':sorted(actual-expected)}
+    for name,entry in manifest['files'].items():
+        file=root/name
+        assert file.resolve().is_relative_to(root) and sha(file)==entry['sha256'],name
+        assert entry.get('source_url','').startswith('https://')
+        if file.suffix=='.gltf':
+            document=json.loads(file.read_text())
+            for reference in document.get('buffers',[])+document.get('images',[]):
+                uri=reference.get('uri','')
+                assert uri and Path(uri).name==uri and not ':' in uri,'Only closed local GLTF dependencies allowed'
+                assert (file.parent/uri).is_file(),uri
+    return manifest
+
+def normalize_weights(mesh):
+    # Keep at most four normalized influences per vertex after topology reduction.
+    for vertex in mesh.data.vertices:
+        pairs=sorted([(g.group,g.weight) for g in vertex.groups if g.weight>1e-7],key=lambda p:(-p[1],p[0]))[:4]
+        assert pairs,mesh.name+' unweighted vertex '+str(vertex.index)
+        total=sum(w for _,w in pairs)
+        for group in mesh.vertex_groups:group.remove([vertex.index])
+        for index,weight in pairs:mesh.vertex_groups[index].add([vertex.index],weight/total,'REPLACE')
+
+def normalize_mesh(o,rig):
+    world=o.matrix_world.copy();o.parent=None;o.matrix_world=world;activate(o)
+    bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
+    for mod in list(o.modifiers):o.modifiers.remove(mod)
+    o.parent=rig
+    mod=o.modifiers.new('Licensed retargeted skin','ARMATURE');mod.object=rig
+
+def trim_head(mesh):
+    groups={g.index for g in mesh.vertex_groups if g.name in ['Head','neck_01']}
+    keep={v.index for v in mesh.data.vertices if sum(g.weight for g in v.groups if g.group in groups)>.14}
+    bm=bmesh.new();bm.from_mesh(mesh.data);bm.verts.ensure_lookup_table()
+    bmesh.ops.delete(bm,geom=[v for v in bm.verts if v.index not in keep],context='VERTS')
+    bm.to_mesh(mesh.data);bm.free();mesh.data.update()
+
+def merge_finger_weights(mesh):
+    groups={g.name:g for g in mesh.vertex_groups}
+    for v in mesh.data.vertices:
+        contributions={}
+        for membership in v.groups:
+            name=mesh.vertex_groups[membership.group].name
+            target=name
+            if name not in KEEP:
+                if name.endswith('_l'):target='hand_l' if any(x in name for x in ['index','middle','ring','pinky','thumb']) else 'ball_l'
+                elif name.endswith('_r'):target='hand_r' if any(x in name for x in ['index','middle','ring','pinky','thumb']) else 'ball_r'
+                else:target='pelvis'
+            contributions[target]=contributions.get(target,0)+membership.weight
+        for name,weight in contributions.items():
+            group=groups.get(name)
+            if group is None:group=mesh.vertex_groups.new(name=name);groups[name]=group
+            group.add([v.index],min(1,weight),'REPLACE')
+    for group in list(mesh.vertex_groups):
+        if group.name not in KEEP:mesh.vertex_groups.remove(group)
+
+def reduce_mesh(mesh,budget):
+    mesh.data.calc_loop_triangles();before=len(mesh.data.loop_triangles)
+    if before>budget:
+        activate(mesh)
+        # Decimate rest geometry before armature evaluation; keep deformation weights.
+        for mod in mesh.modifiers:mod.show_viewport=False
+        mod=mesh.modifiers.new('Mobile LOD rest topology','DECIMATE');mod.ratio=budget/before;mod.use_collapse_triangulate=True
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+        for mod in mesh.modifiers:mod.show_viewport=True
+    mesh.data.calc_loop_triangles()
+    return {'source_triangles':before,'mobile_triangles':len(mesh.data.loop_triangles)}
+
+def atlas_material(meshes,kind,out):
+    # Outfit retains512px; arms/head/hair/eye each get256px in one1024 atlas.
+    images=[]
+    for mesh in meshes:
+        for material in mesh.data.materials:
+            if not material or not material.use_nodes:continue
+            p=material.node_tree.nodes.get('Principled BSDF')
+            node=p.inputs['Base Color'].links[0].from_node if p and p.inputs['Base Color'].is_linked else None
+            if node and node.type=='TEX_IMAGE' and node.image not in images:images.append(node.image)
+    assert len(images)<=9,[(i.name) for i in images]
+    atlas=bpy.data.images.new(kind+'_mobile_atlas',width=1024,height=1024,alpha=False)
+    pixels=[1.0]*(1024*1024*4)
+    image_slots={}
+    for index,image in enumerate(images):
+        size=512 if index==0 else 256
+        ox,oy=(0,0) if index==0 else (512+((index-1)%2)*256,((index-1)//2)*256)
+        image.scale(size,size);data=list(image.pixels)
+        image_slots[image]=(ox/1024,oy/1024,size/1024)
+        for y in range(size):
+            start=((oy+y)*1024+ox)*4;pixels[start:start+size*4]=data[y*size*4:(y+1)*size*4]
+    # Reserve white 4x4 texels for painted original prop geometry.
+    for y in range(4):
+        for x in range(4):pixels[(y*1024+x)*4:(y*1024+x)*4+4]=[1,1,1,1]
+    atlas.pixels=pixels;atlas.filepath_raw=str(out/(kind+'_atlas.png'));atlas.file_format='PNG';atlas.save();atlas.pack()
+    mat=bpy.data.materials.new('field_textured');mat.use_nodes=True
+    p=mat.node_tree.nodes.get('Principled BSDF');p.inputs['Roughness'].default_value=.92;p.inputs['Specular IOR Level'].default_value=.14
+    tex=mat.node_tree.nodes.new('ShaderNodeTexImage');tex.image=atlas
+    colors=mat.node_tree.nodes.new('ShaderNodeVertexColor');colors.layer_name='FieldColor'
+    mix=mat.node_tree.nodes.new('ShaderNodeMix');mix.data_type='RGBA';mix.blend_type='MULTIPLY';mix.inputs[0].default_value=1
+    # Blender4.3 glTF explicitly recognizes modern MIX/RGBA multiplication for COLOR_0.
+    mat.node_tree.links.new(tex.outputs['Color'],mix.inputs[6]);mat.node_tree.links.new(colors.outputs['Color'],mix.inputs[7]);mat.node_tree.links.new(mix.outputs[2],p.inputs['Base Color'])
+    for mesh in meshes:
+        uv=mesh.data.uv_layers.active
+        assert uv is not None
+        for poly in mesh.data.polygons:
+            source=mesh.data.materials[poly.material_index];p=source.node_tree.nodes.get('Principled BSDF')
+            node=p.inputs['Base Color'].links[0].from_node if p and p.inputs['Base Color'].is_linked else None
+            slot=image_slots.get(node.image if node and node.type=='TEX_IMAGE' else None,(0,0,.5))
+            for li in poly.loop_indices:
+                point=uv.data[li].uv
+                point.x=min(max(point.x,0),1)*slot[2]+slot[0]
+                point.y=min(max(point.y,0),1)*slot[2]+slot[1]
+            poly.material_index=0
+        mesh.data.materials.clear();mesh.data.materials.append(mat)
+        attr=mesh.data.color_attributes.get('FieldColor') or mesh.data.color_attributes.new(name='FieldColor',type='FLOAT_COLOR',domain='CORNER')
+        for item in attr.data:item.color=(1,1,1,1)
+    team=bpy.data.materials.new('team_blue');team.use_nodes=True;p=team.node_tree.nodes.get('Principled BSDF')
+    p.inputs['Base Color'].default_value=(.058,.11,.15,1);p.inputs['Roughness'].default_value=.94;p.inputs['Specular IOR Level'].default_value=.12
+    return mat,team
+
+def add_prop_geometry(rig,kind,materials):
+    result=[]
+    def part(name,center,size,bone,color=(.2,.13,.07),team=False,rotation=(0,0,0)):
+        bpy.ops.mesh.primitive_cube_add(size=1,location=center);o=bpy.context.object;o.name=name;o.scale=size;o.rotation_euler=rotation;activate(o);bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
+        mod=o.modifiers.new('Soft forged edge','BEVEL');mod.width=.008;mod.segments=1;bpy.ops.object.modifier_apply(modifier=mod.name)
+        o.data.materials.append(materials[1 if team else 0]);attr=o.data.color_attributes.new(name='FieldColor',type='FLOAT_COLOR',domain='CORNER')
+        for item in attr.data:item.color=(*color,1)
+        for uv in o.data.uv_layers.active.data:uv.uv=(.001,.001)
+        g=o.vertex_groups.new(name=bone);g.add(list(range(len(o.data.vertices))),1,'REPLACE');o.parent=rig
+        m=o.modifiers.new('Prop skin','ARMATURE');m.object=rig;result.append(o)
+        return o
+    activate(rig);bpy.ops.object.mode_set(mode='EDIT')
+    for prop in PROPS[kind]:
+        parent='hand_l' if prop in ['bow','shield'] else 'hand_r'
+        bone=rig.data.edit_bones.new('prop_'+prop);bone.head=rig.data.edit_bones[parent].head;bone.tail=bone.head+Vector((0,0,.08));bone.parent=rig.data.edit_bones[parent]
+    bpy.ops.object.mode_set(mode='OBJECT')
+    for prop in PROPS[kind]:
+        bone='prop_'+prop;h=rig.data.bones[bone].head_local.copy()
+        if prop in ['axe','hammer','sickle','sword','spear']:
+            length={'axe':.68,'hammer':.40,'sickle':.35,'sword':.65,'spear':1.9}[prop]
+            part(prop+'_haft',h+Vector((0,0,length*.3)),(.035,.035,length),bone)
+            if prop=='axe':part('axe_head',h+Vector((.07,0,.49)),(.22,.055,.13),bone,(.25,.28,.27))
+            elif prop=='hammer':part('hammer_head',h+Vector((0,0,.29)),(.20,.09,.09),bone,(.2,.22,.22))
+            elif prop=='sickle':part('sickle_blade',h+Vector((.07,0,.23)),(.17,.03,.06),bone,(.3,.33,.32))
+            elif prop=='sword':part('sword_blade',h+Vector((0,0,.38)),(.055,.025,.51),bone,(.32,.35,.34));part('sword_guard',h+Vector((0,0,.10)),(.17,.05,.04),bone)
+            else:part('spear_point',h+Vector((0,0,1.48)),(.065,.03,.23),bone,(.32,.35,.34))
+        elif prop=='shield':part('shield',h+Vector((0,-.11,.1)),(.36,.065,.52),bone,(1,1,1),True)
+        else:
+            for i in range(10):
+                t=-math.pi/2+(i+.5)*math.pi/10
+                part('bow_limb',h+Vector((0,-.12*math.cos(t),.40*math.sin(t))),(.035,.04,.13),bone,rotation=(-math.atan2(.12*math.sin(t),.40*math.cos(t)),0,0))
+                # Rotation is baked around the part center before world translation.
+            part('bow_string',h+Vector((0,0,0)),(.006,.006,.80),bone,(.55,.48,.32))
+    # One modest team sash, silhouette remains original outfit. It is weighted cloth.
+    c=rig.data.bones['spine_03'].head_local.copy()
+    part('faction_cloth',c+Vector((0,-.13,-.08)),(.12,.018,.30),'spine_03',(1,1,1),True)
+    return result
+
+def action_named(actions,name):
+    matches=[a for a in actions if a.name==name or a.name.startswith(name+'_') or a.name.startswith(name+'.')]
+    assert len(matches)==1,(name,[a.name for a in actions]);return matches[0]
+
+def bake_action(dst,source,action,name,duration,kay=False,segments=None):
+    dst.animation_data_create();out=bpy.data.actions.new(name);dst.animation_data.action=out
+    source.animation_data_create();source.animation_data.action=action
+    for tr in source.animation_data.nla_tracks:tr.mute=True
+    frames=round(duration*FPS);mapping=KAY if kay else {n:n for n in KEEP}
+    for frame in range(frames+1):
+        t=frame/frames;current=action;local=t
+        if segments:
+            for start,end,a in segments:
+                if start<=t<=end:current=a;local=(t-start)/(end-start);break
+        source.animation_data.action=current
+        begin,end=current.frame_range;sample=begin+(end-begin)*local
+        bpy.context.scene.frame_set(math.floor(sample),subframe=sample-math.floor(sample))
+        # Bake only rotation deltas into the target's own rest proportions. Never
+        # transplant source bone lengths or blindly assign incompatible curves.
+        world_rotations={}
+        for bone in sorted(dst.pose.bones,key=lambda b:len(b.parent_recursive)):
+            bone.rotation_mode='QUATERNION';bone.location=(0,0,0);bone.scale=(1,1,1);bone.rotation_quaternion=Quaternion()
+            srcname=mapping.get(bone.name)
+            if srcname and srcname in source.pose.bones and bone.name!='root':
+                src=source.pose.bones[srcname]
+                desired=src.matrix.to_quaternion() @ src.bone.matrix_local.to_quaternion().inverted() @ bone.bone.matrix_local.to_quaternion()
+                parent_q=world_rotations[bone.parent.name] if bone.parent else Quaternion()
+                local_rest=(bone.bone.parent.matrix_local.inverted()@bone.bone.matrix_local).to_quaternion() if bone.parent else bone.bone.matrix_local.to_quaternion()
+                bone.rotation_quaternion=local_rest.inverted() @ parent_q.inverted() @ desired
+                if bone.name=='pelvis':
+                    dz=src.matrix.translation.z-src.bone.matrix_local.translation.z
+                    bone.location=bone.bone.matrix_local.to_quaternion().inverted() @ Vector((0,0,dz))
+            if bone.name.startswith('prop_') and dst.get('unit_kind')=='villager':
+                visible={'gather_wood':'axe','build':'hammer','repair':'hammer','gather_food':'sickle','attack':'axe'}.get(name,'')
+                if bone.name!='prop_'+visible:bone.scale=(.001,.001,.001)
+            local_rest=(bone.bone.parent.matrix_local.inverted()@bone.bone.matrix_local).to_quaternion() if bone.parent else bone.bone.matrix_local.to_quaternion()
+            parent_q=world_rotations[bone.parent.name] if bone.parent else Quaternion()
+            world_rotations[bone.name]=parent_q @ local_rest @ bone.rotation_quaternion
+            for path in ['rotation_quaternion','location','scale']:bone.keyframe_insert(data_path=path,frame=frame)
+    for curve in out.fcurves:
+        for point in curve.keyframe_points:point.interpolation='LINEAR'
+    out.use_fake_user=True;dst.animation_data.action=None
+    return out
+
+def pack_meshes(meshes,rig,kind):
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in meshes:o.select_set(True)
+    bpy.context.view_layer.objects.active=meshes[0];bpy.ops.object.join();mesh=bpy.context.object;mesh.name=kind+'_mobile_skin'
+    unique=[];remap={}
+    for index,mat in enumerate(mesh.data.materials):
+        if mat not in unique:unique.append(mat)
+        remap[index]=unique.index(mat)
+    ids=[remap[p.material_index] for p in mesh.data.polygons];mesh.data.materials.clear()
+    for mat in unique:mesh.data.materials.append(mat)
+    for p,index in zip(mesh.data.polygons,ids):p.material_index=index
+    mesh.data.calc_loop_triangles();assert len(mesh.data.loop_triangles)<=6500,len(mesh.data.loop_triangles)
+    assert len(mesh.data.materials)==2
+    return mesh
+
+def main():
+    p=argparse.ArgumentParser();p.add_argument('--inputs',required=True,type=Path);p.add_argument('--output-root',required=True,type=Path);p.add_argument('--input-manifest-sha256',required=True)
+    a=p.parse_args(sys.argv[sys.argv.index('--')+1:]);src=a.inputs.resolve();out=a.output_root.resolve()
+    assert bpy.app.version==(4,3,2),'Pinned Blender4.3.2 required for reviewed action API'
+    verified_inputs=verify_inputs(src,a.input_manifest_sha256)
+    if out.exists() and any(out.iterdir()):p.error('output must be new or empty')
+    art=out/'art/action_characters';glbdir=art/'interchange';glbdir.mkdir(parents=True);(out/'art/.gdignore').touch();reports=out/'reports';reports.mkdir();textures=art/'textures';textures.mkdir()
+    manifest={'blender':bpy.app.version_string,'input_manifest_sha256':sha(src/'input-manifest.json'),'license':'CC0 Quaternius and KayKit, original equipment fittings','provenance':verified_inputs['provenance'],'acceptance':'PROTOTYPE NOT VISUALLY ACCEPTED','units':{}}
+    for kind in KINDS:
+        bpy.ops.wm.read_factory_settings(use_empty=True);bpy.context.scene.render.fps=FPS
+        folder='peasant' if kind in ['villager','spearman'] else 'ranger';model='Male_Peasant.gltf' if folder=='peasant' else 'Male_Ranger.gltf'
+        objects,rigs,_=import_gltf(src/folder/model);assert len(rigs)==1;rig=rigs[0];rig.name='FieldRig';rig['unit_kind']=kind
+        meshes=[o for o in objects if o.type=='MESH']
+        base_objects,base_rigs,_=import_gltf(src/'base/Superhero_Male_FullBody.gltf')
+        for mesh in [o for o in base_objects if o.type=='MESH']:
+            if 'SuperHero' in mesh.name or 'Superhero' in mesh.name:trim_head(mesh)
+            if len(mesh.data.vertices):meshes.append(mesh)
+        hair_objects,hair_rigs,_=import_gltf(src/'hair/Hair_Buzzed.gltf')
+        for hair in [o for o in hair_objects if o.type=='MESH']:
+            # Free hair is a correctly positioned but unskinned accessory.
+            if not len(hair.vertex_groups):
+                group=hair.vertex_groups.new(name='Head');group.add(list(range(len(hair.data.vertices))),1.0,'REPLACE')
+            meshes.append(hair)
+        for mesh in meshes:normalize_mesh(mesh,rig);merge_finger_weights(mesh)
+        remove_objects([o for o in base_objects+hair_objects if o.type!='MESH'])
+        activate(rig);bpy.ops.object.mode_set(mode='EDIT')
+        for bone in list(rig.data.edit_bones):
+            if bone.name not in KEEP:rig.data.edit_bones.remove(bone)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        lod={}
+        # Protect head/torso silhouette; decorative boots and bracers get lowest density.
+        weights=[]
+        for mesh in meshes:
+            name=mesh.name.lower()
+            weight=.38 if ('boot' in name or 'bracer' in name) else (1.25 if any(x in name for x in ['superhero','body','hood']) else .8)
+            mesh.data.calc_loop_triangles();weights.append(max(100,len(mesh.data.loop_triangles)*weight))
+        for mesh,weight in zip(meshes,weights):
+            lod[mesh.name]=reduce_mesh(mesh,max(60,int(4900*weight/sum(weights))))
+            normalize_weights(mesh)
+        materials=atlas_material(meshes,kind,textures)
+        meshes.extend(add_prop_geometry(rig,kind,materials))
+        mesh=pack_meshes(meshes,rig,kind)
+        # Load source libraries only after geometry preparation. Delete all source
+        # meshes and imported rigs after baked keyframes, never export mannequins.
+        libs={};source_objects=[]
+        for key,file in [('u1','UAL1_Standard.glb'),('u2','UAL2_Standard.glb'),('range','Rig_Medium_CombatRanged.glb'),('melee','Rig_Medium_CombatMelee.glb'),('tools','Rig_Medium_Tools.glb')]:
+            obs,rs,acts=import_gltf(src/'animations'/file);assert len(rs)==1;libs[key]=(rs[0],acts);source_objects+=obs
+            for obj in obs:
+                if obj.type=='MESH':obj.hide_render=True;obj.hide_viewport=True
+        choices={'idle':('u1','Sword_Idle' if kind=='scout' else 'Idle_Loop'),'walk':('u1','Walk_Loop'),'hit':('u1','Hit_Chest'),'death':('u1','Death01')}
+        if kind=='villager':choices.update({'carry_walk':('u2','Walk_Carry_Loop'),'gather_wood':('u2','TreeChopping_Loop'),'gather_food':('u2','Farm_Harvest'),'build':('tools','Hammering'),'repair':('u1','Fixing_Kneeling'),'attack':('melee','Melee_1H_Attack_Chop')})
+        elif kind=='spearman':choices['attack']=('melee','Melee_2H_Attack_Stab')
+        elif kind=='archer':choices['attack']=('range','Ranged_Bow_Draw')
+        else:choices['attack']=('u1','Sword_Attack')
+        actions={};origins={}
+        for name,(key,original) in choices.items():
+            source,all_actions=libs[key];action=action_named(all_actions,original);segments=None
+            if kind=='archer' and name=='attack':segments=[(0,.62,action),(.62,1,action_named(all_actions,'Ranged_Bow_Release'))]
+            actions[name]=bake_action(rig,source,action,name,DURATION[name],key not in ['u1','u2'],segments)
+            origins[name]={'library':key,'source_action':original,'duration_seconds':DURATION[name],'frames':round(DURATION[name]*FPS)+1}
+        remove_objects(source_objects)
+        for action in list(bpy.data.actions):
+            if action not in actions.values():bpy.data.actions.remove(action)
+        for name,action in actions.items():
+            track=rig.animation_data.nla_tracks.new();track.name=name;track.strips.new(name,0,action);track.mute=True
+        rig.animation_data.action=actions['idle'];bpy.context.scene.frame_set(0);rig.animation_data.action=None
+        bpy.context.scene.frame_start=0;bpy.context.scene.frame_end=58
+        for image in bpy.data.images:
+            if image.has_data:image.pack()
+        activate(rig);mesh.select_set(True)
+        blend=art/(kind+'.blend');bpy.ops.wm.save_as_mainfile(filepath=str(blend))
+        glb=glbdir/(kind+'.glb')
+        bpy.ops.export_scene.gltf(filepath=str(glb),export_format='GLB',use_selection=True,export_yup=True,export_apply=False,export_animations=True,export_skins=True,export_animation_mode='ACTIONS',export_force_sampling=True,export_frame_range=False,export_anim_slide_to_zero=True,export_rest_position_armature=True)
+        weights={g.name:sum(1 for v in mesh.data.vertices for w in v.groups if w.group==g.index and w.weight>0) for g in mesh.vertex_groups}
+        manifest['units'][kind]={'source_outfit':folder+'/'+model,'blend_sha256':sha(blend),'glb_sha256':sha(glb),'bones':[b.name for b in rig.data.bones],'weighted_vertices':weights,'armature_modifiers':[m.name for m in mesh.modifiers if m.type=='ARMATURE'],'triangles':len(mesh.data.loop_triangles),'material_surfaces':len(mesh.data.materials),'lod':lod,'clips':origins,'keyed_paths':{n:sorted(set(c.data_path for c in act.fcurves)) for n,act in actions.items()},'root_motion_removed':True}
+    import shutil
+    shutil.copytree(src/'licenses',art/'licenses');shutil.copy2(src/'input-manifest.json',art/'input-manifest.json')
+    (reports/'asset_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n');print(json.dumps(manifest,indent=2))
+if __name__=='__main__':main()

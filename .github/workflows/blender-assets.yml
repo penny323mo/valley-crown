@@ -1,0 +1,49 @@
+name: Generate licensed character prototypes
+on:
+  push:
+    branches: [ci/licensed-blender-v1]
+    paths: ['.github/workflows/blender-assets.yml', 'ci/**', 'licensed-character-inputs-v2.zip']
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Record isolated runner capacity
+        run: |
+          { uname -a; free -h; df -h .; nproc; } > runner-resources.txt
+      - name: Fetch exact official Blender
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir engine
+          curl --fail --location --retry 2 -o engine/blender.tar.xz https://download.blender.org/release/Blender4.3/blender-4.3.2-linux-x64.tar.xz
+          echo '4da1c956673c0485e63054e563ee69198cc8f80d8157dd7592dffc8a6a5592e6  engine/blender.tar.xz' | sha256sum --check --strict
+          tar -xJf engine/blender.tar.xz -C engine
+      - name: Guard generation data validation and reopen probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/run_blender_pipeline.py --blender engine/blender-4.3.2-linux-x64/blender --blender-archive engine/blender.tar.xz --inputs-zip licensed-character-inputs-v2.zip
+      - name: Preserve bounded command evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: licensed-blender-evidence-${{ github.sha }}
+          path: |
+            evidence/
+            runner-resources.txt
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve validated prototype files
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: licensed-character-prototypes-${{ github.sha }}
+          path: generated/
+          if-no-files-found: error
+          retention-days: 14
