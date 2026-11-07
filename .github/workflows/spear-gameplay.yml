@@ -1,7 +1,7 @@
-name: Inspect original spear in controlled real RTS scene
+name: Inspect candidate spear in controlled real RTS portrait
 on:
   push:
-    branches: [ci/native-spear-rts-baseline-v1]
+    branches: [ci/native-spear-rts-candidate-portrait-v1]
     paths: ['.github/workflows/spear-gameplay.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
@@ -14,25 +14,22 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - flow: baseline-portrait
+          - flow: candidate-portrait
             width: 390
             height: 844
-          - flow: baseline-landscape
-            width: 844
-            height: 390
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Require reviewed exact original gameplay source
+      - name: Require reviewed exact candidate portrait source
         run: |
           set -euo pipefail
           python3 - <<'PYCODE'
           import hashlib,json,pathlib
           lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
-          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-43276605e0fb'
+          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-130723842165'
           assert lock['spear_viewport']==[${{ matrix.width }},${{ matrix.height }}]
           assert lock['fixed_fps']==20 and lock['capture_contract']['frame_count']==4
           assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
@@ -55,6 +52,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: native-artifact
           merge-multiple: true
+      - name: Fetch independently accepted spear readability native output
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13585799854'
+          run-id: '42404505715'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: held-artifact
+          merge-multiple: true
       - name: Reassemble exact accepted 181 files without a test overlay
         run: |
           set -euo pipefail
@@ -63,6 +68,19 @@ jobs:
           python3 ci/apply_native_delta.py
           python3 ci/apply_occlusion_overlay.py --project project --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --package OCCLUSION_SOURCE_PACKAGE.json --package-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --overlay occlusion-source-overlay-v3.zip --archive occlusion-source.zip --receipt assembly-occlusion.json
           python3 ci/apply_construction_overlay.py --project project --accepted-lock OCCLUSION_SOURCE_PACKAGE.json --package CONSTRUCTION_SOURCE_PACKAGE.json --package-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --overlay construction-overlay.zip --archive construction-source.zip --receipt assembly-construction.json
+      - name: Apply accepted spear SCN and stamp to disposable original source
+        run: |
+          set -euo pipefail
+          python3 ci/apply_held_overlay.py --project project --base-package CONSTRUCTION_SOURCE_PACKAGE.json --package HELD_SOURCE_PACKAGE.json --native-output held-artifact --receipt assembly-held.json
+          python3 - <<'PYCODE'
+          import json,pathlib,sys
+          sys.path.insert(0,'ci')
+          from apply_construction_overlay import write_archive
+          package=json.loads(pathlib.Path('HELD_SOURCE_PACKAGE.json').read_text())
+          entries={row['file']:row['sha256'] for row in package['files']}
+          assert len(entries)==192
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('held-source.zip'))
+          PYCODE
       - name: Install official Ubuntu display dependencies
         run: |
           set -euo pipefail
@@ -80,7 +98,7 @@ jobs:
       - name: Guarded native import
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive construction-source.zip --manifest CONSTRUCTION_SOURCE_PACKAGE.json --archive-sha256 a4740d4e00862128d06dea1030dfd0efea6c9c0e8bc0e89f3a0396b5314d8f98 --manifest-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --xdg private/import --hosted-execution-approved --output import-evidence
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive held-source.zip --manifest HELD_SOURCE_PACKAGE.json --archive-sha256 69994f5d4e7476adc012590d0c5b9e537c5b821d5d17984bf21c990a27cc65a1 --manifest-sha256 f7e900121ac2d2d5baf83d7d1db2033ea8fcf2c017907782a0a8f1aa2c3abe5a --xdg private/import --hosted-execution-approved --output import-evidence
       - name: Capture four controlled real RTS-camera events
         id: capture_spear
         run: |

@@ -11,8 +11,8 @@ const EXPECTED_FOCUS := Vector3(-25,0,24)
 const BASE_BUILD := "vc-43276605e0fb"
 const BASE_ASSET := "a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89"
 # Disabled draft: exact new native artifact and derived build must be reviewed.
-const CANDIDATE_BUILD := "UNBOUND_CANDIDATE"
-const CANDIDATE_ASSET := "UNBOUND_NATIVE_OUTPUT"
+const CANDIDATE_BUILD := "vc-130723842165"
+const CANDIDATE_ASSET := "af925f0f70fc14567796230dbc4d1543003e3a4bd52b3bc4554d4daea83c0038"
 var game
 var destination: String
 var build: String
