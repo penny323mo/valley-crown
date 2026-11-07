@@ -1,0 +1,14 @@
+{
+  "spearman": {
+    "native_sha256": "a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89",
+    "data_sha256": "e640fd86dba7a737d071f397eb0cbabe9d5d7e1397b8bc5b1120192a507a1b8d"
+  },
+  "archer": {
+    "native_sha256": "55b11a40f6533197b04df899c661249293344d942232809a2f27d21f7c0c83bc",
+    "data_sha256": "527702629d8bdc943caf0fcd95e029201699783ee0fd82e5b4a160878a83cb73"
+  },
+  "scout": {
+    "native_sha256": "3e724d611b3cea019dbc0ff3e409840856e45daee06975784054c22d1e0af63c",
+    "data_sha256": "5b3b64b949d67cef59b215dde4a6e962ac0c1dc2531cee859a9dd94495be90b0"
+  }
+}
