@@ -1,0 +1,45 @@
+name: Publish experimental game test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and unpack exact experimental build
+        shell: bash
+        run: |
+          echo '0d6c1bd6f8d8b42bc605ad74401c1f600f9f66d7485fd3b706d9278516095fa7  valley-crown-vc-bff2dcf4109a-web.zip' | sha256sum --check --strict
+          mkdir -p site/play
+          unzip -q valley-crown-vc-bff2dcf4109a-web.zip -d site/play
+          cp landing.html site/index.html
+          touch site/.nojekyll
+          python3 - <<'PY'
+          import hashlib, json, pathlib
+          root = pathlib.Path('site/play')
+          manifest = json.loads((root / 'WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build'] == 'vc-bff2dcf4109a'
+          for name, expected in manifest['files_sha256'].items():
+              assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected, name
+          assert len([p for p in root.rglob('*') if p.is_file()]) == 15
+          print('Verified all 15 public game assets for vc-bff2dcf4109a')
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
