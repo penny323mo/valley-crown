@@ -94,6 +94,7 @@ def scan(directory, lock, lock_sha256):
     require(guard.get('passed') is True and guard.get('capture_completed') is True and
             guard.get('cleanup_complete') is True, 'Guard did not pass or cleanup is unconfirmed')
     require(guard.get('test_dependencies') is False, 'Fake/injected process evidence cannot be admitted')
+    require(guard.get('diagnostic_only') is False, 'Diagnostic-only run cannot produce accepted visual artifacts')
     require(guard['input_sha256']['lock'] == lock_sha256, 'Guard lock identity differs')
     for key in ('harness', 'godot', 'supervisor'):
         require(guard['input_sha256'][key] == lock[key + '_sha256'], 'Guard tool identity differs: ' + key)

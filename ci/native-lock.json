@@ -5,7 +5,7 @@
   "source_archive_sha256": "92e660f43172fb731574a5b9f40ff9059cfd036b27845d226b3bd804849c564e",
   "godot_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
   "harness_sha256": "fd4f7ef47b262d42e391ffa7d8a340bb2dafe0807912a041fcdc482862b5c4c4",
-  "supervisor_sha256": "312ff44e0e798e49073cfc04892e590f74e2731cdfad80484685db8731919717",
+  "supervisor_sha256": "3ceb15b35861e835ea02bd399d491ba63a13542e0b2f395b217b1d22c51cd003",
   "native_renderer": "linux-x11-mesa-llvmpipe-gl_compatibility",
   "require_skeletal_animation": false,
   "project_files": {
@@ -135,9 +135,9 @@
   },
   "support_files": {
     ".github/workflows/native-visual.yml": "7f39fb11bd710ccae94e5496ae0f95d94e41989d19a8533f5a09f83288989745",
-    "ci/run_native.py": "312ff44e0e798e49073cfc04892e590f74e2731cdfad80484685db8731919717",
+    "ci/run_native.py": "3ceb15b35861e835ea02bd399d491ba63a13542e0b2f395b217b1d22c51cd003",
     "ci/capture_native.gd": "fd4f7ef47b262d42e391ffa7d8a340bb2dafe0807912a041fcdc482862b5c4c4",
-    "ci/scan_evidence.py": "c956d9d23255ac47b94e8390e81c02bf53dfb7a1f8d3f494eabcadce7e6ee63a",
+    "ci/scan_evidence.py": "ffec750b7a1be89edb85962bbcab1577060804404c35364fe54bc9381abf6841",
     "ci/guarded_phone_ci.py": "377e41e658eaac1ec49dd9a58c5eae34f6fb051aaa70cc4be704ae814c1dd93d",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50"
   },
@@ -149,5 +149,6 @@
     "tests/phone_input_edges.gd.uid",
     "tests/touch_box_regression.gd.uid",
     "tests/touch_epoch_regression.gd.uid"
-  ]
+  ],
+  "diagnostic_only": true
 }

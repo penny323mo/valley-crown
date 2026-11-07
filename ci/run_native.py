@@ -12,6 +12,7 @@ import json
 import os
 import re
 import secrets
+import select
 import signal
 import socket
 import stat
@@ -125,6 +126,8 @@ def emit_result_diagnostics(out, receipt):
     summary = {key: receipt.get(key) for key in ('passed', 'cleanup_complete', 'capture_completed', 'seconds')}
     summary['children'] = {name: {key: info.get(key) for key in ('complete', 'exit', 'signals')}
                            for name, info in receipt.get('cleanup', {}).items()}
+    summary['unexpected_descendants'] = receipt.get('unexpected_descendants', [])[:16]
+    summary['observed_descendant_cleanup'] = receipt.get('observed_descendant_cleanup', [])[:16]
     for key in ('error', 'final_error'):
         if receipt.get(key):
             summary[key] = {name: safe_diagnostic_text(value) for name, value in receipt[key].items()}
@@ -178,6 +181,128 @@ def process_metrics(child):
     return values
 
 
+def process_identity(pid):
+    """Read only bounded identity fields. Never cmdline, environment or full exe path."""
+    require(type(pid) is int and pid > 0, 'Invalid observed process ID')
+    proc = Path('/proc') / str(pid)
+    raw = (proc / 'stat').read_text()
+    close = raw.rfind(')'); opened = raw.find('(')
+    require(opened > 0 and close > opened, 'Malformed process stat')
+    fields = raw[close + 2:].split()
+    require(len(fields) >= 20 and int(raw[:opened].strip()) == pid, 'Incomplete process identity')
+    status = dict(line.split(':', 1) for line in (proc / 'status').read_text().splitlines() if ':' in line)
+    tgid = int(status['Tgid'].strip())
+    require(tgid == pid, 'Observed identifier is a thread, not a subprocess')
+    executable = Path(os.readlink(proc / 'exe')).name
+    return {'pid': pid, 'ppid': int(fields[1]), 'tgid': tgid, 'starttime_ticks': int(fields[19]),
+            'comm': safe_diagnostic_text(raw[opened + 1:close]),
+            'executable_basename': safe_diagnostic_text(executable)}
+
+
+def same_lifetime(first, second):
+    return all(first[key] == second[key] for key in ('pid', 'tgid', 'starttime_ticks'))
+
+
+def observe_descendants(parent_name, parent, pids, tracked):
+    """Capture observed descendants and pidfds only after ancestry/lifetime checks.
+
+    Unexpected children remain fatal. This is diagnostics and cleanup, NOT an
+    executable allowlist. A bounded snapshot cannot prove no unseen forks escaped.
+    """
+    evidence = []
+    try:
+        require(parent.poll() is None, 'Owned parent already exited')
+        owner = process_identity(parent.pid)
+    except Exception as exc:
+        return [{'parent': parent_name, 'parent_pid': parent.pid, 'pids': pids[:16],
+                 'status': 'parent_identity_unavailable', 'error_type': type(exc).__name__}]
+    queue = [(owner, int(pid), 1) for pid in pids[:16]]
+    seen = set()
+    while queue and len(evidence) < 16:
+        ancestor, pid, depth = queue.pop(0)
+        if pid in seen:
+            continue
+        seen.add(pid)
+        row = {'parent': parent_name, 'parent_pid': ancestor['pid'], 'pid': pid, 'depth': depth}
+        fd = None
+        try:
+            first = process_identity(pid)
+            row['identity'] = first  # Preserve observed identity even if it exits before pidfd open.
+            require(first['ppid'] == ancestor['pid'], 'Observed process no longer has the claimed parent')
+            require(same_lifetime(process_identity(ancestor['pid']), ancestor), 'Ancestor lifetime changed')
+            fd = os.pidfd_open(pid, 0)
+            second = process_identity(pid)
+            require(same_lifetime(first, second) and second['ppid'] == ancestor['pid'], 'Process identity changed while binding pidfd')
+            # An exited pidfd must never be associated with a newly reused numeric PID.
+            require(not select.select([fd], [], [], 0)[0], 'Observed process exited while binding pidfd')
+            tracked.append({'fd': fd, 'identity': second, 'parent': parent_name})
+            fd = None  # Ownership transferred; always closed by cleanup.
+            row['status'] = 'pidfd_bound'
+            if depth < 3:
+                grandchildren = set()
+                for task in (Path('/proc') / str(pid) / 'task').iterdir():
+                    try:
+                        grandchildren.update((task / 'children').read_text().split())
+                    except FileNotFoundError:
+                        continue
+                for descendant in sorted(grandchildren)[:16]:
+                    queue.append((second, int(descendant), depth + 1))
+        except Exception as exc:
+            row['status'] = 'identity_or_binding_incomplete'
+            row['error_type'] = type(exc).__name__
+        finally:
+            if fd is not None:
+                try:
+                    os.close(fd)
+                    row['pidfd_closed'] = True
+                except Exception as exc:
+                    # A failed close must not discard the known child/identity.
+                    # Do not retry a numeric fd whose close outcome is uncertain.
+                    row['pidfd_closed'] = False
+                    row['pidfd_close_error_type'] = type(exc).__name__
+        evidence.append(row)
+    if queue or len(pids) > 16:
+        evidence.append({'parent': parent_name, 'status': 'descendant_snapshot_truncated'})
+    return evidence
+
+
+def cleanup_observed_descendant(tracked):
+    """Signal only the bound pidfd, after rechecking numeric PID/start time."""
+    fd, identity = tracked['fd'], tracked['identity']
+    result = {'pid': identity['pid'], 'starttime_ticks': identity['starttime_ticks'],
+              'parent': tracked['parent'], 'exited': False, 'signals': []}
+    try:
+        if select.select([fd], [], [], 0)[0]:
+            result['exited'] = True
+            result['status'] = 'exited_after_owned_parent_cleanup'
+        else:
+            current = process_identity(identity['pid'])
+            require(same_lifetime(identity, current), 'Observed descendant PID/start time changed; do not signal')
+            result['cleanup_identity'] = current
+            for sig, label in ((signal.SIGTERM, 'SIGTERM'), (signal.SIGKILL, 'SIGKILL')):
+                result['signals'].append(label)
+                try:
+                    signal.pidfd_send_signal(fd, sig, None, 0)
+                except ProcessLookupError:
+                    pass  # Exit is still confirmed only by the same pidfd becoming ready.
+                if select.select([fd], [], [], 1)[0]:
+                    result['exited'] = True
+                    result['status'] = 'pidfd_confirmed_exit'
+                    break
+            if not result['exited']:
+                result['status'] = 'exit_unconfirmed'
+    except Exception as exc:
+        result['status'] = 'cleanup_unconfirmed'
+        result['error_type'] = type(exc).__name__
+    finally:
+        try:
+            os.close(fd)
+            result['pidfd_closed'] = True
+        except OSError:
+            result['pidfd_closed'] = False
+    return result
+
+
 def private_auth(path, display):
     # Local, ephemeral authentication. Do not write the cookie into logs/receipts.
     def field(value):
@@ -204,7 +329,8 @@ def clean_environment(private):
     return env
 
 
-REAL_DEPENDENCIES = (subprocess.Popen, metrics, process_metrics, time.monotonic, time.sleep, signal.signal)
+REAL_DEPENDENCIES = (subprocess.Popen, metrics, process_metrics, time.monotonic, time.sleep, signal.signal,
+                     process_identity, os.pidfd_open, signal.pidfd_send_signal, select.select, os.close)
 
 
 def reap_owned(child):
@@ -290,18 +416,21 @@ def run(args):
     env['DISPLAY'] = ':' + str(display); env['XAUTHORITY'] = str(auth)
     started = time.monotonic()
     receipt = {'passed': False, 'scope': 'native_software_rendered_source', 'build': lock['build'],
+               'diagnostic_only': lock.get('diagnostic_only') is True,
                'time_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                'input_sha256': bindings, 'source_file_count': len(source),
                'original_file_count': len(lock['project_files']), 'generated_uid_sha256': generated_uids,
                'cache_files': len(cache), 'samples': [], 'children': {}, 'cleanup': {},
                'unexpected_descendants': [], 'cleanup_complete': False,
                'test_dependencies': any(actual is not original for actual, original in zip(
-                   (subprocess.Popen, metrics, process_metrics, time.monotonic, time.sleep, signal.signal), REAL_DEPENDENCIES)),
+                   (subprocess.Popen, metrics, process_metrics, time.monotonic, time.sleep, signal.signal,
+                    process_identity, os.pidfd_open, signal.pidfd_send_signal, select.select, os.close), REAL_DEPENDENCIES)),
                'system_before': before, 'limits': {'timeout_seconds': 120, 'minimum_available_kib': 1048576,
                    'aggregate_rss_kib': 3145728, 'godot_rss_kib': 2621440, 'xvfb_rss_kib': 524288},
                'fixed_fps': 30, 'expected_framebuffer': [args.width, args.height],
                'not_verified': ['Web', 'Safari', 'physical iPhone', 'mobile GPU', 'FPS', 'touch input', 'visual quality']}
     children = {}
+    tracked_descendants = []
     handles = {}
     stopped = False
 
@@ -341,7 +470,19 @@ def run(args):
                 continue
             limit = 2621440 if name == 'godot' else 524288
             if row['child_pids']:
-                receipt['unexpected_descendants'].append({'parent': name, 'pids': row['child_pids']})
+                # Persist detection before any fallible identity/descriptor work.
+                # Even an observer failure leaves the unknown tree unconfirmed.
+                receipt['unexpected_descendants'].append({'parent': name, 'parent_pid': child.pid,
+                    'status': 'unexpected_child_detected',
+                    'pids': [safe_diagnostic_text(pid) for pid in row['child_pids'][:16]],
+                    'truncated': len(row['child_pids']) > 16})
+                save()
+                try:
+                    observed = observe_descendants(name, child, row['child_pids'], tracked_descendants)
+                    receipt['unexpected_descendants'].extend(observed[:17])
+                except Exception as exc:
+                    receipt['unexpected_descendants'].append({'parent': name, 'parent_pid': child.pid,
+                        'status': 'observation_failed', 'error_type': type(exc).__name__})
                 raise RuntimeError('Unexpected subprocess outside the reviewed direct-child model')
             require(row['VmRSS'] <= limit and row['VmHWM'] <= limit, 'Per-process memory guard: ' + name)
             total += row['VmRSS']; rows[name] = row
@@ -368,12 +509,16 @@ def run(args):
             '--rendering-method', 'gl_compatibility', '--rendering-driver', 'opengl3',
             '--audio-driver', 'Dummy', '--resolution', f'{args.width}x{args.height}', '--fixed-fps', '30',
             '--script', str(inputs['harness']), '--', str(frame_dir), lock['build'], str(args.width), str(args.height)])
+        diagnostic_deadline = time.monotonic() + 2.0
         while godot.poll() is None:
             sample(); require(xvfb.poll() is None, 'Display server failed during capture')
+            if receipt['diagnostic_only']:
+                require(time.monotonic() < diagnostic_deadline, 'Diagnostic startup window complete; no screenshot acceptance')
             time.sleep(0.05)
         sample()
         require(godot.wait(timeout=0.05) == 0, 'Godot capture exited nonzero')
         require(xvfb.poll() is None, 'Display server exited before capture acceptance')
+        require(not receipt['diagnostic_only'], 'Diagnostic-only run cannot grant screenshot acceptance')
         report = json.loads((frame_dir / 'capture-report.json').read_text())
         require(report.get('passed') is True and report['build'] == lock['build'], 'Capture report failed/identity mismatch')
         require(report.get('frame_count') == 10, 'Incomplete capture sequence')
@@ -389,6 +534,7 @@ def run(args):
         # Only owned Popen handles. Never broad pkill, process-group or unrelated PID signals.
         for name, child in reversed(list(children.items())):
             receipt['cleanup'][name] = reap_owned(child)
+        receipt['observed_descendant_cleanup'] = [cleanup_observed_descendant(item) for item in reversed(tracked_descendants)]
         for handle in handles.values():
             handle.close()
         for sig, handler in old_handlers.items():
