@@ -6,7 +6,7 @@ import scan_evidence as base
 SCENARIO='native_routed_touch_independent_v2'
 LABELS={
  'touch-gather':['opening','worker-selected','target-guidance','command-mode','gather-order-accepted','woodcutting','wood-cargo','cargo-return','deposit-complete','gather-resumed'],
- 'touch-build':['opening','worker-selected','build-action-preview','build-preview','build-confirmed','construction-active','construction-quarter','construction-half','house-complete','house-complete-settled']}
+ 'touch-build':['opening','worker-selected','build-action-preview','build-preview','build-confirmed','construction-active','construction-quarter','construction-near-complete','house-complete','house-complete-settled']}
 ROLES={'touch-gather':['select-worker','target-guidance','command-button','order-wood'],
        'touch-build':['select-worker','house-button','hold-building-plot','confirm-build']}
 def contract(flow):return {'scenario':SCENARIO,'flow':flow,'viewport':[390,844],'frames':LABELS[flow],
@@ -22,7 +22,7 @@ def integer(x):return type(x) is int and x>=0
 def pair(value):return type(value) is list and len(value)==2 and all(number(x) for x in value)
 def within(point,rect):return rect[0]<=point[0]<rect[0]+rect[2] and rect[1]<=point[1]<rect[1]+rect[3]
 def snapshot(s):
-    need(type(s) is dict and s.get('build')=='vc-c7211e1083c8' and integer(s.get('tick')) and number(s.get('delivered')) and s['delivered']>=0 and integer(s.get('built')) and
+    need(type(s) is dict and s.get('build')=='vc-43276605e0fb' and integer(s.get('tick')) and number(s.get('delivered')) and s['delivered']>=0 and integer(s.get('built')) and
          s.get('paused') is False and s.get('game_over') is False and s.get('economy_scale')==1000 and
          type(s.get('bank_milli')) is dict and all(integer(s['bank_milli'].get(k)) for k in ('food','wood')) and
          type(s.get('selected')) is list and all(integer(x) for x in s['selected']) and integer(s.get('own_pending_commands')),
@@ -151,12 +151,13 @@ def validate_build(r,lock):
         progress=sites[0]['progress'];need(number(progress) and progress>=previous and (progress==1 if i>=8 else 0<=progress<1),'Touch construction provenance differs');previous=progress
         if i>=5 and i<8:
             need(own(frame,worker)['state']=='build' and own(frame,worker)['target']==house,'Touch public worker differs');pose(frame,worker,'build',lock)
-    for i,lo,hi in [(5,0,.25),(6,.25,.5),(7,.5,1)]:
+    for i,lo,hi in [(5,0,.25),(6,.25,.5),(7,.9,1)]:
         progress=[b for b in f[i]['own_buildings'] if b['id']==house][0]['progress'];need(lo<=progress<hi and progress>0,'Touch construction provenance differs')
     need(r.get('required_house_work_ticks')==400 and r.get('tick_seconds')==.05 and r.get('required_house_work_seconds')==20 and
          f[8]['game_tick']-confirm['after']['tick']>=400 and f[8]['game_seconds']-confirm['after']['tick']*.05>=20-1e-6,
          'Touch construction provenance differs')
 
+    validate_construction(f,house)
     return validate_hud_settle(f)
 
 def validate_hud_settle(frames):
@@ -187,7 +188,23 @@ def scan_with_pacing(directory,lock,lock_sha256):
 base.scan=scan_with_pacing
 base.validate_scenario=validate_touch
 base.SAFE_SCAN_REASONS=base.SAFE_SCAN_REASONS|ERRORS
+
+
+def validate_construction(frames,house):
+    for i,frame in enumerate(frames):
+        rows=frame.get('construction')
+        need(type(rows) is list,'Touch construction provenance differs')
+        if i<4:
+            need(rows==[],'Touch construction provenance differs');continue
+        need(len(rows)==1 and type(rows[0]) is dict,'Touch construction provenance differs')
+        row=rows[0];stage=3 if i>=8 else (2 if i==7 else (1 if i==6 else 0))
+        need(row.get('id')==house and type(row.get('stage')) is int and row['stage']==stage and
+             row.get('body_scale')==[1,1,1] and row.get('finished_visible') is (stage==3) and
+             row.get('site_visible') is (stage<3) and type(row.get('site_surfaces')) is int and row['site_surfaces']==2,
+             'Touch construction provenance differs')
+
 if __name__=='__main__':
     p=argparse.ArgumentParser()
     for name in ('directory','lock','report'):p.add_argument('--'+name,type=Path,required=True)
     args=p.parse_args();raise SystemExit(base.scan_to_report(args.directory,args.lock,args.report))
+

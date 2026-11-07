@@ -4,7 +4,7 @@ extends SceneTree
 const SCENARIO := "native_routed_touch_independent_v2"
 const FIXED_FPS := 20
 var flow: String
-const EXPECTED_BUILD := "vc-c7211e1083c8"
+const EXPECTED_BUILD := "vc-43276605e0fb"
 var game
 var destination: String
 var records: Array = []
@@ -157,7 +157,7 @@ func capture(label: String):
 		"framebuffer":[390,844],"logical_viewport":[root.get_visible_rect().size.x,root.get_visible_rect().size.y],"content_scale_factor":root.content_scale_factor,
 		"game_tick":game.tick_count,"game_seconds":game.game_time,"game_frame_counter":game.frame_counter,"camera_focus":[game.camera_focus.x,game.camera_focus.y,game.camera_focus.z],"camera_zoom":game.camera_zoom,
 		"test_mode":game.test_mode,"ai_enabled":game.ai_enabled,"selected":game.selected.duplicate(),"economy_audit_ok":game.economy.audit().ok,"snapshot":public_state(),
-		"own_units":own,"own_buildings":buildings,"animation_poses":pose_evidence(),"input_event_count":events.size(),
+		"own_units":own,"own_buildings":buildings,"construction":construction_evidence(),"animation_poses":pose_evidence(),"input_event_count":events.size(),
 		"ui":{"top_resources":{"text":game.top_resources.text,"visible":game.top_resources.is_visible_in_tree(),"rect":rect_values(game.top_resources.get_global_rect())},"toast":game.toast_label.text,"toast_visible":game.toast_label.is_visible_in_tree(),"touch_command":game.touch_command,"build_mode":game.build_mode,"held":game.build_preview_held,"placement_ok":game.placement_ok,"confirm":widget(game.build_confirm),"pointer_world":[game.pointer_world.x,game.pointer_world.y,game.pointer_world.z],"preview_position":[game.ghost.position.x,game.ghost.position.y,game.ghost.position.z] if is_instance_valid(game.ghost) else []},
 		"limitations":["Synthesized viewport-routed native ScreenTouch, not physical iPhone or Web","Normal game process at fixed20 engine delta; independently restarted subflows, not performance evidence","Known gray atlas/material defect remains","No defeat or restart coverage in this slice"]}
 	records.append(frame)
@@ -213,8 +213,8 @@ func build_flow():
 	await capture("construction-active"); if failed: return
 	if not require_ok(await await_stage("quarter",1200),"Ordinary construction did not reach quarter progress"): return
 	await capture("construction-quarter"); if failed: return
-	if not require_ok(await await_stage("half",1200),"Ordinary construction did not reach half progress"): return
-	await capture("construction-half"); if failed: return
+	if not require_ok(await await_stage("near-complete",1200),"Ordinary construction did not reach roof-frame progress"): return
+	await capture("construction-near-complete"); if failed: return
 	if not require_ok(await await_stage("complete",1200),"House did not complete through ordinary construction"): return
 	await capture("house-complete"); if failed: return
 	await settle(5) # Ordinary scene frames; do not call the HUD refresh method.
@@ -251,3 +251,14 @@ func run():
 	var file := FileAccess.open(destination.path_join("capture-report.json"),FileAccess.WRITE)
 	if not require_ok(file!=null,"Cannot save touch sequence report"): return
 	file.store_string(JSON.stringify(report,"  ")+"\n"); file.close(); quit(0)
+
+# Read-only visual evidence for owned buildings already in the public record.
+func construction_evidence() -> Array:
+	var result: Array = []
+	for record in observed().values():
+		if not record.owned or record.kind != "house": continue
+		var entity: Dictionary = game._get_entity(record.id)
+		var body: Node3D = entity.body
+		var site := body.get_node_or_null("ConstructionSite") as MeshInstance3D
+		result.append({"id":record.id,"stage":body.get_meta("construction_stage",-1),"body_scale":[body.scale.x,body.scale.y,body.scale.z],"finished_visible":body.get_child(0).visible,"site_visible":site != null and site.visible,"site_surfaces":site.mesh.get_surface_count() if site != null and site.mesh != null else 0})
+	return result
