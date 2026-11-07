@@ -1,7 +1,7 @@
-name: Validate isolated spear readability native output
+name: Validate isolated width-only spear blade native stream
 on:
   push:
-    branches: [ci/native-spear-readability-v1]
+    branches: [ci/native-blade-width-v1]
     paths: ['.github/workflows/native-held.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
@@ -38,6 +38,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: native-artifact
           merge-multiple: true
+      - name: Fetch independently accepted spear readability native output
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13585799854'
+          run-id: '42404505715'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: held-artifact
+          merge-multiple: true
       - name: Reassemble exact accepted 181 files without a test overlay
         run: |
           set -euo pipefail
@@ -45,12 +53,25 @@ jobs:
           python3 ci/apply_action_fix.py --project project --base-lock SOURCE_INPUT_LOCK.json --fix-lock ACTION_FIX_SOURCE_LOCK.json --overlay action-presentation-fix-v1.zip --receipt assembly-action-fix.json
           python3 ci/apply_native_delta.py
           python3 ci/apply_occlusion_overlay.py --project project --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --package OCCLUSION_SOURCE_PACKAGE.json --package-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --overlay occlusion-source-overlay-v3.zip --archive occlusion-source.zip --receipt assembly-occlusion.json
+          python3 ci/apply_construction_overlay.py --project project --accepted-lock OCCLUSION_SOURCE_PACKAGE.json --package CONSTRUCTION_SOURCE_PACKAGE.json --package-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --overlay construction-overlay.zip --archive construction-source.zip --receipt assembly-construction.json
+      - name: Apply accepted spear SCN and stamp to disposable original source
+        run: |
+          set -euo pipefail
+          python3 ci/apply_held_overlay.py --project project --base-package CONSTRUCTION_SOURCE_PACKAGE.json --package HELD_SOURCE_PACKAGE.json --native-output held-artifact --receipt assembly-held.json
+          python3 - <<'PYCODE'
+          import json,pathlib,sys
+          sys.path.insert(0,'ci')
+          from apply_construction_overlay import write_archive
+          package=json.loads(pathlib.Path('HELD_SOURCE_PACKAGE.json').read_text())
+          entries={row['file']:row['sha256'] for row in package['files']}
+          assert len(entries)==192
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('held-source.zip'))
+          PYCODE
       - name: Install official Ubuntu display dependencies
         run: |
           set -euo pipefail
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
-          python3 ci/apply_construction_overlay.py --project project --accepted-lock OCCLUSION_SOURCE_PACKAGE.json --package CONSTRUCTION_SOURCE_PACKAGE.json --package-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --overlay construction-overlay.zip --archive construction-source.zip --receipt assembly-construction.json
       - name: Verify pinned official engine
         run: |
           set -euo pipefail
@@ -63,28 +84,26 @@ jobs:
       - name: Guarded native import
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive construction-source.zip --manifest CONSTRUCTION_SOURCE_PACKAGE.json --archive-sha256 a4740d4e00862128d06dea1030dfd0efea6c9c0e8bc0e89f3a0396b5314d8f98 --manifest-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --xdg private/import --hosted-execution-approved --output import-evidence
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive held-source.zip --manifest HELD_SOURCE_PACKAGE.json --archive-sha256 69994f5d4e7476adc012590d0c5b9e537c5b821d5d17984bf21c990a27cc65a1 --manifest-sha256 f7e900121ac2d2d5baf83d7d1db2033ea8fcf2c017907782a0a8f1aa2c3abe5a --xdg private/import --hosted-execution-approved --output import-evidence
       - name: Guarded held-only native validation
         id: native
-        run: python3 ci/run_native_held.py
+        run: python3 ci/run_native_blade.py
       - name: Admit bounded import evidence independently
         id: import_scan
         if: always()
         run: |
           set -euo pipefail
-          echo '4b7428042d0b1e9fbfa4a97ef68f322ea7c43910edf41fbc688ecdcacff00d44  ci/scan_held_evidence.py' | sha256sum --check --strict
-          echo 'eba35bd9a490975601253f8fe2d4f1ee3d6aebb521223858801a6a2386350cb8  ci/run_native_held.py' | sha256sum --check --strict
+          echo 'a11e0d52ee42a178499e868eb7a3ae15a06ce48f7df3aa728738e21f0ea8be73  ci/scan_blade_evidence.py' | sha256sum --check --strict
+          echo 'da5f472c7bfea9a094d25799197e5440cadc8040813b0d78aae83fd531ed3991  ci/run_native_blade.py' | sha256sum --check --strict
           echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
           echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo '3da61c3347046d94b97e6664b0c2af4f309b675ec1f656ef3a19dfb739fbf8b2  ci/HELD_INPUTS.json' | sha256sum --check --strict
-          echo '73f726a3e19fe4c67f30826503f34d5e492a64f326e3a92d689110bb5f6c7399  ci/evaluate_held_tracks.py' | sha256sum --check --strict
-          echo '6fd81b68726e41ebfb0c1575356281dcab8a72d6af26ff3e81f469be2ff47860  ci/evaluate_applied_held.py' | sha256sum --check --strict
-          python3 ci/scan_held_evidence.py --import-only
+          echo '0d819f078ebeb960deb5fb2d522293212a5bfb3d6a8c3c5e1be199002cffe13b  ci/BLADE_INPUTS.json' | sha256sum --check --strict
+          python3 ci/scan_blade_evidence.py --import-only
       - name: Preserve admitted import receipts on success or failure
         if: always() && steps.import_scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: native-held-import-${{ github.sha }}-${{ github.run_attempt }}
+          name: native-blade-import-${{ github.sha }}-${{ github.run_attempt }}
           path: safe-import-evidence/
           if-no-files-found: error
           retention-days: 14
@@ -93,27 +112,25 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          echo '4b7428042d0b1e9fbfa4a97ef68f322ea7c43910edf41fbc688ecdcacff00d44  ci/scan_held_evidence.py' | sha256sum --check --strict
-          echo 'eba35bd9a490975601253f8fe2d4f1ee3d6aebb521223858801a6a2386350cb8  ci/run_native_held.py' | sha256sum --check --strict
+          echo 'a11e0d52ee42a178499e868eb7a3ae15a06ce48f7df3aa728738e21f0ea8be73  ci/scan_blade_evidence.py' | sha256sum --check --strict
+          echo 'da5f472c7bfea9a094d25799197e5440cadc8040813b0d78aae83fd531ed3991  ci/run_native_blade.py' | sha256sum --check --strict
           echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
           echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo '3da61c3347046d94b97e6664b0c2af4f309b675ec1f656ef3a19dfb739fbf8b2  ci/HELD_INPUTS.json' | sha256sum --check --strict
-          echo '73f726a3e19fe4c67f30826503f34d5e492a64f326e3a92d689110bb5f6c7399  ci/evaluate_held_tracks.py' | sha256sum --check --strict
-          echo '6fd81b68726e41ebfb0c1575356281dcab8a72d6af26ff3e81f469be2ff47860  ci/evaluate_applied_held.py' | sha256sum --check --strict
-          python3 ci/scan_held_evidence.py
+          echo '0d819f078ebeb960deb5fb2d522293212a5bfb3d6a8c3c5e1be199002cffe13b  ci/BLADE_INPUTS.json' | sha256sum --check --strict
+          python3 ci/scan_blade_evidence.py
       - name: Preserve safe complete or failed evidence
         if: always() && steps.scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: native-held-evidence-${{ github.sha }}-${{ github.run_attempt }}
-          path: safe-held-evidence/
+          name: native-blade-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: safe-blade-evidence/
           if-no-files-found: error
           retention-days: 14
       - name: Retain validated native candidate outputs
         if: success() && steps.native.outcome == 'success' && steps.scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: native-held-output-${{ github.sha }}-${{ github.run_attempt }}
-          path: safe-held-output/
+          name: native-blade-output-${{ github.sha }}-${{ github.run_attempt }}
+          path: safe-blade-output/
           if-no-files-found: error
           retention-days: 14
