@@ -90,8 +90,9 @@ func run() -> void:
 			checked_player.play(name)
 			checked_player.seek(requested, true)
 			checked_player.pause()
+			# Godot4.6.3 current_animation is empty when paused; assigned_animation retains the sampled clip.
 			checked_skeleton.force_update_all_bone_transforms()
-			if not require_ok(str(checked_player.current_animation) == name and absf(checked_player.current_animation_position - requested) <= 0.0000001 and not checked_player.is_playing(), "Wrong sampled clip/time/state"): return
+			if not require_ok(str(checked_player.assigned_animation) == name and checked_player.current_animation.is_empty() and absf(checked_player.current_animation_position - requested) <= 0.0000001 and not checked_player.is_playing(), "Wrong sampled clip/time/state"): return
 			var expected_position: Vector3 = clip.position_track_interpolate(position_track, requested)
 			var expected_rotation: Quaternion = clip.rotation_track_interpolate(rotation_track, requested)
 			var expected_scale: Vector3 = clip.scale_track_interpolate(scale_track, requested)
@@ -105,7 +106,7 @@ func run() -> void:
 				var pose: Transform3D = checked_skeleton.get_bone_global_pose(bone)
 				if not require_ok(pose.is_finite(), "Nonfinite sampled bone"): return
 				bones.append([checked_skeleton.get_bone_name(bone), vector(pose.basis.x), vector(pose.basis.y), vector(pose.basis.z), vector(pose.origin)])
-			samples.append({"clip":name, "nominal_time":t, "requested_time":requested, "actual_clip":str(checked_player.current_animation), "actual_time":checked_player.current_animation_position, "paused":not checked_player.is_playing(), "actual_position":vector(actual_position), "expected_position":vector(expected_position), "actual_rotation":quaternion(actual_rotation), "expected_rotation":quaternion(expected_rotation), "actual_scale":vector(actual_scale), "expected_scale":vector(expected_scale), "bones":bones})
+			samples.append({"clip":name, "nominal_time":t, "requested_time":requested, "actual_clip":str(checked_player.assigned_animation), "actual_time":checked_player.current_animation_position, "paused":not checked_player.is_playing(), "actual_position":vector(actual_position), "expected_position":vector(expected_position), "actual_rotation":quaternion(actual_rotation), "expected_rotation":quaternion(expected_rotation), "actual_scale":vector(actual_scale), "expected_scale":vector(expected_scale), "bones":bones})
 	var report: Dictionary = {"schema":"held-native-validation-v1", "passed":true, "source_sha256":SOURCE_SHA, "proposal_sha256":PROPOSAL_SHA, "output_sha256":FileAccess.get_sha256(OUT), "changed_tracks":8, "verified_selected_keys":290, "full_scene_storage_preserved":true, "untouched_source_preserved":true, "exact_reload_verified":true, "sampling_grid":"153 uniform nominal times per clip; loop endpoint clamped length-1e-6; distinct from prior offline612 grid", "local_pose_tolerance":0.000001, "time_tolerance":0.0000001, "finite_sample_count":samples.size(), "samples":samples, "limits":["Finite sampled bone transforms only; not mesh clearance or visual acceptance", "Death unchanged and not accepted", "No gameplay, device, material or camera acceptance"]}
 	var file := FileAccess.open("res://held_validation_output/validation-report.json", FileAccess.WRITE)
 	if not require_ok(file != null, "Report write failure"): return
