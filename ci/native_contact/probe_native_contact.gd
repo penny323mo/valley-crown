@@ -9,7 +9,7 @@ static func _seek(player: AnimationPlayer, skeleton: Skeleton3D, time: float) ->
 	player.pause()
 	skeleton.force_update_all_bone_transforms()
 
-static func _rigid_vertices(scene: Node3D, skeleton: Skeleton3D, bone: int) -> Array:
+static func _rigid_vertices(scene: Node3D, skeleton: Skeleton3D, bone: int) -> Dictionary:
 	var points: Array = []
 	var meshes: Array[Node] = scene.find_children("*", "MeshInstance3D", true, false)
 	assert(not meshes.is_empty())
@@ -50,14 +50,18 @@ static func _rigid_vertices(scene: Node3D, skeleton: Skeleton3D, bone: int) -> A
 					if binding[bind] == bone:
 						prop_weight += weight
 						local += (skin.get_bind_pose(bind) * vertices[vertex]) * weight
+				# Body skin weights use quantized normalized uint16 storage. They are
+				# outside this rigid-prop extraction; do not normalize or alter them.
+				if prop_weight == 0.0:
+					continue
+				# Every positive prop contribution, however small, must be rigid/full.
 				assert(absf(total - 1.0) < 0.000001)
-				assert(prop_weight < 0.000001 or prop_weight > 0.999999, "Mixed prop skin weights are unsupported")
-				if prop_weight > 0.999999:
-					assert(prop_weight == total, "Tiny cross-bone weights cannot be ignored")
-					assert(local.is_finite())
-					points.append(local)
+				assert(prop_weight > 0.999999, "Mixed prop skin weights are unsupported")
+				assert(prop_weight == total, "Tiny cross-bone weights cannot be ignored")
+				assert(local.is_finite())
+				points.append(local)
 	assert(points.size() >= 4)
-	return points
+	return {"completed":true, "points":points}
 
 static func _desired(samples: Array, time: float) -> Transform3D:
 	var left: int = 0
@@ -75,13 +79,21 @@ static func run(scene: Node3D, original: Node3D, kind: String, data: Dictionary)
 	var old_player: AnimationPlayer = original.find_child("AnimationPlayer", true, false)
 	var old_skeleton: Skeleton3D = original.find_child("Skeleton3D", true, false)
 	assert(player != null and skeleton != null and old_player != null and old_skeleton != null)
-	var report: Dictionary = {"status":"PASS", "method":"engine AnimationPlayer poses with actual reloaded native mesh weights and Skin binds", "continuous_clearance_certified":false, "visual_acceptance":false, "props":{}}
+	var report: Dictionary = {"status":"INCOMPLETE", "method":"engine AnimationPlayer poses with actual reloaded native mesh weights and Skin binds", "continuous_clearance_certified":false, "visual_acceptance":false, "props":{}}
 	for bone_name in Contact.ALLOWED[kind]:
 		var bone: int = skeleton.find_bone(bone_name)
 		var old_bone: int = old_skeleton.find_bone(bone_name)
 		assert(bone >= 0 and old_bone >= 0)
-		var points: Array = _rigid_vertices(scene, skeleton, bone)
-		var old_points: Array = _rigid_vertices(original, old_skeleton, old_bone)
+		var extracted: Variant = _rigid_vertices(scene, skeleton, bone)
+		if not (extracted is Dictionary) or extracted.get("completed", false) != true or not (extracted.get("points") is Array):
+			push_error("Corrected native prop extraction did not complete")
+			return {}
+		var original_extracted: Variant = _rigid_vertices(original, old_skeleton, old_bone)
+		if not (original_extracted is Dictionary) or original_extracted.get("completed", false) != true or not (original_extracted.get("points") is Array):
+			push_error("Original native prop extraction did not complete")
+			return {}
+		var points: Array = extracted.points
+		var old_points: Array = original_extracted.points
 		assert(var_to_bytes(points) == var_to_bytes(old_points), "Native mesh/bind prop points changed")
 		var spec: Dictionary = data.props[bone_name]
 		var time_set: Dictionary = {}
@@ -152,4 +164,5 @@ static func run(scene: Node3D, original: Node3D, kind: String, data: Dictionary)
 		assert(settled_error < 0.001 and terminal_min >= 0.001 and terminal_min <= 0.003 and terminal_support >= 3, "Native terminal support/drift failed")
 	player.stop(true)
 	old_player.stop(true)
+	report.status = "PASS"
 	return report

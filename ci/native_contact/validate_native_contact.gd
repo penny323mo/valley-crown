@@ -29,7 +29,14 @@ func _run() -> void:
 		root.add_child(original)
 		root.add_child(corrected)
 		assert(corrected.get_meta("native_death_contact_sha256") == lock[kind].data_sha256)
-		var unit: Dictionary = Probe.run(corrected, original, kind, data)
+		var probed: Variant = Probe.run(corrected, original, kind, data)
+		if not (probed is Dictionary) or probed.get("status", "") != "PASS":
+			push_error("Native contact probe did not complete; no success report permitted")
+			corrected.free()
+			original.free()
+			call_deferred("quit", 1)
+			return
+		var unit: Dictionary = probed
 		unit["source_native_sha256"] = lock[kind].native_sha256
 		unit["output_native_sha256"] = patched[kind].output_sha256
 		unit["data_sha256"] = lock[kind].data_sha256
