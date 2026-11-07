@@ -1,8 +1,8 @@
-name: Validate selection preview cancellation contract
+name: Validate owned build guidance lifecycle
 on:
   push:
-    branches: [ci/native-selection-cancel-v1]
-    paths: ['.github/workflows/selection-cancel.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/native-stale-build-hint-v1]
+    paths: ['.github/workflows/stale-build-hint.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -73,6 +73,19 @@ jobs:
           assert len(entries)==192
           write_archive(pathlib.Path('project'),entries,pathlib.Path('selection-source.zip'))
           PYCODE
+      - name: Apply exact owned build-guidance lifecycle fix
+        run: |
+          set -euo pipefail
+          python3 ci/apply_stale_hint_overlay.py --project project --base-package SELECTION_SOURCE_PACKAGE.json --package STALE_HINT_SOURCE_PACKAGE.json --overlay stale-hint-overlay.zip --receipt assembly-stale-hint.json
+          python3 - <<'PYCODE'
+          import json,pathlib,sys
+          sys.path.insert(0,'ci')
+          from apply_construction_overlay import write_archive
+          package=json.loads(pathlib.Path('STALE_HINT_SOURCE_PACKAGE.json').read_text())
+          entries={row['file']:row['sha256'] for row in package['files']}
+          assert len(entries)==192
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('stale-hint-source.zip'))
+          PYCODE
       - name: Verify pinned official engine
         run: |
           set -euo pipefail
@@ -85,8 +98,8 @@ jobs:
       - name: Guarded native import only
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive selection-source.zip --manifest SELECTION_SOURCE_PACKAGE.json --archive-sha256 809f18defbe4abaeea757998a4b6a0cb905276e181da5a98c363055ecd47173c --manifest-sha256 69f5b245bcef0ea5e438a0a49195af37cb426ff7059d71c1a986b671f809c0c3 --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: One bounded external selection contract and independent checker
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive stale-hint-source.zip --manifest STALE_HINT_SOURCE_PACKAGE.json --archive-sha256 4cea135b474197e9f2a59e4662b94ef34469a37dbeb76f581a5b00af3e1be46f --manifest-sha256 4dc5e2685f6170d96a891fc396efe8c4156bb9c0f830247b71bdc21e0579a698 --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: One bounded external build-guidance lifecycle contract and independent checker
         id: replay
         run: |
           set -euo pipefail
@@ -96,15 +109,15 @@ jobs:
         if: always() && steps.replay.outcome != 'skipped'
         run: |
           set -euo pipefail
-          echo '7b3426b9acabc5d927a3f8664dab9980fe9389af6c9285edd62fb61127e2f87a  ci/scan_replay_evidence.py' | sha256sum --check --strict
-          echo '7adaa1f19c6debf684e1422835a3171c2e8bc19e1e1b512111eb3066c482c2d3  ci/run_ordinary_replay.py' | sha256sum --check --strict
-          echo 'c55f99bab2f892b709e48ffca8807c886e97381a66422013189d94c6ffc5a4e4  ci/REPLAY_INPUTS.json' | sha256sum --check --strict
+          echo '47b15133b9c9879695b024f89b7d2d8b4963c233ddeaded33f430c40cdedb2e1  ci/scan_replay_evidence.py' | sha256sum --check --strict
+          echo 'c55e0f1a9a265111564b8d737d2c1c333650ef5535ef240c10e367200204649b  ci/run_ordinary_replay.py' | sha256sum --check --strict
+          echo '2c6714d632f1b46e4226e373cce43f1769d1f4737d4cc530046af649d04a5cc9  ci/REPLAY_INPUTS.json' | sha256sum --check --strict
           python3 ci/scan_replay_evidence.py
       - name: Retain only admitted contract evidence
         if: always() && steps.scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: selection-cancel-native-${{ github.sha }}
+          name: stale-build-hint-native-${{ github.sha }}
           path: safe-replay-evidence/
           if-no-files-found: error
           retention-days: 14
