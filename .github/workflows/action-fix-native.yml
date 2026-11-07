@@ -1,8 +1,8 @@
-name: Validate merged native character runtime
+name: Validate corrected native character runtime
 on:
   push:
-    branches: [ci/map80-action-native-v1]
-    paths: ['.github/workflows/combined-native.yml', 'ci/**', '*.json', 'map80-actions-thin-source-v2.zip']
+    branches: [ci/action-fix-native-v1]
+    paths: ['.github/workflows/action-fix-native.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo 'fb7dae2cf588952a477697bda4ba947f5f407d0adb40f46e7752c6d697eee5c7  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
+          echo '6f4c13a4dd6ff629872ff374c29aece024ce764aa581fc1d8fe93e0039904c9c  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
           sha256sum --check --strict ci/PUBLIC_INPUTS.sha256
       - name: Fetch exact previously validated character artifact
         uses: actions/download-artifact@v4
@@ -29,7 +29,10 @@ jobs:
           path: licensed-artifact
           merge-multiple: true
       - name: Assemble hash-bound ignored art and thin game source
-        run: python3 ci/assemble_combined.py
+        run: |
+          set -euo pipefail
+          python3 ci/assemble_combined.py
+          python3 ci/apply_action_fix.py --project project --base-lock SOURCE_INPUT_LOCK.json --fix-lock ACTION_FIX_SOURCE_LOCK.json --overlay action-presentation-fix-v1.zip --receipt assembly-action-fix.json
       - name: Fetch pinned official Godot
         shell: bash
         run: |
@@ -43,20 +46,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 ci/run_native_stage.py --project project --source-lock SOURCE_INPUT_LOCK.json --godot engine/Godot_v4.6.3-stable_linux.x86_64 --monitor ci/hardened_monitored_run.py --output native-evidence --private native-private --hosted-execution-approved
+          python3 ci/run_native_stage.py --project project --source-lock ACTION_FIX_SOURCE_LOCK.json --godot engine/Godot_v4.6.3-stable_linux.x86_64 --monitor ci/hardened_monitored_run.py --output native-evidence --private native-private --hosted-execution-approved
       - name: Scan and stage text evidence
         id: evidence_scan
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          echo 'f1f1198ed97fd38a04dfbb073edf4bea5e8b0a26fae7e2dcdb98c5d7ae196f8c  ci/scan_native_evidence.py' | sha256sum --check --strict
+          echo '02b9126c8c02cf01ac983075ce171ee108f44391252908335ec1570d7e9a592b  ci/scan_native_evidence.py' | sha256sum --check --strict
           python3 ci/scan_native_evidence.py evidence
       - name: Preserve scanned text evidence
         if: always() && steps.evidence_scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: combined-native-evidence
+          name: action-fix-native-evidence
           path: safe-native-evidence/
           if-no-files-found: error
           retention-days: 14
@@ -65,13 +68,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo 'f1f1198ed97fd38a04dfbb073edf4bea5e8b0a26fae7e2dcdb98c5d7ae196f8c  ci/scan_native_evidence.py' | sha256sum --check --strict
+          echo '02b9126c8c02cf01ac983075ce171ee108f44391252908335ec1570d7e9a592b  ci/scan_native_evidence.py' | sha256sum --check --strict
           python3 ci/scan_native_evidence.py runtime
       - name: Preserve accepted native runtime delta
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: combined-native-runtime
+          name: action-fix-native-runtime
           path: safe-native-runtime/
           if-no-files-found: error
           retention-days: 14

@@ -18,7 +18,7 @@ import zipfile
 MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 ENGINE_VERSION = '4.6.3.stable.official.7d41c59c4'
-SOURCE_LOCK_SHA = '1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af'
+SOURCE_LOCK_SHA = '70466a5bef3078de2722d08fd14ff4912061c88191ea2b474e9a8c60345e63b7'
 LOADED_ADAPTER_SHA = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 KINDS = ('villager', 'spearman', 'archer', 'scout')
 COMMON = {'idle', 'walk', 'attack', 'hit', 'death'}
@@ -116,7 +116,12 @@ def validate_import_report(project, manifest):
         require(set(unit['clips']) - {'RESET'} == clips_for(kind), 'Native clip coverage differs')
         for clip, data in unit['clips'].items():
             require(type(data.get('seconds')) in (int, float) and math.isfinite(data['seconds']) and data['seconds'] > 0, 'Invalid clip time')
-            require(type(data.get('tracks')) is list and data['tracks'] and all(type(p) is str and ':' in p for p in data['tracks']), 'Non-joint clip paths')
+            require(type(data.get('tracks')) is list and len(data['tracks']) == len(expected['bones'])*3 and all(type(p) is str and ':' in p for p in data['tracks']), 'Missing or non-joint clip paths')
+            channels = data.get('joint_trs')
+            require(type(channels) is dict and set(channels) == set(expected['bones']), 'Missing joint TRS coverage')
+            for bone, types in channels.items():
+                require(type(types) is list and len(types) == 3 and all(type(t) is int for t in types) and set(types) == {1,2,3}, 'Incomplete joint TRS types')
+                require(sum(p.split(':')[-1] == bone for p in data['tracks']) == 3, 'Joint path/type coverage mismatch')
     return report
 
 
@@ -124,9 +129,21 @@ def validate_test_report(project, manifest):
     report = read_json(project / TEST_REPORT)
     require(type(report.get('failed')) is int and report['failed'] == 0, 'Native checks report failure')
     rows = report.get('checks')
-    require(type(rows) is list and len(rows) == 128, 'Native check count differs from exact source')
+    require(type(rows) is list and len(rows) == 153, 'Native check count differs from exact source')
     require(all(type(r) is dict and type(r.get('pass')) is bool and r['pass'] and type(r.get('name')) is str for r in rows), 'Failed/malformed native check')
-    require(len({r['name'] for r in rows}) == 128, 'Duplicate native check names')
+    require(len({r['name'] for r in rows}) == 153, 'Duplicate native check names')
+    transitions = report.get('tool_transitions')
+    sequence = ['idle','gather_wood','idle','gather_food','build','repair','attack','carry_walk','walk','idle']
+    require(type(transitions) is list and len(transitions) == len(sequence), 'Missing tool transitions')
+    for index, clip in enumerate(sequence):
+        row = transitions[index]
+        require(type(row.get('index')) is int and row['index'] == index and row.get('clip') == clip, 'Wrong tool transition sequence')
+        data = row.get('tools', {})
+        active = {'attack':'axe','gather_wood':'axe','gather_food':'sickle','build':'hammer','repair':'hammer'}.get(clip, '')
+        require(data.get('pass') is True and data.get('active') == active and set(data.get('scales', {})) == {'axe','hammer','sickle'}, 'Failed tool transition')
+        for prop, scale in data['scales'].items():
+            expected = 1.0 if prop == active else .001
+            require(type(scale) is list and len(scale) == 3 and all(type(x) in (int,float) and math.isfinite(x) and abs(x-expected) <= 1e-5 for x in scale), 'Incorrect tool scale')
     poses = report.get('pose_evidence')
     require(type(poses) is dict and set(poses) == set(KINDS), 'Missing per-class native evidence')
     for kind, clips in poses.items():
@@ -174,7 +191,7 @@ def validate_stamp(project, original_rules, project_files):
             data = re.sub(BUILD_RE, b'const BUILD_ID = "normalized"', data)
         h.update(name.encode()); h.update(b'\0'); h.update(data)
     build = 'vc-' + h.hexdigest()[:12]
-    require(report['build'] == build and build not in ('vc-8fcc302051f0', 'vc-eb734476b9f1'), 'Inherited or invalid runtime identity')
+    require(report['build'] == build and build not in ('vc-8fcc302051f0', 'vc-eb734476b9f1', 'vc-f659b53824e3'), 'Inherited or invalid runtime identity')
     expected_rules = re.sub(BUILD_RE, ('const BUILD_ID = "' + build + '"').encode(), original_rules)
     require((project / RULES).read_bytes() == expected_rules, 'Stamp changed normalized rule logic')
     return report
@@ -315,7 +332,7 @@ def run(args):
         native_report = validate_import_report(project, manifest)
         preserve_report('native-pack', IMPORT_REPORT, native_report)
         invoke('reload-diagnostic', godot+['--script', 'res://tests/action_characters.gd'],
-               {TEST_REPORT}, sentinel='ACTION_CHARACTER_TESTS 128 failed=0')
+               {TEST_REPORT}, sentinel='ACTION_CHARACTER_TESTS 153 failed=0')
         diagnostic = validate_test_report(project, manifest)
         preserve_report('reload-diagnostic', TEST_REPORT, diagnostic)
         # Preserve the validated pre-stamp report before making room for a fresh
@@ -327,7 +344,7 @@ def run(args):
         summary['runtime_build'] = stamped['build']
         preserve_report('stamp', BUILD_REPORT, stamped)
         invoke('reload-final', godot+['--script', 'res://tests/action_characters.gd'],
-               {TEST_REPORT}, sentinel='ACTION_CHARACTER_TESTS 128 failed=0')
+               {TEST_REPORT}, sentinel='ACTION_CHARACTER_TESTS 153 failed=0')
         final_report = validate_test_report(project, manifest)
         preserve_report('reload-final', TEST_REPORT, final_report)
         validate_stamp(project, original_rules, current)

@@ -44,8 +44,8 @@ if mode=='runtime':
  assert receipt['build']==lock['build']==summary['runtime_build']
  members=receipt['member_sha256'];full={r['file']:r['sha256'] for r in lock['files']}
  assert len(full)==len(lock['files'])
- input_bytes=pathlib.Path('SOURCE_INPUT_LOCK.json').read_bytes()
- assert digest(input_bytes)=='1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af'
+ input_bytes=pathlib.Path('ACTION_FIX_SOURCE_LOCK.json').read_bytes()
+ assert digest(input_bytes)=='70466a5bef3078de2722d08fd14ff4912061c88191ea2b474e9a8c60345e63b7'
  initial={r['file']:r['sha256'] for r in parse(input_bytes)['files']};assert len(initial)==158
  uid_names={n+'.uid' for n in initial if n.endswith(('.gd','.gdshader')) and n+'.uid' not in initial}
  assert set(full)==set(initial)|set(members)
