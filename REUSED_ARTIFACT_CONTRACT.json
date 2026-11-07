@@ -1,10 +1,10 @@
 {
   "scope": "Review-ready exact inputs, not permission to execute or publish",
-  "source_input_lock_sha256": "4b9d3be677442f8dad17cf01d14885be33540442f5f8730afd99064b3136d6df",
+  "source_input_lock_sha256": "1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af",
   "thin_source": {
-    "filename": "map80-actions-thin-source-v1.zip",
-    "sha256": "11fdf5e40975572502fd86afa8bfbea01d47533a8197b17ecfecf991a10f6833",
-    "bytes": 2783940,
+    "filename": "map80-actions-thin-source-v2.zip",
+    "sha256": "203852e82ca33d5e5b550e1d8ef07ef989734fd24b1cf54c6d8318307d43d6d8",
+    "bytes": 2783948,
     "members": 139,
     "contains_empty_art_gdignore": true
   },

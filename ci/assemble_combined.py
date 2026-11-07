@@ -2,14 +2,14 @@
 """Assemble only frozen thin game source and exact previously reviewed art bytes."""
 from pathlib import Path
 import hashlib,json,shutil,zipfile
-THIN='11fdf5e40975572502fd86afa8bfbea01d47533a8197b17ecfecf991a10f6833'
-LOCK='4b9d3be677442f8dad17cf01d14885be33540442f5f8730afd99064b3136d6df'
+THIN='203852e82ca33d5e5b550e1d8ef07ef989734fd24b1cf54c6d8318307d43d6d8'
+LOCK='1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af'
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def require(ok,message):
  if not ok:raise RuntimeError(message)
 lock=Path('SOURCE_INPUT_LOCK.json');require(sha(lock)==LOCK,'Full source lock mismatch')
 entries={r['file']:r['sha256'] for r in json.loads(lock.read_text())['files']};require(len(entries)==158,'Source count mismatch')
-source=Path('map80-actions-thin-source-v1.zip');require(sha(source)==THIN,'Thin ZIP mismatch')
+source=Path('map80-actions-thin-source-v2.zip');require(sha(source)==THIN,'Thin ZIP mismatch')
 root=Path('project');require(not root.exists(),'Fresh source root required')
 upstream=Path('licensed-artifact');require(upstream.is_dir() and not upstream.is_symlink(),'Missing art artifact')
 require(not any(p.is_symlink() for p in upstream.rglob('*')),'Art symlink rejected')

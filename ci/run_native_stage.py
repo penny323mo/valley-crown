@@ -18,7 +18,7 @@ import zipfile
 MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 ENGINE_VERSION = '4.6.3.stable.official.7d41c59c4'
-SOURCE_LOCK_SHA = '4b9d3be677442f8dad17cf01d14885be33540442f5f8730afd99064b3136d6df'
+SOURCE_LOCK_SHA = '1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af'
 LOADED_ADAPTER_SHA = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 KINDS = ('villager', 'spearman', 'archer', 'scout')
 COMMON = {'idle', 'walk', 'attack', 'hit', 'death'}

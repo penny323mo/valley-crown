@@ -1,10 +1,10 @@
 {
   "execution_enabled": false,
   "scope": "Guarded hosted native import and current-four-class reload/playback prototype only. No Web export, deployment, rendered art or phone acceptance.",
-  "full_source_lock_sha256": "4b9d3be677442f8dad17cf01d14885be33540442f5f8730afd99064b3136d6df",
-  "artifact_assembly_contract_sha256": "a937a7cabb31c4d2f92b86117e10856d92b57546f0dd739abcbb92c77b8dd708",
+  "full_source_lock_sha256": "1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af",
+  "artifact_assembly_contract_sha256": "518d4ba4a9c5cd3c9f3de51a05b9253dc7838fa766d9dc103f58295a91a6407c",
   "public_upload_allowlist": [
-    "map80-actions-thin-source-v1.zip",
+    "map80-actions-thin-source-v2.zip",
     "SOURCE_INPUT_LOCK.json",
     "REUSED_ARTIFACT_CONTRACT.json",
     "NATIVE_STAGE_CONTRACT.json",
@@ -37,7 +37,7 @@
         "--script",
         "res://tools/import_action_characters.gd"
       ],
-      "script_sha256": "d5cfe157cc905171bfd8993f4e9daf6fd3dff89a2d44a11f7831897458b6c04f",
+      "script_sha256": "a61adc89dcbc103f68afbac4973e99bb9069565fffd0a9f2b522d0d61ae03dbc",
       "stdout_sentinel": "ACTION_CHARACTER_IMPORT_PASS",
       "report": "PROJECT/reports/native-action-import.json",
       "report_contract": "Four exact unit keys. GLB hashes equal asset_manifest.json; exact bones/triangles/two surfaces; all25 required clips; native hashes equal actual new .scn bytes."
@@ -142,7 +142,7 @@
   ],
   "adapter": {
     "file": "run_native_stage.py",
-    "sha256": "de6321cea6d030b5ee2a3be4f31361c20cadc6dc75d78538a7bdcbb70bbb948c",
+    "sha256": "a7169e19f859e1dcf89a857f53afa1df9ccdf1f5fd4486a68347ac1fd0f61507",
     "fixture_file": "test_native_stage.py",
     "fixture_sha256": "1a80293fdc41b53c56d9d2364c92a8d6d056a61500dddcfcf973b26d35f40d51",
     "pure_python_fixture_groups_passed": 10,

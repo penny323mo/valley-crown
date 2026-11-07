@@ -2,7 +2,7 @@ name: Validate merged native character runtime
 on:
   push:
     branches: [ci/map80-action-native-v1]
-    paths: ['.github/workflows/combined-native.yml', 'ci/**', '*.json', 'map80-actions-thin-source-v1.zip']
+    paths: ['.github/workflows/combined-native.yml', 'ci/**', '*.json', 'map80-actions-thin-source-v2.zip']
 permissions:
   contents: read
   actions: read
@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '74c01564b2259d3d4c266b6e717425cd6270ab5343ae6ea1861d49922658366d  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
+          echo 'fb7dae2cf588952a477697bda4ba947f5f407d0adb40f46e7752c6d697eee5c7  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
           sha256sum --check --strict ci/PUBLIC_INPUTS.sha256
       - name: Fetch exact previously validated character artifact
         uses: actions/download-artifact@v4
@@ -50,7 +50,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo 'b79b64a22eb66c5211a65007afd75ef3775890b7d6025ef14f2c28d33bfc75de  ci/scan_native_evidence.py' | sha256sum --check --strict
+          echo 'f1f1198ed97fd38a04dfbb073edf4bea5e8b0a26fae7e2dcdb98c5d7ae196f8c  ci/scan_native_evidence.py' | sha256sum --check --strict
           python3 ci/scan_native_evidence.py evidence
       - name: Preserve scanned text evidence
         if: always() && steps.evidence_scan.outcome == 'success'
@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo 'b79b64a22eb66c5211a65007afd75ef3775890b7d6025ef14f2c28d33bfc75de  ci/scan_native_evidence.py' | sha256sum --check --strict
+          echo 'f1f1198ed97fd38a04dfbb073edf4bea5e8b0a26fae7e2dcdb98c5d7ae196f8c  ci/scan_native_evidence.py' | sha256sum --check --strict
           python3 ci/scan_native_evidence.py runtime
       - name: Preserve accepted native runtime delta
         if: success()

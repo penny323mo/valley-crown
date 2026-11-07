@@ -45,13 +45,13 @@ if mode=='runtime':
  members=receipt['member_sha256'];full={r['file']:r['sha256'] for r in lock['files']}
  assert len(full)==len(lock['files'])
  input_bytes=pathlib.Path('SOURCE_INPUT_LOCK.json').read_bytes()
- assert digest(input_bytes)=='4b9d3be677442f8dad17cf01d14885be33540442f5f8730afd99064b3136d6df'
+ assert digest(input_bytes)=='1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af'
  initial={r['file']:r['sha256'] for r in parse(input_bytes)['files']};assert len(initial)==158
  uid_names={n+'.uid' for n in initial if n.endswith(('.gd','.gdshader')) and n+'.uid' not in initial}
  assert set(full)==set(initial)|set(members)
  assert all(full[n]==h for n,h in initial.items() if n!='scripts/rules.gd')
- source=pathlib.Path('map80-actions-thin-source-v1.zip')
- assert digest(source.read_bytes())=='11fdf5e40975572502fd86afa8bfbea01d47533a8197b17ecfecf991a10f6833'
+ source=pathlib.Path('map80-actions-thin-source-v2.zip')
+ assert digest(source.read_bytes())=='203852e82ca33d5e5b550e1d8ef07ef989734fd24b1cf54c6d8318307d43d6d8'
  with zipfile.ZipFile(source) as src:original_rules=src.read('scripts/rules.gd')
  assert digest(original_rules)==initial['scripts/rules.gd']
  required={f'assets/mature/models/{k}_action.scn' for k in ('villager','spearman','archer','scout')}|{'scripts/rules.gd','reports/build-manifest.json'}

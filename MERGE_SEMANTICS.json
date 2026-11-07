@@ -214,11 +214,16 @@
     "tests/action_characters.gd": "4ced22480e0fd1687f0c2f59017a6073acee540d8a378f9807d5c8910bb260db",
     "tests/occlusion_render_fixture.gd": "bca826469cfda5c73dce6ab24cece3f81f2d427f693dbe49bc121dbf311cc5c3",
     "tools/build_licensed_action_characters.py": "e778ba3997de50915d482bf7a88b92bd34cee188be2ae1189af4ebdb59ec6eac",
-    "tools/import_action_characters.gd": "d5cfe157cc905171bfd8993f4e9daf6fd3dff89a2d44a11f7831897458b6c04f",
+    "tools/import_action_characters.gd": "a61adc89dcbc103f68afbac4973e99bb9069565fffd0a9f2b522d0d61ae03dbc",
     "tests/action_render_fixture.gd": "c3bbcbf740babe5d60d5d3565e01ddf856b7403071d5ba64c2e9f36595576040"
   },
   "rules_build_id_status": "Inherited map label only, not current runtime identity. Final stamp REQUIRED after native scenes are generated; no runtime or screenshots permitted under inherited label.",
   "runtime_checks": "NOT RUN on combined candidate",
   "main_live_changed": false,
-  "native_importer_source_review_sha256": "5d209cbfe60cc8d3f74b89f9ac8a6e562a92b34d2f0b825ac7a7f2f4d1f1de03"
+  "superseded_native_importer_source_review_sha256": "5d209cbfe60cc8d3f74b89f9ac8a6e562a92b34d2f0b825ac7a7f2f4d1f1de03",
+  "retry_1": {
+    "preserved_failed_run": 42341795763,
+    "scope": "Two explicit String declarations only; no changed logic",
+    "importer_sha256": "a61adc89dcbc103f68afbac4973e99bb9069565fffd0a9f2b522d0d61ae03dbc"
+  }
 }

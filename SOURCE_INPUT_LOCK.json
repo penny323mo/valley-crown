@@ -6,8 +6,7 @@
   "runtime_build": null,
   "map_ci_run": 42339914268,
   "blender_ci_run": 42339730042,
-  "merge_semantics_sha256": "996bedf2b8d145aacc70c9e4185f027c15065ed3fff0ef5fee5a9f8712442d95",
-  "native_importer_source_review_sha256": "5d209cbfe60cc8d3f74b89f9ac8a6e562a92b34d2f0b825ac7a7f2f4d1f1de03",
+  "merge_semantics_sha256": "1a932904fe63611e69b912d0b465d61414f979be444aace426063773df43d3e1",
   "files": [
     {
       "file": "GODOT-LICENSES.txt",
@@ -786,8 +785,8 @@
     },
     {
       "file": "tools/import_action_characters.gd",
-      "sha256": "d5cfe157cc905171bfd8993f4e9daf6fd3dff89a2d44a11f7831897458b6c04f",
-      "size": 4961
+      "sha256": "a61adc89dcbc103f68afbac4973e99bb9069565fffd0a9f2b522d0d61ae03dbc",
+      "size": 4977
     },
     {
       "file": "tools/runtime_manifest.py",
@@ -819,5 +818,12 @@
   "render_fixture_limits": {
     "action_render_fixture.gd": "3 simultaneous rigs,25 scenes/images,844x390,75 recorded sampled poses; attack/death first; controlled fixture not gameplay",
     "occlusion_render_fixture.gd": "1 rig,390x600,6 untouched PNGs; normal vs occluded vs hidden/absent; strict comparison"
+  },
+  "superseded_native_importer_source_review_sha256": "5d209cbfe60cc8d3f74b89f9ac8a6e562a92b34d2f0b825ac7a7f2f4d1f1de03",
+  "retry_1": {
+    "preserved_failed_run": 42341795763,
+    "only_changed_source": "tools/import_action_characters.gd",
+    "diagnosis": "Variant loop kind prevented := inference for source and destination; explicit String declarations",
+    "previous_source_lock_sha256": "4b9d3be677442f8dad17cf01d14885be33540442f5f8730afd99064b3136d6df"
   }
 }
