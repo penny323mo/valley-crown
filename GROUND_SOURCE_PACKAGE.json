@@ -1,15 +1,9 @@
 {
-  "candidate": "vc-43276605e0fb",
-  "engine_expected": "4.6.3.stable.official.7d41c59c4",
+  "candidate": "vc-8bf358474c6a",
+  "base_build": "vc-43276605e0fb",
+  "base_package_sha256": "f9473eac11baf62982d67df333ed9cb74f43c8e826e22e200907f0e9c99355bd",
   "execution_enabled": false,
-  "scope": "One bounded construction geometry/observation contract plus separately imported normal phone build rendering; no live adoption or performance/visual acceptance.",
-  "reviewed_parent_source_manifest_sha256": "52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa",
-  "runtime_manifest": {
-    "file": "reports/build-manifest.json",
-    "sha256": "ed6552fc9084a39676f047588c485c556df113b7c6b2fe21e7546073f646f785",
-    "inputs": 122
-  },
-  "source_archive_sha256": "a4740d4e00862128d06dea1030dfd0efea6c9c0e8bc0e89f3a0396b5314d8f98",
+  "scope": "Original ground shader plus deterministic stamp only; no engine or visual acceptance. No licensed asset regeneration.",
   "files": [
     {
       "file": "GODOT-LICENSES.txt",
@@ -353,8 +347,8 @@
     },
     {
       "file": "assets/mature/terrain/ground.gdshader",
-      "sha256": "cee6f0d9faf6da09311b7b2515ce085c9a77dbc070720826906bc15b61d3d800",
-      "size": 2053
+      "sha256": "ef4045d0f2301232c8dacb5b29719bc825b57eaefb534639d912ddc4e5b6e84f",
+      "size": 2339
     },
     {
       "file": "assets/mature/terrain/ground.gdshader.uid",
@@ -593,7 +587,7 @@
     },
     {
       "file": "reports/build-manifest.json",
-      "sha256": "ed6552fc9084a39676f047588c485c556df113b7c6b2fe21e7546073f646f785",
+      "sha256": "8b5f1a2eaa022ad20b1f3bb28c3213ff7099588c0b3e150d46c8a82b45a1c666",
       "size": 13266
     },
     {
@@ -773,7 +767,7 @@
     },
     {
       "file": "scripts/rules.gd",
-      "sha256": "d2bf6b5d876a5086960285d93dac763f7a3cb70010d18fa5d3bc4435d3b9d921",
+      "sha256": "2e340b77186c4a65268ff59505f50b19d61ab4aece0234a211df792cca288304",
       "size": 2762
     },
     {
@@ -972,6 +966,21 @@
       "size": 2058
     }
   ],
+  "runtime_manifest": {
+    "file": "reports/build-manifest.json",
+    "sha256": "8b5f1a2eaa022ad20b1f3bb28c3213ff7099588c0b3e150d46c8a82b45a1c666",
+    "inputs": 122
+  },
+  "ground_overlay": {
+    "file": "ground-overlay.zip",
+    "sha256": "33156643c8bc43d8064cf8358956bd14f8121bdfd8fdb23cc37fdb7866915da6",
+    "files": {
+      "assets/mature/terrain/ground.gdshader": "ef4045d0f2301232c8dacb5b29719bc825b57eaefb534639d912ddc4e5b6e84f",
+      "reports/build-manifest.json": "8b5f1a2eaa022ad20b1f3bb28c3213ff7099588c0b3e150d46c8a82b45a1c666",
+      "scripts/rules.gd": "2e340b77186c4a65268ff59505f50b19d61ab4aece0234a211df792cca288304"
+    }
+  },
+  "engine_expected": "4.6.3.stable.official.7d41c59c4",
   "suites": [
     {
       "name": "construction_visual",
@@ -1012,30 +1021,17 @@
           "failed == 0"
         ],
         "required_field_values": {
-          "build": "vc-43276605e0fb",
+          "build": "vc-8bf358474c6a",
           "passed": 203,
           "failed": 0
         },
         "required_external_receipt": {
-          "candidate_build": "vc-43276605e0fb",
-          "runtime_manifest_sha256": "ed6552fc9084a39676f047588c485c556df113b7c6b2fe21e7546073f646f785",
+          "candidate_build": "vc-8bf358474c6a",
+          "runtime_manifest_sha256": "8b5f1a2eaa022ad20b1f3bb28c3213ff7099588c0b3e150d46c8a82b45a1c666",
           "suite_sha256": "014346875fda37b9eee15feeefa95b4a202a97fc0052e77bceadb3cd6243c8fc",
           "require_process_and_output_hash_binding": true
         }
       }
     }
-  ],
-  "construction_overlay": {
-    "sha256": "757810906ae8b5503ca1f6c9b9449e992f3b69a6ea52bd2a45b478c250c83817",
-    "files": {
-      "reports/build-manifest.json": "ed6552fc9084a39676f047588c485c556df113b7c6b2fe21e7546073f646f785",
-      "scripts/construction_visual.gd": "3579462fd7731457a3a73f5abb73afad7be772cd17372be171e32aee6d357a61",
-      "scripts/construction_visual.gd.uid": "51ec9f3b316865ece8dcdf2d0902a1414f86a2446e96cd02dcf2e0b4fd351d3f",
-      "scripts/game.gd": "ea9f9927a9d593f0a7a2664763b6702e125d8588b8fdd8048e5af46792aefefc",
-      "scripts/rules.gd": "d2bf6b5d876a5086960285d93dac763f7a3cb70010d18fa5d3bc4435d3b9d921",
-      "tests/construction_visual.gd": "014346875fda37b9eee15feeefa95b4a202a97fc0052e77bceadb3cd6243c8fc",
-      "tests/construction_visual.gd.uid": "39e41a8861a42f0e674d75b33fe5c60b14cc0fd62a6c16b1f126b2853ede9fd3"
-    }
-  },
-  "expected_check_count": 203
+  ]
 }

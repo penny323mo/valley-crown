@@ -1,0 +1,110 @@
+name: Compare original ground in normal native openings
+on:
+  push:
+    branches: [ci/original-ground-opening-v1]
+    paths: ['.github/workflows/ground-opening.yml', 'ci/**', '*.json', '*.zip']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    name: ${{ matrix.lane }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - {lane: baseline-portrait, build: vc-43276605e0fb, width: 390, height: 844, archive: construction-source.zip, manifest: CONSTRUCTION_SOURCE_PACKAGE.json, archive_sha: a4740d4e00862128d06dea1030dfd0efea6c9c0e8bc0e89f3a0396b5314d8f98, manifest_sha: 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4}
+          - {lane: candidate-portrait, build: vc-8bf358474c6a, width: 390, height: 844, archive: ground-source.zip, manifest: GROUND_SOURCE_PACKAGE.json, archive_sha: 7ddef6c3ba4558b6be8f8315de5d21a6ace4d6216d8bf191f3d67ff3f995ac73, manifest_sha: cea648726cee0bb525fe835e6750021058c0997963dfbc6f1a01467af809435c}
+          - {lane: baseline-landscape, build: vc-43276605e0fb, width: 844, height: 390, archive: construction-source.zip, manifest: CONSTRUCTION_SOURCE_PACKAGE.json, archive_sha: a4740d4e00862128d06dea1030dfd0efea6c9c0e8bc0e89f3a0396b5314d8f98, manifest_sha: 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4}
+          - {lane: candidate-landscape, build: vc-8bf358474c6a, width: 844, height: 390, archive: ground-source.zip, manifest: GROUND_SOURCE_PACKAGE.json, archive_sha: 7ddef6c3ba4558b6be8f8315de5d21a6ace4d6216d8bf191f3d67ff3f995ac73, manifest_sha: cea648726cee0bb525fe835e6750021058c0997963dfbc6f1a01467af809435c}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require reviewed exact touch inputs
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          import hashlib,json,pathlib
+          lock=json.loads(pathlib.Path('ci/native-${{ matrix.lane }}-lock.json').read_text())
+          assert lock['reviewed_for_execution'] is True and lock['build']=='${{ matrix.build }}'
+          assert lock['fixed_fps']==20 and lock['opening_contract']['viewport']==[${{ matrix.width }},${{ matrix.height }}]
+          assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
+          for name,digest in lock['support_files'].items():
+              assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest,name
+          PYCODE
+      - name: Fetch previously accepted licensed character artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13560214428'
+          run-id: '42339730042'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: licensed-artifact
+          merge-multiple: true
+      - name: Fetch accepted native runtime delta
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13563191390'
+          run-id: '42345297400'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: native-artifact
+          merge-multiple: true
+      - name: Reassemble exact accepted 181 files without a test overlay
+        run: |
+          set -euo pipefail
+          python3 ci/assemble_combined.py
+          python3 ci/apply_action_fix.py --project project --base-lock SOURCE_INPUT_LOCK.json --fix-lock ACTION_FIX_SOURCE_LOCK.json --overlay action-presentation-fix-v1.zip --receipt assembly-action-fix.json
+          python3 ci/apply_native_delta.py
+          python3 ci/apply_occlusion_overlay.py --project project --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --package OCCLUSION_SOURCE_PACKAGE.json --package-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --overlay occlusion-source-overlay-v3.zip --archive occlusion-source.zip --receipt assembly-occlusion.json
+          python3 ci/apply_construction_overlay.py --project project --accepted-lock OCCLUSION_SOURCE_PACKAGE.json --package CONSTRUCTION_SOURCE_PACKAGE.json --package-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --overlay construction-overlay.zip --archive construction-source.zip --receipt assembly-construction.json
+      - name: Apply only reviewed ground shader and identity metadata
+        if: ${{ matrix.build == 'vc-8bf358474c6a' }}
+        run: |
+          set -euo pipefail
+          python3 ci/apply_ground_overlay.py --project project --base-package COMBINED_SOURCE_PACKAGE.json --package GROUND_SOURCE_PACKAGE.json --overlay ground-overlay.zip
+          python3 - <<'PYCODE'
+          import json,pathlib,sys
+          sys.path.insert(0,'ci')
+          from apply_construction_overlay import write_archive
+          package=json.loads(pathlib.Path('GROUND_SOURCE_PACKAGE.json').read_text())
+          entries={row['file']:row['sha256'] for row in package['files']}
+          assert len(entries)==192
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('ground-source.zip'))
+          PYCODE
+      - name: Install official Ubuntu display dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
+      - name: Verify pinned official engine
+        run: |
+          set -euo pipefail
+          mkdir engine
+          curl --fail --location --retry 2 -o engine/linux.zip https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          unzip -q engine/linux.zip -d engine
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  engine/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --check --strict
+          chmod +x engine/Godot_v4.6.3-stable_linux.x86_64
+          echo "GODOT=$PWD/engine/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+      - name: Guarded native import
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive ${{ matrix.archive }} --manifest ${{ matrix.manifest }} --archive-sha256 ${{ matrix.archive_sha }} --manifest-sha256 ${{ matrix.manifest_sha }} --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: Capture ten consecutive untouched normal opening frames
+        id: capture_opening
+        run: |
+          set -euo pipefail
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_opening.gd --lock ci/native-${{ matrix.lane }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.lane }} --private private/${{ matrix.lane }} --width ${{ matrix.width }} --height ${{ matrix.height }}
+          python3 ci/scan_opening.py --directory evidence/${{ matrix.lane }} --lock ci/native-${{ matrix.lane }}-lock.json --report evidence/${{ matrix.lane }}-scan.json
+      - name: Retain independently scanned opening section
+        if: ${{ success() && steps.capture_opening.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ground-opening-${{ matrix.lane }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/${{ matrix.lane }}/
+            evidence/${{ matrix.lane }}-scan.json
+          if-no-files-found: error
+          retention-days: 14
