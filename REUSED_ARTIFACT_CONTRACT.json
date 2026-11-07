@@ -1,0 +1,51 @@
+{
+  "scope": "Review-ready exact inputs, not permission to execute or publish",
+  "source_input_lock_sha256": "4b9d3be677442f8dad17cf01d14885be33540442f5f8730afd99064b3136d6df",
+  "thin_source": {
+    "filename": "map80-actions-thin-source-v1.zip",
+    "sha256": "11fdf5e40975572502fd86afa8bfbea01d47533a8197b17ecfecf991a10f6833",
+    "bytes": 2783940,
+    "members": 139,
+    "contains_empty_art_gdignore": true
+  },
+  "reuse_existing_same_repository_artifact": {
+    "run": 42339730042,
+    "commit": "ac7a345f5bc7cec62c43238725888cf85321dd3d",
+    "artifact_zip_sha256": "eee098a2dc3300f15879cdaac0b1ee1dcfac22c6da725f8e6ddb2ce4525e0f94",
+    "artifact_zip_bytes": 13107596,
+    "artifact_archive_filename": "licensed-character-prototypes.zip",
+    "artifact_id": 13560214428,
+    "expected_members": {
+      "reports/asset_manifest.json": "e42e035006068b346cee6004fa9081cb4572247be4bfa312e8c068c910534144",
+      "art/action_characters/archer.blend": "11861efce4b0a33fbad2a5192626a7e722fc3cf9ca368b47bff8731a1a9926d2",
+      "art/action_characters/villager.blend": "04e8f04abcabc3690cfd9cd75379b0a7394c3922048747ef22ca28539ffd5cd3",
+      "art/action_characters/spearman.blend": "1735befa4446490dd6a93ce45fcf130de57dc06ff116adb8a55782faadd7d680",
+      "art/action_characters/scout.blend": "a8f76ed0a35aee9e7bc99d78568e3a9fb97296f57333f3f280ac10806b211e95",
+      "art/action_characters/input-manifest.json": "1cbfddb27a4ce08a765208d262f545e4bf560e382281caf505216c9be1f32bce",
+      "art/action_characters/textures/archer_atlas.png": "06ace4ddba4a1fea7bb2353dbebd04c05da7a774d10a9a2e279850cd80792000",
+      "art/action_characters/textures/scout_atlas.png": "06ace4ddba4a1fea7bb2353dbebd04c05da7a774d10a9a2e279850cd80792000",
+      "art/action_characters/textures/spearman_atlas.png": "a0517d9c5449a7041e6fb24a3642c324263581a0f42183cb0515a0cde7fd263c",
+      "art/action_characters/textures/villager_atlas.png": "a0517d9c5449a7041e6fb24a3642c324263581a0f42183cb0515a0cde7fd263c",
+      "art/action_characters/licenses/quaternius-base.txt": "0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e",
+      "art/action_characters/licenses/quaternius-ual.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+      "art/action_characters/licenses/quaternius-outfits.txt": "2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb",
+      "art/action_characters/licenses/quaternius-ual2.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+      "art/action_characters/licenses/kaykit-animations.txt": "373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9",
+      "art/action_characters/interchange/spearman.glb": "863af58cc438fa1a5f6c7e134022e97e4e31d3286d88822beefa22f9d3b2b997",
+      "art/action_characters/interchange/villager.glb": "c2a8c01f4c6066a4815816bbc16c792fb3dce0cc223ae1ee3da9417fc5ea491f",
+      "art/action_characters/interchange/scout.glb": "e08380280a4f0df3bb69546f04db8d4163a5ebe677cb99f18706f7f1c63d5248",
+      "art/action_characters/interchange/archer.glb": "c1459f625d3f14af2f2503bf57f125ade7ce60db6d4eeecacc5778c3a64d640f"
+    }
+  },
+  "assembly_rules": [
+    "Do not reupload licensed-output bytes; use reviewed same-repository successful artifact route",
+    "Reject zip traversal, absolute paths, symlink entries, missing/unexpected files; verify exact archive and each member hash",
+    "Extract only19 listed artifact files to candidate root alongside139 locked thin-source files",
+    "Preserve exact empty art/.gdignore before any Godot scan",
+    "Verify all158 full-lock entries and reject unexpected files before engine stages",
+    "No localengine. New native files and generated UID metadata must be bound into fresh runtime stamp and post-import source lock before screenshots",
+    "No inherited map/baseline build identity may be presented as combined runtime acceptance"
+  ],
+  "combined_runtime_build": null,
+  "execution_enabled": false
+}

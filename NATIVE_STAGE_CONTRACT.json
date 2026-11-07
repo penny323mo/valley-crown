@@ -1,0 +1,161 @@
+{
+  "execution_enabled": false,
+  "scope": "Guarded hosted native import and current-four-class reload/playback prototype only. No Web export, deployment, rendered art or phone acceptance.",
+  "full_source_lock_sha256": "4b9d3be677442f8dad17cf01d14885be33540442f5f8730afd99064b3136d6df",
+  "artifact_assembly_contract_sha256": "a937a7cabb31c4d2f92b86117e10856d92b57546f0dd739abcbb92c77b8dd708",
+  "public_upload_allowlist": [
+    "map80-actions-thin-source-v1.zip",
+    "SOURCE_INPUT_LOCK.json",
+    "REUSED_ARTIFACT_CONTRACT.json",
+    "NATIVE_STAGE_CONTRACT.json",
+    "MERGE_SEMANTICS.json",
+    "run_native_stage.py",
+    "test_native_stage.py"
+  ],
+  "engine": "4.6.3.stable.official.7d41c59c4",
+  "required_guard": "Existing reviewed bounded resource/process supervisor, sequential owned process only, verified official binary, exit+log/error scan+final telemetry and complete cleanup/reap; independent exact wrapper review before execution",
+  "commands": [
+    {
+      "stage": "clean_import",
+      "argv": [
+        "GODOT",
+        "--headless",
+        "--path",
+        "PROJECT",
+        "--editor",
+        "--import"
+      ],
+      "note": "Preserve empty art/.gdignore before scan; no Blender autoimport allowed"
+    },
+    {
+      "stage": "native_pack",
+      "argv": [
+        "GODOT",
+        "--headless",
+        "--path",
+        "PROJECT",
+        "--script",
+        "res://tools/import_action_characters.gd"
+      ],
+      "script_sha256": "d5cfe157cc905171bfd8993f4e9daf6fd3dff89a2d44a11f7831897458b6c04f",
+      "stdout_sentinel": "ACTION_CHARACTER_IMPORT_PASS",
+      "report": "PROJECT/reports/native-action-import.json",
+      "report_contract": "Four exact unit keys. GLB hashes equal asset_manifest.json; exact bones/triangles/two surfaces; all25 required clips; native hashes equal actual new .scn bytes."
+    },
+    {
+      "stage": "native_reload_playback",
+      "argv": [
+        "GODOT",
+        "--headless",
+        "--path",
+        "PROJECT",
+        "--script",
+        "res://tests/action_characters.gd"
+      ],
+      "script_sha256": "4ced22480e0fd1687f0c2f59017a6073acee540d8a378f9807d5c8910bb260db",
+      "stdout_sentinel": "ACTION_CHARACTER_TESTS 128 failed=0",
+      "report": "PROJECT/reports/action-character-tests.json",
+      "report_contract": "Exactly128 checks with each pass boolean true, failed integer0; pose_evidence has villager10 and three military5clips each, actual native scene hashes/bone poses. Error scan additionally mandatory. If run before stamping, label pre-stamp diagnostic and preserve separately; rerun/rebind after fresh stamp before final combined acceptance."
+    },
+    {
+      "stage": "runtime_stamp",
+      "argv": [
+        "PYTHON",
+        "PROJECT/tools/stamp_build.py",
+        "--root",
+        "PROJECT"
+      ],
+      "script_sha256": "a7455874168ec6118a3cfa6b842007fc6c02ed47e0787b8f19712524ef33779a",
+      "report": "PROJECT/reports/build-manifest.json",
+      "report_contract": "Must include all four new native.scn and generated runtime UID files; recompute dry-run independently and require new vc identity different from8fcc and eb734. Only scripts/rules.gd BUILD_ID is allowed to change, not normalized logic."
+    },
+    {
+      "stage": "native_reload_final",
+      "argv": [
+        "GODOT",
+        "--headless",
+        "--path",
+        "PROJECT",
+        "--script",
+        "res://tests/action_characters.gd"
+      ],
+      "script_sha256": "4ced22480e0fd1687f0c2f59017a6073acee540d8a378f9807d5c8910bb260db",
+      "stdout_sentinel": "ACTION_CHARACTER_TESTS 128 failed=0",
+      "report": "PROJECT/reports/action-character-tests.json",
+      "report_contract": "Exactly128 true boolean checks, failed integer0,25 source-hash-bound native pose records, performed after new independently recomputed runtime stamp; no full gameplay/render acceptance."
+    }
+  ],
+  "allowed_new_source_uid_files": [
+    "assets/mature/shaders/observed_occlusion.gdshader.uid",
+    "scripts/action_character.gd.uid",
+    "scripts/observed_character_presenter.gd.uid",
+    "scripts/observed_occlusion.gd.uid",
+    "tests/action_characters.gd.uid",
+    "tests/action_render_fixture.gd.uid",
+    "tests/bounded_grid_pathfinder.gd.uid",
+    "tests/bounded_work_routes.gd.uid",
+    "tests/canopy_geometry_contract.gd.uid",
+    "tests/economy_ledger_contract.gd.uid",
+    "tests/map80_contract.gd.uid",
+    "tests/map80_phone_edges.gd.uid",
+    "tests/map80_phone_flow.gd.uid",
+    "tests/map80_placement_races.gd.uid",
+    "tests/map80_sparse_memory.gd.uid",
+    "tests/occlusion_render_fixture.gd.uid",
+    "tests/support/route_queue_harness.gd.uid",
+    "tools/import_action_characters.gd.uid"
+  ],
+  "allowed_generated_native_scenes": [
+    "assets/mature/models/villager_action.scn",
+    "assets/mature/models/spearman_action.scn",
+    "assets/mature/models/archer_action.scn",
+    "assets/mature/models/scout_action.scn"
+  ],
+  "allowed_generated_reports": [
+    "reports/native-action-import.json",
+    "reports/action-character-tests.json",
+    "reports/build-manifest.json"
+  ],
+  "drift_rules": [
+    "Every initial locked source file unchanged except strictly normalized BUILD_ID stamping in scripts/rules.gd",
+    "No unexpected files outside .godot cache, exact new UID/native/report allowlists",
+    "All reviewed art files and art/.gdignore remain byte-exact after native stages",
+    "Bind post-import caches, native outputs, runtime manifest, tests and process/report hashes into final receipt",
+    "Do not reuse old map/runtime acceptance identities or silently transfer507map assertions to combined source"
+  ],
+  "later_render_fixtures": {
+    "action": {
+      "entrypoint": "tests/action_render_fixture.gd",
+      "sha256": "c3bbcbf740babe5d60d5d3565e01ddf856b7403071d5ba64c2e9f36595576040",
+      "expected": "25 untouched844x390PNG studies,3simultaneous rigs,actual sampled bone/source metadata; controlled not gameplay"
+    },
+    "occlusion": {
+      "entrypoint": "tests/occlusion_render_fixture.gd",
+      "sha256": "bca826469cfda5c73dce6ab24cece3f81f2d427f693dbe49bc121dbf311cc5c3",
+      "expected": "6untouched390x600PNG images+strict normal/occluded/hidden checks; controlled not gameplay"
+    }
+  },
+  "known_visual_defects": [
+    "Military attached weapons penetrate death-ground plane",
+    "Smaller body-ground intersections",
+    "Provisional attack contact markers/grips, atlas gutters and occlusion self-overlap"
+  ],
+  "adapter": {
+    "file": "run_native_stage.py",
+    "sha256": "de6321cea6d030b5ee2a3be4f31361c20cadc6dc75d78538a7bdcbb70bbb948c",
+    "fixture_file": "test_native_stage.py",
+    "fixture_sha256": "1a80293fdc41b53c56d9d2364c92a8d6d056a61500dddcfcf973b26d35f40d51",
+    "pure_python_fixture_groups_passed": 10,
+    "engine_executed": false
+  },
+  "child_env_note": "Fresh HOME/TMP/XDG paths; only PATH/LANG/LC_ALL/TZ inherited; no secrets inherited; PYTHONDONTWRITEBYTECODE=1 prevents stamp helper pycache writes.",
+  "success_delivery": {
+    "folder": "OUTPUT/accepted-runtime",
+    "files": [
+      "runtime-delta.zip",
+      "final-source-lock.json",
+      "receipt.json"
+    ],
+    "scope": "Only after all5 native stages and validators pass; no .godot/private/generated test report content in runtime delta; complete exact runtime UID/native/build/rules hashes bound"
+  }
+}
