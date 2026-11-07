@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Scan only declared text evidence; never emit matching sensitive contents."""
 import hashlib,json,pathlib,re,stat,sys
-root=pathlib.Path('evidence'); manifest=pathlib.Path('CONSTRUCTION_SOURCE_PACKAGE.json')
-assert hashlib.sha256(manifest.read_bytes()).hexdigest()=='069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4'
+root=pathlib.Path('evidence'); manifest=pathlib.Path('CONSTRUCTION_REGRESSION_PACKAGE.json')
+assert hashlib.sha256(manifest.read_bytes()).hexdigest()=='f9473eac11baf62982d67df333ed9cb74f43c8e826e22e200907f0e9c99355bd'
 suites=json.loads(manifest.read_text())['suites']
 allowed=set()
 for phase in ['source-import','source-tests']:allowed.add(phase+'/phase-summary.json')
