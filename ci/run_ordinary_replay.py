@@ -30,7 +30,7 @@ def main():
   artifacts.update({'source:'+k:project/k for k in entries});artifacts.update({'cache:'+k:project/k for k in before})
   expected={k:g.sha(v) for k,v in artifacts.items()};monitor=g.load_monitor();env=g.isolated_environment(xdg);env['PYTHONDONTWRITEBYTECODE']='1'
   limits=monitor.Limits(timeout_s=300,sample_target_s=.05,terminate_grace_s=5,kill_reap_grace_s=5,launch_min_available_kib=4194304,runtime_min_available_kib=1048576,max_rss_kib=2097152)
-  report=out/'stale-hint-contract.json';summary['replay_attempts']=1
+  report=out/'production-exit-contract.json';summary['replay_attempts']=1
   monitor.run(out/'replay',[str(engine),'--headless','--path',str(project),'--script',str(files['contract.gd']),'--',str(report)],env=env,limits=limits,artifacts=artifacts,expected_artifact_hashes=expected)
   summary['source_preserved']=g.inventory(project,entries)==before and g.import_cache(project,entries)==certificate['cache_sha256']
   r=json.loads((out/'replay.json').read_text());summary.update(replay_exit=r.get('exit'),cleanup_complete=r.get('cleanup_complete'),guard_passed=r.get('passed'),report_present=report.is_file() and not report.is_symlink())

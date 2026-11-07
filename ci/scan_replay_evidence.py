@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib,json,re,shutil,stat
 import run_ordinary_replay as runner
 SOURCE=Path('replay-evidence');DEST=Path('safe-replay-evidence')
-ALLOWED={'summary.json','stale-hint-contract.json','replay.json','replay.log','replay.invocation.json','checker.json','checker.log','checker.invocation.json'}
+ALLOWED={'summary.json','production-exit-contract.json','replay.json','replay.log','replay.invocation.json','checker.json','checker.log','checker.invocation.json'}
 PATTERNS=[rb'gh[pousr]_[A-Za-z0-9]{20,255}',rb'github_pat_[A-Za-z0-9_]{20,255}',rb'AKIA[0-9A-Z]{16}',rb'xox[baprs]-[A-Za-z0-9-]{20,255}',rb'-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----',rb'/(?:home/agent|workspace/scratch|workspace/shared|agent_notes|user_notes)/',rb'sk-(?:proj-)?[A-Za-z0-9_-]{24,}',rb'(?i)(?:password|client_secret|access_token|refresh_token)\s*[=:]\s*["\x27]?[A-Za-z0-9_./+\-=]{12,}']
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
@@ -12,7 +12,7 @@ def main():
  total=0
  for p in files:
   assert stat.S_ISREG(p.lstat().st_mode) and not p.is_symlink()
-  cap=64*1024*1024 if p.name=='stale-hint-contract.json' else 16*1024*1024
+  cap=64*1024*1024 if p.name=='production-exit-contract.json' else 16*1024*1024
   assert p.stat().st_size<=cap;total+=p.stat().st_size;assert total<=128*1024*1024
   data=p.read_bytes();data.decode('utf-8',errors='strict');assert not any(re.search(pattern,data) for pattern in PATTERNS)
   if p.suffix=='.json':json.loads(data,parse_constant=lambda _:(_ for _ in ()).throw(ValueError()))
@@ -29,8 +29,8 @@ def main():
   assert summary.get('source_preserved') is True and summary['replay_attempts']==1
   package_path=Path('STALE_HINT_SOURCE_PACKAGE.json');assert sha(package_path)==runner.PACKAGE
   package=json.loads(package_path.read_text());pins=json.loads((Path(__file__).parent/'REPLAY_INPUTS.json').read_text())
-  assert pins['contract.gd']=='351de48c426456d05cd1cc38353afed305465595b6aa6699ed32aef7fbbe0701'
-  assert pins['validate.py']=='3de8395e480b2bfb46fc7be4ec2f3ba4c050d83fa3b439e0750a44be451b73ab'
+  assert pins['contract.gd']=='0508fba150c9cb55aad3ded0138d7ab0fa6ab71b9890ce193bd33771e7643a77'
+  assert pins['validate.py']=='a4ee32398fb1d7d8651487ad76a1699e8db9e5b34985a003a0eeba8bae0e8a17'
   expected={'engine':runner.g.ENGINE_SHA,'archive':runner.ARCHIVE,'manifest':runner.PACKAGE,'adapter':runner.ADAPTER,'monitor':runner.g.MONITOR_SHA,**pins}
   expected.update({'source:'+row['file']:row['sha256'] for row in package['files']})
   assert len(package['files'])==192 and package['candidate']==summary['build']
@@ -38,12 +38,12 @@ def main():
    r=json.loads((SOURCE/(name+'.json')).read_text());i=json.loads((SOURCE/(name+'.invocation.json')).read_text())
    assert runner.ordinary_clean_exit(r) and r['passed'] is True and r['exit']==0
    for k,h in expected.items():assert i['artifacts'][k]['sha256']==h and r['post_run_binding_matches']['artifact:'+k] is True
-   a=i['argv'];assert a[0]==i['executable']['path'] and a[1:]==i['requested_argv'][1:];project=i['artifacts']['source:main.tscn']['path'].removesuffix('/main.tscn');report=str((SOURCE/'stale-hint-contract.json').resolve())
+   a=i['argv'];assert a[0]==i['executable']['path'] and a[1:]==i['requested_argv'][1:];project=i['artifacts']['source:main.tscn']['path'].removesuffix('/main.tscn');report=str((SOURCE/'production-exit-contract.json').resolve())
    if name=='replay':assert a==[i['artifacts']['engine']['path'],'--headless','--path',project,'--script',i['artifacts']['contract.gd']['path'],'--',report]
    else:
     assert a[1:]==[i['artifacts']['validate.py']['path'],'--root',project,report]
-    assert i['artifacts']['report']['sha256']==sha(SOURCE/'stale-hint-contract.json') and r['post_run_binding_matches']['artifact:report'] is True
-  verdict=json.loads((SOURCE/'checker.log').read_text());assert verdict=={'status':'PASS','build':'vc-c09af531eecf','expected_checks':22,'errors':[]}
+    assert i['artifacts']['report']['sha256']==sha(SOURCE/'production-exit-contract.json') and r['post_run_binding_matches']['artifact:report'] is True
+  verdict=json.loads((SOURCE/'checker.log').read_text());assert verdict=={'schema':'production-exit-verdict-v1','status':'PASS','build':'vc-c09af531eecf','expected_checks':24,'error_count':0,'errors':[]}
   verified_pass=True
  DEST.mkdir()
  for p in files:shutil.copyfile(p,DEST/p.name)
