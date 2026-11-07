@@ -129,6 +129,7 @@ class StartupTree:
         need(role in ('dash', 'xkbcomp'), 'Unreviewed startup helper role')
         self.visited.add(pid)
         existing = self.bound.get(pid)
+        previously_verified = existing is not None and 'record' in existing
         if existing and select.select([existing['fd']], [], [], 0)[0]:
             return self.reconcile_exited(existing, parent, role)
         try:
@@ -137,7 +138,25 @@ class StartupTree:
             # Only a fully verified lifetime can settle an exit during a local
             # identity/hash/metrics read. Never swallow a descendant's failure.
             verified = self.bound.get(pid)
-            if verified and 'record' in verified and select.select([verified['fd']], [], [], 0)[0]:
+            if verified and 'record' in verified:
+                if not select.select([verified['fd']], [], [], 0)[0]:
+                    # Linux can clear task->mm (/proc/PID/exe disappears)
+                    # before the thread group is pollable as exited. Wait on
+                    # this already verified pidfd once, never on a numeric PID.
+                    # Two bound helpers cap this added wait at 100 ms total;
+                    # the existing startup deadline and all limits still apply.
+                    need(previously_verified and existing is verified,
+                         'Missing read before a previously verified startup visit')
+                    need('missing_read_exit_wait_seconds' not in verified['record'],
+                         'Repeated startup missing-read exit wait')
+                    remaining = self.api.startup_deadline - self.api.monotonic()
+                    need(remaining > 0, 'Startup deadline exhausted before missing-read exit wait')
+                    timeout = min(0.05, remaining)
+                    verified['record']['missing_read_exit_wait_seconds'] = timeout
+                    need(select.select([verified['fd']], [], [], timeout)[0],
+                         'Bound startup helper stayed live after missing read')
+                    need(self.api.monotonic() <= self.api.startup_deadline,
+                         'Startup deadline exhausted during missing-read exit wait')
                 return self.reconcile_exited(verified, parent, role)
             raise
         children = row['child_pids']

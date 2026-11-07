@@ -5,7 +5,7 @@
   "source_archive_sha256": "6487290af15eef0f2730a70a59f6834cf2eecb906acf9131bd498c961969deb1",
   "godot_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
   "harness_sha256": "25f64a24a4fc2a3d98203f2c982d3aa4de100a17ccb6371fddf3d743cbc54dad",
-  "supervisor_sha256": "1a8e90a2b0e0c6e429e870f3ba8f2ce58b58124a1f4c461c58e78217b1aa2361",
+  "supervisor_sha256": "963820fa013f7ae841c607140c82bfd0bf7332eebb4b63873f2acb717759843f",
   "native_renderer": "linux-x11-mesa-llvmpipe-gl_compatibility",
   "require_skeletal_animation": true,
   "capture_contract": {
@@ -212,9 +212,9 @@
     "ci/guarded_manifest_ci.py": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
     "ci/make_source_archive.py": "767380416e9b1b7e09dda52f361ff833a581456526608382808929326617e8fb",
-    "ci/run_native.py": "1a8e90a2b0e0c6e429e870f3ba8f2ce58b58124a1f4c461c58e78217b1aa2361",
+    "ci/run_native.py": "963820fa013f7ae841c607140c82bfd0bf7332eebb4b63873f2acb717759843f",
     "ci/scan_evidence.py": "becd97b5c086028b73c2bf9b5fbc18ba6acd6eef62bca753f10803732195ed1b",
-    "ci/xvfb_startup.py": "6df22975a9f1c3aef59ae8b74aa6a875d2bb2a300fcc5b8307fe7c93d828f2fe",
+    "ci/xvfb_startup.py": "558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546",
     "map80-actions-thin-source-v2.zip": "203852e82ca33d5e5b550e1d8ef07ef989734fd24b1cf54c6d8318307d43d6d8"
   },
   "allowed_generated_uid_files": [],

@@ -548,10 +548,11 @@ def run(args):
                               '-nolisten', 'tcp', '-auth', str(auth), '-noreset',
                               '-displayfd', str(ready_write)], pass_fds=(ready_write,))
         close_ready(ready_write)
-        startup_tree = xvfb_startup.StartupTree(xvfb, distribution,
-            SimpleNamespace(process_identity=process_identity, process_metrics=process_metrics, same_lifetime=same_lifetime),
-            receipt['startup'], tracked_descendants)
         ready_deadline = time.monotonic() + 10
+        startup_tree = xvfb_startup.StartupTree(xvfb, distribution,
+            SimpleNamespace(process_identity=process_identity, process_metrics=process_metrics, same_lifetime=same_lifetime,
+                            startup_deadline=ready_deadline, monotonic=time.monotonic),
+            receipt['startup'], tracked_descendants)
         ready_data = b''
         while b'\n' not in ready_data:
             sample(startup=True); require(xvfb.poll() is None, 'Private Xvfb exited before readiness')
