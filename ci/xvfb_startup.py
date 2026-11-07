@@ -71,6 +71,22 @@ def distribution_inventory():
     return result
 
 
+def process_lifetime(pid):
+    """Terminal-state identity does not depend on /proc/PID/exe surviving exit."""
+    need(type(pid) is int and pid > 0, 'Invalid terminal process ID')
+    proc = Path('/proc') / str(pid)
+    raw = (proc / 'stat').read_text()
+    opened, close = raw.find('('), raw.rfind(')')
+    need(opened > 0 and close > opened and int(raw[:opened].strip()) == pid, 'Malformed terminal process identity')
+    fields = raw[close + 2:].split()
+    need(len(fields) >= 20, 'Incomplete terminal process identity')
+    status = dict(line.split(':', 1) for line in (proc / 'status').read_text().splitlines() if ':' in line)
+    tgid = int(status['Tgid'].strip())
+    need(tgid == pid, 'Terminal identifier is a thread, not the bound process')
+    return {'pid': pid, 'ppid': int(fields[1]), 'tgid': tgid,
+            'starttime_ticks': int(fields[19]), 'state': fields[0]}
+
+
 class StartupTree:
     """At most one observed dash -> xkbcomp pair, before Xvfb readiness only."""
     def __init__(self, owner, inventory, api, receipt, tracked):
@@ -88,12 +104,51 @@ class StartupTree:
         need(os.readlink(proc_exe) == expected['path'], 'Startup helper executable path differs')
         need(sha(proc_exe) == expected['sha256'], 'Startup helper executable hash differs')
 
+    def reconcile_exited(self, item, parent, role):
+        """A stale child snapshot is not evidence that a bound lifetime is live."""
+        pid = item['identity']['pid']
+        need(item['role'] == role and 'record' in item, 'Startup lifetime was not fully verified')
+        need(select.select([item['fd']], [], [], 0)[0], 'Startup exit is not pidfd-confirmed')
+        try:
+            current = process_lifetime(pid)
+        except FileNotFoundError:
+            # Partial/unreadable metadata is not enough: the PID directory must
+            # actually be absent. A currently reused numeric PID is never trusted.
+            need(not (Path('/proc') / str(pid)).exists(), 'Startup PID still exists with unreadable exit identity')
+            state = 'reaped'
+        else:
+            need(self.api.same_lifetime(item['identity'], current) and current['ppid'] == parent['pid'],
+                 'Exited startup PID was reused or changed parent')
+            need(current['state'] in ('Z', 'X'), 'Pidfd exit conflicts with a live process snapshot')
+            state = current['state']
+        item['record']['reconciled_exit_state'] = state
+        item['record']['exit_pidfd_confirmed'] = True
+        return 0
+
     def visit(self, pid, parent, role):
         need(role in ('dash', 'xkbcomp'), 'Unreviewed startup helper role')
         self.visited.add(pid)
         existing = self.bound.get(pid)
-        if existing:
-            need(not select.select([existing['fd']], [], [], 0)[0], 'Exited startup PID reappeared in live child list')
+        if existing and select.select([existing['fd']], [], [], 0)[0]:
+            return self.reconcile_exited(existing, parent, role)
+        try:
+            row, first = self.sample_live(pid, parent, role)
+        except (FileNotFoundError, ProcessLookupError, KeyError):
+            # Only a fully verified lifetime can settle an exit during a local
+            # identity/hash/metrics read. Never swallow a descendant's failure.
+            verified = self.bound.get(pid)
+            if verified and 'record' in verified and select.select([verified['fd']], [], [], 0)[0]:
+                return self.reconcile_exited(verified, parent, role)
+            raise
+        children = row['child_pids']
+        need(len(children) <= (1 if role == 'dash' else 0), 'Unexpected child below startup compiler')
+        total = row['VmRSS']
+        if children:
+            total += self.visit(int(children[0]), first, 'xkbcomp')
+        return total
+
+    def sample_live(self, pid, parent, role):
+        existing = self.bound.get(pid)
         first = self.api.process_identity(pid)
         need(first['ppid'] == parent['pid'] and self.api.same_lifetime(self.api.process_identity(parent['pid']), parent),
              'Startup helper ancestry/lifetime differs')
@@ -124,12 +179,7 @@ class StartupTree:
         record['sampled_peak_threads'] = max(record['sampled_peak_threads'], row['Threads'])
         need(row['VmRSS'] <= 131072 and row['VmHWM'] <= 131072 and row['Threads'] <= 4,
              'Startup helper resource limit')
-        children = row['child_pids']
-        need(len(children) <= (1 if role == 'dash' else 0), 'Unexpected child below startup compiler')
-        total = row['VmRSS']
-        if children:
-            total += self.visit(int(children[0]), first, 'xkbcomp')
-        return total
+        return row, first
 
     def sample(self, pids):
         need(not self.complete, 'Startup helper allowance is closed')

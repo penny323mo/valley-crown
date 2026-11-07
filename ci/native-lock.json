@@ -140,7 +140,7 @@
     "ci/scan_evidence.py": "e85e00979fb6836132edfc925cb2d1dd04849c18253d8b404c5f86dd50d65e17",
     "ci/guarded_phone_ci.py": "377e41e658eaac1ec49dd9a58c5eae34f6fb051aaa70cc4be704ae814c1dd93d",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
-    "ci/xvfb_startup.py": "446392853311aac16776d9548e48c03db82e21c6129f96f146ae8440b12567c6"
+    "ci/xvfb_startup.py": "6df22975a9f1c3aef59ae8b74aa6a875d2bb2a300fcc5b8307fe7c93d828f2fe"
   },
   "allowed_generated_uid_files": [
     "tests/canopy_geometry.gd.uid",
