@@ -30,9 +30,9 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
+          sudo apt-get install -y --no-install-recommends xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
           mkdir -p audit
-          dpkg-query -W xvfb libgl1-mesa-dri libglx-mesa0 > audit/distribution-packages.txt
+          dpkg-query -W xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 > audit/distribution-packages.txt
       - name: Verify accepted baseline and pinned official engine
         run: |
           set -euo pipefail

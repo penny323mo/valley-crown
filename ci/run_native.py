@@ -19,6 +19,8 @@ import stat
 import struct
 import subprocess
 import time
+from types import SimpleNamespace
+import xvfb_startup
 
 
 def require(value, message):
@@ -128,6 +130,7 @@ def emit_result_diagnostics(out, receipt):
                            for name, info in receipt.get('cleanup', {}).items()}
     summary['unexpected_descendants'] = receipt.get('unexpected_descendants', [])[:16]
     summary['observed_descendant_cleanup'] = receipt.get('observed_descendant_cleanup', [])[:16]
+    summary['startup'] = receipt.get('startup', {})
     for key in ('error', 'final_error'):
         if receipt.get(key):
             summary[key] = {name: safe_diagnostic_text(value) for name, value in receipt[key].items()}
@@ -330,7 +333,8 @@ def clean_environment(private):
 
 
 REAL_DEPENDENCIES = (subprocess.Popen, metrics, process_metrics, time.monotonic, time.sleep, signal.signal,
-                     process_identity, os.pidfd_open, signal.pidfd_send_signal, select.select, os.close)
+                     process_identity, os.pidfd_open, signal.pidfd_send_signal, select.select, os.close,
+                     os.pipe2, os.read, xvfb_startup.distribution_inventory, xvfb_startup.StartupTree)
 
 
 def reap_owned(child):
@@ -396,13 +400,17 @@ def run(args):
     require(prior.get('passed') is True and prior.get('cleanup_complete') is True, 'Import did not pass its guard')
     inputs = {'lock': lock_path, 'harness': regular(args.harness).resolve(),
               'godot': regular(args.godot).resolve(), 'xvfb': regular(args.xvfb).resolve(),
+              'startup': regular(Path(__file__).with_name('xvfb_startup.py')).resolve(),
               'supervisor': Path(__file__).resolve(), 'import_marker': import_marker, 'import_receipt': import_receipt}
     bindings = {key: digest(path) for key, path in inputs.items()}
     for key in ('harness', 'godot', 'supervisor'):
         require(bindings[key] == lock[key + '_sha256'], 'Reviewed helper/tool hash mismatch: ' + key)
+    require(bindings['startup'] == lock['support_files']['ci/xvfb_startup.py'], 'Reviewed startup helper hash differs')
     # Distribution-provided Xvfb is recorded, never substituted with a downloaded binary.
     require(str(inputs['xvfb']) == '/usr/bin/Xvfb', 'Expected Ubuntu distribution Xvfb')
     require(lock['native_renderer'] == 'linux-x11-mesa-llvmpipe-gl_compatibility', 'Renderer scope differs')
+    distribution = xvfb_startup.distribution_inventory()
+    require(distribution['xvfb']['sha256'] == bindings['xvfb'], 'Distribution Xvfb identity differs')
     before = metrics()
     require(before['available_kib'] >= 4 * 1024 * 1024, 'Less than 4 GiB available before launch')
     out.mkdir(parents=True)
@@ -422,9 +430,12 @@ def run(args):
                'original_file_count': len(lock['project_files']), 'generated_uid_sha256': generated_uids,
                'cache_files': len(cache), 'samples': [], 'children': {}, 'cleanup': {},
                'unexpected_descendants': [], 'cleanup_complete': False,
+               'startup': {'complete': False, 'detected': False, 'helpers': [], 'distribution': distribution,
+                           'timeout_seconds': 10, 'helper_limit': 2, 'helper_rss_hwm_kib': 131072, 'helper_threads': 4},
                'test_dependencies': any(actual is not original for actual, original in zip(
                    (subprocess.Popen, metrics, process_metrics, time.monotonic, time.sleep, signal.signal,
-                    process_identity, os.pidfd_open, signal.pidfd_send_signal, select.select, os.close), REAL_DEPENDENCIES)),
+                    process_identity, os.pidfd_open, signal.pidfd_send_signal, select.select, os.close,
+                    os.pipe2, os.read, xvfb_startup.distribution_inventory, xvfb_startup.StartupTree), REAL_DEPENDENCIES)),
                'system_before': before, 'limits': {'timeout_seconds': 120, 'minimum_available_kib': 1048576,
                    'aggregate_rss_kib': 3145728, 'godot_rss_kib': 2621440, 'xvfb_rss_kib': 524288},
                'fixed_fps': 30, 'expected_framebuffer': [args.width, args.height],
@@ -439,20 +450,30 @@ def run(args):
         stopped = True
 
     old_handlers = {}
+    ready_fds = set()
+    startup_tree = None
 
     def save():
         (out / 'guard-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
 
-    def spawn(name, argv):
+    def close_ready(fd):
+        ready_fds.remove(fd)
+        try:
+            os.close(fd)
+        except Exception as exc:
+            receipt.setdefault('readiness_cleanup_errors', []).append(type(exc).__name__)
+            raise  # Never retry a descriptor whose close result is uncertain.
+
+    def spawn(name, argv, pass_fds=()):
         handles[name] = (out / (name + '.log')).open('x')
         child = subprocess.Popen(argv, env=env, stdin=subprocess.DEVNULL,
-                                 stdout=handles[name], stderr=subprocess.STDOUT, close_fds=True)
+                                 stdout=handles[name], stderr=subprocess.STDOUT, close_fds=True, pass_fds=pass_fds)
         children[name] = child
         receipt['children'][name] = {'pid': child.pid, 'executable_sha256': bindings[name]}
         save()
         return child
 
-    def sample():
+    def sample(startup=False):
         require(not stopped, 'Termination requested')
         require(time.monotonic() - started <= 120, 'Native capture timeout')
         system = metrics()
@@ -469,7 +490,14 @@ def run(args):
                 child.wait(timeout=0.05)
                 continue
             limit = 2621440 if name == 'godot' else 524288
-            if row['child_pids']:
+            if startup and name == 'xvfb':
+                # Only this phase can inspect the verified Ubuntu compiler pair.
+                # No Godot process has been started yet.
+                if row['child_pids']:
+                    receipt['startup']['detected'] = True
+                    save()
+                total += startup_tree.sample(row['child_pids'])
+            elif row['child_pids']:
                 # Persist detection before any fallible identity/descriptor work.
                 # Even an observer failure leaves the unknown tree unconfirmed.
                 receipt['unexpected_descendants'].append({'parent': name, 'parent_pid': child.pid,
@@ -495,13 +523,33 @@ def run(args):
             old_handlers[sig] = signal.signal(sig, stop_signal)
         # Authentication setup is inside the same cleanup boundary as both children.
         private_auth(auth, display)
+        ready_read, ready_write = os.pipe2(os.O_CLOEXEC | os.O_NONBLOCK)
+        ready_fds.update((ready_read, ready_write))
         xvfb = spawn('xvfb', [str(inputs['xvfb']), ':' + str(display), '-screen', '0', '1024x1024x24',
-                              '-nolisten', 'tcp', '-auth', str(auth), '-noreset'])
+                              '-nolisten', 'tcp', '-auth', str(auth), '-noreset',
+                              '-displayfd', str(ready_write)], pass_fds=(ready_write,))
+        close_ready(ready_write)
+        startup_tree = xvfb_startup.StartupTree(xvfb, distribution,
+            SimpleNamespace(process_identity=process_identity, process_metrics=process_metrics, same_lifetime=same_lifetime),
+            receipt['startup'], tracked_descendants)
         ready_deadline = time.monotonic() + 10
-        while not Path(f'/tmp/.X11-unix/X{display}').exists():
-            sample(); require(xvfb.poll() is None, 'Private Xvfb exited before readiness')
+        ready_data = b''
+        while b'\n' not in ready_data:
+            sample(startup=True); require(xvfb.poll() is None, 'Private Xvfb exited before readiness')
             require(time.monotonic() <= ready_deadline, 'Private Xvfb readiness timeout')
-            time.sleep(0.05)
+            try:
+                chunk = os.read(ready_read, 16)
+            except BlockingIOError:
+                chunk = None
+            require(chunk != b'', 'Private Xvfb readiness pipe closed before readiness')
+            if chunk is not None:
+                ready_data += chunk
+            require(len(ready_data) <= 8, 'Malformed Xvfb readiness message')
+            if b'\n' not in ready_data:
+                time.sleep(0.005)
+        require(ready_data == (str(display) + '\n').encode(), 'Wrong display in Xvfb readiness message')
+        startup_tree.finish()
+        close_ready(ready_read)
         require(stat.S_ISSOCK(Path(f'/tmp/.X11-unix/X{display}').stat().st_mode), 'X11 endpoint is not a socket')
         sample()
         require(xvfb.poll() is None, 'Private Xvfb exited before engine launch')
@@ -535,6 +583,12 @@ def run(args):
         for name, child in reversed(list(children.items())):
             receipt['cleanup'][name] = reap_owned(child)
         receipt['observed_descendant_cleanup'] = [cleanup_observed_descendant(item) for item in reversed(tracked_descendants)]
+        for fd in list(ready_fds):
+            ready_fds.remove(fd)
+            try:
+                os.close(fd)
+            except Exception as exc:
+                receipt.setdefault('readiness_cleanup_errors', []).append(type(exc).__name__)
         for handle in handles.values():
             handle.close()
         for sig, handler in old_handlers.items():
@@ -546,13 +600,18 @@ def run(args):
             auth.unlink(missing_ok=True)
         except BaseException as exc:
             receipt['private_cleanup_error'] = str(exc)
-        receipt['cleanup_complete'] = all(item['complete'] for item in receipt['cleanup'].values()) and not receipt['unexpected_descendants'] and 'private_cleanup_error' not in receipt
+        startup_unknown = receipt['startup']['detected'] and not receipt['startup']['complete']
+        receipt['cleanup_complete'] = (all(item['complete'] for item in receipt['cleanup'].values())
+            and all(item['exited'] and item['pidfd_closed'] for item in receipt['observed_descendant_cleanup'])
+            and not startup_unknown and not receipt['unexpected_descendants']
+            and not receipt.get('readiness_cleanup_errors') and 'private_cleanup_error' not in receipt)
         try:
             after = metrics(); receipt['system_after'] = after
             require(after['oom_kill'] == before['oom_kill'], 'Final OOM count changed')
             final_source, final_uids = source_inventory(project, lock, generated_uids)
             require(final_source == source and final_uids == generated_uids, 'Source/generated UID changed during rendering')
             require(cache_inputs(project) == cache, 'Imported cache changed during rendering')
+            require(xvfb_startup.distribution_inventory() == distribution, 'Distribution tool identity changed during rendering')
             require(all(digest(path) == bindings[key] for key, path in inputs.items()), 'Bound helper changed')
             for name in children:
                 log = (out / (name + '.log')).read_text(errors='replace')
@@ -561,6 +620,7 @@ def run(args):
             require(all(item['complete'] for item in receipt['cleanup'].values()), 'Owned-child cleanup incomplete')
             require(not any(item['errors'] for item in receipt['cleanup'].values()), 'Owned-child cleanup reported errors')
             require(not receipt['unexpected_descendants'], 'Unexpected descendant cleanup is unconfirmed; do not retry')
+            require(receipt['startup']['complete'] and receipt['cleanup_complete'], 'Startup/readiness cleanup is incomplete')
             require('private_cleanup_error' not in receipt, 'Private authentication cleanup failed')
             require(not receipt.get('signal_restore_errors'), 'Signal handler restoration failed')
             receipt['passed'] = True

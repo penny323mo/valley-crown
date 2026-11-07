@@ -95,6 +95,14 @@ def scan(directory, lock, lock_sha256):
             guard.get('cleanup_complete') is True, 'Guard did not pass or cleanup is unconfirmed')
     require(guard.get('test_dependencies') is False, 'Fake/injected process evidence cannot be admitted')
     require(guard.get('diagnostic_only') is False, 'Diagnostic-only run cannot produce accepted visual artifacts')
+    require(guard.get('startup', {}).get('complete') is True, 'Xvfb startup was not completed before capture')
+    require(guard['input_sha256']['startup'] == lock['support_files']['ci/xvfb_startup.py'], 'Startup helper hash differs')
+    startup_helpers = guard['startup'].get('helpers', [])
+    require(not startup_helpers or {row['role'] for row in startup_helpers} == {'dash', 'xkbcomp'} and len(startup_helpers) == 2,
+            'Startup helper pair differs')
+    require(all(row.get('exit_confirmed_before_engine') is True and row['sampled_peak_rss_kib'] <= 131072
+                and row['sampled_peak_hwm_kib'] <= 131072 and row['sampled_peak_threads'] <= 4 for row in startup_helpers),
+            'Startup helper completion/resource evidence differs')
     require(guard['input_sha256']['lock'] == lock_sha256, 'Guard lock identity differs')
     for key in ('harness', 'godot', 'supervisor'):
         require(guard['input_sha256'][key] == lock[key + '_sha256'], 'Guard tool identity differs: ' + key)

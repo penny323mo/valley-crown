@@ -5,7 +5,7 @@
   "source_archive_sha256": "92e660f43172fb731574a5b9f40ff9059cfd036b27845d226b3bd804849c564e",
   "godot_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
   "harness_sha256": "fd4f7ef47b262d42e391ffa7d8a340bb2dafe0807912a041fcdc482862b5c4c4",
-  "supervisor_sha256": "3ceb15b35861e835ea02bd399d491ba63a13542e0b2f395b217b1d22c51cd003",
+  "supervisor_sha256": "ea033db75890d46f93a4eb8f67e4e19acb547c2b2985df08dd9d219c2170b21c",
   "native_renderer": "linux-x11-mesa-llvmpipe-gl_compatibility",
   "require_skeletal_animation": false,
   "project_files": {
@@ -134,12 +134,13 @@
     "tools/test_manifest.json": "a28a518eed22873330681ee8d1a31eb475768ec833e60e5b4513eef8b56a3525"
   },
   "support_files": {
-    ".github/workflows/native-visual.yml": "7f39fb11bd710ccae94e5496ae0f95d94e41989d19a8533f5a09f83288989745",
-    "ci/run_native.py": "3ceb15b35861e835ea02bd399d491ba63a13542e0b2f395b217b1d22c51cd003",
+    ".github/workflows/native-visual.yml": "617aaae3576e255524de2db6241e86106424bddd9f3a34c9770c8c9c9e91dd0a",
+    "ci/run_native.py": "ea033db75890d46f93a4eb8f67e4e19acb547c2b2985df08dd9d219c2170b21c",
     "ci/capture_native.gd": "fd4f7ef47b262d42e391ffa7d8a340bb2dafe0807912a041fcdc482862b5c4c4",
-    "ci/scan_evidence.py": "ffec750b7a1be89edb85962bbcab1577060804404c35364fe54bc9381abf6841",
+    "ci/scan_evidence.py": "d73d218b46e9088bb194f1c8f7e894540496528ab485aad79a07429100f10f41",
     "ci/guarded_phone_ci.py": "377e41e658eaac1ec49dd9a58c5eae34f6fb051aaa70cc4be704ae814c1dd93d",
-    "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50"
+    "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
+    "ci/xvfb_startup.py": "446392853311aac16776d9548e48c03db82e21c6129f96f146ae8440b12567c6"
   },
   "allowed_generated_uid_files": [
     "tests/canopy_geometry.gd.uid",
@@ -150,5 +151,5 @@
     "tests/touch_box_regression.gd.uid",
     "tests/touch_epoch_regression.gd.uid"
   ],
-  "diagnostic_only": true
+  "diagnostic_only": false
 }
