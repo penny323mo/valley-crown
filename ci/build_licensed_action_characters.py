@@ -17,7 +17,7 @@ FPS=24
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def import_gltf(path):
     before=set(bpy.data.objects); actions=set(bpy.data.actions)
-    bpy.ops.import_scene.gltf(filepath=str(path))
+    bpy.ops.import_scene.gltf(filepath=str(path),disable_bone_shape=True)
     objects=sorted(set(bpy.data.objects)-before,key=lambda o:o.name)
     rigs=[o for o in objects if o.type=='ARMATURE']
     return objects,rigs,sorted(set(bpy.data.actions)-actions,key=lambda a:a.name)
