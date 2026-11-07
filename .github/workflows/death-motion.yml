@@ -1,8 +1,8 @@
-name: Inspect native death equipment milestones
+name: Inspect native death motion at20Hz
 on:
   push:
-    branches: [ci/native-death-contact-render-v1]
-    paths: ['.github/workflows/death-contact.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/native-death-motion-v1]
+    paths: ['.github/workflows/death-motion.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -14,7 +14,7 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - {lane: death-contact, build: vc-470d98d0c3ee, width: 844, height: 390, archive: death-source.zip, manifest: DEATH_SOURCE_PACKAGE.json, archive_sha: b9a5e2d79153121ab67a5594a4e239a7402b7b71af4d652a4df13d2c22dd65c2, manifest_sha: 76417073bd0a653c5ceebcb88ca3f680cc193188ac640f441638480db459ab52}
+          - {lane: death-motion, build: vc-470d98d0c3ee, width: 844, height: 390, archive: death-source.zip, manifest: DEATH_SOURCE_PACKAGE.json, archive_sha: b9a5e2d79153121ab67a5594a4e239a7402b7b71af4d652a4df13d2c22dd65c2, manifest_sha: 76417073bd0a653c5ceebcb88ca3f680cc193188ac640f441638480db459ab52}
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     steps:
@@ -28,7 +28,7 @@ jobs:
           import hashlib,json,pathlib
           lock=json.loads(pathlib.Path('ci/native-${{ matrix.lane }}-lock.json').read_text())
           assert lock['reviewed_for_execution'] is True and lock['build']=='${{ matrix.build }}'
-          assert lock['fixed_fps']==20 and lock['death_contact_contract']['viewport']==[${{ matrix.width }},${{ matrix.height }}]
+          assert lock['fixed_fps']==20 and lock['death_motion_contract']['viewport']==[${{ matrix.width }},${{ matrix.height }}]
           assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
           for name,digest in lock['support_files'].items():
               assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest,name
@@ -100,17 +100,17 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive ${{ matrix.archive }} --manifest ${{ matrix.manifest }} --archive-sha256 ${{ matrix.archive_sha }} --manifest-sha256 ${{ matrix.manifest_sha }} --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: Capture seven original-camera controlled death triptychs
+      - name: Capture31 genuine fixed-camera native motion samples
         id: capture_death
         run: |
           set -euo pipefail
-          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_death_contact.gd --lock ci/native-${{ matrix.lane }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.lane }} --private private/${{ matrix.lane }} --width ${{ matrix.width }} --height ${{ matrix.height }}
-          python3 ci/scan_death_contact.py --directory evidence/${{ matrix.lane }} --lock ci/native-${{ matrix.lane }}-lock.json --report evidence/${{ matrix.lane }}-scan.json
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_death_motion.gd --lock ci/native-${{ matrix.lane }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.lane }} --private private/${{ matrix.lane }} --width ${{ matrix.width }} --height ${{ matrix.height }}
+          python3 ci/scan_death_motion.py --directory evidence/${{ matrix.lane }} --lock ci/native-${{ matrix.lane }}-lock.json --report evidence/${{ matrix.lane }}-scan.json
       - name: Retain independently scanned death study
         if: ${{ success() && steps.capture_death.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: death-contact-${{ matrix.lane }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: death-motion-${{ matrix.lane }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             evidence/${{ matrix.lane }}/
             evidence/${{ matrix.lane }}-scan.json

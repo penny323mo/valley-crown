@@ -1,17 +1,17 @@
 {
   "reviewed_for_execution": true,
   "build": "vc-470d98d0c3ee",
-  "scope": "Seven controlled death equipment triptychs from accepted native outputs; fixed original camera/floor, no gameplay/device/motion-continuity acceptance.",
+  "scope": "One31-frame controlled death clip sequence,0..1.5s at20Hz exact native poses; unchanged original camera/floor and accepted470d source. Not gameplay, measured FPS or continuous guarantee.",
   "source_archive_sha256": "b9a5e2d79153121ab67a5594a4e239a7402b7b71af4d652a4df13d2c22dd65c2",
   "godot_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
-  "harness_sha256": "a14f109ecdfda4abb879b65b074ae45a362e04e2a95ddfc4d2e38ddc4832db48",
-  "supervisor_sha256": "3f501194aa037f9328846bf3f8884745a4f14938c4360541811f5a85156856b6",
+  "harness_sha256": "ed4d28a618b24c44dc8eac66c731feecef1d70c667e6fee08de5aa62e9277454",
+  "supervisor_sha256": "964853823d19ad2eab0af2dd85a5161195ea61595b1b70453d84e07c0d7edb46",
   "native_renderer": "linux-x11-mesa-llvmpipe-gl_compatibility",
   "require_skeletal_animation": true,
   "capture_contract": {
-    "mode": "death_contact",
-    "kind": "native_controlled_death_contact",
-    "frame_count": 7
+    "mode": "death_motion",
+    "kind": "native_controlled_death_motion",
+    "frame_count": 31
   },
   "import_manifest_sha256": "76417073bd0a653c5ceebcb88ca3f680cc193188ac640f441638480db459ab52",
   "project_files": {
@@ -209,7 +209,7 @@
     "tools/stamp_build.py": "a7455874168ec6118a3cfa6b842007fc6c02ed47e0787b8f19712524ef33779a"
   },
   "support_files": {
-    ".github/workflows/death-contact.yml": "2fe149c4b04867b15122127cdcde1d82970e8b1c7aa4d06f7f90d12bdc54fcf0",
+    ".github/workflows/death-motion.yml": "3562d8c2df027a3a74eb59e3f0bbeb0be9834122142d93701319be76e4b53561",
     "ACTION_FIX_SOURCE_LOCK.json": "70466a5bef3078de2722d08fd14ff4912061c88191ea2b474e9a8c60345e63b7",
     "COMBINED_SOURCE_PACKAGE.json": "f9473eac11baf62982d67df333ed9cb74f43c8e826e22e200907f0e9c99355bd",
     "CONSTRUCTION_SOURCE_PACKAGE.json": "069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4",
@@ -225,12 +225,12 @@
     "ci/apply_native_delta.py": "d8731c0bb0d8f70278b08bafaa3e204a1cd98d2823ecc2af3579dee83799c2c0",
     "ci/apply_occlusion_overlay.py": "b0d136b52f3ccfce39babb1939fe99205cbeb9579a6f719bc5f0d21d1a3eb858",
     "ci/assemble_combined.py": "2a378f0bb5ad7e7a59be43d3f7604e181fd1e2774f98ffa9a05c031205bffe92",
-    "ci/capture_death_contact.gd": "a14f109ecdfda4abb879b65b074ae45a362e04e2a95ddfc4d2e38ddc4832db48",
-    "ci/death-contact-contract.json": "f5f68ae1b81e0de1eaf717056d3b44f4003cbc8ed6e164fdfdc10b90fb7b4fc1",
+    "ci/capture_death_motion.gd": "ed4d28a618b24c44dc8eac66c731feecef1d70c667e6fee08de5aa62e9277454",
+    "ci/death-motion-contract.json": "ef421a8de9ea4313afa70669b706fc56d0b09a43583c44bef8642f6392adc0bc",
     "ci/guarded_manifest_ci.py": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
-    "ci/run_native.py": "3f501194aa037f9328846bf3f8884745a4f14938c4360541811f5a85156856b6",
-    "ci/scan_death_contact.py": "a49965807f5e33b9d5e74c5f8cea58362c6290e57a0210524b19661fac3a8543",
+    "ci/run_native.py": "964853823d19ad2eab0af2dd85a5161195ea61595b1b70453d84e07c0d7edb46",
+    "ci/scan_death_motion.py": "d8c2ba2204de2dace4729a6f72a8bf8a73f63bc7678510ecd5010ecd3ab5358e",
     "ci/scan_evidence.py": "becd97b5c086028b73c2bf9b5fbc18ba6acd6eef62bca753f10803732195ed1b",
     "ci/xvfb_startup.py": "558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546",
     "construction-overlay.zip": "757810906ae8b5503ca1f6c9b9449e992f3b69a6ea52bd2a45b478c250c83817",
@@ -247,8 +247,8 @@
   ],
   "diagnostic_only": false,
   "fixed_fps": 20,
-  "death_contact_contract": {
-    "scenario": "native_death_contact_milestones_v1",
+  "death_motion_contract": {
+    "scenario": "native_death_motion_20hz_v1",
     "viewport": [
       844,
       390
@@ -256,130 +256,6 @@
     "fixed_fps": 20,
     "clip": "death",
     "clip_length_seconds": 1.5,
-    "studies": [
-      {
-        "kind": "spearman",
-        "label": "spearman-held-release-terminal",
-        "seconds": [
-          0.25,
-          0.333333333333333,
-          1.5
-        ],
-        "sample_labels": [
-          "held",
-          "release",
-          "terminal"
-        ],
-        "props": [
-          "prop_spear",
-          "prop_shield"
-        ]
-      },
-      {
-        "kind": "spearman",
-        "label": "spearman-contacts-shield-settle",
-        "seconds": [
-          0.687274043031757,
-          0.85986199877582,
-          0.927274043031756
-        ],
-        "sample_labels": [
-          "shield contact",
-          "spear contact",
-          "shield settle"
-        ],
-        "props": [
-          "prop_spear",
-          "prop_shield"
-        ]
-      },
-      {
-        "kind": "spearman",
-        "label": "spearman-settle-terminal",
-        "seconds": [
-          1.09986199877582,
-          1.5,
-          1.5
-        ],
-        "sample_labels": [
-          "spear settle",
-          "terminal",
-          "terminal reference"
-        ],
-        "props": [
-          "prop_spear",
-          "prop_shield"
-        ]
-      },
-      {
-        "kind": "archer",
-        "label": "archer-held-release-contact",
-        "seconds": [
-          0.25,
-          0.333333333333333,
-          0.675266394176888
-        ],
-        "sample_labels": [
-          "held",
-          "release",
-          "bow contact"
-        ],
-        "props": [
-          "prop_bow"
-        ]
-      },
-      {
-        "kind": "archer",
-        "label": "archer-settle-terminal",
-        "seconds": [
-          0.915266394176888,
-          1.5,
-          1.5
-        ],
-        "sample_labels": [
-          "bow settle",
-          "terminal",
-          "terminal reference"
-        ],
-        "props": [
-          "prop_bow"
-        ]
-      },
-      {
-        "kind": "scout",
-        "label": "scout-held-release-contact",
-        "seconds": [
-          0.25,
-          0.333333333333333,
-          0.760425288309763
-        ],
-        "sample_labels": [
-          "held",
-          "release",
-          "sword contact"
-        ],
-        "props": [
-          "prop_sword"
-        ]
-      },
-      {
-        "kind": "scout",
-        "label": "scout-settle-terminal",
-        "seconds": [
-          1.00042528830976,
-          1.5,
-          1.5
-        ],
-        "sample_labels": [
-          "sword settle",
-          "terminal",
-          "terminal reference"
-        ],
-        "props": [
-          "prop_sword"
-        ]
-      }
-    ],
     "camera": {
       "projection": 1,
       "size": 4.2,
@@ -431,6 +307,56 @@
       "archer": "b063d8e0f38b6c489279d7c6e0d0489cd4569b204bec380307a14c9a3a27d094",
       "scout": "092dba07aac9cee21c48b124846973e274831757d6a9cbefd5d84227d7e6fca3"
     },
-    "scope": "Controlled paused death milestones, not gameplay, side/rear coverage, continuous clearance, velocity continuity, stable contact, GPU skin probes or phone performance"
+    "scope": "Controlled native clip samples at20Hz, not real-time playback capture, gameplay, continuous velocity/clearance, stability, GPU probe or phone performance",
+    "kinds": [
+      "spearman",
+      "archer",
+      "scout"
+    ],
+    "sample_seconds": [
+      0.0,
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.8,
+      0.85,
+      0.9,
+      0.95,
+      1.0,
+      1.05,
+      1.1,
+      1.15,
+      1.2,
+      1.25,
+      1.3,
+      1.35,
+      1.4,
+      1.45,
+      1.5
+    ],
+    "props": {
+      "spearman": [
+        "prop_spear",
+        "prop_shield"
+      ],
+      "archer": [
+        "prop_bow"
+      ],
+      "scout": [
+        "prop_sword"
+      ]
+    }
   }
 }

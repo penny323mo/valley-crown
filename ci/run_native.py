@@ -388,9 +388,9 @@ def run(args):
     require(contract in [
         {'mode': 'gameplay', 'kind': 'genuine_native_game_viewport', 'frame_count': 10},
         {'mode': 'rig_studies', 'kind': 'native_controlled_rig_study', 'frame_count': 25},
-        {'mode': 'death_contact', 'kind': 'native_controlled_death_contact', 'frame_count': 7},
+        {'mode': 'death_motion', 'kind': 'native_controlled_death_motion', 'frame_count': 31},
         {'mode': 'occlusion', 'kind': 'native_controlled_occlusion_fixture', 'frame_count': 6}], 'Unreviewed capture contract')
-    require(contract['mode'] not in ('rig_studies','death_contact') or (args.width,args.height) == (844,390), 'Rig study viewport differs')
+    require(contract['mode'] not in ('rig_studies','death_motion') or (args.width,args.height) == (844,390), 'Rig study viewport differs')
     require(contract['mode'] != 'occlusion' or (args.width,args.height) == (390,844), 'Occlusion viewport differs')
     project = args.project.resolve()
     out, private = args.output.resolve(), args.private.resolve()

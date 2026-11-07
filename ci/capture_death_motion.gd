@@ -1,12 +1,13 @@
 extends SceneTree
-## Controlled paused samples of accepted native death equipment. NOT gameplay.
+## Actual native clip samples at20Hz. No image interpolation or gameplay claim.
 const Controller = preload("res://scripts/action_character.gd")
 const Rules = preload("res://scripts/rules.gd")
-const CAPTURE_KIND := "native_controlled_death_contact"
-const SCENARIO := "native_death_contact_milestones_v1"
+const CAPTURE_KIND := "native_controlled_death_motion"
+const SCENARIO := "native_death_motion_20hz_v1"
 const EXPECTED_BUILD := "vc-470d98d0c3ee"
 const ORIGINAL_FIXTURE_SHA256 := "c3bbcbf740babe5d60d5d3565e01ddf856b7403071d5ba64c2e9f36595576040"
-const STUDIES := [{"kind":"spearman","label":"spearman-held-release-terminal","seconds":[0.25,0.333333333333333,1.5],"sample_labels":["held","release","terminal"],"props":["prop_spear","prop_shield"]},{"kind":"spearman","label":"spearman-contacts-shield-settle","seconds":[0.687274043031757,0.85986199877582,0.927274043031756],"sample_labels":["shield contact","spear contact","shield settle"],"props":["prop_spear","prop_shield"]},{"kind":"spearman","label":"spearman-settle-terminal","seconds":[1.09986199877582,1.5,1.5],"sample_labels":["spear settle","terminal","terminal reference"],"props":["prop_spear","prop_shield"]},{"kind":"archer","label":"archer-held-release-contact","seconds":[0.25,0.333333333333333,0.675266394176888],"sample_labels":["held","release","bow contact"],"props":["prop_bow"]},{"kind":"archer","label":"archer-settle-terminal","seconds":[0.915266394176888,1.5,1.5],"sample_labels":["bow settle","terminal","terminal reference"],"props":["prop_bow"]},{"kind":"scout","label":"scout-held-release-contact","seconds":[0.25,0.333333333333333,0.760425288309763],"sample_labels":["held","release","sword contact"],"props":["prop_sword"]},{"kind":"scout","label":"scout-settle-terminal","seconds":[1.00042528830976,1.5,1.5],"sample_labels":["sword settle","terminal","terminal reference"],"props":["prop_sword"]}]
+const KINDS := ["spearman","archer","scout"]
+const PROPS := {"spearman":["prop_spear","prop_shield"],"archer":["prop_bow"],"scout":["prop_sword"]}
 var output: String
 var expected_build: String
 var evidence_size: Vector2i
@@ -16,6 +17,8 @@ var caption: Label
 var samples_label: Label
 var evidence_frames: Array = []
 var checks: Array = []
+var bodies: Array[Node3D] = []
+var controllers: Array = []
 
 func _initialize():
 	if configure_evidence(Vector2i(844,390)): call_deferred("run")
@@ -53,63 +56,60 @@ func run() -> void:
 	caption.add_theme_font_size_override("font_size",18); canvas.add_child(caption)
 	samples_label = Label.new(); samples_label.position = Vector2(12,362)
 	samples_label.add_theme_font_size_override("font_size",15); canvas.add_child(samples_label)
-	for study in STUDIES:
-		var captured: bool = await capture_study(study)
-		if not captured: return
-	var report := {"passed":true,"frame_count":evidence_frames.size(),"frames":evidence_frames,
-		"mode":"death_contact","scenario":SCENARIO,"fixed_fps":20,"build":Rules.BUILD_ID,
-		"checks":checks,"failed":0,"distinct_class_time_samples":17,
-		"scope":"Untouched controlled native triptychs. Existing camera/floor only. Not gameplay or artistic approval.",
-		"not_verified":["release velocity continuity or smoothness","continuous or swept clearance","physical stability","side/rear visibility","normal gameplay death","Web/iPhone/performance"]}
-	var file := FileAccess.open(output.path_join("capture-report.json"),FileAccess.WRITE)
-	if file==null:fail("Cannot save final capture report");return
-	file.store_string(JSON.stringify(report,"  ")+"\n");file.close()
-	world.free();canvas.free();quit(0)
-
-func capture_study(study: Dictionary) -> bool:
-	var kind: String = study.kind
-	var bodies: Array[Node3D] = []
-	var controllers: Array = []
-	var evidence: Array = []
-	var paused: Array = []
-	var positions: Array = []
 	for index in 3:
 		var body := Node3D.new();world.add_child(body)
 		body.position = Vector3((index-1)*2.4,0,0);bodies.append(body)
 		var controller = Controller.new()
-		if not controller.bind(body,kind,Color("435d6c")):
-			fail("Unable to bind reviewed death rig");return false
+		if not controller.bind(body,KINDS[index],Color("435d6c")):
+			fail("Unable to bind reviewed death rig");return
 		controllers.append(controller)
 		controller.occlusion.set_authorized(false)
 		var length: float = controller.player.get_animation("death").length
-		if not is_equal_approx(length,1.5):fail("Death clip length differs");return false
-		for prop: String in study.props:
-			if controller.skeleton.find_bone(prop)<0:fail("Required equipment bone absent");return false
-		controller._start("death",float(study.seconds[index]),false,false)
-	caption.text = "CONTROLLED DEATH STUDY, NOT GAMEPLAY | "+kind
-	var labels := PackedStringArray()
-	for index in 3:
-		labels.append("%s %.3fs" % [study.sample_labels[index],study.seconds[index]])
-	samples_label.text = "   |   ".join(labels)
+		if not is_equal_approx(length,1.5):fail("Death clip length differs");return
+		for prop: String in PROPS[KINDS[index]]:
+			if controller.skeleton.find_bone(prop)<0:fail("Required equipment bone absent");return
+	caption.text = "CONTROLLED DEATH MOTION | spearman / archer / scout"
+	for index in 31:
+		var captured: bool = await capture_sample(index)
+		if not captured:return
+	var report := {"passed":true,"frame_count":evidence_frames.size(),"frames":evidence_frames,
+		"mode":"death_motion","scenario":SCENARIO,"fixed_fps":20,"build":Rules.BUILD_ID,
+		"checks":checks,"failed":0,"sample_hz":20,"actor_pose_count":93,
+		"scope":"Thirty-one untouched viewport frames at direct native clip times. Controlled study, not real-time gameplay or device performance.",
+		"not_verified":["continuous velocity or jerk","between-frame clearance","physical stability","side/rear visibility","normal gameplay death","Web/iPhone/performance"]}
+	var file := FileAccess.open(output.path_join("capture-report.json"),FileAccess.WRITE)
+	if file==null:fail("Cannot save final capture report");return
+	file.store_string(JSON.stringify(report,"  ")+"\n");file.close()
+	for controller in controllers:controller.release()
+	world.free();canvas.free();quit(0)
+
+func capture_sample(index: int) -> bool:
+	var seconds: float = float(index)/20.0
+	for controller in controllers:controller._start("death",seconds,false,false)
+	samples_label.text = "Native clip %.3fs | 20 Hz samples | NOT gameplay or measured FPS" % seconds
 	await process_frame;await process_frame;await RenderingServer.frame_post_draw
-	for index in 3:
-		var controller = controllers[index]
+	var evidence: Array = []
+	var paused: Array = []
+	var positions: Array = []
+	var player_positions: Array = []
+	for slot in 3:
+		var controller = controllers[slot]
 		evidence.append(controller.visual_evidence_snapshot())
 		paused.append(not controller.player.is_playing())
-		positions.append([bodies[index].position.x,bodies[index].position.y,bodies[index].position.z])
+		player_positions.append(controller.player.current_animation_position)
+		positions.append([bodies[slot].position.x,bodies[slot].position.y,bodies[slot].position.z])
 	var forward: Vector3 = -camera.global_basis.z
-	var details := {"scenario":SCENARIO,"fixed_fps":20,"kind":kind,"clip":"death","clip_length_seconds":1.5,
-		"sample_seconds":study.seconds,"sample_labels":study.sample_labels,"props":study.props,
-		"sample_players_paused":paused,"body_positions":positions,"unit_state":"controlled_paused_death_milestones",
+	var details := {"scenario":SCENARIO,"fixed_fps":20,"sample_hz":20,"kinds":KINDS,"clip":"death","clip_length_seconds":1.5,
+		"sample_index":index,"sample_seconds":seconds,"props":PROPS,"player_position_seconds":player_positions,
+		"sample_players_paused":paused,"body_positions":positions,"unit_state":"controlled_paused_death_motion_sample",
 		"original_fixture_sha256":ORIGINAL_FIXTURE_SHA256,
 		"camera":{"projection":camera.projection,"size":camera.size,
 			"position":[camera.position.x,camera.position.y,camera.position.z],"forward":[forward.x,forward.y,forward.z]},
 		"floor":{"y":0,"size":[20,12]}}
-	var frame: Dictionary = await evidence_frame(study.label,evidence,details)
+	var label := "death-motion-%02d" % index
+	var frame: Dictionary = await evidence_frame(label,evidence,details)
 	if frame.is_empty():return false
-	checks.append({"name":study.label+" framebuffer saved","pass":true})
-	for controller in controllers:controller.release()
-	for body in bodies:body.free()
+	checks.append({"name":label+" framebuffer saved","pass":true})
 	return true
 
 func configure_evidence(required_size: Vector2i) -> bool:
@@ -141,7 +141,7 @@ func evidence_frame(label: String, poses: Array, details: Dictionary = {}) -> Di
 		"adapter_name":RenderingServer.get_video_adapter_name(),"adapter_vendor":RenderingServer.get_video_adapter_vendor(),
 		"framebuffer":[image.get_width(),image.get_height()],"game_tick":null,"game_seconds":null,
 		"game_sha256":FileAccess.get_sha256("res://scripts/game.gd"),"rules_sha256":FileAccess.get_sha256("res://scripts/rules.gd"),
-		"animation_poses":poses,"limitations":["Controlled rig fixture, not gameplay", "Native software renderer, not Web/iPhone/performance", "Paused finite milestones; no continuous-motion or stability acceptance"]}
+		"animation_poses":poses,"limitations":["Controlled native clip samples, not gameplay", "Native software renderer, not Web/iPhone/performance", "Direct native poses sampled at20Hz; no interpolation, measured FPS or continuous guarantee"]}
 	frame.merge(details,false); evidence_frames.append(frame)
 	var sidecar := FileAccess.open(path+".json",FileAccess.WRITE)
 	if sidecar == null:

@@ -1,0 +1,112 @@
+{
+  "scenario": "native_death_motion_20hz_v1",
+  "viewport": [
+    844,
+    390
+  ],
+  "fixed_fps": 20,
+  "clip": "death",
+  "clip_length_seconds": 1.5,
+  "camera": {
+    "projection": 1,
+    "size": 4.2,
+    "position": [
+      0,
+      2.7,
+      6
+    ],
+    "forward": [
+      0,
+      -0.31622776601683794,
+      -0.9486832980505138
+    ]
+  },
+  "floor": {
+    "y": 0,
+    "size": [
+      20,
+      12
+    ]
+  },
+  "body_positions": [
+    [
+      -2.4,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      2.4,
+      0,
+      0
+    ]
+  ],
+  "original_fixture_sha256": "c3bbcbf740babe5d60d5d3565e01ddf856b7403071d5ba64c2e9f36595576040",
+  "native_artifact": {
+    "run_id": 42385752545,
+    "artifact_id": 13580005482,
+    "sha256": "c0e172acd5447ae57db4c6d7c754882b00c51e5832bafec6a0517da4b92aa0ee",
+    "patch_report_sha256": "25e018a054e5f6170263dd5bc634177c1661fb211861f04c804b498f40717246",
+    "native_probe_report_sha256": "4cadd66065773417d8082b1d959b9321b2c5cf7a4393f6af0bddeeb606cf15ab"
+  },
+  "output_scn_sha256": {
+    "spearman": "ee2e93ce3c562f36ce679c482332c025987dc57c2fb3f6851a1c913302a1e4d1",
+    "archer": "b063d8e0f38b6c489279d7c6e0d0489cd4569b204bec380307a14c9a3a27d094",
+    "scout": "092dba07aac9cee21c48b124846973e274831757d6a9cbefd5d84227d7e6fca3"
+  },
+  "scope": "Controlled native clip samples at20Hz, not real-time playback capture, gameplay, continuous velocity/clearance, stability, GPU probe or phone performance",
+  "kinds": [
+    "spearman",
+    "archer",
+    "scout"
+  ],
+  "sample_seconds": [
+    0.0,
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.35,
+    0.4,
+    0.45,
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85,
+    0.9,
+    0.95,
+    1.0,
+    1.05,
+    1.1,
+    1.15,
+    1.2,
+    1.25,
+    1.3,
+    1.35,
+    1.4,
+    1.45,
+    1.5
+  ],
+  "props": {
+    "spearman": [
+      "prop_spear",
+      "prop_shield"
+    ],
+    "archer": [
+      "prop_bow"
+    ],
+    "scout": [
+      "prop_sword"
+    ]
+  }
+}
