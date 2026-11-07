@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse,json,math
 import scan_evidence as base
 CAPTURE={'mode':'selection_preview','kind':'native_controlled_selection_preview','frame_count':4}
-BUILD='vc-f605f947768e'
+BUILD='vc-c09af531eecf'
 SCENARIO='native_selection_preview_portrait_v1'
 SCOPE='frozen normal seeded world; native ScreenTouch preview and menu selection, not paid construction or physical phone'
 LABELS=['held_preview_before_army','army_actions_restored','held_preview_before_home','home_actions_restored']
@@ -12,7 +12,7 @@ CHECKS=['fixed portrait logical viewport','normal seeded targets']
 for p,preview,restored in [('army',LABELS[0],LABELS[1]),('home',LABELS[2],LABELS[3])]:
  CHECKS += [p+' worker target',p+' worker selected',p+'_house reachable',p+' unheld preview',p+' guided plot reachable',p+' held legal preview',preview+' raw screenshot saved',p+'_menu reachable',p+' menu preserves preview',p+'_target reachable',p+' selected and closed',p+' preview fully retired',p+' actions restored',restored+' raw screenshot saved']
 CHECKS += ['unchanged authority economy and frozen tick']
-ERRORS={'Selection contract differs','Selection checks differ','Selection input differs','Selection state differs','Selection camera differs','Selection UI metadata differs','Selection pose differs'}
+ERRORS={'Selection contract differs','Selection checks differ','Selection input differs','Selection state differs','Selection camera differs','Selection UI metadata differs','Selection pose differs','Build hint lifecycle differs'}
 def need(value,reason='Selection state differs'):base.require(value,reason)
 def finite(x):return type(x) in (int,float) and math.isfinite(x)
 def near(a,b,tolerance=3e-6):
@@ -67,7 +67,7 @@ def validate(report,lock):
   roots=f.get('animation_poses',[]);need(len(roots)==1 and roots[0].get('node')=='.','Selection pose differs');snap=roots[0].get('snapshot',{});live=snap.get('live',{})
   need(snap.get('death_visual_cap')==16 and snap.get('deaths')==[] and str(current_worker) in live and live[str(current_worker)].get('kind')=='villager','Selection pose differs')
   for pose in live.values():base.pose_identity(pose,lock)
-  hud=f.get('hud',{});need(set(hud)=={'selection_title','detail','queue','toast','bottom_rect','top_rect','unit_tools_visible','command_visible','command_rect','actions','action_scroll_rect','action_scroll_horizontal'},'Selection UI metadata differs')
+  hud=f.get('hud',{});need(set(hud)=={'toast_build_guidance','toast_time','selection_title','detail','queue','toast','bottom_rect','top_rect','unit_tools_visible','command_visible','command_rect','actions','action_scroll_rect','action_scroll_horizontal'},'Selection UI metadata differs')
   for key in ('bottom_rect','top_rect','command_rect','action_scroll_rect'):rect(hud[key])
   need(type(hud['action_scroll_horizontal']) is int and hud['action_scroll_horizontal']>=0,'Selection UI metadata differs')
   actions=hud['actions'];need(type(actions) is list and len(actions)==(2 if i<3 else 1),'Selection UI metadata differs')
@@ -84,6 +84,11 @@ def validate(report,lock):
    item=hud[key];need(set(item)=={'text','rect','minimum_size','visible','line_count'} and type(item['text']) is str and len(item['text'])<512 and type(item['visible']) is bool and type(item['line_count']) is int and 0<=item['line_count']<=20,'Selection UI metadata differs');rect(item['rect'])
    need(type(item['minimum_size']) is list and len(item['minimum_size'])==2 and all(finite(x) and x>=0 for x in item['minimum_size']),'Selection UI metadata differs')
    if item['visible'] and (not inside(item['rect']) or item['minimum_size'][1]>item['rect'][3]+1):findings.append({'kind':'possible_ui_clipping','frame':LABELS[i],'control':key})
+  need(type(hud['toast_build_guidance']) is bool and finite(hud['toast_time']),'Build hint lifecycle differs')
+  if preview:
+   need(hud['toast_build_guidance'] is True and 0<hud['toast_time']<=6 and hud['toast']['visible'] is True and hud['toast']['text']=='可在任何已看清的空地建造；避開樹木、漿果、建築和單位，留有入口。','Build hint lifecycle differs')
+  else:
+   need(hud['toast_build_guidance'] is False and hud['toast_time']==0 and hud['toast']['visible'] is False and hud['toast']['text']=='','Build hint lifecycle differs')
   if not inside(hud['bottom_rect']):findings.append({'kind':'hud_outside_viewport','frame':LABELS[i]})
   need(hud['selection_title']['text']==('建造 民居' if preview else ('斥候' if i==1 else '主堡')),'Selection UI metadata differs')
   need(hud['queue']['text']==('木材 50' if preview else '') and hud['queue']['visible'] is preview,'Selection UI metadata differs')

@@ -6,7 +6,7 @@ var checks=[]
 var input_trace=[]
 var captures=[]
 var destination=""
-const EXPECTED_BUILD="vc-f605f947768e"
+const EXPECTED_BUILD="vc-c09af531eecf"
 const SCENARIO="native_selection_preview_portrait_v1"
 const CAPTURE_KIND="native_controlled_selection_preview"
 var build=""
@@ -84,7 +84,7 @@ func capture(label):
 		"game_tick":game.tick_count,"game_frame_counter":game.frame_counter,"test_mode":game.test_mode,"snapshot":game._snapshot().duplicate(true),"selected":game.selected.duplicate(),"commands":commands_data(),"bank":game.economy.bank_milli(0).duplicate(true),"producer_queue":keep.queue.duplicate(true),"input_count":input_trace.size(),"touch_command":game.touch_command,"build_mode":game.build_mode,"preview_held":game.build_preview_held,"ghost_valid":is_instance_valid(game.ghost),"ghost_count":ghost_count(),"pointer_world":v3(game.pointer_world),"placement_ok":game.placement_ok,"build_confirm_valid":is_instance_valid(game.build_confirm),"menu_visible":game.compact_menu.is_visible_in_tree(),"menu_dismiss_visible":game.compact_menu_dismiss.is_visible_in_tree(),"pointer_counts":{"all":game.all_touch_ids.size(),"points":game.touch_points.size(),"gui":game.gui_touch_press.size(),"epochs":game.touch_press_epochs.size()},
 		"animation_poses":[{"node":".","snapshot":game.visual_evidence_snapshot()}],
 		"camera":{"focus":v3(game.camera_focus),"zoom":game.camera_zoom,"projection":game.camera.projection,"keep_aspect":game.camera.keep_aspect,"size":game.camera.size,"near":game.camera.near,"far":game.camera.far,"transform":xform(game.camera.global_transform)},
-		"hud":{"selection_title":label_data(game.selection_title),"detail":label_data(game.selection_detail),"queue":label_data(game.queue_label),"toast":label_data(game.toast_label),"bottom_rect":rect_data(game.hud_bottom),"top_rect":rect_data(game.hud_top),"unit_tools_visible":game.compact_unit_tools.is_visible_in_tree(),"command_visible":game.touch_button.is_visible_in_tree(),"command_rect":rect_data(game.touch_button),"actions":actions_data(),"action_scroll_rect":rect_data(game.action_scroll),"action_scroll_horizontal":game.action_scroll.scroll_horizontal},
+		"hud":{"toast_build_guidance":game.toast_build_guidance,"toast_time":game.toast_time,"selection_title":label_data(game.selection_title),"detail":label_data(game.selection_detail),"queue":label_data(game.queue_label),"toast":label_data(game.toast_label),"bottom_rect":rect_data(game.hud_bottom),"top_rect":rect_data(game.hud_top),"unit_tools_visible":game.compact_unit_tools.is_visible_in_tree(),"command_visible":game.touch_button.is_visible_in_tree(),"command_rect":rect_data(game.touch_button),"actions":actions_data(),"action_scroll_rect":rect_data(game.action_scroll),"action_scroll_horizontal":game.action_scroll.scroll_horizontal},
 		"scope":"frozen normal seeded world; native ScreenTouch preview and menu selection, not paid construction or physical phone"}
 	var sidecar=FileAccess.open(path+".json",FileAccess.WRITE)
 	if sidecar==null: quit(2); return

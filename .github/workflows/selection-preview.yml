@@ -1,7 +1,7 @@
-name: Inspect selection preview cancellation in native portrait
+name: Inspect owned build hint retirement in native portrait
 on:
   push:
-    branches: [ci/native-selection-preview-pickable-worker-v1]
+    branches: [ci/native-stale-build-hint-portrait-v1]
     paths: ['.github/workflows/selection-preview.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
           python3 - <<'PYCODE'
           import hashlib,json,pathlib
           lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
-          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-f605f947768e'
+          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-c09af531eecf'
           assert lock['selection_viewport']==[${{ matrix.width }},${{ matrix.height }}]
           assert lock['fixed_fps']==20 and lock['capture_contract']['frame_count']==4
           assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
@@ -66,14 +66,15 @@ jobs:
           python3 ci/apply_unitbar_overlay.py --project project --base-package CONSTRUCTION_SOURCE_PACKAGE.json --package UNITBAR_SOURCE_PACKAGE.json --overlay unitbar-overlay.zip --receipt assembly-unitbar.json
           python3 ci/apply_guidance_overlay.py --project project --base-package UNITBAR_SOURCE_PACKAGE.json --package GUIDANCE_SOURCE_PACKAGE.json --overlay guidance-overlay.zip --receipt assembly-guidance.json
           python3 ci/apply_selection_overlay.py --project project --base-package GUIDANCE_SOURCE_PACKAGE.json --package SELECTION_SOURCE_PACKAGE.json --overlay selection-overlay.zip --receipt assembly-selection.json
+          python3 ci/apply_stale_hint_overlay.py --project project --base-package SELECTION_SOURCE_PACKAGE.json --package STALE_HINT_SOURCE_PACKAGE.json --overlay stale-hint-overlay.zip --receipt assembly-stale-hint.json
           python3 - <<'PYCODE'
           import json,pathlib,sys
           sys.path.insert(0,'ci')
           from apply_construction_overlay import write_archive
-          package=json.loads(pathlib.Path('SELECTION_SOURCE_PACKAGE.json').read_text())
+          package=json.loads(pathlib.Path('STALE_HINT_SOURCE_PACKAGE.json').read_text())
           entries={row['file']:row['sha256'] for row in package['files']}
           assert len(entries)==192
-          write_archive(pathlib.Path('project'),entries,pathlib.Path('selection-source.zip'))
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('stale-hint-source.zip'))
           PYCODE
       - name: Install official Ubuntu display dependencies
         run: |
@@ -92,8 +93,8 @@ jobs:
       - name: Guarded native import
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive selection-source.zip --manifest SELECTION_SOURCE_PACKAGE.json --archive-sha256 809f18defbe4abaeea757998a4b6a0cb905276e181da5a98c363055ecd47173c --manifest-sha256 69f5b245bcef0ea5e438a0a49195af37cb426ff7059d71c1a986b671f809c0c3 --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: Capture four controlled preview and menu-selection stages
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive stale-hint-source.zip --manifest STALE_HINT_SOURCE_PACKAGE.json --archive-sha256 4cea135b474197e9f2a59e4662b94ef34469a37dbeb76f581a5b00af3e1be46f --manifest-sha256 4dc5e2685f6170d96a891fc396efe8c4156bb9c0f830247b71bdc21e0579a698 --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: Capture four controlled before-and-after build hint stages
         id: capture_selection
         run: |
           set -euo pipefail
@@ -103,7 +104,7 @@ jobs:
         if: ${{ success() && steps.capture_selection.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rts-selection-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: rts-stale-hint-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             evidence/${{ matrix.flow }}/
             evidence/${{ matrix.flow }}-scan.json
