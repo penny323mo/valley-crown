@@ -1,23 +1,24 @@
-name: Validate integrated construction regressions
+name: Validate one ordinary resource expansion replay
 on:
   push:
-    branches: [ci/construction-regression-v1]
-    paths: ['.github/workflows/construction-regression.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/resource-expansion-432766-v1]
+    paths: ['.github/workflows/ordinary-replay.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
 jobs:
-  native-contract:
+  validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Verify reviewed public inputs
+      - name: Verify exact reviewed public inputs
         run: |
+          set -euo pipefail
           python3 - <<'PYCODE'
-          import hashlib,json,pathlib
+          import pathlib,json,hashlib
           for name,digest in json.loads(pathlib.Path('PUBLIC_INPUTS.json').read_text()).items():
               assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest,name
           PYCODE
@@ -44,6 +45,11 @@ jobs:
           python3 ci/apply_action_fix.py --project project --base-lock SOURCE_INPUT_LOCK.json --fix-lock ACTION_FIX_SOURCE_LOCK.json --overlay action-presentation-fix-v1.zip --receipt assembly-action-fix.json
           python3 ci/apply_native_delta.py
           python3 ci/apply_occlusion_overlay.py --project project --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --package OCCLUSION_SOURCE_PACKAGE.json --package-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --overlay occlusion-source-overlay-v3.zip --archive occlusion-source.zip --receipt assembly-occlusion.json
+      - name: Install official Ubuntu display dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
           python3 ci/apply_construction_overlay.py --project project --accepted-lock OCCLUSION_SOURCE_PACKAGE.json --package CONSTRUCTION_SOURCE_PACKAGE.json --package-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --overlay construction-overlay.zip --archive construction-source.zip --receipt assembly-construction.json
       - name: Verify pinned official engine
         run: |
@@ -57,26 +63,25 @@ jobs:
       - name: Guarded native import
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive construction-source.zip --manifest CONSTRUCTION_REGRESSION_PACKAGE.json --archive-sha256 a4740d4e00862128d06dea1030dfd0efea6c9c0e8bc0e89f3a0396b5314d8f98 --manifest-sha256 f9473eac11baf62982d67df333ed9cb74f43c8e826e22e200907f0e9c99355bd --xdg private/import --hosted-execution-approved --output evidence/source-import
-      - name: Run focused integrated regression contracts
-        id: native_test
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive construction-source.zip --manifest CONSTRUCTION_SOURCE_PACKAGE.json --archive-sha256 a4740d4e00862128d06dea1030dfd0efea6c9c0e8bc0e89f3a0396b5314d8f98 --manifest-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: One bounded ordinary replay and separate verdict
+        id: replay
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py test --project project --godot "$GODOT" --archive construction-source.zip --manifest CONSTRUCTION_REGRESSION_PACKAGE.json --archive-sha256 a4740d4e00862128d06dea1030dfd0efea6c9c0e8bc0e89f3a0396b5314d8f98 --manifest-sha256 f9473eac11baf62982d67df333ed9cb74f43c8e826e22e200907f0e9c99355bd --xdg private/import --hosted-execution-approved --output evidence/source-tests
-      - name: Admit declared bounded native evidence
-        id: native_scan
-        if: ${{ !cancelled() }}
+          python3 ci/run_ordinary_replay.py
+      - name: Admit bounded partial or complete replay evidence
+        id: scan
+        if: always() && steps.replay.outcome != 'skipped'
         run: |
           set -euo pipefail
-          echo '249fc8063075c607b1beba32718a244f7d85223183ec47e4a489fc91a0cfbe56  ci/scan_native_evidence.py' | sha256sum --check --strict
-          python3 ci/scan_native_evidence.py
-      - name: Retain only admitted native evidence
-        if: ${{ !cancelled() && steps.native_scan.outcome == 'success' }}
+          echo '74132bd48b4d329df115fb3384ca9ef3946a4ee8605625a8b9f7aec4f0dc7ab1  ci/scan_replay_evidence.py' | sha256sum --check --strict
+          python3 ci/scan_replay_evidence.py
+      - name: Retain only admitted replay evidence
+        if: always() && steps.scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: construction-regression-${{ github.sha }}-${{ github.run_attempt }}
+          name: resource-expansion-432766-${{ github.sha }}
           path: |
-            evidence/
-            evidence-scan.json
+            safe-replay-evidence/
           if-no-files-found: error
           retention-days: 14
