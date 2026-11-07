@@ -18,7 +18,16 @@ var army_ids=[]
 var menu_proofs=[]
 var preview_refs=[]
 func _initialize(): call_deferred("run")
-func check(name,ok): checks.append({"name":name,"pass":bool(ok)})
+const CHECK_NAMES=["fixed portrait logical viewport", "normal seeded targets", "army worker target", "army worker selected", "army_house reachable", "army unheld preview", "army guided plot reachable", "army held legal preview", "held_preview_before_army raw screenshot saved", "army_menu reachable", "army menu preserves preview", "army_target reachable", "army selected and closed", "army preview fully retired", "army actions restored", "army_actions_restored raw screenshot saved", "home worker target", "home worker selected", "home_house reachable", "home unheld preview", "home guided plot reachable", "home held legal preview", "held_preview_before_home raw screenshot saved", "home_menu reachable", "home menu preserves preview", "home_target reachable", "home selected and closed", "home preview fully retired", "home actions restored", "home_actions_restored raw screenshot saved", "unchanged authority economy and frozen tick"]
+func check(name,ok):
+	checks.append({"name":name,"pass":bool(ok)})
+	if not bool(ok):
+		# Fixed source-known labels only; never emit arbitrary state or report values.
+		var index=CHECK_NAMES.find(name)
+		if index>=0:
+			push_error("SELECTION_CHECK_FAILED %02d %s" % [index,CHECK_NAMES[index]])
+		else:
+			push_error("SELECTION_CHECK_FAILED unknown_check")
 func settle():
 	for i in 4: await process_frame
 func tap(p,action,target_rect=[]):
