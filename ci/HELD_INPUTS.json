@@ -1,6 +1,6 @@
 {
-  "apply_held_spear.gd": "8c0b24da033c81c67c9b816987ac78909626508b48dec8be9a782d6af50bc1f7",
+  "apply_held_spear.gd": "2d1e9842eea51c705faeaa6faf4066e305e51422f24969d7892437928349dc23",
   "spear-held-key-proposal.json": "1a00de57c262f624b8858b372646d338d5ac77812937d5ff9c0144ba5d53f6bf",
   "scene_preservation.gd": "431a50778b3afb62d3800d50f4c2ee26206b1fe4c9e4d2e6746f9d578e63eec3",
-  "validate_held.gd": "e6a10e2cd92bf43883524c978d66f2f2fd8b757c4f6358978de5ca79eb74ad73"
+  "validate_held.gd": "f9f9b7e9b873d50904e76b4234a57710b74c366c23c52769bc271387a82bced6"
 }

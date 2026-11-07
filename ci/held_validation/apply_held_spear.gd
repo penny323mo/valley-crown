@@ -26,6 +26,11 @@ static func _snapshot(player: AnimationPlayer, omit_values: bool) -> PackedByteA
 static func _failure(code: String) -> Dictionary:
 	return {"completed": false, "failure_code": code}
 
+static func _time_failure(key_index: int, track_type: int, actual: float, expected: float) -> Dictionary:
+	if not is_finite(actual) or not is_finite(expected):
+		return _failure("HELD_KEY_TIME_NONFINITE")
+	return {"completed": false, "failure_code": "HELD_KEY_TIME", "time_diagnostic": {"key_index": key_index, "track_type": track_type, "actual_type": typeof(actual), "expected_type": typeof(expected), "actual_variant_hex": var_to_bytes(actual).hex_encode(), "expected_variant_hex": var_to_bytes(expected).hex_encode(), "actual_float32_hex": PackedFloat32Array([actual]).to_byte_array().hex_encode(), "expected_float32_hex": PackedFloat32Array([expected]).to_byte_array().hex_encode()}}
+
 static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, source_scene_path: String, proposal_path: String, proposal_sha256: String) -> Dictionary:
 	if not FileAccess.file_exists(proposal_path) or FileAccess.get_sha256(proposal_path) != proposal_sha256:
 		return _failure("HELD_PROPOSAL_HASH")
@@ -55,7 +60,7 @@ static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, 
 			if track.type not in ["position_3d", "rotation_3d"] or clip.track_get_type(index) != expected_type: return _failure("HELD_TRACK_TYPE")
 			if clip.track_get_key_count(index) != track.times.size() or change.original_values.size() != track.times.size() or track.values.size() != track.times.size(): return _failure("HELD_KEY_COUNT")
 			for key in track.times.size():
-				if clip.track_get_key_time(index,key) != float(track.times[key]): return _failure("HELD_KEY_TIME")
+				if clip.track_get_key_time(index,key) != float(track.times[key]): return _time_failure(key, clip.track_get_type(index), clip.track_get_key_time(index,key), float(track.times[key]))
 				if clip.track_get_key_value(index,key) != _value(track.type, change.original_values[key]): return _failure("HELD_OLD_KEY_VALUE")
 				for number in track.values[key]:
 					if not is_finite(float(number)): return _failure("HELD_NONFINITE_REPLACEMENT")
