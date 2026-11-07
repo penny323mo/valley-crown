@@ -1,5 +1,6 @@
 extends SceneTree
 ## Run only in an authorized isolated CI copy. Never invokes an importer.
+const Diagnostic = preload("res://native_contact/diagnose_reload.gd")
 const Preservation = preload("res://native_contact/scene_preservation.gd")
 const Contact = preload("res://native_contact/apply_native_contact.gd")
 func _initialize() -> void:
@@ -55,7 +56,14 @@ func _run() -> void:
 		var checked_player: AnimationPlayer = check.find_child("AnimationPlayer", true, false)
 		var checked_skeleton: Skeleton3D = check.find_child("Skeleton3D", true, false)
 		assert(Contact._snapshot(checked_player, Contact.ALLOWED[kind]) == original)
-		assert(Contact._snapshot(checked_player, []) == corrected_tracks, "Corrected track keys or metadata changed during native reload")
+		var reloaded_tracks: PackedByteArray = Contact._snapshot(checked_player, [])
+		if reloaded_tracks != corrected_tracks:
+			var diagnostic: Dictionary = Diagnostic.describe(kind, corrected_tracks, reloaded_tracks)
+			print("NATIVE_CONTACT_RELOAD_DIAGNOSTIC=" + JSON.stringify(diagnostic))
+			push_error("Corrected track keys or metadata changed during native reload")
+			quit(1)
+			return
+		assert(reloaded_tracks == corrected_tracks, "Corrected track keys or metadata changed during native reload")
 		assert(not checked_player.is_playing() and checked_player.autoplay.is_empty())
 		for bone in checked_skeleton.get_bone_count():
 			assert(checked_skeleton.get_bone_pose_position(bone) == restore[bone][0])

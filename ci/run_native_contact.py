@@ -30,7 +30,7 @@ def main():
  try:
   package,entries=g.verify_source(project,archive,manifest,ARCHIVE,PACKAGE);g.require(len(entries)==192 and package['candidate']==BUILD,'Wrong base source')
   engine=g.checked(os.environ['GODOT'],g.ENGINE_SHA);pins=read(HERE/'CONTACT_INPUTS.json')
-  g.require(set(pins)=={'patch_native_scenes.gd','validate_native_contact.gd','probe_native_contact.gd','apply_native_contact.gd','scene_preservation.gd','input-lock.json','spearman.json','archer.json','scout.json'},'Unexpected proposal inventory')
+  g.require(set(pins)=={'patch_native_scenes.gd','diagnose_reload.gd','validate_native_contact.gd','probe_native_contact.gd','apply_native_contact.gd','scene_preservation.gd','input-lock.json','spearman.json','archer.json','scout.json'},'Unexpected proposal inventory')
   files={k:g.checked(HERE/'native_contact'/k,v) for k,v in pins.items()}
   marker=xdg/'import-complete.json';cert=read(marker)
   for k,v in {'build':BUILD,'project':str(project),'archive_sha256':ARCHIVE,'manifest_sha256':PACKAGE,'engine_sha256':g.ENGINE_SHA,'adapter_sha256':ADAPTER}.items():g.require(cert.get(k)==v,'Import identity mismatch')
