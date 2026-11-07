@@ -1,0 +1,118 @@
+name: Inspect native death equipment milestones
+on:
+  push:
+    branches: [ci/native-death-contact-render-v1]
+    paths: ['.github/workflows/death-contact.yml', 'ci/**', '*.json', '*.zip']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    name: ${{ matrix.lane }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - {lane: death-contact, build: vc-470d98d0c3ee, width: 844, height: 390, archive: death-source.zip, manifest: DEATH_SOURCE_PACKAGE.json, archive_sha: b9a5e2d79153121ab67a5594a4e239a7402b7b71af4d652a4df13d2c22dd65c2, manifest_sha: 76417073bd0a653c5ceebcb88ca3f680cc193188ac640f441638480db459ab52}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require reviewed exact death capture inputs
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          import hashlib,json,pathlib
+          lock=json.loads(pathlib.Path('ci/native-${{ matrix.lane }}-lock.json').read_text())
+          assert lock['reviewed_for_execution'] is True and lock['build']=='${{ matrix.build }}'
+          assert lock['fixed_fps']==20 and lock['death_contact_contract']['viewport']==[${{ matrix.width }},${{ matrix.height }}]
+          assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
+          for name,digest in lock['support_files'].items():
+              assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest,name
+          PYCODE
+      - name: Fetch previously accepted licensed character artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13560214428'
+          run-id: '42339730042'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: licensed-artifact
+          merge-multiple: true
+      - name: Fetch accepted native runtime delta
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13563191390'
+          run-id: '42345297400'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: native-artifact
+          merge-multiple: true
+      - name: Fetch independently accepted native contact outputs
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13580005482'
+          run-id: '42385752545'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: contact-artifact
+          merge-multiple: true
+      - name: Reassemble exact accepted 181 files without a test overlay
+        run: |
+          set -euo pipefail
+          python3 ci/assemble_combined.py
+          python3 ci/apply_action_fix.py --project project --base-lock SOURCE_INPUT_LOCK.json --fix-lock ACTION_FIX_SOURCE_LOCK.json --overlay action-presentation-fix-v1.zip --receipt assembly-action-fix.json
+          python3 ci/apply_native_delta.py
+          python3 ci/apply_occlusion_overlay.py --project project --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --package OCCLUSION_SOURCE_PACKAGE.json --package-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --overlay occlusion-source-overlay-v3.zip --archive occlusion-source.zip --receipt assembly-occlusion.json
+          python3 ci/apply_construction_overlay.py --project project --accepted-lock OCCLUSION_SOURCE_PACKAGE.json --package CONSTRUCTION_SOURCE_PACKAGE.json --package-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --overlay construction-overlay.zip --archive construction-source.zip --receipt assembly-construction.json
+      - name: Apply only reviewed ground shader and identity metadata
+        run: |
+          set -euo pipefail
+          python3 ci/apply_ground_overlay.py --project project --base-package COMBINED_SOURCE_PACKAGE.json --package GROUND_SOURCE_PACKAGE.json --overlay ground-overlay.zip
+      - name: Apply accepted native contact SCNs only in disposable project
+        run: |
+          set -euo pipefail
+          python3 ci/apply_death_overlay.py --project project --base-package GROUND_SOURCE_PACKAGE.json --package DEATH_SOURCE_PACKAGE.json --native-output contact-artifact --receipt assembly-death.json
+          python3 - <<'PYCODE'
+          import json,pathlib,sys
+          sys.path.insert(0,'ci')
+          from apply_construction_overlay import write_archive
+          package=json.loads(pathlib.Path('DEATH_SOURCE_PACKAGE.json').read_text())
+          entries={row['file']:row['sha256'] for row in package['files']}
+          assert len(entries)==192
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('death-source.zip'))
+          PYCODE
+      - name: Install official Ubuntu display dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
+      - name: Verify pinned official engine
+        run: |
+          set -euo pipefail
+          mkdir engine
+          curl --fail --location --retry 2 -o engine/linux.zip https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          unzip -q engine/linux.zip -d engine
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  engine/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --check --strict
+          chmod +x engine/Godot_v4.6.3-stable_linux.x86_64
+          echo "GODOT=$PWD/engine/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+      - name: Guarded native import
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive ${{ matrix.archive }} --manifest ${{ matrix.manifest }} --archive-sha256 ${{ matrix.archive_sha }} --manifest-sha256 ${{ matrix.manifest_sha }} --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: Capture seven original-camera controlled death triptychs
+        id: capture_death
+        run: |
+          set -euo pipefail
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_death_contact.gd --lock ci/native-${{ matrix.lane }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.lane }} --private private/${{ matrix.lane }} --width ${{ matrix.width }} --height ${{ matrix.height }}
+          python3 ci/scan_death_contact.py --directory evidence/${{ matrix.lane }} --lock ci/native-${{ matrix.lane }}-lock.json --report evidence/${{ matrix.lane }}-scan.json
+      - name: Retain independently scanned death study
+        if: ${{ success() && steps.capture_death.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: death-contact-${{ matrix.lane }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/${{ matrix.lane }}/
+            evidence/${{ matrix.lane }}-scan.json
+          if-no-files-found: error
+          retention-days: 14

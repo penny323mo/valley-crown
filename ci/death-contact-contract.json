@@ -1,0 +1,186 @@
+{
+  "scenario": "native_death_contact_milestones_v1",
+  "viewport": [
+    844,
+    390
+  ],
+  "fixed_fps": 20,
+  "clip": "death",
+  "clip_length_seconds": 1.5,
+  "studies": [
+    {
+      "kind": "spearman",
+      "label": "spearman-held-release-terminal",
+      "seconds": [
+        0.25,
+        0.333333333333333,
+        1.5
+      ],
+      "sample_labels": [
+        "held",
+        "release",
+        "terminal"
+      ],
+      "props": [
+        "prop_spear",
+        "prop_shield"
+      ]
+    },
+    {
+      "kind": "spearman",
+      "label": "spearman-contacts-shield-settle",
+      "seconds": [
+        0.687274043031757,
+        0.85986199877582,
+        0.927274043031756
+      ],
+      "sample_labels": [
+        "shield contact",
+        "spear contact",
+        "shield settle"
+      ],
+      "props": [
+        "prop_spear",
+        "prop_shield"
+      ]
+    },
+    {
+      "kind": "spearman",
+      "label": "spearman-settle-terminal",
+      "seconds": [
+        1.09986199877582,
+        1.5,
+        1.5
+      ],
+      "sample_labels": [
+        "spear settle",
+        "terminal",
+        "terminal reference"
+      ],
+      "props": [
+        "prop_spear",
+        "prop_shield"
+      ]
+    },
+    {
+      "kind": "archer",
+      "label": "archer-held-release-contact",
+      "seconds": [
+        0.25,
+        0.333333333333333,
+        0.675266394176888
+      ],
+      "sample_labels": [
+        "held",
+        "release",
+        "bow contact"
+      ],
+      "props": [
+        "prop_bow"
+      ]
+    },
+    {
+      "kind": "archer",
+      "label": "archer-settle-terminal",
+      "seconds": [
+        0.915266394176888,
+        1.5,
+        1.5
+      ],
+      "sample_labels": [
+        "bow settle",
+        "terminal",
+        "terminal reference"
+      ],
+      "props": [
+        "prop_bow"
+      ]
+    },
+    {
+      "kind": "scout",
+      "label": "scout-held-release-contact",
+      "seconds": [
+        0.25,
+        0.333333333333333,
+        0.760425288309763
+      ],
+      "sample_labels": [
+        "held",
+        "release",
+        "sword contact"
+      ],
+      "props": [
+        "prop_sword"
+      ]
+    },
+    {
+      "kind": "scout",
+      "label": "scout-settle-terminal",
+      "seconds": [
+        1.00042528830976,
+        1.5,
+        1.5
+      ],
+      "sample_labels": [
+        "sword settle",
+        "terminal",
+        "terminal reference"
+      ],
+      "props": [
+        "prop_sword"
+      ]
+    }
+  ],
+  "camera": {
+    "projection": 1,
+    "size": 4.2,
+    "position": [
+      0,
+      2.7,
+      6
+    ],
+    "forward": [
+      0,
+      -0.31622776601683794,
+      -0.9486832980505138
+    ]
+  },
+  "floor": {
+    "y": 0,
+    "size": [
+      20,
+      12
+    ]
+  },
+  "body_positions": [
+    [
+      -2.4,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      2.4,
+      0,
+      0
+    ]
+  ],
+  "original_fixture_sha256": "c3bbcbf740babe5d60d5d3565e01ddf856b7403071d5ba64c2e9f36595576040",
+  "native_artifact": {
+    "run_id": 42385752545,
+    "artifact_id": 13580005482,
+    "sha256": "c0e172acd5447ae57db4c6d7c754882b00c51e5832bafec6a0517da4b92aa0ee",
+    "patch_report_sha256": "25e018a054e5f6170263dd5bc634177c1661fb211861f04c804b498f40717246",
+    "native_probe_report_sha256": "4cadd66065773417d8082b1d959b9321b2c5cf7a4393f6af0bddeeb606cf15ab"
+  },
+  "output_scn_sha256": {
+    "spearman": "ee2e93ce3c562f36ce679c482332c025987dc57c2fb3f6851a1c913302a1e4d1",
+    "archer": "b063d8e0f38b6c489279d7c6e0d0489cd4569b204bec380307a14c9a3a27d094",
+    "scout": "092dba07aac9cee21c48b124846973e274831757d6a9cbefd5d84227d7e6fca3"
+  },
+  "scope": "Controlled paused death milestones, not gameplay, side/rear coverage, continuous clearance, velocity continuity, stable contact, GPU skin probes or phone performance"
+}
