@@ -1,19 +1,14 @@
-name: Capture two independent ordinary native phone touch flows
+name: Capture settled completed-house HUD evidence
 on:
   push:
-    branches: [ci/phone-touch-subflows-c721-v2]
+    branches: [ci/phone-touch-hud-c721-v1]
     paths: ['.github/workflows/phone-touch.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
 jobs:
   validate:
-    name: ${{ matrix.flow }}
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        flow: [touch-gather, touch-build]
+    name: touch-build-hud
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     steps:
@@ -25,9 +20,9 @@ jobs:
           set -euo pipefail
           python3 - <<'PYCODE'
           import hashlib,json,pathlib
-          lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
+          lock=json.loads(pathlib.Path('ci/native-touch-build-lock.json').read_text())
           assert lock['reviewed_for_execution'] is True and lock['build']=='vc-c7211e1083c8'
-          assert lock['fixed_fps']==20 and lock['touch_contract']['flow']=='${{ matrix.flow }}'
+          assert lock['fixed_fps']==20 and lock['touch_contract']['flow']=='touch-build'
           assert len(lock['project_files'])==188 and len(lock['allowed_generated_uid_files'])==5
           for name,digest in lock['support_files'].items():
               assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest,name
@@ -77,18 +72,28 @@ jobs:
         id: capture_touch
         run: |
           set -euo pipefail
-          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_touch.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width 390 --height 844
-          python3 ci/scan_touch.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_touch.gd --lock ci/native-touch-build-lock.json --import-marker private/import/import-complete.json --output evidence/touch-build --private private/touch-build --width 390 --height 844
+          python3 ci/scan_touch.py --directory evidence/touch-build --lock ci/native-touch-build-lock.json --report evidence/touch-build-scan.json
       - name: Report bounded touch progress after capture
         if: ${{ !cancelled() && steps.capture_touch.outcome != 'skipped' }}
-        run: python3 ci/touch_progress.py --log evidence/${{ matrix.flow }}/godot.log
+        run: python3 ci/touch_progress.py --log evidence/touch-build/godot.log
       - name: Retain independently scanned ordinary touch section
         if: ${{ success() && steps.capture_touch.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: native-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: native-touch-build-${{ github.sha }}-${{ github.run_attempt }}
           path: |
-            evidence/${{ matrix.flow }}/
-            evidence/${{ matrix.flow }}-scan.json
+            evidence/touch-build/
+            evidence/touch-build-scan.json
           if-no-files-found: error
           retention-days: 14
+      - name: Require settled HUD to match the normal completed-house snapshot
+        if: ${{ success() && steps.capture_touch.outcome == 'success' }}
+        run: |
+          python3 - <<'PYCODE'
+          import json
+          result=json.load(open('evidence/touch-build-scan.json'))
+          ok=result.get('passed') is True and result.get('visual_findings')==[]
+          print('HUD_SETTLE_GATE '+('PASS' if ok else 'FAIL'))
+          raise SystemExit(0 if ok else 1)
+          PYCODE

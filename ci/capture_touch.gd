@@ -155,10 +155,10 @@ func capture(label: String):
 		"build":game.Rules.BUILD_ID,"game_sha256":FileAccess.get_sha256("res://scripts/game.gd"),"rules_sha256":FileAccess.get_sha256("res://scripts/rules.gd"),
 		"engine":Engine.get_version_info(),"display":DisplayServer.get_name(),"rendering_method":RenderingServer.get_current_rendering_method(),"rendering_driver":RenderingServer.get_current_rendering_driver_name(),"adapter_name":RenderingServer.get_video_adapter_name(),"adapter_vendor":RenderingServer.get_video_adapter_vendor(),
 		"framebuffer":[390,844],"logical_viewport":[root.get_visible_rect().size.x,root.get_visible_rect().size.y],"content_scale_factor":root.content_scale_factor,
-		"game_tick":game.tick_count,"game_seconds":game.game_time,"camera_focus":[game.camera_focus.x,game.camera_focus.y,game.camera_focus.z],"camera_zoom":game.camera_zoom,
+		"game_tick":game.tick_count,"game_seconds":game.game_time,"game_frame_counter":game.frame_counter,"camera_focus":[game.camera_focus.x,game.camera_focus.y,game.camera_focus.z],"camera_zoom":game.camera_zoom,
 		"test_mode":game.test_mode,"ai_enabled":game.ai_enabled,"selected":game.selected.duplicate(),"economy_audit_ok":game.economy.audit().ok,"snapshot":public_state(),
 		"own_units":own,"own_buildings":buildings,"animation_poses":pose_evidence(),"input_event_count":events.size(),
-		"ui":{"toast":game.toast_label.text,"toast_visible":game.toast_label.is_visible_in_tree(),"touch_command":game.touch_command,"build_mode":game.build_mode,"held":game.build_preview_held,"placement_ok":game.placement_ok,"confirm":widget(game.build_confirm),"pointer_world":[game.pointer_world.x,game.pointer_world.y,game.pointer_world.z],"preview_position":[game.ghost.position.x,game.ghost.position.y,game.ghost.position.z] if is_instance_valid(game.ghost) else []},
+		"ui":{"top_resources":{"text":game.top_resources.text,"visible":game.top_resources.is_visible_in_tree(),"rect":rect_values(game.top_resources.get_global_rect())},"toast":game.toast_label.text,"toast_visible":game.toast_label.is_visible_in_tree(),"touch_command":game.touch_command,"build_mode":game.build_mode,"held":game.build_preview_held,"placement_ok":game.placement_ok,"confirm":widget(game.build_confirm),"pointer_world":[game.pointer_world.x,game.pointer_world.y,game.pointer_world.z],"preview_position":[game.ghost.position.x,game.ghost.position.y,game.ghost.position.z] if is_instance_valid(game.ghost) else []},
 		"limitations":["Synthesized viewport-routed native ScreenTouch, not physical iPhone or Web","Normal game process at fixed20 engine delta; independently restarted subflows, not performance evidence","Known gray atlas/material defect remains","No defeat or restart coverage in this slice"]}
 	records.append(frame)
 	var file := FileAccess.open(path+".json",FileAccess.WRITE)
@@ -215,17 +215,17 @@ func build_flow():
 	await capture("construction-quarter"); if failed: return
 	if not require_ok(await await_stage("half",1200),"Ordinary construction did not reach half progress"): return
 	await capture("construction-half"); if failed: return
-	if not require_ok(await await_stage("near-complete",1200),"Ordinary construction did not approach completion"): return
-	await capture("construction-near-complete"); if failed: return
 	if not require_ok(await await_stage("complete",1200),"House did not complete through ordinary construction"): return
-	await capture("house-complete")
+	await capture("house-complete"); if failed: return
+	await settle(5) # Ordinary scene frames; do not call the HUD refresh method.
+	await capture("house-complete-settled")
 
 func run():
 	progress("startup","entered")
 	var args := OS.get_cmdline_user_args()
 	if not require_ok(args.size()==4 and args[1]==EXPECTED_BUILD and args[2]=="390" and args[3]=="844","Wrong frozen touch scenario identity or viewport"): return
 	destination=args[0]; flow=destination.get_base_dir().get_file()
-	if not require_ok(flow in ["touch-gather","touch-build"],"Wrong independent flow"): return
+	if not require_ok(flow=="touch-build","Wrong independent flow"): return
 	root.size=Vector2i(390,844); root.content_scale_factor=1.0
 	game=load("res://main.tscn").instantiate(); root.add_child(game); progress("startup","scene-added"); await settle(12)
 	if not require_ok(observed_pacing_ok(),"Observed normal process pacing differs from fixed20"): return

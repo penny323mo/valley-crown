@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """Two independently restarted normal touch flows, not one combined playthrough."""
 from pathlib import Path
-import argparse, math, json
+import argparse, math, json, re
 import scan_evidence as base
 SCENARIO='native_routed_touch_independent_v2'
 LABELS={
  'touch-gather':['opening','worker-selected','target-guidance','command-mode','gather-order-accepted','woodcutting','wood-cargo','cargo-return','deposit-complete','gather-resumed'],
- 'touch-build':['opening','worker-selected','build-action-preview','build-preview','build-confirmed','construction-active','construction-quarter','construction-half','construction-near-complete','house-complete']}
+ 'touch-build':['opening','worker-selected','build-action-preview','build-preview','build-confirmed','construction-active','construction-quarter','construction-half','house-complete','house-complete-settled']}
 ROLES={'touch-gather':['select-worker','target-guidance','command-button','order-wood'],
        'touch-build':['select-worker','house-button','hold-building-plot','confirm-build']}
 def contract(flow):return {'scenario':SCENARIO,'flow':flow,'viewport':[390,844],'frames':LABELS[flow],
     'input':'viewport.push_input(InputEventScreenTouch,false)','simulation':'independent_normal_seeded_fixed20',
-    'fixed_fps':20,'observed_process_delta_seconds':.05,'restart':False,'single_uninterrupted_combined_chain':False}
+    'fixed_fps':20,'observed_process_delta_seconds':.05,'restart':False,'single_uninterrupted_combined_chain':False,**({'hud_settle_minimum_normal_frames':4} if flow=='touch-build' else {})}
 ERRORS={'Touch contract differs','Touch ordinary runtime differs','Touch action order differs','Touch event schema differs',
         'Touch event coordinates differ','Touch stream ownership differs','Touch UI button differs','Touch intent transition differs',
         'Touch frame chronology differs','Touch public worker differs','Touch deposit provenance differs','Touch construction provenance differs',
-        'Touch public pose differs','Touch geometry or capture sequence differs','Touch fixed pacing differs','Touch fresh source start differs'}
+        'Touch public pose differs','Touch geometry or capture sequence differs','Touch fixed pacing differs','Touch fresh source start differs','Touch HUD evidence malformed','Touch HUD refresh interval incomplete','Touch HUD snapshot differs'}
 def need(ok,reason):base.require(ok,reason)
 def number(x):return type(x) in (int,float) and math.isfinite(x)
 def integer(x):return type(x) is int and x>=0
@@ -106,7 +106,7 @@ def validate_touch(report,lock):
         need(frames[before]['game_tick']<=action['before']['tick']<=action['after']['tick']<=frames[after]['game_tick'],'Touch frame chronology differs')
     need(actions[0]['target_id']==worker and actions[0]['before']['selected']==initial['selected'] and worker in actions[0]['after']['selected'],'Touch public worker differs')
     if flow=='touch-gather':validate_gather(report,lock)
-    else:validate_build(report,lock)
+    else:return validate_build(report,lock)
     return []
 
 def validate_gather(r,lock):
@@ -144,18 +144,41 @@ def validate_build(r,lock):
          preview['confirm']['visible'] is True and preview['confirm']['disabled'] is False and preview['preview_position']==plot,'Touch construction provenance differs')
     previous=0
     for i,frame in enumerate(f):
-        s=frame['snapshot'];need(s['delivered']==0 and s['bank_milli']=={'food':150000,'wood':150000 if i>=4 else 200000} and s['built']==(1 if i==9 else 0),'Touch construction provenance differs')
+        s=frame['snapshot'];need(s['delivered']==0 and s['bank_milli']=={'food':150000,'wood':150000 if i>=4 else 200000} and s['built']==(1 if i>=8 else 0),'Touch construction provenance differs')
         sites=[b for b in frame['own_buildings'] if b.get('kind')=='house']
         if i<4:need(not sites,'Touch construction provenance differs');continue
-        need(len(sites)==1 and sites[0]['id']==house and sites[0]['position']==plot and sites[0]['built'] is (i==9),'Touch construction provenance differs')
-        progress=sites[0]['progress'];need(number(progress) and progress>=previous and (progress==1 if i==9 else 0<=progress<1),'Touch construction provenance differs');previous=progress
-        if i>=5 and i<9:
+        need(len(sites)==1 and sites[0]['id']==house and sites[0]['position']==plot and sites[0]['built'] is (i>=8),'Touch construction provenance differs')
+        progress=sites[0]['progress'];need(number(progress) and progress>=previous and (progress==1 if i>=8 else 0<=progress<1),'Touch construction provenance differs');previous=progress
+        if i>=5 and i<8:
             need(own(frame,worker)['state']=='build' and own(frame,worker)['target']==house,'Touch public worker differs');pose(frame,worker,'build',lock)
-    for i,lo,hi in [(5,0,.25),(6,.25,.5),(7,.5,.9),(8,.9,1)]:
+    for i,lo,hi in [(5,0,.25),(6,.25,.5),(7,.5,1)]:
         progress=[b for b in f[i]['own_buildings'] if b['id']==house][0]['progress'];need(lo<=progress<hi and progress>0,'Touch construction provenance differs')
     need(r.get('required_house_work_ticks')==400 and r.get('tick_seconds')==.05 and r.get('required_house_work_seconds')==20 and
-         f[9]['game_tick']-confirm['after']['tick']>=400 and f[9]['game_seconds']-confirm['after']['tick']*.05>=20-1e-6,
+         f[8]['game_tick']-confirm['after']['tick']>=400 and f[8]['game_seconds']-confirm['after']['tick']*.05>=20-1e-6,
          'Touch construction provenance differs')
+
+    return validate_hud_settle(f)
+
+def validate_hud_settle(frames):
+    for frame in frames:
+        need(integer(frame.get('game_frame_counter')) and integer(frame.get('process_frame')),'Touch frame chronology differs')
+        s=frame['snapshot'];need(integer(s.get('population')) and integer(s.get('capacity')),'Touch ordinary runtime differs')
+        label=frame['ui'].get('top_resources',{});text=label.get('text');rect=label.get('rect')
+        need(type(text) is str and re.fullmatch(r'食糧 ([0-9]{1,6})   木材 ([0-9]{1,6})   人口 ([0-9]{1,3})/([0-9]{1,3})',text) is not None and
+             label.get('visible') is True and type(rect) is list and len(rect)==4 and all(number(x) for x in rect) and
+             rect[0]>=0 and rect[1]>=0 and rect[2]>0 and rect[3]>0 and rect[0]+rect[2]<=390 and rect[1]+rect[3]<=844,
+             'Touch HUD evidence malformed')
+    immediate,settled=frames[8:]
+    need(settled['game_frame_counter']-immediate['game_frame_counter']>=4 and settled['process_frame']-immediate['process_frame']>=4 and
+         settled['game_frame_counter']//4>immediate['game_frame_counter']//4,'Touch HUD refresh interval incomplete')
+    need(immediate['snapshot']['capacity']==settled['snapshot']['capacity']==15 and
+         immediate['snapshot']['population']==settled['snapshot']['population']==frames[0]['snapshot']['population']==6 and
+         frames[0]['snapshot']['capacity']==10,'Touch HUD snapshot differs')
+    def displayed(frame):return [int(x) for x in re.fullmatch(r'食糧 ([0-9]{1,6})   木材 ([0-9]{1,6})   人口 ([0-9]{1,3})/([0-9]{1,3})',frame['ui']['top_resources']['text']).groups()]
+    expected=[150,150,6,15];observed=displayed(settled)
+    # Retain authentic defect pixels, but the separate post-upload UI gate must fail.
+    return [] if observed==expected else [{'kind':'settled_hud_mismatch','expected':expected,'observed':observed,
+         'normal_frame_advance':settled['game_frame_counter']-immediate['game_frame_counter']}]
 
 original_scan=base.scan
 def scan_with_pacing(directory,lock,lock_sha256):

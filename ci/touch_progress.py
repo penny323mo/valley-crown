@@ -8,7 +8,7 @@ MAX_LOG_BYTES=4*1024*1024
 MAX_RECORDS=64
 LABELS=('opening','worker-selected','target-guidance','command-mode','woodcutting','deposit-complete',
         'build-preview','build-confirmed','construction-active','house-complete','gather-order-accepted','wood-cargo','cargo-return','gather-resumed',
-        'build-action-preview','construction-quarter','construction-half','construction-near-complete')
+        'build-action-preview','construction-quarter','construction-half','construction-near-complete','house-complete-settled')
 WAIT_STAGES=('wood','cargo','return','resumed','deposit','site','construction','quarter','half','near-complete','complete')
 STATES=('missing','idle','move','gather','deliver','build','repair','return','attack')
 CLIPS=('missing','idle','walk','carry_walk','gather_wood','gather_food','build','repair','attack','hit','death')
