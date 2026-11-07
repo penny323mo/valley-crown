@@ -11,8 +11,8 @@ const EXPECTED_FOCUS := Vector3(-25,0,24)
 const BASE_BUILD := "vc-43276605e0fb"
 const BASE_ASSET := "a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89"
 # Disabled draft: exact new native artifact and derived build must be reviewed.
-const CANDIDATE_BUILD := "UNBOUND_CANDIDATE"
-const CANDIDATE_ASSET := "UNBOUND_NATIVE_OUTPUT"
+const CANDIDATE_BUILD := "vc-44a4164fe443"
+const CANDIDATE_ASSET := "a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89"
 var game
 var destination: String
 var build: String
@@ -176,6 +176,11 @@ func run():
 	if not capture("received-hit","hit"):return
 	var report:={"passed":true,"scope":"native_controlled_scene_combat","build":build,"scenario":SCENARIO,"frame_count":records.size(),"frames":records,"fixed_fps":FIXED_FPS,"commands":commands,"fixture_mutations":mutations,"attack_event":attack_event,"hit_event":hit_event,"opponent_spawn_tick":opponent_spawn_tick,
 		"not_verified":["ordinary unit recruitment or playthrough","physical phone/touch/Web/FPS","continuous motion","full spear depth visibility","art acceptance"]}
+	# No frame or simulation advances after the four immutable paired records.
+	var probe_script=load(get_script().resource_path.get_base_dir().path_join("unitbar_probe.gd"))
+	if not require_ok(probe_script!=null,"Native unit bar probe missing"):return
+	var probe: Dictionary=probe_script.new().run(game,subject_id,opponent_id)
+	report["unitbar_probe"]=probe
 	var file:=FileAccess.open(destination.path_join("capture-report.json"),FileAccess.WRITE)
 	if not require_ok(file!=null,"Cannot save report"):return
 	file.store_string(JSON.stringify(report,"  ")+"\n");file.close();quit(0)

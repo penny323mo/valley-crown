@@ -8,8 +8,9 @@ CAPTURE={'mode':'rts_spear','kind':'native_controlled_rts_spear','frame_count':4
 SCENARIO='native_controlled_rts_spear_v1'
 LABELS=['idle','walk','attack-release','received-hit']
 CLIPS=['idle','walk','attack','hit']
-GAME='ea9f9927a9d593f0a7a2664763b6702e125d8588b8fdd8048e5af46792aefefc'
-ERRORS={'Spear scenario differs','Spear camera differs','Spear authority differs','Spear pose differs','Spear fixture differs','Spear viewport differs','Spear pair differs','Spear pacing differs'}
+GAME='0ec8f6d4d580b071362045aa30fef4d5ba9b6ccf228efbcb175153800f283ed5'
+ORIGINAL_SPEAR='a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89'
+ERRORS={'Spear scenario differs','Spear camera differs','Spear authority differs','Spear pose differs','Spear fixture differs','Spear viewport differs','Spear pair differs','Spear pacing differs','Unit bar native probe differs','Unit bar native probe failed','Unit bar native measurements differ'}
 def need(ok,reason='Spear scenario differs'):base.require(ok,reason)
 def finite(x):return type(x) in (int,float) and math.isfinite(x)
 def near(a,b,tol=3e-6):
@@ -36,7 +37,7 @@ def frame_pose(frame,lock,subject):
  for p in live.values():base.pose_identity(p,lock)
  return live[str(subject)]
 def validate(report,lock):
- need(lock.get('capture_contract')==CAPTURE and lock.get('fixed_fps')==20 and lock['project_files'].get('scripts/game.gd')==GAME and lock.get('spear_viewport') in [[390,844],[844,390]])
+ need(lock.get('capture_contract')==CAPTURE and lock.get('fixed_fps')==20 and lock['project_files'].get('scripts/game.gd')==GAME and lock['project_files'].get('assets/mature/models/spearman_action.scn')==ORIGINAL_SPEAR and lock.get('spear_viewport') in [[390,844],[844,390]])
  need(report.get('scenario')==SCENARIO and report.get('fixed_fps')==20 and report.get('scope')=='native_controlled_scene_combat')
  frames=report.get('frames',[]);need(len(frames)==4 and [f.get('label') for f in frames]==LABELS)
  mutations=report.get('fixture_mutations',[]);need(len(mutations)==2,'Spear fixture differs')
@@ -91,6 +92,54 @@ def validate(report,lock):
    # the same normal fixed20 frame by.05; hit similarly enters0 then.05.
    if index==2:need(a['hp']==60 and oa['hp']==55 and pose['attack_release_tick']==tick and s['visual_attack_tick']==tick and tick==spawn+2 and near(player['actual_seconds'],.61,1e-7),'Spear authority differs')
    else:need(a['hp']==oa['hp']==55 and pose['hit_tick']==tick and s['visual_hit_tick']==tick and a['last_damage_tick']==tick and tick==spawn+10 and near(player['actual_seconds'],.05,1e-7),'Spear authority differs')
+ return validate_unitbar_probe(report,lock)
+
+PROBE_SCOPE='Post-capture synchronous native geometry and synthetic presentation-state contract. Not natural fog/gameplay, raster fill visibility, or artwork acceptance.'
+PROBE_MUTATIONS=['Temporary observation current dictionaries and selected IDs after all four paired frames','Pause flag during synchronous zero-delta presenter updates','Temporary cloned building proxy; removed before return','Presenter reconcile can recreate an observed rig after hidden case; no later paired frames']
+HP_VALUES=[0,.6,1,30,60]
+def probe_names():
+ names=['no pending deaths before synthetic presentation checks','observed opponent proxy exists','owned bar/body siblings','opponent bar/body siblings','bar parent yaw independent of body facing','bar parent unit scale matches baseline reconstruction']
+ for _ in range(2):
+  names+=['centered fill pivot retained','background native projected width preserved','native unit bar centerline horizontal']
+  names+=['native centered full-box extent matches baseline at HP '+str(hp) for hp in HP_VALUES]
+ for case in ['owned full unselected','owned full selected','both damaged','one percent','zero clamp diagnostic','hidden opponent']:
+  names += [case+' '+suffix for suffix in ['owned visibility','owned observed HP used','enemy visibility','enemy authority presentation stays hidden']]
+  if case!='hidden opponent':names.append(case+' observed HP used')
+ names+=['owned building template available','building bar geometry unchanged','building temporary proxy key unused','remembered building health hidden']
+ names+=['authority HP/alive/position unchanged '+str(i) for i in range(80)]
+ names+=['camera unchanged throughout probe','presentation inputs restored']
+ return names
+
+def normalize_probe_name(name):
+ need(type(name) is str and len(name)<160,'Unit bar native probe differs')
+ prefix='native centered full-box extent matches baseline at HP '
+ if name.startswith(prefix):
+  # Godot str(float) may retain a trailing .0. Only these closed spellings match.
+  spellings={'0':'0','0.0':'0','0.6':'0.6','1':'1','1.0':'1','30':'30','30.0':'30','60':'60','60.0':'60'}
+  need(name[len(prefix):] in spellings,'Unit bar native probe differs')
+  name=prefix+spellings[name[len(prefix):]]
+ return name
+
+def validate_unitbar_probe(report,lock):
+ probe=report.get('unitbar_probe',{})
+ need(set(probe)=={'schema','passed','checks','measurements','build','visual_acceptance','scope','mutations','camera_mutated','authority_hp_mutated'},'Unit bar native probe differs')
+ need(probe['schema']=='unitbar_native_probe_v1' and probe['build']==lock['build']=='vc-44a4164fe443' and probe['scope']==PROBE_SCOPE and probe['mutations']==PROBE_MUTATIONS,'Unit bar native probe differs')
+ need(probe['passed'] is True and probe['visual_acceptance'] is False and probe['camera_mutated'] is False and probe['authority_hp_mutated'] is False,'Unit bar native probe failed')
+ rows=probe['checks'];need(type(rows) is list and len(rows)==137,'Unit bar native probe differs')
+ need(all(type(r) is dict and set(r)=={'name','pass'} and r['pass'] is True for r in rows),'Unit bar native probe failed')
+ need(sorted(normalize_probe_name(r['name']) for r in rows)==sorted(probe_names()),'Unit bar native probe differs')
+ need(report['fixture_mutations'][0]['id']==78 and report['fixture_mutations'][1]['id']==79,'Unit bar native probe differs')
+ measurements=probe['measurements'];need(type(measurements) is list and len(measurements)==10,'Unit bar native measurements differ')
+ frame=report['frames'][-1]
+ for row,(owned,hp) in zip(measurements,[(own,hp) for own in [True,False] for hp in HP_VALUES]):
+  need(type(row) is dict and set(row)=={'owned','hp','max_hp','actual','baseline'} and row['owned'] is owned and finite(row['hp']) and row['hp']==hp and row['max_hp']==60,'Unit bar native measurements differ')
+  pos=frame['subject_authority' if owned else 'opponent_authority']['position']
+  center=390/2+sum((x-y)*z for x,y,z in zip(pos,CAMERA[3],RIGHT))*844/30
+  expected_width=(max(.01,hp/60)*abs(RIGHT[0])+.15*abs(RIGHT[2]))*844/30
+  for key in ['actual','baseline']:
+   m=row[key];need(type(m) is dict and set(m)=={'width','height','center_x'} and all(finite(x) for x in m.values()),'Unit bar native measurements differ')
+   need(0<m['width']<32 and 0<m['height']<32 and 0<m['center_x']<390 and abs(m['width']-expected_width)<.002 and abs(m['center_x']-center)<.002,'Unit bar native measurements differ')
+  need(abs(row['actual']['width']-row['baseline']['width'])<.002 and abs(row['actual']['center_x']-row['baseline']['center_x'])<.002,'Unit bar native measurements differ')
  return []
 
 original_scan=base.scan
@@ -101,12 +150,13 @@ base.scan=scan_guard;base.validate_scenario=validate;base.SAFE_SCAN_REASONS=base
 
 def compare(baseline,candidate):
  """After each artifact passes its own scanner, compare intended match state.
- Asset/pose/image/build/time-of-day/adapter worker identity are expected deltas.
+ Only UI pixels, build/game/rules identities and host timing may differ.
+ Native assets, every visible skeletal pose and paired control state must match.
  """
  need(baseline['scenario']==candidate['scenario']==SCENARIO,'Spear pair differs')
  for key in ['commands','fixture_mutations','attack_event','hit_event','opponent_spawn_tick']:
   need(baseline[key]==candidate[key],'Spear pair differs')
- keys=['label','game_tick','game_seconds','game_frame_counter','fixed_fps','observed_process_delta_seconds','framebuffer','logical_viewport','content_scale_factor','test_mode','ai_enabled','selected','own_units','subject','opponent','subject_authority','opponent_authority','pair_events','camera','production_transforms','player','hud','subject_screen']
+ keys=['label','game_tick','game_seconds','game_frame_counter','fixed_fps','observed_process_delta_seconds','framebuffer','logical_viewport','content_scale_factor','test_mode','ai_enabled','selected','own_units','subject','opponent','subject_authority','opponent_authority','pair_events','camera','production_transforms','player','hud','subject_screen','animation_poses','spear_asset_sha256']
  for left,right in zip(baseline['frames'],candidate['frames']):
   for key in keys:need(left[key]==right[key],'Spear pair differs')
   ls=dict(left['snapshot']);rs=dict(right['snapshot']);ls.pop('build');rs.pop('build');need(ls==rs,'Spear pair differs')
