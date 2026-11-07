@@ -17,8 +17,22 @@ var deposit_start := 0.0
 var house_ids: Array = []
 var confirm_bank: Dictionary = {}
 var plot := Vector3.ZERO
+var progress_sequence := 0
 
 func _initialize(): call_deferred("run")
+# Diagnostic scalars only, never used to admit screenshots or mutate the game.
+func progress(stage: String, phase: String, waited_frames: int = 0):
+	var worker: Dictionary = observed().get(worker_id,{}) if is_instance_valid(game) else {}
+	var site: Dictionary = current_site() if is_instance_valid(game) else {}
+	var pose: Dictionary = worker_pose() if is_instance_valid(game) else {}
+	print("NATIVE_TOUCH_PROGRESS ",JSON.stringify({"sequence":progress_sequence,"stage":stage,"phase":phase,
+		"process_frame":Engine.get_process_frames(),"tick":game.tick_count if is_instance_valid(game) else 0,
+		"monotonic_msec":Time.get_ticks_msec(),"waited_frames":waited_frames,"saved_frames":records.size(),
+		"worker_state":worker.get("state","missing"),"clip":pose.get("clip","missing"),
+		"carry":worker.get("carry",0),"path_points":worker.get("path",[]).size(),
+		"delivered":public_state().delivered if is_instance_valid(game) else 0,
+		"site_present":not site.is_empty(),"site_built":site.get("built",false),"site_progress":site.get("progress",0)}))
+	progress_sequence+=1
 func require_ok(ok: bool, message: String) -> bool:
 	if not ok:
 		failed = true; push_error(message); quit(1)
@@ -96,10 +110,12 @@ func note_carry():
 	if worker.get("carry",0)>0 and worker.get("carry_type","")=="wood":
 		observations.append({"stage":"carry-observed","tick":game.tick_count,"worker_id":worker_id,"state":worker.state,"carry":worker.carry,"carry_type":worker.carry_type,"snapshot":public_state()})
 func await_stage(stage: String, maximum_frames: int) -> bool:
+	progress(stage,"wait-start")
 	for index in maximum_frames:
 		await process_frame
 		if not running(): return false
 		note_carry()
+		if (index+1)%300==0: progress(stage,"wait-pulse",index+1)
 		var worker: Dictionary = observed().get(worker_id,{})
 		var site: Dictionary = current_site()
 		var pose: Dictionary = worker_pose()
@@ -111,6 +127,7 @@ func await_stage(stage: String, maximum_frames: int) -> bool:
 	return false
 
 func capture(label: String):
+	progress(label,"capture-start")
 	await RenderingServer.frame_post_draw
 	if not require_ok(running() and DisplayServer.get_name()=="X11","Capture requires the normal native running scene"): return
 	var image: Image = root.get_texture().get_image()
@@ -136,13 +153,14 @@ func capture(label: String):
 	records.append(frame)
 	var file := FileAccess.open(path+".json",FileAccess.WRITE)
 	if not require_ok(file!=null,"Cannot save touch frame provenance"): return
-	file.store_string(JSON.stringify(frame,"  ")+"\n"); file.close(); print("NATIVE_FRAME ",name)
+	file.store_string(JSON.stringify(frame,"  ")+"\n"); file.close(); print("NATIVE_FRAME ",name); progress(label,"capture-saved")
 
 func run():
+	progress("startup","entered")
 	var args := OS.get_cmdline_user_args()
 	if not require_ok(args.size()==4 and args[1]==EXPECTED_BUILD and args[2]=="390" and args[3]=="844","Wrong frozen touch scenario identity or viewport"): return
 	destination=args[0]; root.size=Vector2i(390,844); root.content_scale_factor=1.0
-	game=load("res://main.tscn").instantiate(); root.add_child(game); await settle(12)
+	game=load("res://main.tscn").instantiate(); root.add_child(game); progress("startup","scene-added"); await settle(12)
 	if not require_ok(game.Rules.BUILD_ID==EXPECTED_BUILD and running(),"Ordinary accepted runtime did not start"): return
 	for record in observed().values():
 		if record.owned and record.kind=="house": house_ids.append(record.id)

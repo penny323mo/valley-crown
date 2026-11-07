@@ -4,7 +4,7 @@
   "scope": "One ordinary seeded c721 game driven only by synthesized viewport ScreenTouch; ten raw portrait frames. No physical iPhone, Web, restart, performance or artistic acceptance. Known gray atlas remains.",
   "source_archive_sha256": "fd9d9f3d2fe759fb0fa0df80d0a9813c16ff8725922d3d930dc75b194b81de8a",
   "godot_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
-  "harness_sha256": "67dd640730271ba252881f08e222d464e409c420c85167eeeace56818782287c",
+  "harness_sha256": "92c3be9f9c224b1fe43904706964c411c5499aa61b47261ac33986d6327ba189",
   "supervisor_sha256": "40a0eba0399db69b34f9c7606b7216c603c3f5dd6c61d40afa89d02d1f6ebe20",
   "native_renderer": "linux-x11-mesa-llvmpipe-gl_compatibility",
   "require_skeletal_animation": true,
@@ -205,7 +205,7 @@
     "tools/stamp_build.py": "a7455874168ec6118a3cfa6b842007fc6c02ed47e0787b8f19712524ef33779a"
   },
   "support_files": {
-    ".github/workflows/phone-touch.yml": "558d437cc74c96f311039e740d92acebff06a2ac2089e0afecd2a41830297982",
+    ".github/workflows/phone-touch.yml": "afe9032ec130d66c785c779c235ef9f3b1e86f7e862f5f501bf1aca92297a910",
     "ACTION_FIX_SOURCE_LOCK.json": "70466a5bef3078de2722d08fd14ff4912061c88191ea2b474e9a8c60345e63b7",
     "OCCLUSION_SOURCE_PACKAGE.json": "52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa",
     "SOURCE_INPUT_LOCK.json": "1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af",
@@ -214,7 +214,7 @@
     "ci/apply_native_delta.py": "d8731c0bb0d8f70278b08bafaa3e204a1cd98d2823ecc2af3579dee83799c2c0",
     "ci/apply_occlusion_overlay.py": "b0d136b52f3ccfce39babb1939fe99205cbeb9579a6f719bc5f0d21d1a3eb858",
     "ci/assemble_combined.py": "2a378f0bb5ad7e7a59be43d3f7604e181fd1e2774f98ffa9a05c031205bffe92",
-    "ci/capture_touch.gd": "67dd640730271ba252881f08e222d464e409c420c85167eeeace56818782287c",
+    "ci/capture_touch.gd": "92c3be9f9c224b1fe43904706964c411c5499aa61b47261ac33986d6327ba189",
     "ci/guarded_manifest_ci.py": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
     "ci/run_native.py": "40a0eba0399db69b34f9c7606b7216c603c3f5dd6c61d40afa89d02d1f6ebe20",
@@ -222,7 +222,8 @@
     "ci/scan_touch.py": "a1169a389dc2bce140ba1dec1122340c38e1ba9e0bbc0fe9443586163c01b5eb",
     "ci/xvfb_startup.py": "558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546",
     "map80-actions-thin-source-v2.zip": "203852e82ca33d5e5b550e1d8ef07ef989734fd24b1cf54c6d8318307d43d6d8",
-    "occlusion-source-overlay-v3.zip": "db53893af8b703b57a32c328b56086394d12682809edd7e67673cd285f4f58a4"
+    "occlusion-source-overlay-v3.zip": "db53893af8b703b57a32c328b56086394d12682809edd7e67673cd285f4f58a4",
+    "ci/touch_progress.py": "c6401f9016b09530269d0e9a55c2ebf9bf293ec03751054aa2cd7b7d17fa618a"
   },
   "allowed_generated_uid_files": [
     "tests/occlusion_geometry_contract.gd.uid",

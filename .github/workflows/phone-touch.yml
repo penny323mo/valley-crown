@@ -72,6 +72,9 @@ jobs:
           set -euo pipefail
           python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_touch.gd --lock ci/native-touch-lock.json --import-marker private/import/import-complete.json --output evidence/touch --private private/touch --width 390 --height 844
           python3 ci/scan_touch.py --directory evidence/touch --lock ci/native-touch-lock.json --report evidence/touch-scan.json
+      - name: Report bounded touch progress after capture
+        if: ${{ !cancelled() && steps.capture_touch.outcome != 'skipped' }}
+        run: python3 ci/touch_progress.py --log evidence/touch/godot.log
       - name: Retain independently scanned ordinary touch section
         if: ${{ success() && steps.capture_touch.outcome == 'success' }}
         uses: actions/upload-artifact@v4
