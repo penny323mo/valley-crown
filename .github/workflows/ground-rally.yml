@@ -1,8 +1,8 @@
-name: Validate tracked archer cue lifecycle
+name: Validate ordinary ground rally feature
 on:
   push:
-    branches: [ci/native-archer-effect-lifecycle-v1]
-    paths: ['.github/workflows/archer-effect-lifecycle.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/native-ground-rally-v1]
+    paths: ['.github/workflows/ground-rally.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -99,6 +99,19 @@ jobs:
           assert len(entries)==192
           write_archive(pathlib.Path('project'),entries,pathlib.Path('archer-effect-source.zip'))
           PYCODE
+      - name: Apply exact ordinary ground rally feature
+        run: |
+          set -euo pipefail
+          python3 ci/apply_ground_rally_overlay.py --project project --base-package ARCHER_EFFECT_SOURCE_PACKAGE.json --package GROUND_RALLY_SOURCE_PACKAGE.json --overlay ground-rally-overlay.zip --receipt assembly-ground-rally.json
+          python3 - <<'PYCODE'
+          import json,pathlib,sys
+          sys.path.insert(0,'ci')
+          from apply_construction_overlay import write_archive
+          package=json.loads(pathlib.Path('GROUND_RALLY_SOURCE_PACKAGE.json').read_text())
+          entries={row['file']:row['sha256'] for row in package['files']}
+          assert len(entries)==192
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('ground-rally-source.zip'))
+          PYCODE
       - name: Verify pinned official engine
         run: |
           set -euo pipefail
@@ -111,8 +124,8 @@ jobs:
       - name: Guarded native import only
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive archer-effect-source.zip --manifest ARCHER_EFFECT_SOURCE_PACKAGE.json --archive-sha256 cd4d443371c2ea1de47e154efcffa59835439ccdf8d617e3b1315056ced9990e --manifest-sha256 ad147be4637a4874746455d19a179a1b0b13d41abc7c57c9efeb1396ebbf8f04 --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: One bounded external archer effect lifecycle contract and independent checker
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive ground-rally-source.zip --manifest GROUND_RALLY_SOURCE_PACKAGE.json --archive-sha256 c63c2f79f4ce650b704da040691d1a4b1ac45a6adba05e9228947fa40513be1e --manifest-sha256 8c7c4bde61bbebf1d661f751d791beb9be76bfe562f7138b84dae4fc1eb915de --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: One bounded external ground rally feature contract and independent checker
         id: replay
         run: |
           set -euo pipefail
@@ -122,15 +135,15 @@ jobs:
         if: always() && steps.replay.outcome != 'skipped'
         run: |
           set -euo pipefail
-          echo 'b982a1bfa97ed97134d8724f6d6b62698bcca458dfa97a19986d5589d0744b45  ci/scan_replay_evidence.py' | sha256sum --check --strict
-          echo '378f76d9a68ec3a94c5905af47395f98d41ce3977b5283c0a8a080c6fcc07f10  ci/run_ordinary_replay.py' | sha256sum --check --strict
-          echo '5b3cc9cdc77163e5ce7a2f178537a12dda0bd919c14c9bab754300f4b558d4e7  ci/REPLAY_INPUTS.json' | sha256sum --check --strict
+          echo 'd417dc739a705e2825b796874d192a92763469114f91162f57518282d21f4023  ci/scan_replay_evidence.py' | sha256sum --check --strict
+          echo '843babee43d6d976879269d21a321d2cc9d533693becc6a4581b95b98445364c  ci/run_ordinary_replay.py' | sha256sum --check --strict
+          echo 'f355d11e7da812439f06bf8eddaebb6016716fc88d7c9791f5880c5e475d8142  ci/REPLAY_INPUTS.json' | sha256sum --check --strict
           python3 ci/scan_replay_evidence.py
       - name: Retain only admitted contract evidence
         if: always() && steps.scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: archer-effect-lifecycle-native-${{ github.sha }}
+          name: ground-rally-native-${{ github.sha }}
           path: safe-replay-evidence/
           if-no-files-found: error
           retention-days: 14

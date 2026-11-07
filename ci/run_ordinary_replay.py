@@ -3,8 +3,8 @@ from pathlib import Path
 import hashlib,json,os,sys
 import guarded_manifest_ci as g
 HERE=Path(__file__).resolve().parent
-PACKAGE='ad147be4637a4874746455d19a179a1b0b13d41abc7c57c9efeb1396ebbf8f04'
-ARCHIVE='cd4d443371c2ea1de47e154efcffa59835439ccdf8d617e3b1315056ced9990e'
+PACKAGE='8c7c4bde61bbebf1d661f751d791beb9be76bfe562f7138b84dae4fc1eb915de'
+ARCHIVE='c63c2f79f4ce650b704da040691d1a4b1ac45a6adba05e9228947fa40513be1e'
 ADAPTER='1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0'
 def ordinary_clean_exit(r):
  return (type(r.get('exit')) is int and r['exit'] in (0,1) and r.get('child_started') is True and r.get('cleanup_complete') is True
@@ -14,9 +14,9 @@ def ordinary_clean_exit(r):
 def main():
  g.require_hosted_approval(True,os.environ)
  g.checked(HERE/'guarded_manifest_ci.py',ADAPTER)
- project=Path('project').resolve();archive=Path('archer-effect-source.zip').resolve();manifest=Path('ARCHER_EFFECT_SOURCE_PACKAGE.json').resolve();xdg=Path('private/import').resolve();out=Path('replay-evidence').resolve()
+ project=Path('project').resolve();archive=Path('ground-rally-source.zip').resolve();manifest=Path('GROUND_RALLY_SOURCE_PACKAGE.json').resolve();xdg=Path('private/import').resolve();out=Path('replay-evidence').resolve()
  g.require(not out.exists() and not out.is_symlink(),'Fresh evidence required');out.mkdir()
- summary={'build':'vc-34afbb76387d','passed':False,'replay_attempts':0,'report_present':False}
+ summary={'build':'vc-c9aad346e872','passed':False,'replay_attempts':0,'report_present':False}
  try:
   package,entries=g.verify_source(project,archive,manifest,ARCHIVE,PACKAGE);g.require(len(entries)==192,'Wrong source inventory')
   engine=g.checked(os.environ['GODOT'],g.ENGINE_SHA);pins=json.loads((HERE/'REPLAY_INPUTS.json').read_text())
@@ -30,7 +30,7 @@ def main():
   artifacts.update({'source:'+k:project/k for k in entries});artifacts.update({'cache:'+k:project/k for k in before})
   expected={k:g.sha(v) for k,v in artifacts.items()};monitor=g.load_monitor();env=g.isolated_environment(xdg);env['PYTHONDONTWRITEBYTECODE']='1'
   limits=monitor.Limits(timeout_s=300,sample_target_s=.05,terminate_grace_s=5,kill_reap_grace_s=5,launch_min_available_kib=4194304,runtime_min_available_kib=1048576,max_rss_kib=2097152)
-  report=out/'archer-effect-contract.json';summary['replay_attempts']=1
+  report=out/'ground-rally-contract.json';summary['replay_attempts']=1
   monitor.run(out/'replay',[str(engine),'--headless','--path',str(project),'--script',str(files['contract.gd']),'--',str(report)],env=env,limits=limits,artifacts=artifacts,expected_artifact_hashes=expected)
   summary['source_preserved']=g.inventory(project,entries)==before and g.import_cache(project,entries)==certificate['cache_sha256']
   r=json.loads((out/'replay.json').read_text());summary.update(replay_exit=r.get('exit'),cleanup_complete=r.get('cleanup_complete'),guard_passed=r.get('passed'),report_present=report.is_file() and not report.is_symlink())
