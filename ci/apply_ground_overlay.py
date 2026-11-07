@@ -1,8 +1,8 @@
 """Hash-bound file-only overlay. No engine, import, archive regeneration or network."""
 from pathlib import Path, PurePosixPath
 import argparse, hashlib, json, re, stat, zipfile
-PACKAGE_SHA='cea648726cee0bb525fe835e6750021058c0997963dfbc6f1a01467af809435c'
-BUILD='vc-8bf358474c6a'
+PACKAGE_SHA='51b142986a9563804f266887b3fe4718e892dd12ae67d919acd8250369cfb2ae'
+BUILD='vc-f6a2f9514b4d'
 ALLOWED={'assets/mature/terrain/ground.gdshader','scripts/rules.gd','reports/build-manifest.json'}
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 def require(ok,msg):

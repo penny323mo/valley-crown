@@ -96,7 +96,7 @@ func run():
 	if args.size()!=4:
 		fail("Expected output directory, build ID, width and height."); return
 	destination=args[0];build=args[1];width=int(args[2]);height=int(args[3])
-	if build not in ["vc-43276605e0fb","vc-8bf358474c6a"] or Vector2i(width,height) not in [Vector2i(390,844),Vector2i(844,390)]:
+	if build not in ["vc-43276605e0fb","vc-f6a2f9514b4d"] or Vector2i(width,height) not in [Vector2i(390,844),Vector2i(844,390)]:
 		fail("Wrong frozen opening identity or dimensions.");return
 	root.size=Vector2i(width,height);root.content_scale_factor=1.0
 	game=load("res://main.tscn").instantiate();root.add_child(game)

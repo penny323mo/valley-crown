@@ -1,9 +1,9 @@
 {
-  "candidate": "vc-8bf358474c6a",
+  "candidate": "vc-f6a2f9514b4d",
   "base_build": "vc-43276605e0fb",
   "base_package_sha256": "f9473eac11baf62982d67df333ed9cb74f43c8e826e22e200907f0e9c99355bd",
   "execution_enabled": false,
-  "scope": "Original ground shader plus deterministic stamp only; no engine or visual acceptance. No licensed asset regeneration.",
+  "scope": "Original-ground exposure and inward trail refinement; existing construction suite declaration is guard metadata only, render workflow invokes import only. No engine/art acceptance.",
   "files": [
     {
       "file": "GODOT-LICENSES.txt",
@@ -347,8 +347,8 @@
     },
     {
       "file": "assets/mature/terrain/ground.gdshader",
-      "sha256": "ef4045d0f2301232c8dacb5b29719bc825b57eaefb534639d912ddc4e5b6e84f",
-      "size": 2339
+      "sha256": "9ca32a98d3cfc09baffac1dff1da0bb4310918d56856bff205420ec50a4f73f7",
+      "size": 2627
     },
     {
       "file": "assets/mature/terrain/ground.gdshader.uid",
@@ -587,7 +587,7 @@
     },
     {
       "file": "reports/build-manifest.json",
-      "sha256": "8b5f1a2eaa022ad20b1f3bb28c3213ff7099588c0b3e150d46c8a82b45a1c666",
+      "sha256": "08cc62a002693852de8e105cfe0cd50b8ea4441a0b626124a969b7eaf06fe75f",
       "size": 13266
     },
     {
@@ -767,7 +767,7 @@
     },
     {
       "file": "scripts/rules.gd",
-      "sha256": "2e340b77186c4a65268ff59505f50b19d61ab4aece0234a211df792cca288304",
+      "sha256": "5fe59ca420b430f217bbd860c65f98bd76185d9421f95ddb0dd8de0a58f5cdb1",
       "size": 2762
     },
     {
@@ -968,16 +968,16 @@
   ],
   "runtime_manifest": {
     "file": "reports/build-manifest.json",
-    "sha256": "8b5f1a2eaa022ad20b1f3bb28c3213ff7099588c0b3e150d46c8a82b45a1c666",
+    "sha256": "08cc62a002693852de8e105cfe0cd50b8ea4441a0b626124a969b7eaf06fe75f",
     "inputs": 122
   },
   "ground_overlay": {
     "file": "ground-overlay.zip",
-    "sha256": "33156643c8bc43d8064cf8358956bd14f8121bdfd8fdb23cc37fdb7866915da6",
+    "sha256": "374b45d31ffe6874d658d101beaa4838f1d6f05618a0374f8a905e331f22fde9",
     "files": {
-      "assets/mature/terrain/ground.gdshader": "ef4045d0f2301232c8dacb5b29719bc825b57eaefb534639d912ddc4e5b6e84f",
-      "reports/build-manifest.json": "8b5f1a2eaa022ad20b1f3bb28c3213ff7099588c0b3e150d46c8a82b45a1c666",
-      "scripts/rules.gd": "2e340b77186c4a65268ff59505f50b19d61ab4aece0234a211df792cca288304"
+      "assets/mature/terrain/ground.gdshader": "9ca32a98d3cfc09baffac1dff1da0bb4310918d56856bff205420ec50a4f73f7",
+      "reports/build-manifest.json": "08cc62a002693852de8e105cfe0cd50b8ea4441a0b626124a969b7eaf06fe75f",
+      "scripts/rules.gd": "5fe59ca420b430f217bbd860c65f98bd76185d9421f95ddb0dd8de0a58f5cdb1"
     }
   },
   "engine_expected": "4.6.3.stable.official.7d41c59c4",
@@ -1021,13 +1021,13 @@
           "failed == 0"
         ],
         "required_field_values": {
-          "build": "vc-8bf358474c6a",
+          "build": "vc-f6a2f9514b4d",
           "passed": 203,
           "failed": 0
         },
         "required_external_receipt": {
-          "candidate_build": "vc-8bf358474c6a",
-          "runtime_manifest_sha256": "8b5f1a2eaa022ad20b1f3bb28c3213ff7099588c0b3e150d46c8a82b45a1c666",
+          "candidate_build": "vc-f6a2f9514b4d",
+          "runtime_manifest_sha256": "08cc62a002693852de8e105cfe0cd50b8ea4441a0b626124a969b7eaf06fe75f",
           "suite_sha256": "014346875fda37b9eee15feeefa95b4a202a97fc0052e77bceadb3cd6243c8fc",
           "require_process_and_output_hash_binding": true
         }
