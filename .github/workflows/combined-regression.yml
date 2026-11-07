@@ -1,0 +1,83 @@
+name: Validate combined native gameplay and rig events
+on:
+  push:
+    branches: [ci/map80-actions-regression-v1]
+    paths: ['.github/workflows/combined-regression.yml', 'ci/**', '*.json', '*.zip']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact reviewed inputs
+        run: |
+          set -euo pipefail
+          echo '0fa7368edc79f77cda699c87b771de62b7cc7ef2ea488239379b7859e36a83a9  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
+          sha256sum --check --strict ci/PUBLIC_INPUTS.sha256
+      - name: Fetch previously accepted licensed character inputs
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13560214428'
+          run-id: '42339730042'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: licensed-artifact
+          merge-multiple: true
+      - name: Fetch accepted native runtime delta
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13562131524'
+          run-id: '42342287459'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: native-artifact
+          merge-multiple: true
+      - name: Reassemble exact accepted native runtime
+        run: |
+          set -euo pipefail
+          python3 ci/assemble_combined.py
+          python3 ci/apply_native_delta.py
+      - name: Bind one test overlay to accepted runtime
+        run: |
+          set -euo pipefail
+          python3 ci/pack_regression_source.py --project project --package SCOPED_CI_PACKAGE.json --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --overlay action-game-test-overlay-v1.zip --archive f659-combined-regression-source.zip --receipt assembly-regression.json
+      - name: Record runner resource preflight
+        run: |
+          mkdir evidence engine
+          { uname -a; free -h; df -h .; nproc; } | tee evidence/runner-resources.log
+      - name: Install pinned official engine
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 -o engine/linux.zip https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          unzip -q engine/linux.zip -d engine
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  engine/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --check --strict
+          chmod +x engine/Godot_v4.6.3-stable_linux.x86_64
+          echo "GODOT=$PWD/engine/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+      - name: Guarded import of exact182 source
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive f659-combined-regression-source.zip --manifest SCOPED_CI_PACKAGE.json --archive-sha256 c9223299f0714d7612273442b1957d9c40bb88b1232d6835f6c1da95f0727460 --manifest-sha256 36209784985ffa41144b613280f906d7b6fe045c320ad4bcc6d2b141f778b108 --hosted-execution-approved --output evidence/source-import --xdg cache/regression
+      - name: Guarded thirteen combined suites
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_manifest_ci.py test --project project --godot "$GODOT" --archive f659-combined-regression-source.zip --manifest SCOPED_CI_PACKAGE.json --archive-sha256 c9223299f0714d7612273442b1957d9c40bb88b1232d6835f6c1da95f0727460 --manifest-sha256 36209784985ffa41144b613280f906d7b6fe045c320ad4bcc6d2b141f778b108 --hosted-execution-approved --output evidence/source-tests --xdg cache/regression
+      - name: Scan exact safe evidence
+        id: scan
+        if: always()
+        run: |
+          set -euo pipefail
+          echo '75de1aaeb32b962c9d3b6fc3a8ebea69cf0cde29661f8d9bc3f59043ce696c18  ci/scan_regression_evidence.py' | sha256sum --check --strict
+          python3 ci/scan_regression_evidence.py
+      - name: Retain scanned combined regression evidence
+        if: always() && steps.scan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-native-regression
+          path: |
+            evidence/
+            evidence-scan.json
+          if-no-files-found: error
+          retention-days: 14
