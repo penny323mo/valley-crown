@@ -92,6 +92,7 @@ static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, 
 		assert(tracks.size()==3)
 		var rows: Array = []
 		var previous: float = -1.0
+		var previous_source: float = -1.0
 		var release_seen: bool = false
 		var contact_seen: bool = false
 		var settle_seen: bool = false
@@ -104,8 +105,15 @@ static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, 
 			var t: float = PackedFloat32Array([source_time])[0]
 			assert(absf(t - source_time) < 0.0000001)
 			assert(is_finite(t) and t>=0 and t<=death.length and t>previous)
-			if previous>=0: assert(t-previous<=1.0/120.0+0.0000001)
+			assert(source_time > previous_source)
+			if previous_source >= 0.0:
+				var source_gap: float = source_time - previous_source
+				# Density applies to the authored samples, not independently rounded endpoints.
+				assert(source_gap <= 1.0/120.0 + 0.0000001)
+				var signed_rounding_gap: float = (t - source_time) - (previous - previous_source)
+				assert(t - previous == source_gap + signed_rounding_gap)
 			previous=t
+			previous_source=source_time
 			player.play("death"); player.seek(t,true); player.pause()
 			skeleton.force_update_all_bone_transforms()
 			var held: Transform3D = skeleton.get_bone_global_pose(bone)

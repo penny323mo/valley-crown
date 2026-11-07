@@ -41,7 +41,14 @@ func _run() -> void:
 		var restore: Array = []
 		for bone in skeleton.get_bone_count():
 			restore.append([skeleton.get_bone_pose_position(bone), skeleton.get_bone_pose_rotation(bone), skeleton.get_bone_pose_scale(bone)])
-		var result: Dictionary = Contact.apply(scene, player, skeleton, kind, manifest[kind].native_sha256, sidecar, manifest[kind].data_sha256)
+		var applied: Variant = Contact.apply(scene, player, skeleton, kind, manifest[kind].native_sha256, sidecar, manifest[kind].data_sha256)
+		if not (applied is Dictionary) or applied.get("unchanged_other_track_bytes", false) != true:
+			push_error("Native contact apply did not complete; no packing or probes permitted")
+			scene.free()
+			untouched.free()
+			call_deferred("quit", 1)
+			return
+		var result: Dictionary = applied
 		var corrected_tracks: PackedByteArray = Contact._snapshot(player, [])
 		assert(Contact._snapshot(untouched_player, []) == untouched_tracks, "Accepted cached animation resources were mutated")
 		scene.set_meta("native_death_contact_sha256", manifest[kind].data_sha256)

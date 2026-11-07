@@ -85,7 +85,7 @@ jobs:
           echo 'f2b6c6e68efcd03ee7029630894391225bd5e4cc78f7ec47eeb1a555318a5598  ci/run_native_contact.py' | sha256sum --check --strict
           echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
           echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo 'd444c9595c8968e8072ea9ec2e5724efb2ab6b4ceea1adffc3bbacaff296e8e9  ci/CONTACT_INPUTS.json' | sha256sum --check --strict
+          echo '73269e158472ed138565b5a4be8fbc50ba08e30163b1a93747f3383a1fbf2082  ci/CONTACT_INPUTS.json' | sha256sum --check --strict
           python3 ci/scan_contact_evidence.py
       - name: Preserve safe complete or failed evidence
         if: always() && steps.scan.outcome == 'success'
