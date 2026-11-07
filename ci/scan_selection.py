@@ -30,7 +30,7 @@ def validate(report,lock):
  rows=report.get('checks',[])
  need([r.get('name') for r in rows]==CHECKS and all(set(r)=={'name','pass'} and r['pass'] is True for r in rows) and report.get('failed')==0,'Selection checks differ')
  frames=report.get('frames',[]);need(len(frames)==4 and [f.get('label') for f in frames]==LABELS,'Selection contract differs')
- sid=report.get('worker_id');need(type(sid) is int and sid in range(1,6) and report.get('army_ids')==[6])
+ sid=report.get('worker_id');home=report.get('home_worker_id');need(type(sid) is int and sid in range(1,6) and type(home) is int and home in range(1,6) and report.get('army_ids')==[6])
  need(report.get('initial_tick')==report.get('final_tick')==0 and report.get('final_commands')==[])
  bank={'food':150000,'wood':200000};need(report.get('initial_bank')==report.get('final_bank')==bank)
  initial=report.get('initial_snapshot',{});need(initial.get('build')==BUILD and initial.get('tick')==0 and initial.get('selected')==[0] and initial.get('bank_milli')==bank and initial.get('population')==6 and initial.get('capacity')==10 and initial.get('own_pending_commands')==0 and initial.get('build_mode')=='' and initial.get('touch_mode') is False)
@@ -46,10 +46,10 @@ def validate(report,lock):
    rect(r);need(inside(r) and r[2]>0 and r[3]>0 and near(press['x'],r[0]+r[2]/2) and near(press['y'],r[1]+r[3]/2),'Selection input differs')
   else:need(r==[],'Selection input differs')
  proofs=report.get('menu_proofs',[]);need(len(proofs)==2)
- for i,p in enumerate(proofs):need(p=={'action':['army','home'][i],'input_count':[8,18][i],'selected':[sid],'build_mode':'house','held':True,'ghost_valid':True,'menu_visible':True,'tick':0})
+ for i,p in enumerate(proofs):need(p=={'action':['army','home'][i],'input_count':[8,18][i],'selected':[[sid],[home]][i],'build_mode':'house','held':True,'ghost_valid':True,'menu_visible':True,'tick':0})
  findings=[];previous=-1
  for i,f in enumerate(frames):
-  preview=i in (0,2);selected=[sid] if preview else ([6] if i==1 else [0])
+  preview=i in (0,2);current_worker=home if i>=2 else sid;selected=[current_worker] if preview else ([6] if i==1 else [0])
   need(f.get('scenario')==SCENARIO and f.get('image')=='%03d-%s.png'%(i,LABELS[i].replace('_','-')) and f.get('scope')==SCOPE,'Selection contract differs')
   need(f.get('fixed_fps')==20 and near(f.get('observed_process_delta_seconds'),.05,1e-8) and f.get('framebuffer')==f.get('logical_viewport')==[390,844] and f.get('content_scale_factor')==1,'Selection contract differs')
   need(f.get('test_mode') is True and f.get('game_tick')==0 and type(f.get('game_frame_counter')) is int and f['game_frame_counter']>previous);previous=f['game_frame_counter']
@@ -65,7 +65,7 @@ def validate(report,lock):
   focus=[-21,0,22] if i in (1,2) else [-25,0,24]
   c=f.get('camera',{});need(set(c)=={'focus','zoom','projection','keep_aspect','size','near','far','transform'} and c['focus']==focus and c['zoom']==c['size']==30 and c['projection']==c['keep_aspect']==1 and near(c['near'],.1) and c['far']==120 and near(c['transform'],camera(focus)),'Selection camera differs')
   roots=f.get('animation_poses',[]);need(len(roots)==1 and roots[0].get('node')=='.','Selection pose differs');snap=roots[0].get('snapshot',{});live=snap.get('live',{})
-  need(snap.get('death_visual_cap')==16 and snap.get('deaths')==[] and str(sid) in live and live[str(sid)].get('kind')=='villager','Selection pose differs')
+  need(snap.get('death_visual_cap')==16 and snap.get('deaths')==[] and str(current_worker) in live and live[str(current_worker)].get('kind')=='villager','Selection pose differs')
   for pose in live.values():base.pose_identity(pose,lock)
   hud=f.get('hud',{});need(set(hud)=={'selection_title','detail','queue','toast','bottom_rect','top_rect','unit_tools_visible','command_visible','command_rect','actions','action_scroll_rect','action_scroll_horizontal'},'Selection UI metadata differs')
   for key in ('bottom_rect','top_rect','command_rect','action_scroll_rect'):rect(hud[key])

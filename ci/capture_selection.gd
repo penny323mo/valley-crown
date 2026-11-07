@@ -14,6 +14,7 @@ var start_snapshot={}
 var start_bank={}
 var initial_tick=-1
 var worker_id=-1
+var home_worker_id=-1
 var army_ids=[]
 var menu_proofs=[]
 var preview_refs=[]
@@ -109,11 +110,18 @@ func tap_button(node,text,action) -> bool:
 	await tap(button.get_global_rect().get_center(),action,rect_data(button))
 	return true
 func begin_preview(prefix) -> bool:
-	var point=find_point(worker_id)
+	# Army's ordinary callback changes the view. Choose a public pickable worker
+	# in that current view rather than reusing a now-offscreen startup target.
+	if prefix=="home":
+		for record in game.faction_views[0].records().values():
+			if record.owned and record.alive and record.kind=="villager" and find_point(record.id)!=Vector2.INF:
+				home_worker_id=record.id;break
+	var target_worker=home_worker_id if prefix=="home" else worker_id
+	var point=find_point(target_worker) if target_worker>=0 else Vector2.INF
 	check(prefix+" worker target",point!=Vector2.INF)
 	if point==Vector2.INF: return false
 	await tap(point,prefix+"_worker")
-	check(prefix+" worker selected",game.selected==[worker_id] and game.build_mode.is_empty())
+	check(prefix+" worker selected",game.selected==[target_worker] and game.build_mode.is_empty())
 	if not await tap_button(game.actions,"民居",prefix+"_house"): return false
 	check(prefix+" unheld preview",game.build_mode=="house" and not game.build_preview_held and is_instance_valid(game.ghost))
 	if not is_instance_valid(game.ghost): return false
@@ -121,7 +129,7 @@ func begin_preview(prefix) -> bool:
 	# Only read the game's existing public suggested plot; touch its screen projection.
 	var plot=game.pointer_world
 	point=game.camera.unproject_position(plot)
-	var legal=game._box_point_in_world(point) and game._placement_reason("house",plot,0,worker_id).is_empty()
+	var legal=game._box_point_in_world(point) and game._placement_reason("house",plot,0,target_worker).is_empty()
 	check(prefix+" guided plot reachable",legal)
 	if not legal: return false
 	await tap(point,prefix+"_plot")
@@ -171,5 +179,5 @@ func finish():
 		if not item.pass: failed+=1
 	var output=FileAccess.open(destination.path_join("capture-report.json"),FileAccess.WRITE)
 	if output==null: quit(2);return
-	output.store_string(JSON.stringify({"passed":failed==0,"build":build,"scope":"frozen normal seeded world; native ScreenTouch preview and menu selection, not paid construction or physical phone","scenario":SCENARIO,"frame_count":captures.size(),"frames":captures,"fixed_fps":20,"checks":checks,"failed":failed,"inputs":input_trace,"worker_id":worker_id,"army_ids":army_ids,"initial_tick":initial_tick,"initial_snapshot":start_snapshot,"initial_bank":start_bank,"final_bank":game.economy.bank_milli(0).duplicate(true),"final_tick":game.tick_count,"final_commands":commands_data(),"menu_proofs":menu_proofs},"  ")+"\n");output.close()
+	output.store_string(JSON.stringify({"passed":failed==0,"build":build,"scope":"frozen normal seeded world; native ScreenTouch preview and menu selection, not paid construction or physical phone","scenario":SCENARIO,"frame_count":captures.size(),"frames":captures,"fixed_fps":20,"checks":checks,"failed":failed,"inputs":input_trace,"worker_id":worker_id,"home_worker_id":home_worker_id,"army_ids":army_ids,"initial_tick":initial_tick,"initial_snapshot":start_snapshot,"initial_bank":start_bank,"final_bank":game.economy.bank_milli(0).duplicate(true),"final_tick":game.tick_count,"final_commands":commands_data(),"menu_proofs":menu_proofs},"  ")+"\n");output.close()
 	quit(0 if failed==0 else 1)

@@ -1,7 +1,7 @@
 name: Inspect selection preview cancellation in native portrait
 on:
   push:
-    branches: [ci/native-selection-preview-diagnostic-v1]
+    branches: [ci/native-selection-preview-pickable-worker-v1]
     paths: ['.github/workflows/selection-preview.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
