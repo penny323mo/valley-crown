@@ -388,10 +388,10 @@ def run(args):
     require(contract in [
         {'mode': 'gameplay', 'kind': 'genuine_native_game_viewport', 'frame_count': 10},
         {'mode': 'rig_studies', 'kind': 'native_controlled_rig_study', 'frame_count': 25},
-        {'mode': 'rts_spear', 'kind': 'native_controlled_rts_spear', 'frame_count': 4},
+        {'mode': 'production_guidance', 'kind': 'native_controlled_production_guidance', 'frame_count': 4},
         {'mode': 'occlusion', 'kind': 'native_controlled_occlusion_fixture', 'frame_count': 6}], 'Unreviewed capture contract')
     require(contract['mode'] != 'rig_studies' or (args.width,args.height) == (844,390), 'Rig study viewport differs')
-    require(contract['mode'] != 'occlusion' or (args.width,args.height) == (390,844), 'Occlusion viewport differs')
+    require(contract['mode'] not in ('occlusion','production_guidance') or (args.width,args.height) == (390,844), 'Occlusion viewport differs')
     project = args.project.resolve()
     out, private = args.output.resolve(), args.private.resolve()
     require(not out.exists() and not private.exists(), 'Output and private directory must be new')

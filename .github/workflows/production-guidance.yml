@@ -1,8 +1,8 @@
-name: Inspect corrected unit health bars in matched RTS portrait
+name: Inspect producer guidance in fixed native portrait
 on:
   push:
-    branches: [ci/native-unitbar-portrait-v1]
-    paths: ['.github/workflows/spear-gameplay.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/native-production-guidance-portrait-v1]
+    paths: ['.github/workflows/production-guidance.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -14,7 +14,7 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - flow: unitbar-portrait
+          - flow: guidance-portrait
             width: 390
             height: 844
     runs-on: ubuntu-24.04
@@ -23,14 +23,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Require reviewed corrected unit-bar portrait source
+      - name: Require reviewed production-guidance portrait source
         run: |
           set -euo pipefail
           python3 - <<'PYCODE'
           import hashlib,json,pathlib
           lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
-          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-44a4164fe443'
-          assert lock['spear_viewport']==[${{ matrix.width }},${{ matrix.height }}]
+          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-d99ac5d19247'
+          assert lock['production_viewport']==[${{ matrix.width }},${{ matrix.height }}]
           assert lock['fixed_fps']==20 and lock['capture_contract']['frame_count']==4
           assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
           for name,digest in lock['support_files'].items():
@@ -60,18 +60,19 @@ jobs:
           python3 ci/apply_native_delta.py
           python3 ci/apply_occlusion_overlay.py --project project --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --package OCCLUSION_SOURCE_PACKAGE.json --package-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --overlay occlusion-source-overlay-v3.zip --archive occlusion-source.zip --receipt assembly-occlusion.json
           python3 ci/apply_construction_overlay.py --project project --accepted-lock OCCLUSION_SOURCE_PACKAGE.json --package CONSTRUCTION_SOURCE_PACKAGE.json --package-sha256 069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4 --overlay construction-overlay.zip --archive construction-source.zip --receipt assembly-construction.json
-      - name: Apply corrected unit-bar source to disposable original tree
+      - name: Apply accepted unit-bar base then reviewed guidance to disposable source
         run: |
           set -euo pipefail
           python3 ci/apply_unitbar_overlay.py --project project --base-package CONSTRUCTION_SOURCE_PACKAGE.json --package UNITBAR_SOURCE_PACKAGE.json --overlay unitbar-overlay.zip --receipt assembly-unitbar.json
+          python3 ci/apply_guidance_overlay.py --project project --base-package UNITBAR_SOURCE_PACKAGE.json --package GUIDANCE_SOURCE_PACKAGE.json --overlay guidance-overlay.zip --receipt assembly-guidance.json
           python3 - <<'PYCODE'
           import json,pathlib,sys
           sys.path.insert(0,'ci')
           from apply_construction_overlay import write_archive
-          package=json.loads(pathlib.Path('UNITBAR_SOURCE_PACKAGE.json').read_text())
+          package=json.loads(pathlib.Path('GUIDANCE_SOURCE_PACKAGE.json').read_text())
           entries={row['file']:row['sha256'] for row in package['files']}
           assert len(entries)==192
-          write_archive(pathlib.Path('project'),entries,pathlib.Path('unitbar-source.zip'))
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('guidance-source.zip'))
           PYCODE
       - name: Install official Ubuntu display dependencies
         run: |
@@ -90,18 +91,18 @@ jobs:
       - name: Guarded native import
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive unitbar-source.zip --manifest UNITBAR_SOURCE_PACKAGE.json --archive-sha256 702894f02a384038cceef3c2510f33c9d4f6876f186ddb3192153e6585f7a342 --manifest-sha256 35152ba110f8b4afc31d8d7bcfc94deee344e69065856ad3e1d4b85ee9be3770 --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: Capture four controlled real RTS-camera events
-        id: capture_spear
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive guidance-source.zip --manifest GUIDANCE_SOURCE_PACKAGE.json --archive-sha256 fc291d2e320df0f95849ca4e5ab82ad2666fbabc9657776292b7f2a62daf02f3 --manifest-sha256 dd525b8836a31acbd91cda3a46043098d39c0b28fecec75ad3c87d81e5cd63e4 --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: Capture four routed native touch and controlled HUD stages
+        id: capture_guidance
         run: |
           set -euo pipefail
-          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_spear_gameplay.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width ${{ matrix.width }} --height ${{ matrix.height }}
-          python3 ci/scan_spear_gameplay.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_production.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width ${{ matrix.width }} --height ${{ matrix.height }}
+          python3 ci/scan_production.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
       - name: Retain only independently scanned controlled scene evidence
-        if: ${{ success() && steps.capture_spear.outcome == 'success' }}
+        if: ${{ success() && steps.capture_guidance.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rts-spear-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: rts-production-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             evidence/${{ matrix.flow }}/
             evidence/${{ matrix.flow }}-scan.json
