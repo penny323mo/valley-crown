@@ -404,7 +404,7 @@ def run(args):
     require(certificate['build'] == lock['build'] and certificate['project'] == str(project), 'Import belongs to another source')
     require(certificate['archive_sha256'] == lock['source_archive_sha256'] and
             certificate['engine_sha256'] == lock['godot_sha256'], 'Import input identity differs')
-    require(certificate['cache_sha256'] == cache, 'Cache differs from successful guarded import')
+    require(certificate['cache_sha256'] == cache | generated_uids, 'Cache differs from successful guarded import')
     require(certificate['manifest_sha256'] == lock['import_manifest_sha256'] and
             certificate['adapter_sha256'] == lock['support_files']['ci/guarded_manifest_ci.py'], 'Import package/adapter differs')
     import_receipt = regular(certificate['receipt']).resolve()

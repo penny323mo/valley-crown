@@ -1,0 +1,94 @@
+name: Validate isolated stencil contract and six native frames
+on:
+  push:
+    branches: [ci/occlusion-stencil-v1]
+    paths: ['.github/workflows/occlusion.yml', 'ci/**', '*.json', '*.zip']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact reviewed inputs and enabled lock
+        run: |
+          set -euo pipefail
+          echo 'e978b94cb4af01486ccd1bfce3ce88783c8636690da2cdbc6931aaf51ac41014  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
+          sha256sum --check --strict ci/PUBLIC_INPUTS.sha256
+          python3 -c 'import json; x=json.load(open("ci/native-occlusion-lock.json")); assert x["reviewed_for_execution"] is True and x["build"]=="vc-c7211e1083c8" and len(x["project_files"])==188'
+      - name: Fetch previously accepted licensed character artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13560214428'
+          run-id: '42339730042'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: licensed-artifact
+          merge-multiple: true
+      - name: Fetch accepted native runtime delta
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13563191390'
+          run-id: '42345297400'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: native-artifact
+          merge-multiple: true
+      - name: Reassemble exact accepted 181 files without a test overlay
+        run: |
+          set -euo pipefail
+          python3 ci/assemble_combined.py
+          python3 ci/apply_action_fix.py --project project --base-lock SOURCE_INPUT_LOCK.json --fix-lock ACTION_FIX_SOURCE_LOCK.json --overlay action-presentation-fix-v1.zip --receipt assembly-action-fix.json
+          python3 ci/apply_native_delta.py
+          python3 ci/apply_occlusion_overlay.py --project project --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --package OCCLUSION_SOURCE_PACKAGE.json --package-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --overlay occlusion-source-overlay-v3.zip --archive occlusion-source.zip --receipt assembly-occlusion.json
+      - name: Install official Ubuntu display dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
+      - name: Verify pinned official engine
+        run: |
+          set -euo pipefail
+          mkdir engine
+          curl --fail --location --retry 2 -o engine/linux.zip https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          unzip -q engine/linux.zip -d engine
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  engine/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --check --strict
+          chmod +x engine/Godot_v4.6.3-stable_linux.x86_64
+          echo "GODOT=$PWD/engine/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+      - name: Guarded native import
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive occlusion-source.zip --manifest OCCLUSION_SOURCE_PACKAGE.json --archive-sha256 fd9d9f3d2fe759fb0fa0df80d0a9813c16ff8725922d3d930dc75b194b81de8a --manifest-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: Guarded native test
+        id: contract
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_manifest_ci.py test --project project --godot "$GODOT" --archive occlusion-source.zip --manifest OCCLUSION_SOURCE_PACKAGE.json --archive-sha256 fd9d9f3d2fe759fb0fa0df80d0a9813c16ff8725922d3d930dc75b194b81de8a --manifest-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --xdg private/import --hosted-execution-approved --output contract-evidence
+      - name: Bounded native contract result diagnostics
+        if: always() && steps.contract.outcome != 'skipped'
+        run: |
+          set -euo pipefail
+          echo 'ed70179a62d92fd8533e4c9f7c1443a7d54f1ad03ead6c7b629d2244635b6382  ci/summarize_contract.py' | sha256sum --check --strict
+          python3 ci/summarize_contract.py
+      - name: Capture six controlled frames and admit safe evidence
+        id: capture
+        run: |
+          set -euo pipefail
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_occlusion.gd --lock ci/native-occlusion-lock.json --import-marker private/import/import-complete.json --output evidence/occlusion --private private/occlusion --width 390 --height 844
+          python3 ci/scan_occlusion.py --directory evidence/occlusion --lock ci/native-occlusion-lock.json --report evidence/occlusion-scan.json
+      - name: Retain admitted evidence before separate acceptance check
+        if: ${{ success() && steps.capture.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: stencil-native-evidence-${{ github.sha }}
+          path: |
+            evidence/occlusion/
+            evidence/occlusion-scan.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Strict independent six-frame RGB acceptance
+        run: |
+          set -euo pipefail
+          python3 ci/check_pixel_gate.py --directory evidence/occlusion --lock ci/native-occlusion-lock.json --report pixel-acceptance.json

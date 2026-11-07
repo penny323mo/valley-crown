@@ -1,12 +1,32 @@
 {
-  "candidate": "vc-6f4dddc33ec2",
+  "candidate": "vc-c7211e1083c8",
   "engine_expected": "4.6.3.stable.official.7d41c59c4",
   "execution_enabled": false,
-  "scope": "Exact181 accepted runtime and art source; visual workflow uses import phase only. Declared existing map suite is not run by this workflow.",
+  "scope": "Derived 6f4 plus reviewed occlusion-only stencil source. Native contract then six-frame pixel gate; no material generation, phone, performance or live acceptance.",
+  "reviewed_parent_source_manifest_sha256": "a9888dab776ace76ffa7a5150abd2ab11972d1debe258aa1e2869b64a657e63a",
   "runtime_manifest": {
     "file": "reports/build-manifest.json",
-    "sha256": "3f0a82eef69111c4eef1f08166713339552136fa3649d9c35d87876a4b95d223",
-    "inputs": 118
+    "sha256": "1b5e74fd01b5dd7741b5efb72aa1ea21c31da163b1f07a73cecb53f6f8d16c59",
+    "inputs": 120
+  },
+  "source_archive_sha256": "fd9d9f3d2fe759fb0fa0df80d0a9813c16ff8725922d3d930dc75b194b81de8a",
+  "occlusion_overlay": {
+    "sha256": "db53893af8b703b57a32c328b56086394d12682809edd7e67673cd285f4f58a4",
+    "files": {
+      "art/action_characters/OCCLUSION.md": "719c56320d55dcab0fa232b7f8c221e63366b346a1c7386987d298219369e19c",
+      "assets/mature/shaders/observed_occlusion.gdshader": "23d8f2999549031194e91de6db31eba7808e8dcae5347ae7de0ceb9c68585925",
+      "assets/mature/shaders/observed_visibility_mask.gdshader": "46dbc2f787c2219f0393e41d28100c1627e84e8206ae4ce7a10eb5a814d51971",
+      "assets/mature/shaders/observed_visibility_mask.gdshader.uid": "cfe2118fe47b4779ff4743b66d99db352866655ff933812a83d3400717a2fe02",
+      "reports/build-manifest.json": "1b5e74fd01b5dd7741b5efb72aa1ea21c31da163b1f07a73cecb53f6f8d16c59",
+      "scripts/observed_occlusion.gd": "deb16e3a60a2cf4a3f5ace472915c379df8ecabc76148361675b3ec9b01ea95a",
+      "scripts/rules.gd": "6c5992d4ecb239f93b2b21ac503641b9cb9c1a7ba36d7adf72f69fadf708bc43",
+      "tests/occlusion_geometry_contract.gd": "22e294c2ef4c8682d73967d7dda89629db13cc0a63ef0cd7c8fbc75a915d0cec",
+      "tests/occlusion_observation_lifecycle.gd": "d1333014d1b741a7f78959ed3ca4307ccced15e6e4f96b32afae3b4655ac83f8",
+      "tests/occlusion_render_fixture.gd": "3642f5b7ada6049bec5be6666da4a89b6e8f187df66a5a5e944557e8ff263f68",
+      "tests/occlusion_stencil_contract.gd": "f1531ef60c4911a4ec7d105f29d65d3c28de2ce0a1a1c949139464d2f51cb413",
+      "tests/occlusion_stencil_matrix.gd": "2c2ec7e4efa5554c9f7adbc4f94eebf787e9e0fb7ff53ed1bc266870bc273100",
+      "tests/occlusion_viewport_lifecycle.gd": "f87a161fe77fe7a7815ad3243bc47e30d5d88232fe4b02814493a413b5bbd56e"
+    }
   },
   "files": [
     {
@@ -41,8 +61,8 @@
     },
     {
       "file": "art/action_characters/OCCLUSION.md",
-      "sha256": "31f2a9420031eb624184126f0e05e6754ceec1a9e29ebb3fbd5be7ddbb96d457",
-      "size": 2088
+      "sha256": "719c56320d55dcab0fa232b7f8c221e63366b346a1c7386987d298219369e19c",
+      "size": 7002
     },
     {
       "file": "art/action_characters/archer.blend",
@@ -311,13 +331,23 @@
     },
     {
       "file": "assets/mature/shaders/observed_occlusion.gdshader",
-      "sha256": "30f7653964fac8c457adb3c7896e5702935bfea97b3bffa59d541d7365147f79",
-      "size": 1241
+      "sha256": "23d8f2999549031194e91de6db31eba7808e8dcae5347ae7de0ceb9c68585925",
+      "size": 772
     },
     {
       "file": "assets/mature/shaders/observed_occlusion.gdshader.uid",
       "sha256": "051026e38c76fb76a9fe0bbbe2bef682232696994d607b466db38811fe07f3fd",
       "size": 20
+    },
+    {
+      "file": "assets/mature/shaders/observed_visibility_mask.gdshader",
+      "sha256": "46dbc2f787c2219f0393e41d28100c1627e84e8206ae4ce7a10eb5a814d51971",
+      "size": 518
+    },
+    {
+      "file": "assets/mature/shaders/observed_visibility_mask.gdshader.uid",
+      "sha256": "cfe2118fe47b4779ff4743b66d99db352866655ff933812a83d3400717a2fe02",
+      "size": 18
     },
     {
       "file": "assets/mature/terrain/earth.png",
@@ -581,8 +611,8 @@
     },
     {
       "file": "reports/build-manifest.json",
-      "sha256": "3f0a82eef69111c4eef1f08166713339552136fa3649d9c35d87876a4b95d223",
-      "size": 12784
+      "sha256": "1b5e74fd01b5dd7741b5efb72aa1ea21c31da163b1f07a73cecb53f6f8d16c59",
+      "size": 13050
     },
     {
       "file": "reports/map-input-build-manifest.json",
@@ -741,8 +771,8 @@
     },
     {
       "file": "scripts/observed_occlusion.gd",
-      "sha256": "7e7d98c0c74ea7956896150bef4281ad38a201bd7c5ab3dfdc04ca5bcd63da81",
-      "size": 1872
+      "sha256": "deb16e3a60a2cf4a3f5ace472915c379df8ecabc76148361675b3ec9b01ea95a",
+      "size": 6050
     },
     {
       "file": "scripts/observed_occlusion.gd.uid",
@@ -751,7 +781,7 @@
     },
     {
       "file": "scripts/rules.gd",
-      "sha256": "fef0593645df15028d5d82309950b5a66b6063d528a91bfee7b946344ab0e4f5",
+      "sha256": "6c5992d4ecb239f93b2b21ac503641b9cb9c1a7ba36d7adf72f69fadf708bc43",
       "size": 2762
     },
     {
@@ -870,14 +900,39 @@
       "size": 19
     },
     {
+      "file": "tests/occlusion_geometry_contract.gd",
+      "sha256": "22e294c2ef4c8682d73967d7dda89629db13cc0a63ef0cd7c8fbc75a915d0cec",
+      "size": 2507
+    },
+    {
+      "file": "tests/occlusion_observation_lifecycle.gd",
+      "sha256": "d1333014d1b741a7f78959ed3ca4307ccced15e6e4f96b32afae3b4655ac83f8",
+      "size": 7542
+    },
+    {
       "file": "tests/occlusion_render_fixture.gd",
-      "sha256": "bca826469cfda5c73dce6ab24cece3f81f2d427f693dbe49bc121dbf311cc5c3",
-      "size": 3886
+      "sha256": "3642f5b7ada6049bec5be6666da4a89b6e8f187df66a5a5e944557e8ff263f68",
+      "size": 6699
     },
     {
       "file": "tests/occlusion_render_fixture.gd.uid",
       "sha256": "9142475a196a90198569bd2632feca0ad6a5a2ab3c99ac6e439d8073353c44bf",
       "size": 20
+    },
+    {
+      "file": "tests/occlusion_stencil_contract.gd",
+      "sha256": "f1531ef60c4911a4ec7d105f29d65d3c28de2ce0a1a1c949139464d2f51cb413",
+      "size": 6352
+    },
+    {
+      "file": "tests/occlusion_stencil_matrix.gd",
+      "sha256": "2c2ec7e4efa5554c9f7adbc4f94eebf787e9e0fb7ff53ed1bc266870bc273100",
+      "size": 12617
+    },
+    {
+      "file": "tests/occlusion_viewport_lifecycle.gd",
+      "sha256": "f87a161fe77fe7a7815ad3243bc47e30d5d88232fe4b02814493a413b5bbd56e",
+      "size": 9662
     },
     {
       "file": "tests/support/route_queue_harness.gd",
@@ -917,20 +972,20 @@
   ],
   "suites": [
     {
-      "name": "existing_map_contract",
-      "script": "tests/map80_contract.gd",
-      "script_sha256": "af4f08522bf448aae2de55546a9edca27ae25cae19c113ed796b0e900a5e64f4",
+      "name": "occlusion_stencil_contract",
+      "script": "tests/occlusion_stencil_contract.gd",
+      "script_sha256": "f1531ef60c4911a4ec7d105f29d65d3c28de2ce0a1a1c949139464d2f51cb413",
       "argv": [
         "GODOT",
         "--headless",
         "--path",
         "PROJECT",
         "--script",
-        "res://tests/map80_contract.gd",
+        "res://tests/occlusion_stencil_contract.gd",
         "--",
-        "OUTPUT/import-package-unused-map-contract.json"
+        "OUTPUT/occlusion-stencil-contract.json"
       ],
-      "report": "OUTPUT/import-package-unused-map-contract.json",
+      "report": "OUTPUT/occlusion-stencil-contract.json",
       "report_contract": {
         "format": "JSON object",
         "must_be_new_file_from_this_run": true,
@@ -954,10 +1009,13 @@
           "passed == len(checks)",
           "failed == 0"
         ],
+        "required_field_values": {
+          "build": "vc-c7211e1083c8"
+        },
         "required_external_receipt": {
-          "candidate_build": "vc-6f4dddc33ec2",
-          "runtime_manifest_sha256": "3f0a82eef69111c4eef1f08166713339552136fa3649d9c35d87876a4b95d223",
-          "suite_sha256": "af4f08522bf448aae2de55546a9edca27ae25cae19c113ed796b0e900a5e64f4",
+          "candidate_build": "vc-c7211e1083c8",
+          "runtime_manifest_sha256": "1b5e74fd01b5dd7741b5efb72aa1ea21c31da163b1f07a73cecb53f6f8d16c59",
+          "suite_sha256": "f1531ef60c4911a4ec7d105f29d65d3c28de2ce0a1a1c949139464d2f51cb413",
           "require_process_and_output_hash_binding": true
         }
       }
