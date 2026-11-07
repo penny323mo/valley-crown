@@ -21,6 +21,10 @@ var confirm_bank: Dictionary = {}
 var plot := Vector3.ZERO
 var progress_sequence := 0
 
+func observed_pacing_ok() -> bool:
+	var delta: float = game.get_process_delta_time()
+	return is_finite(delta) and absf(delta-1.0/FIXED_FPS)<=0.00000001
+
 func _initialize(): call_deferred("run")
 # Diagnostic scalars only, never used to admit screenshots or mutate the game.
 func progress(stage: String, phase: String, waited_frames: int = 0):
@@ -135,7 +139,7 @@ func await_stage(stage: String, maximum_frames: int) -> bool:
 func capture(label: String):
 	progress(label,"capture-start")
 	await RenderingServer.frame_post_draw
-	if not require_ok(running() and DisplayServer.get_name()=="X11","Capture requires the normal native running scene"): return
+	if not require_ok(running() and observed_pacing_ok() and DisplayServer.get_name()=="X11","Capture requires the normal native running scene"): return
 	var image: Image = root.get_texture().get_image()
 	if not require_ok(image!=null and not image.is_empty() and image.get_size()==Vector2i(390,844),"Invalid real phone framebuffer"): return
 	var name := "%03d-%s.png" % [records.size(),label]
@@ -146,7 +150,7 @@ func capture(label: String):
 		if not record.owned: continue
 		if record.category=="unit": own.append({"id":record.id,"kind":record.kind,"state":record.state,"target":record.target,"position":[record.pos.x,record.pos.y,record.pos.z],"carry":record.carry,"carry_type":record.carry_type,"path_points":record.path.size()})
 		if record.category=="building": buildings.append({"id":record.id,"kind":record.kind,"built":record.built,"progress":record.progress,"hp":record.hp,"position":[record.pos.x,record.pos.y,record.pos.z]})
-	var frame := {"image":name,"image_sha256":FileAccess.get_sha256(path),"capture_kind":"genuine_native_game_viewport","scenario":SCENARIO,"flow":flow,"fixed_fps":FIXED_FPS,"label":label,
+	var frame := {"image":name,"image_sha256":FileAccess.get_sha256(path),"capture_kind":"genuine_native_game_viewport","scenario":SCENARIO,"flow":flow,"fixed_fps":FIXED_FPS,"observed_process_delta_seconds":game.get_process_delta_time(),"label":label,
 		"utc":Time.get_datetime_string_from_system(true,true),"unix_time":Time.get_unix_time_from_system(),"monotonic_usec":Time.get_ticks_usec(),"process_frame":Engine.get_process_frames(),
 		"build":game.Rules.BUILD_ID,"game_sha256":FileAccess.get_sha256("res://scripts/game.gd"),"rules_sha256":FileAccess.get_sha256("res://scripts/rules.gd"),
 		"engine":Engine.get_version_info(),"display":DisplayServer.get_name(),"rendering_method":RenderingServer.get_current_rendering_method(),"rendering_driver":RenderingServer.get_current_rendering_driver_name(),"adapter_name":RenderingServer.get_video_adapter_name(),"adapter_vendor":RenderingServer.get_video_adapter_vendor(),
@@ -221,10 +225,10 @@ func run():
 	var args := OS.get_cmdline_user_args()
 	if not require_ok(args.size()==4 and args[1]==EXPECTED_BUILD and args[2]=="390" and args[3]=="844","Wrong frozen touch scenario identity or viewport"): return
 	destination=args[0]; flow=destination.get_base_dir().get_file()
-	var engine_args := OS.get_cmdline_args(); var fps_index := engine_args.find("--fixed-fps")
-	if not require_ok(flow in ["touch-gather","touch-build"] and fps_index>=0 and fps_index+1<engine_args.size() and engine_args[fps_index+1]==str(FIXED_FPS),"Wrong independent flow or fixed pacing"): return
+	if not require_ok(flow in ["touch-gather","touch-build"],"Wrong independent flow"): return
 	root.size=Vector2i(390,844); root.content_scale_factor=1.0
 	game=load("res://main.tscn").instantiate(); root.add_child(game); progress("startup","scene-added"); await settle(12)
+	if not require_ok(observed_pacing_ok(),"Observed normal process pacing differs from fixed20"): return
 	if not require_ok(game.Rules.BUILD_ID==EXPECTED_BUILD and running() and public_state().bank_milli=={"food":150000,"wood":200000} and public_state().delivered==0 and public_state().built==0,"Fresh ordinary accepted runtime did not start"): return
 	for record in observed().values():
 		if record.owned and record.kind=="house": house_ids.append(record.id)
@@ -239,7 +243,7 @@ func run():
 	if flow=="touch-gather": await gather_flow()
 	else: await build_flow()
 	if failed: return
-	var report := {"passed":true,"build":EXPECTED_BUILD,"scenario":SCENARIO,"flow":flow,"fixed_fps":FIXED_FPS,"frame_count":records.size(),"frames":records,"events":events,"actions":actions,"observations":observations,
+	var report := {"passed":true,"build":EXPECTED_BUILD,"scenario":SCENARIO,"flow":flow,"fixed_fps":FIXED_FPS,"observed_process_delta_seconds":game.get_process_delta_time(),"frame_count":records.size(),"frames":records,"events":events,"actions":actions,"observations":observations,
 		"worker_id":worker_id,"resource_id":resource_id,"house_id":house_id,"initial_house_ids":house_ids,"initial_delivered":deposit_start,"confirm_bank_milli":confirm_bank,"plot":[plot.x,plot.y,plot.z],
 		"required_house_work_ticks":400,"tick_seconds":0.05,"required_house_work_seconds":20.0,
 		"simulation":"Independent fresh normal seeded game and AI; normal _process with --fixed-fps20; no test reset or direct authority ticks",

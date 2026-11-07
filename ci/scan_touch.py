@@ -11,7 +11,7 @@ ROLES={'touch-gather':['select-worker','target-guidance','command-button','order
        'touch-build':['select-worker','house-button','hold-building-plot','confirm-build']}
 def contract(flow):return {'scenario':SCENARIO,'flow':flow,'viewport':[390,844],'frames':LABELS[flow],
     'input':'viewport.push_input(InputEventScreenTouch,false)','simulation':'independent_normal_seeded_fixed20',
-    'fixed_fps':20,'restart':False,'single_uninterrupted_combined_chain':False}
+    'fixed_fps':20,'observed_process_delta_seconds':.05,'restart':False,'single_uninterrupted_combined_chain':False}
 ERRORS={'Touch contract differs','Touch ordinary runtime differs','Touch action order differs','Touch event schema differs',
         'Touch event coordinates differ','Touch stream ownership differs','Touch UI button differs','Touch intent transition differs',
         'Touch frame chronology differs','Touch public worker differs','Touch deposit provenance differs','Touch construction provenance differs',
@@ -46,11 +46,13 @@ def validate_touch(report,lock):
     need(lock.get('touch_contract')==contract(flow) and type(lock.get('fixed_fps')) is int and lock['fixed_fps']==20 and
          lock['capture_contract']=={'mode':'gameplay','kind':'genuine_native_game_viewport','frame_count':10} and
          report.get('scenario')==SCENARIO and type(report.get('fixed_fps')) is int and report['fixed_fps']==20,'Touch contract differs')
+    need(number(report.get('observed_process_delta_seconds')) and math.isclose(report['observed_process_delta_seconds'],.05,rel_tol=0,abs_tol=1e-8),'Touch fixed pacing differs')
     frames=report['frames'];events=report.get('events');actions=report.get('actions');worker=report.get('worker_id')
     need([f.get('label') for f in frames]==LABELS[flow] and len({f['image_sha256'] for f in frames})==10,'Touch geometry or capture sequence differs')
     need(integer(worker),'Touch public worker differs')
     for i,f in enumerate(frames):
         snapshot(f['snapshot'])
+        need(number(f.get('observed_process_delta_seconds')) and math.isclose(f['observed_process_delta_seconds'],.05,rel_tol=0,abs_tol=1e-8),'Touch fixed pacing differs')
         need(f.get('scenario')==SCENARIO and f.get('flow')==flow and type(f.get('fixed_fps')) is int and f['fixed_fps']==20 and
              f.get('framebuffer')==f.get('logical_viewport')==[390,844] and f.get('content_scale_factor')==1 and
              f.get('camera_focus')==[-25,0,24] and f.get('camera_zoom')==30 and f.get('test_mode') is False and f.get('ai_enabled') is True and
