@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib,json,re,shutil,stat
 import run_ordinary_replay as runner
 SOURCE=Path('replay-evidence');DEST=Path('safe-replay-evidence')
-ALLOWED={'summary.json','stale-hint-contract.json','replay.json','replay.log','replay.invocation.json','checker.json','checker.log','checker.invocation.json'}
+ALLOWED={'summary.json','archer-effect-contract.json','replay.json','replay.log','replay.invocation.json','checker.json','checker.log','checker.invocation.json'}
 PATTERNS=[rb'gh[pousr]_[A-Za-z0-9]{20,255}',rb'github_pat_[A-Za-z0-9_]{20,255}',rb'AKIA[0-9A-Z]{16}',rb'xox[baprs]-[A-Za-z0-9-]{20,255}',rb'-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----',rb'/(?:home/agent|workspace/scratch|workspace/shared|agent_notes|user_notes)/',rb'sk-(?:proj-)?[A-Za-z0-9_-]{24,}',rb'(?i)(?:password|client_secret|access_token|refresh_token)\s*[=:]\s*["\x27]?[A-Za-z0-9_./+\-=]{12,}']
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
@@ -12,11 +12,11 @@ def main():
  total=0
  for p in files:
   assert stat.S_ISREG(p.lstat().st_mode) and not p.is_symlink()
-  cap=64*1024*1024 if p.name=='stale-hint-contract.json' else 16*1024*1024
+  cap=64*1024*1024 if p.name=='archer-effect-contract.json' else 16*1024*1024
   assert p.stat().st_size<=cap;total+=p.stat().st_size;assert total<=128*1024*1024
   data=p.read_bytes();data.decode('utf-8',errors='strict');assert not any(re.search(pattern,data) for pattern in PATTERNS)
   if p.suffix=='.json':json.loads(data,parse_constant=lambda _:(_ for _ in ()).throw(ValueError()))
- summary=json.loads((SOURCE/'summary.json').read_text());assert summary['build']=='vc-c09af531eecf' and type(summary['passed']) is bool and type(summary['replay_attempts']) is int and summary['replay_attempts'] in [0,1]
+ summary=json.loads((SOURCE/'summary.json').read_text());assert summary['build']=='vc-34afbb76387d' and type(summary['passed']) is bool and type(summary['replay_attempts']) is int and summary['replay_attempts'] in [0,1]
  assert summary['files']=={p.name:sha(p) for p in files if p.name!='summary.json'}
  for name in ['replay','checker']:
   receipt=SOURCE/(name+'.json')
@@ -27,10 +27,10 @@ def main():
  verified_pass=False
  if summary['passed']:
   assert summary.get('source_preserved') is True and summary['replay_attempts']==1
-  package_path=Path('STALE_HINT_SOURCE_PACKAGE.json');assert sha(package_path)==runner.PACKAGE
+  package_path=Path('ARCHER_EFFECT_SOURCE_PACKAGE.json');assert sha(package_path)==runner.PACKAGE
   package=json.loads(package_path.read_text());pins=json.loads((Path(__file__).parent/'REPLAY_INPUTS.json').read_text())
-  assert pins['contract.gd']=='351de48c426456d05cd1cc38353afed305465595b6aa6699ed32aef7fbbe0701'
-  assert pins['validate.py']=='3de8395e480b2bfb46fc7be4ec2f3ba4c050d83fa3b439e0750a44be451b73ab'
+  assert pins['contract.gd']=='5188a26bd1c88e46028fc430b59a119fdbce8582913c0901e38b734c78c334e3'
+  assert pins['validate.py']=='e8307c6bd33bad180fc2e9304f3b90219c795fc3130453a275883a8de6ba5ab8'
   expected={'engine':runner.g.ENGINE_SHA,'archive':runner.ARCHIVE,'manifest':runner.PACKAGE,'adapter':runner.ADAPTER,'monitor':runner.g.MONITOR_SHA,**pins}
   expected.update({'source:'+row['file']:row['sha256'] for row in package['files']})
   assert len(package['files'])==192 and package['candidate']==summary['build']
@@ -38,12 +38,12 @@ def main():
    r=json.loads((SOURCE/(name+'.json')).read_text());i=json.loads((SOURCE/(name+'.invocation.json')).read_text())
    assert runner.ordinary_clean_exit(r) and r['passed'] is True and r['exit']==0
    for k,h in expected.items():assert i['artifacts'][k]['sha256']==h and r['post_run_binding_matches']['artifact:'+k] is True
-   a=i['argv'];assert a[0]==i['executable']['path'] and a[1:]==i['requested_argv'][1:];project=i['artifacts']['source:main.tscn']['path'].removesuffix('/main.tscn');report=str((SOURCE/'stale-hint-contract.json').resolve())
+   a=i['argv'];assert a[0]==i['executable']['path'] and a[1:]==i['requested_argv'][1:];project=i['artifacts']['source:main.tscn']['path'].removesuffix('/main.tscn');report=str((SOURCE/'archer-effect-contract.json').resolve())
    if name=='replay':assert a==[i['artifacts']['engine']['path'],'--headless','--path',project,'--script',i['artifacts']['contract.gd']['path'],'--',report]
    else:
     assert a[1:]==[i['artifacts']['validate.py']['path'],'--root',project,report]
-    assert i['artifacts']['report']['sha256']==sha(SOURCE/'stale-hint-contract.json') and r['post_run_binding_matches']['artifact:report'] is True
-  verdict=json.loads((SOURCE/'checker.log').read_text());assert verdict=={'status':'PASS','build':'vc-c09af531eecf','expected_checks':22,'errors':[]}
+    assert i['artifacts']['report']['sha256']==sha(SOURCE/'archer-effect-contract.json') and r['post_run_binding_matches']['artifact:report'] is True
+  verdict=json.loads((SOURCE/'checker.log').read_text());assert verdict=={'status':'PASS','build':'vc-34afbb76387d','expected_checks':25,'errors':[]}
   verified_pass=True
  DEST.mkdir()
  for p in files:shutil.copyfile(p,DEST/p.name)

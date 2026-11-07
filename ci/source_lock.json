@@ -1,5 +1,5 @@
 {
-  "build": "vc-c09af531eecf",
+  "build": "vc-34afbb76387d",
   "files": {
     "GODOT-LICENSES.txt": "f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f",
     "README.md": "7322ec8acc678aa6abb89a56428273b19d9b4627abb88e11e542eea0cb337eb4",
@@ -117,7 +117,7 @@
     "reports/README.md": "d2b82426eec5a2366a1caddeec9ac283629f5a07c12270fdb6d32d382e910ff6",
     "reports/action-asset-stage.json": "43ccc82c2103b6c28efbeffd2e9b3e9a7a7b0e7e59a9c500d1a3253e1a33165b",
     "reports/asset_manifest.json": "e42e035006068b346cee6004fa9081cb4572247be4bfa312e8c068c910534144",
-    "reports/build-manifest.json": "09ee4d5301fbda15fae83d62b1ce61b00453fed0ede3a36dba0ec41014139830",
+    "reports/build-manifest.json": "7a4b1923332dcfb9bd6aae422fb99db5f1774e2412c3db29b00490c44efaadd2",
     "reports/map-input-build-manifest.json": "3c0986ccd8c93aa13703e4707eed6f033b02ea987a8bb6fd3759defe91e17aea",
     "scripts/action_character.gd": "aded948d60b14234516c39190e7dbb49cc54cee7ea02fb9f8233e10d8c2ef5ef",
     "scripts/action_character.gd.uid": "6550c646c8c0b14f79ba03ef9e2f19cd0c6d43cf99618efe637c319589baf796",
@@ -141,7 +141,7 @@
     "scripts/faction_view.gd.uid": "adb9a1738643106ae9a9aee52e124cea5e0ac6aa180fd2af1c9fc5a57d9e5247",
     "scripts/faction_work_memory.gd": "a223ca640285a950e0a1524fb00b100e3c9b022aec5ec8d65fc9a20e99a51100",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
-    "scripts/game.gd": "d013cd77ccd51d7f60c499846f03be684c5fd82b742fb5355fba5097a26c3fdf",
+    "scripts/game.gd": "cd2468ffba418bb6f6dfd7d136a0a7a10d257680624b79d349d0edff42629dd8",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/map_routes.gd": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
     "scripts/map_routes.gd.uid": "f4e1cdbff702603f0496ccad8079b45832556bce365f5d59c6b8668058499f3c",
@@ -153,7 +153,7 @@
     "scripts/observed_character_presenter.gd.uid": "c6934bc6e82d32e4ad2d8c1ce83ee0f2ac45f73985c2a70b0fbf0c6f6f1ca23e",
     "scripts/observed_occlusion.gd": "deb16e3a60a2cf4a3f5ace472915c379df8ecabc76148361675b3ec9b01ea95a",
     "scripts/observed_occlusion.gd.uid": "0d078dece8aed1c6b4ccabf959f90900303650f9057a52d7394c76e553c46470",
-    "scripts/rules.gd": "41d6ebf6e45c209ee257cc93b9ce86e9cf2e3a3ee1fde7b743ad99d5ac5caed7",
+    "scripts/rules.gd": "b896d53e4db996872158897f905f09e1cfd9d86ea39d9d99e577555c3086d4c9",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "tests/action_characters.gd": "ee8cefbbc55be1a31c7e68bbb212261635551b564e55ed93fd12115123ebe69a",
     "tests/action_characters.gd.uid": "639b3adb68173992ca96efb6c94942ce8a9b0f8f154fb7543f611ae0c9937443",

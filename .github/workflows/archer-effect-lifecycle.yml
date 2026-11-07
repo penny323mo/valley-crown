@@ -1,8 +1,8 @@
-name: Validate owned build guidance lifecycle
+name: Validate tracked archer cue lifecycle
 on:
   push:
-    branches: [ci/native-stale-build-hint-v2]
-    paths: ['.github/workflows/stale-build-hint.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/native-archer-effect-lifecycle-v1]
+    paths: ['.github/workflows/archer-effect-lifecycle.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -86,6 +86,19 @@ jobs:
           assert len(entries)==192
           write_archive(pathlib.Path('project'),entries,pathlib.Path('stale-hint-source.zip'))
           PYCODE
+      - name: Apply exact tracked archer cue lifecycle fix
+        run: |
+          set -euo pipefail
+          python3 ci/apply_archer_effect_overlay.py --project project --base-package STALE_HINT_SOURCE_PACKAGE.json --package ARCHER_EFFECT_SOURCE_PACKAGE.json --overlay archer-effect-overlay.zip --receipt assembly-archer-effect.json
+          python3 - <<'PYCODE'
+          import json,pathlib,sys
+          sys.path.insert(0,'ci')
+          from apply_construction_overlay import write_archive
+          package=json.loads(pathlib.Path('ARCHER_EFFECT_SOURCE_PACKAGE.json').read_text())
+          entries={row['file']:row['sha256'] for row in package['files']}
+          assert len(entries)==192
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('archer-effect-source.zip'))
+          PYCODE
       - name: Verify pinned official engine
         run: |
           set -euo pipefail
@@ -98,8 +111,8 @@ jobs:
       - name: Guarded native import only
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive stale-hint-source.zip --manifest STALE_HINT_SOURCE_PACKAGE.json --archive-sha256 4cea135b474197e9f2a59e4662b94ef34469a37dbeb76f581a5b00af3e1be46f --manifest-sha256 4dc5e2685f6170d96a891fc396efe8c4156bb9c0f830247b71bdc21e0579a698 --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: One bounded external build-guidance lifecycle contract and independent checker
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive archer-effect-source.zip --manifest ARCHER_EFFECT_SOURCE_PACKAGE.json --archive-sha256 cd4d443371c2ea1de47e154efcffa59835439ccdf8d617e3b1315056ced9990e --manifest-sha256 ad147be4637a4874746455d19a179a1b0b13d41abc7c57c9efeb1396ebbf8f04 --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: One bounded external archer effect lifecycle contract and independent checker
         id: replay
         run: |
           set -euo pipefail
@@ -109,15 +122,15 @@ jobs:
         if: always() && steps.replay.outcome != 'skipped'
         run: |
           set -euo pipefail
-          echo '84e75970efb5a450c68a285ed731fdb7dfabda0818903d95af515554408d8c6b  ci/scan_replay_evidence.py' | sha256sum --check --strict
-          echo 'c55e0f1a9a265111564b8d737d2c1c333650ef5535ef240c10e367200204649b  ci/run_ordinary_replay.py' | sha256sum --check --strict
-          echo '566a01cee9c399852b18481c04fdf758ee7d17ed1c94216b9f8f8c3643008174  ci/REPLAY_INPUTS.json' | sha256sum --check --strict
+          echo 'b982a1bfa97ed97134d8724f6d6b62698bcca458dfa97a19986d5589d0744b45  ci/scan_replay_evidence.py' | sha256sum --check --strict
+          echo '378f76d9a68ec3a94c5905af47395f98d41ce3977b5283c0a8a080c6fcc07f10  ci/run_ordinary_replay.py' | sha256sum --check --strict
+          echo '5b3cc9cdc77163e5ce7a2f178537a12dda0bd919c14c9bab754300f4b558d4e7  ci/REPLAY_INPUTS.json' | sha256sum --check --strict
           python3 ci/scan_replay_evidence.py
       - name: Retain only admitted contract evidence
         if: always() && steps.scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: stale-build-hint-native-${{ github.sha }}
+          name: archer-effect-lifecycle-native-${{ github.sha }}
           path: safe-replay-evidence/
           if-no-files-found: error
           retention-days: 14

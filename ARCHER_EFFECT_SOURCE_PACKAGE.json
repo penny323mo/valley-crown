@@ -1,0 +1,2019 @@
+{
+  "candidate": "vc-34afbb76387d",
+  "base_build": "vc-c09af531eecf",
+  "execution_enabled": false,
+  "scope": "Original-ground tracked archer cue lifecycle candidate; import only plus external native lifecycle contract. No inherited suite execution or runtime acceptance claimed.",
+  "base_package_sha256": "4dc5e2685f6170d96a891fc396efe8c4156bb9c0f830247b71bdc21e0579a698",
+  "source_archive_sha256": "cd4d443371c2ea1de47e154efcffa59835439ccdf8d617e3b1315056ced9990e",
+  "files": [
+    {
+      "file": "GODOT-LICENSES.txt",
+      "sha256": "f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f",
+      "size": 105300
+    },
+    {
+      "file": "README.md",
+      "sha256": "7322ec8acc678aa6abb89a56428273b19d9b4627abb88e11e542eea0cb337eb4",
+      "size": 2681
+    },
+    {
+      "file": "THIRD_PARTY_NOTICES.txt",
+      "sha256": "ea32b923c8dcdec23b053f691f8f1f6f9257e20e2c2d1a2477843a8cda2bf924",
+      "size": 1780
+    },
+    {
+      "file": "art/.gdignore",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "file": "art/action_characters/COVERAGE.md",
+      "sha256": "8d417b6c79c70d7fdd83825e98da24e4f72718ee4ebc2ee23db2b540416ba305",
+      "size": 4754
+    },
+    {
+      "file": "art/action_characters/DIRECTION.md",
+      "sha256": "bb9f7ec06f6bac99eb682bc64445fe6bcde130c5350944d691a411c680b8f3d5",
+      "size": 2637
+    },
+    {
+      "file": "art/action_characters/OCCLUSION.md",
+      "sha256": "719c56320d55dcab0fa232b7f8c221e63366b346a1c7386987d298219369e19c",
+      "size": 7002
+    },
+    {
+      "file": "art/action_characters/archer.blend",
+      "sha256": "11861efce4b0a33fbad2a5192626a7e722fc3cf9ca368b47bff8731a1a9926d2",
+      "size": 6935148
+    },
+    {
+      "file": "art/action_characters/input-manifest.json",
+      "sha256": "1cbfddb27a4ce08a765208d262f545e4bf560e382281caf505216c9be1f32bce",
+      "size": 11419
+    },
+    {
+      "file": "art/action_characters/interchange/archer.glb",
+      "sha256": "c1459f625d3f14af2f2503bf57f125ade7ce60db6d4eeecacc5778c3a64d640f",
+      "size": 1285124
+    },
+    {
+      "file": "art/action_characters/interchange/scout.glb",
+      "sha256": "e08380280a4f0df3bb69546f04db8d4163a5ebe677cb99f18706f7f1c63d5248",
+      "size": 1205680
+    },
+    {
+      "file": "art/action_characters/interchange/spearman.glb",
+      "sha256": "863af58cc438fa1a5f6c7e134022e97e4e31d3286d88822beefa22f9d3b2b997",
+      "size": 943324
+    },
+    {
+      "file": "art/action_characters/interchange/villager.glb",
+      "sha256": "c2a8c01f4c6066a4815816bbc16c792fb3dce0cc223ae1ee3da9417fc5ea491f",
+      "size": 1115936
+    },
+    {
+      "file": "art/action_characters/licenses/kaykit-animations.txt",
+      "sha256": "373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9",
+      "size": 1548
+    },
+    {
+      "file": "art/action_characters/licenses/quaternius-base.txt",
+      "sha256": "0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e",
+      "size": 806
+    },
+    {
+      "file": "art/action_characters/licenses/quaternius-outfits.txt",
+      "sha256": "2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb",
+      "size": 728
+    },
+    {
+      "file": "art/action_characters/licenses/quaternius-ual.txt",
+      "sha256": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+      "size": 332
+    },
+    {
+      "file": "art/action_characters/licenses/quaternius-ual2.txt",
+      "sha256": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+      "size": 332
+    },
+    {
+      "file": "art/action_characters/scout.blend",
+      "sha256": "a8f76ed0a35aee9e7bc99d78568e3a9fb97296f57333f3f280ac10806b211e95",
+      "size": 6865816
+    },
+    {
+      "file": "art/action_characters/spearman.blend",
+      "sha256": "1735befa4446490dd6a93ce45fcf130de57dc06ff116adb8a55782faadd7d680",
+      "size": 6656312
+    },
+    {
+      "file": "art/action_characters/textures/archer_atlas.png",
+      "sha256": "06ace4ddba4a1fea7bb2353dbebd04c05da7a774d10a9a2e279850cd80792000",
+      "size": 454308
+    },
+    {
+      "file": "art/action_characters/textures/scout_atlas.png",
+      "sha256": "06ace4ddba4a1fea7bb2353dbebd04c05da7a774d10a9a2e279850cd80792000",
+      "size": 454308
+    },
+    {
+      "file": "art/action_characters/textures/spearman_atlas.png",
+      "sha256": "a0517d9c5449a7041e6fb24a3642c324263581a0f42183cb0515a0cde7fd263c",
+      "size": 316138
+    },
+    {
+      "file": "art/action_characters/textures/villager_atlas.png",
+      "sha256": "a0517d9c5449a7041e6fb24a3642c324263581a0f42183cb0515a0cde7fd263c",
+      "size": 316138
+    },
+    {
+      "file": "art/action_characters/villager.blend",
+      "sha256": "04e8f04abcabc3690cfd9cd75379b0a7394c3922048747ef22ca28539ffd5cd3",
+      "size": 10065688
+    },
+    {
+      "file": "assets/audio/build.wav",
+      "sha256": "43e33302fec777a3ea0dd8d897f44d7458a4bd9466def39f30310a7e53b621d2",
+      "size": 13274
+    },
+    {
+      "file": "assets/audio/build.wav.import",
+      "sha256": "a70e0138a63dede30d483078151ea71dd943beb2ae17ecc717363ecdcdf557bc",
+      "size": 485
+    },
+    {
+      "file": "assets/audio/combat.wav",
+      "sha256": "d41195510efcd4896a3250dac4d9b2f7665fbb1094a8afb5b7c21788bf49c918",
+      "size": 8864
+    },
+    {
+      "file": "assets/audio/combat.wav.import",
+      "sha256": "60d6f03b1ea03e2e6b871d315d558b5525fcb51125ac487672fd3f99ff7a36bd",
+      "size": 489
+    },
+    {
+      "file": "assets/audio/select.wav",
+      "sha256": "69bc2494d8cdc92291b521b99d7d5542baaddba2758be0ea18017e8582834c3c",
+      "size": 4454
+    },
+    {
+      "file": "assets/audio/select.wav.import",
+      "sha256": "3c66001bf967831728bd946e2bc2e153e2ab5771fa66307030330684d6bd8c06",
+      "size": 489
+    },
+    {
+      "file": "assets/audio/train.wav",
+      "sha256": "b25d9addb55c6470fa4228880e2025bc9413fa14c8224849e2d6a26148b08b80",
+      "size": 8864
+    },
+    {
+      "file": "assets/audio/train.wav.import",
+      "sha256": "0841800be27dd59a26bb6295b33256e16e1ca3989ab0a9c2398e496f185357f8",
+      "size": 486
+    },
+    {
+      "file": "assets/fonts/DEJAVU-LICENSE.txt",
+      "sha256": "f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9",
+      "size": 7237
+    },
+    {
+      "file": "assets/fonts/NOTO-LICENSE.txt",
+      "sha256": "849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b",
+      "size": 14712
+    },
+    {
+      "file": "assets/fonts/body.ttf",
+      "sha256": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e",
+      "size": 759720
+    },
+    {
+      "file": "assets/fonts/body.ttf.import",
+      "sha256": "996e95b6d1c4d654ad88e0689217c41ad4b754b22787434a2d26b55e629ec88d",
+      "size": 750
+    },
+    {
+      "file": "assets/fonts/title.ttf",
+      "sha256": "8cb29f7db250ebb2551a6ce2c1e0bfd5a0eb520e9e233370db0493e82e1f36f7",
+      "size": 380660
+    },
+    {
+      "file": "assets/fonts/title.ttf.import",
+      "sha256": "8a2281e6016912982b268a31ecd179e7c0918500bfddd5d7bd7e9e16b9800b3c",
+      "size": 753
+    },
+    {
+      "file": "assets/fonts/ui_tc.otf",
+      "sha256": "d8dc3f7d8ba62fb1172a6bdd867f8a09e503d3ac5cb349e726491736b5008790",
+      "size": 179936
+    },
+    {
+      "file": "assets/fonts/ui_tc.otf.import",
+      "sha256": "6c6eadb81e995f7d386286402e41759ed2c50267bf9932fe0a8e45a2807a52d1",
+      "size": 752
+    },
+    {
+      "file": "assets/mature/models/archer.scn",
+      "sha256": "e6e2829509097748c8fc204da1464028e61939c4b52628c1759b1534e54b22e9",
+      "size": 209419
+    },
+    {
+      "file": "assets/mature/models/archer_action.scn",
+      "sha256": "55b11a40f6533197b04df899c661249293344d942232809a2f27d21f7c0c83bc",
+      "size": 3990067
+    },
+    {
+      "file": "assets/mature/models/barracks.scn",
+      "sha256": "12c99f22053cbdc4a1d90df1ea52231aaf932e6699a6148fd878bda30f3d9722",
+      "size": 126929
+    },
+    {
+      "file": "assets/mature/models/berry.scn",
+      "sha256": "1d94b6a40a93a5480555252568643f02735b625bb4bb7ccd8c62bb3c2c52f393",
+      "size": 90091
+    },
+    {
+      "file": "assets/mature/models/house.scn",
+      "sha256": "dd2cdaa4520a29ed18aa619df8f4f81ac48f3ef6a0031b79030f346fca9be8cd",
+      "size": 77390
+    },
+    {
+      "file": "assets/mature/models/oak_0.scn",
+      "sha256": "dfe9ca162c87cd839b7e271050ee44eaea644e43de965e97b747f63ecfa24076",
+      "size": 53259
+    },
+    {
+      "file": "assets/mature/models/oak_1.scn",
+      "sha256": "d2619f3eedebe124bb4f3f70446300a32bea6a281a56edae383c5e61b0d16230",
+      "size": 53259
+    },
+    {
+      "file": "assets/mature/models/pine_0.scn",
+      "sha256": "ccfa668729adca99b70800bb5dbfe90b3515571dafc1077c2691664b24104219",
+      "size": 82827
+    },
+    {
+      "file": "assets/mature/models/pine_1.scn",
+      "sha256": "8e73e04f481645605d819fcbf15a1f9dbca0fbad5eac592287b6c1df851423fb",
+      "size": 82827
+    },
+    {
+      "file": "assets/mature/models/pine_2.scn",
+      "sha256": "269e643f27297db9944fa4bcf8ddc732287d920c31850c785823c72296e70459",
+      "size": 82827
+    },
+    {
+      "file": "assets/mature/models/range.scn",
+      "sha256": "d527dd15a07714e6f9cdfa709b42115d3c960a335f4ad3ebf3f8a36b8ed677e7",
+      "size": 113486
+    },
+    {
+      "file": "assets/mature/models/scout.scn",
+      "sha256": "124cd2b5c243b6743befbdb29c7e3dc6989b1ca60bb472cafce3d290cb94bc04",
+      "size": 180234
+    },
+    {
+      "file": "assets/mature/models/scout_action.scn",
+      "sha256": "3e724d611b3cea019dbc0ff3e409840856e45daee06975784054c22d1e0af63c",
+      "size": 3934963
+    },
+    {
+      "file": "assets/mature/models/spearman.scn",
+      "sha256": "9c25b8b439f7fa6600d1b94cf432363e604300c831beda599a43563eab8a8320",
+      "size": 204621
+    },
+    {
+      "file": "assets/mature/models/spearman_action.scn",
+      "sha256": "a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89",
+      "size": 3860938
+    },
+    {
+      "file": "assets/mature/models/storehouse.scn",
+      "sha256": "3f9dfb0a3f59677b18e9a2d277a2c03e086bf52488288b6ee50d3b05b454c84e",
+      "size": 74703
+    },
+    {
+      "file": "assets/mature/models/town_center.scn",
+      "sha256": "a0688f69ece2c49e0eb0d152bb06c975b595d81c8fbfcf8b3d9d42f6e4f4e625",
+      "size": 133460
+    },
+    {
+      "file": "assets/mature/models/villager.scn",
+      "sha256": "b16e75a81d92973af38bd7fb920327689a0f8dacba5a9e0680841d4ba49f4ad2",
+      "size": 182349
+    },
+    {
+      "file": "assets/mature/models/villager_action.scn",
+      "sha256": "5fbc8ea6892ff0758625ca46bc5afff01bbafe862e2152e33ea46400940a132a",
+      "size": 4268708
+    },
+    {
+      "file": "assets/mature/shaders/observed_occlusion.gdshader",
+      "sha256": "23d8f2999549031194e91de6db31eba7808e8dcae5347ae7de0ceb9c68585925",
+      "size": 772
+    },
+    {
+      "file": "assets/mature/shaders/observed_occlusion.gdshader.uid",
+      "sha256": "051026e38c76fb76a9fe0bbbe2bef682232696994d607b466db38811fe07f3fd",
+      "size": 20
+    },
+    {
+      "file": "assets/mature/shaders/observed_visibility_mask.gdshader",
+      "sha256": "46dbc2f787c2219f0393e41d28100c1627e84e8206ae4ce7a10eb5a814d51971",
+      "size": 518
+    },
+    {
+      "file": "assets/mature/shaders/observed_visibility_mask.gdshader.uid",
+      "sha256": "cfe2118fe47b4779ff4743b66d99db352866655ff933812a83d3400717a2fe02",
+      "size": 18
+    },
+    {
+      "file": "assets/mature/terrain/earth.png",
+      "sha256": "7e08264e2166b40fc101c4bb1fea7e5717a41880a7dd5f75f64852394d5f8ec3",
+      "size": 222607
+    },
+    {
+      "file": "assets/mature/terrain/earth.png.import",
+      "sha256": "f0a5c016af8d07e0b7c03e19c5f1acbc8ab55d6fe5b92fae6961ffe7b1c32c4c",
+      "size": 940
+    },
+    {
+      "file": "assets/mature/terrain/grass.png",
+      "sha256": "93d7ecf6ba7c842f32927e92e8c91cd1194903652bece08489ea4356d45cb25c",
+      "size": 232521
+    },
+    {
+      "file": "assets/mature/terrain/grass.png.import",
+      "sha256": "9f7e02a27c2379adc3120bb9f1640234c788b8664d2c02751cf1e5003aa156d8",
+      "size": 938
+    },
+    {
+      "file": "assets/mature/terrain/ground.gdshader",
+      "sha256": "cee6f0d9faf6da09311b7b2515ce085c9a77dbc070720826906bc15b61d3d800",
+      "size": 2053
+    },
+    {
+      "file": "assets/mature/terrain/ground.gdshader.uid",
+      "sha256": "262f68235c73da264cb363fedfc0837a25855318d7e06becbe5593a4098e8172",
+      "size": 20
+    },
+    {
+      "file": "assets/mature/textures/clay.png",
+      "sha256": "e6e954ab8f2f4637806daffc5fa51a349d6e6d56de2ea05a65e18509c5f45b7e",
+      "size": 66809
+    },
+    {
+      "file": "assets/mature/textures/clay.png.import",
+      "sha256": "f526b8dfa3eca51ae95e06c4734fd0bd0d6eb2194983d4feebf1acac29ffa306",
+      "size": 938
+    },
+    {
+      "file": "assets/mature/textures/fir_spray.png",
+      "sha256": "9d4b69116a6dc229fd69b5d69dde62039cc0a14641853cacc6711f9caab2bac1",
+      "size": 24362
+    },
+    {
+      "file": "assets/mature/textures/fir_spray.png.import",
+      "sha256": "41345d03b8e8a7a64410d887ed951d11c996a6572b161dcc155d7b176d021c75",
+      "size": 953
+    },
+    {
+      "file": "assets/mature/textures/oak.png",
+      "sha256": "cd4982a2c2d06545d6a61d0b23a984fc3a884392df28c7e988ba9388514fac89",
+      "size": 81238
+    },
+    {
+      "file": "assets/mature/textures/oak.png.import",
+      "sha256": "43884553809c18c128bff39f65a85de49fdc21667f520678639033b9c6a6298a",
+      "size": 935
+    },
+    {
+      "file": "assets/mature/textures/oak_leaves.png",
+      "sha256": "77651428736b47d45b7ac1c3168d725488dbfcd325fd884fc99726945edd41dc",
+      "size": 9263
+    },
+    {
+      "file": "assets/mature/textures/oak_leaves.png.import",
+      "sha256": "edc06c5d2e1bcc9653df32064874ddf7b71c925cdc88052cae5b9057ee245e27",
+      "size": 956
+    },
+    {
+      "file": "assets/mature/textures/plaster.png",
+      "sha256": "62942c7cb58688f6289f44745bd6bed44c90f3031694f8df655102a46f959e61",
+      "size": 207438
+    },
+    {
+      "file": "assets/mature/textures/plaster.png.import",
+      "sha256": "814fd0f6680ff12fba47fd21cb05b60131026c911413069b55ace9a0344505f5",
+      "size": 947
+    },
+    {
+      "file": "assets/mature/textures/slate.png",
+      "sha256": "eec02e142da383f76af7b498d24c9bbfe6f98e2630d980232b9c6b73e547a00f",
+      "size": 56772
+    },
+    {
+      "file": "assets/mature/textures/slate.png.import",
+      "sha256": "ee8147062a018cc37e46f09586974eb5111908dad15a742aec067a4183cd2312",
+      "size": 941
+    },
+    {
+      "file": "assets/mature/textures/stone.png",
+      "sha256": "1f44113552f2f795aa137c9be728a2e3b8f3bc87d5a004a108f9e0bef3bbe336",
+      "size": 238195
+    },
+    {
+      "file": "assets/mature/textures/stone.png.import",
+      "sha256": "af47cd0c8b9d7e7f3023f921c25ffaa65c9e7a2af8ec4bb472e2e7ba1ab25239",
+      "size": 941
+    },
+    {
+      "file": "assets/mature/visual_library.gd",
+      "sha256": "b1f0990c730f07e7f24abba0f9bd5b993a555d6a9755fddfa62708909a9a73eb",
+      "size": 1261
+    },
+    {
+      "file": "assets/mature/visual_library.gd.uid",
+      "sha256": "fd0ab5870f671265d4037fd76df898beb032d3e73b9ac97abb2c960aabfad1d8",
+      "size": 20
+    },
+    {
+      "file": "assets/models/archer.glb",
+      "sha256": "8a1f3e93e953a22fda2515d6de10652a2726272105fccb131e854c60d7a615a6",
+      "size": 184040
+    },
+    {
+      "file": "assets/models/archer.glb.import",
+      "sha256": "252cfc3895c65c99c78c82b990eb72ef082d4229e360b8f357f8af660f1cb4e3",
+      "size": 1038
+    },
+    {
+      "file": "assets/models/barracks.glb",
+      "sha256": "1f3ded26ee7669a54b54e4734255bd199d1b039faa342e8ecefec7e0e808a0ce",
+      "size": 81080
+    },
+    {
+      "file": "assets/models/barracks.glb.import",
+      "sha256": "dec2ee0f5c1bd5e78b73ca0d670c6d11e6e87791c0e770cf827599b836d63627",
+      "size": 1044
+    },
+    {
+      "file": "assets/models/berry.glb",
+      "sha256": "ca6dcc327305b07a87150c2530f68b2c001d96e52bb0a0bf4b910ced38b3ac46",
+      "size": 109216
+    },
+    {
+      "file": "assets/models/berry.glb.import",
+      "sha256": "a27f22fb0971894a01880b9cf81c458d987c97eb6b4ed68399a52c6195f10c08",
+      "size": 1035
+    },
+    {
+      "file": "assets/models/gold.glb",
+      "sha256": "f3ea17a937bd333bfa9a0de1b697c8f5edbc573f7ee751ca6dc727d5de00d020",
+      "size": 34864
+    },
+    {
+      "file": "assets/models/gold.glb.import",
+      "sha256": "8350910f5312e0675e109de804b84446bcd0f7a7078197e9e0b8c9f9a171e7ca",
+      "size": 1032
+    },
+    {
+      "file": "assets/models/house.glb",
+      "sha256": "02face3306030af63e571887e8ce7052ee2b4557526e4a3217b83200ae2ec903",
+      "size": 64764
+    },
+    {
+      "file": "assets/models/house.glb.import",
+      "sha256": "e451fa52dc4f9bc6d44bece40ca67e04ae999afad84e317f36a8d716b04cb475",
+      "size": 1035
+    },
+    {
+      "file": "assets/models/mill.glb",
+      "sha256": "25ded1c3724a7f36342974243f1f0e49ce50d1ad9877d551553b5864e8df0d17",
+      "size": 56760
+    },
+    {
+      "file": "assets/models/mill.glb.import",
+      "sha256": "2a4caa7701dc45250a7f7ac8e2acfa383549cf58607f58ccc08b4d1f0fa0d093",
+      "size": 1032
+    },
+    {
+      "file": "assets/models/oak.glb",
+      "sha256": "49e661f9208b52a894f534a17970a0fda37f09c11cb6f762c43a22a629379834",
+      "size": 104324
+    },
+    {
+      "file": "assets/models/oak.glb.import",
+      "sha256": "7df7068d1b400f07c2d9418a264c10b4d2189768eabd4fefac3dbcafdaae3883",
+      "size": 1028
+    },
+    {
+      "file": "assets/models/pine.glb",
+      "sha256": "8b6d9b458caaa1c6734f475b1118d712699afa12dc819009d22191c67681464c",
+      "size": 32064
+    },
+    {
+      "file": "assets/models/pine.glb.import",
+      "sha256": "82b9e72ab018268ffd622523a0a263320eb6829130113aefb8f75ef7ec0ed2db",
+      "size": 1032
+    },
+    {
+      "file": "assets/models/scout.glb",
+      "sha256": "016ebeb7085bdf5a474e17cc043fa0b2d4cfbd9bc7ea56adace0b98a91439266",
+      "size": 168520
+    },
+    {
+      "file": "assets/models/scout.glb.import",
+      "sha256": "f4a165d35f6482d63e2e6ce94c7f298910355dfd89f7311ff5950df3e7b5d513",
+      "size": 1035
+    },
+    {
+      "file": "assets/models/spearman.glb",
+      "sha256": "f94cff803f6899452b9f4ffb80b1066322424028bc34dde1cc85e52204e00795",
+      "size": 170504
+    },
+    {
+      "file": "assets/models/spearman.glb.import",
+      "sha256": "241abbedd6f5e327d327d579f76824139a1a4ab4930c7ea26849631ff16b8f02",
+      "size": 1044
+    },
+    {
+      "file": "assets/models/town_center.glb",
+      "sha256": "02f3eac170d95f25d029a6362255d50c24ef57a5cdda2790bb447ae332cb317c",
+      "size": 77596
+    },
+    {
+      "file": "assets/models/town_center.glb.import",
+      "sha256": "1943c45f419a502f146f27baf30c1fcc7727ebfa14ff343d5ad9cc098eef97e2",
+      "size": 1052
+    },
+    {
+      "file": "assets/models/villager.glb",
+      "sha256": "6ad35c97c2d06639faf5ab70b73afec42b538e7a2e7d741fc37643e85f1cab18",
+      "size": 169620
+    },
+    {
+      "file": "assets/models/villager.glb.import",
+      "sha256": "0442f81b3f5194628df92f6b1c8c6aee539a506e2cba4dcdd1c4bfc486b53a30",
+      "size": 1044
+    },
+    {
+      "file": "export_presets.cfg",
+      "sha256": "5fa7d1ebafbbe0bd56ce4c70558acbb071f5af3e3667695592319de3eab6a0af",
+      "size": 842
+    },
+    {
+      "file": "main.tscn",
+      "sha256": "502a45b8d70e44bf4017a7674dcc9c18c0b0ca199fef2daec0b3a437a2fdf54b",
+      "size": 177
+    },
+    {
+      "file": "project.godot",
+      "sha256": "004336145486790f39a32675fa9a73ca7f277a25f61a5ed57b50a9ea9351d737",
+      "size": 929
+    },
+    {
+      "file": "reports/README.md",
+      "sha256": "d2b82426eec5a2366a1caddeec9ac283629f5a07c12270fdb6d32d382e910ff6",
+      "size": 872
+    },
+    {
+      "file": "reports/action-asset-stage.json",
+      "sha256": "43ccc82c2103b6c28efbeffd2e9b3e9a7a7b0e7e59a9c500d1a3253e1a33165b",
+      "size": 3032
+    },
+    {
+      "file": "reports/asset_manifest.json",
+      "sha256": "e42e035006068b346cee6004fa9081cb4572247be4bfa312e8c068c910534144",
+      "size": 109259
+    },
+    {
+      "file": "reports/build-manifest.json",
+      "sha256": "7a4b1923332dcfb9bd6aae422fb99db5f1774e2412c3db29b00490c44efaadd2",
+      "size": 13266
+    },
+    {
+      "file": "reports/map-input-build-manifest.json",
+      "sha256": "3c0986ccd8c93aa13703e4707eed6f033b02ea987a8bb6fd3759defe91e17aea",
+      "size": 11413
+    },
+    {
+      "file": "scripts/action_character.gd",
+      "sha256": "aded948d60b14234516c39190e7dbb49cc54cee7ea02fb9f8233e10d8c2ef5ef",
+      "size": 9170
+    },
+    {
+      "file": "scripts/action_character.gd.uid",
+      "sha256": "6550c646c8c0b14f79ba03ef9e2f19cd0c6d43cf99618efe637c319589baf796",
+      "size": 20
+    },
+    {
+      "file": "scripts/attack_ledger.gd",
+      "sha256": "bd490422465552a93209881bf4f3690a02234b31541961dda1d13ffc94b183b9",
+      "size": 4215
+    },
+    {
+      "file": "scripts/attack_ledger.gd.uid",
+      "sha256": "82f6b16d4eec6ec9a5a077fdb8b029b877e0e20893cdc47e24edc8d83643fd4c",
+      "size": 20
+    },
+    {
+      "file": "scripts/audio_cue_policy.gd",
+      "sha256": "2d8eee52cd3d270d5bcbe4b98e70372c2ac0715d3e4838dfde55c119c18e20a8",
+      "size": 1496
+    },
+    {
+      "file": "scripts/audio_cue_policy.gd.uid",
+      "sha256": "b726102d31341aade7c5989988da72593aa1eda68c2a5eb6c3117e335d0f1bec",
+      "size": 20
+    },
+    {
+      "file": "scripts/audio_cues.gd",
+      "sha256": "ad0279840f196d4322f13c3913fbfb0418d7ecf51b9b7bd14f96341ce022773a",
+      "size": 1586
+    },
+    {
+      "file": "scripts/audio_cues.gd.uid",
+      "sha256": "6cebef097f71658778e79de15b45b82db64a23c9251199099fe92c98fa96f1cd",
+      "size": 20
+    },
+    {
+      "file": "scripts/bounded_grid_pathfinder.gd",
+      "sha256": "7665b3796b3dae1bb363dcc8e48dc205c354674d7d6cc793ab3fdaed60ff2cf6",
+      "size": 6274
+    },
+    {
+      "file": "scripts/bounded_grid_pathfinder.gd.uid",
+      "sha256": "7ecc2b676bb549c51da878902b6ce52b0873944fc2aaca23315927436fe8a891",
+      "size": 20
+    },
+    {
+      "file": "scripts/bounded_work_routes.gd",
+      "sha256": "b76c5a3e76756f1c90be1cdd9dd38242478e37d2d8e621224a07647e87be6ee7",
+      "size": 8710
+    },
+    {
+      "file": "scripts/bounded_work_routes.gd.uid",
+      "sha256": "395b6f61d9b22a9d882ebf0578894c3ad318c5c8c9239974d87e6fe0a4b19a0f",
+      "size": 19
+    },
+    {
+      "file": "scripts/construction_visual.gd",
+      "sha256": "3579462fd7731457a3a73f5abb73afad7be772cd17372be171e32aee6d357a61",
+      "size": 3597
+    },
+    {
+      "file": "scripts/construction_visual.gd.uid",
+      "sha256": "51ec9f3b316865ece8dcdf2d0902a1414f86a2446e96cd02dcf2e0b4fd351d3f",
+      "size": 20
+    },
+    {
+      "file": "scripts/economy_ledger.gd",
+      "sha256": "b6507f93316ca0d8e5978301f8abf4d684eee08888681fa4a885d9ceaaf30a4a",
+      "size": 16888
+    },
+    {
+      "file": "scripts/economy_ledger.gd.uid",
+      "sha256": "5c00fd1940b699d4be1d6d3af93df3255e86485c24b0980faad7ea7145c61e3d",
+      "size": 20
+    },
+    {
+      "file": "scripts/end_rules.gd",
+      "sha256": "0d1364421a26f4385c2d64bf94155930622395791b15de5b61c69947d75e1d7a",
+      "size": 645
+    },
+    {
+      "file": "scripts/end_rules.gd.uid",
+      "sha256": "d9ffa1fa42576a3c519ec2224f8733add04684a4e2aa876c634292d68d1d7b25",
+      "size": 20
+    },
+    {
+      "file": "scripts/faction_view.gd",
+      "sha256": "5862071a65d1d3a0bf513c8ff48258664013a84ef19f63936c2a891e576a5ab5",
+      "size": 1529
+    },
+    {
+      "file": "scripts/faction_view.gd.uid",
+      "sha256": "adb9a1738643106ae9a9aee52e124cea5e0ac6aa180fd2af1c9fc5a57d9e5247",
+      "size": 20
+    },
+    {
+      "file": "scripts/faction_work_memory.gd",
+      "sha256": "a223ca640285a950e0a1524fb00b100e3c9b022aec5ec8d65fc9a20e99a51100",
+      "size": 2750
+    },
+    {
+      "file": "scripts/faction_work_memory.gd.uid",
+      "sha256": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
+      "size": 20
+    },
+    {
+      "file": "scripts/game.gd",
+      "sha256": "cd2468ffba418bb6f6dfd7d136a0a7a10d257680624b79d349d0edff42629dd8",
+      "size": 194250
+    },
+    {
+      "file": "scripts/game.gd.uid",
+      "sha256": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
+      "size": 20
+    },
+    {
+      "file": "scripts/map_routes.gd",
+      "sha256": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
+      "size": 1666
+    },
+    {
+      "file": "scripts/map_routes.gd.uid",
+      "sha256": "f4e1cdbff702603f0496ccad8079b45832556bce365f5d59c6b8668058499f3c",
+      "size": 20
+    },
+    {
+      "file": "scripts/mature_world_visuals.gd",
+      "sha256": "d9a5f809da857c8354eea652c29093f5ac3dda97f903279a1cf9f17b79aa9218",
+      "size": 1331
+    },
+    {
+      "file": "scripts/mature_world_visuals.gd.uid",
+      "sha256": "4129f1ef603ef8a0925ed5388bcc4d6cade6fe489ac15454abcabcd40108201a",
+      "size": 20
+    },
+    {
+      "file": "scripts/minimap.gd",
+      "sha256": "2b199ddc3fba75e8fd9e638fad1f54bdadf87bc2214b17798027e6337b5db16b",
+      "size": 2123
+    },
+    {
+      "file": "scripts/minimap.gd.uid",
+      "sha256": "f6346a0cf32cd8e5aad3f0538b5b25ffffa16e73be57d921980ad6be42242838",
+      "size": 20
+    },
+    {
+      "file": "scripts/observed_character_presenter.gd",
+      "sha256": "e062cbf808648a68cf1ba7b463e205185fb8694390b5440282d13819cb5dc9b5",
+      "size": 3236
+    },
+    {
+      "file": "scripts/observed_character_presenter.gd.uid",
+      "sha256": "c6934bc6e82d32e4ad2d8c1ce83ee0f2ac45f73985c2a70b0fbf0c6f6f1ca23e",
+      "size": 20
+    },
+    {
+      "file": "scripts/observed_occlusion.gd",
+      "sha256": "deb16e3a60a2cf4a3f5ace472915c379df8ecabc76148361675b3ec9b01ea95a",
+      "size": 6050
+    },
+    {
+      "file": "scripts/observed_occlusion.gd.uid",
+      "sha256": "0d078dece8aed1c6b4ccabf959f90900303650f9057a52d7394c76e553c46470",
+      "size": 19
+    },
+    {
+      "file": "scripts/rules.gd",
+      "sha256": "b896d53e4db996872158897f905f09e1cfd9d86ea39d9d99e577555c3086d4c9",
+      "size": 2762
+    },
+    {
+      "file": "scripts/rules.gd.uid",
+      "sha256": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
+      "size": 20
+    },
+    {
+      "file": "tests/action_characters.gd",
+      "sha256": "ee8cefbbc55be1a31c7e68bbb212261635551b564e55ed93fd12115123ebe69a",
+      "size": 8108
+    },
+    {
+      "file": "tests/action_characters.gd.uid",
+      "sha256": "639b3adb68173992ca96efb6c94942ce8a9b0f8f154fb7543f611ae0c9937443",
+      "size": 20
+    },
+    {
+      "file": "tests/action_render_fixture.gd",
+      "sha256": "c3bbcbf740babe5d60d5d3565e01ddf856b7403071d5ba64c2e9f36595576040",
+      "size": 5554
+    },
+    {
+      "file": "tests/action_render_fixture.gd.uid",
+      "sha256": "e90700dc99db5cd4206889beb5b8344c3add0178de438e96b37f74d2d4bcee5a",
+      "size": 20
+    },
+    {
+      "file": "tests/bounded_grid_pathfinder.gd",
+      "sha256": "8a4ce8ac297a3927bf953f37ab000b403076d667d6963e3be773a445ed240e83",
+      "size": 17216
+    },
+    {
+      "file": "tests/bounded_grid_pathfinder.gd.uid",
+      "sha256": "3ab82a6d7bea175765ebfd68897ec0cadbfc560283f17c6f6d113c60143cf51b",
+      "size": 20
+    },
+    {
+      "file": "tests/bounded_work_routes.gd",
+      "sha256": "c663a8991f7a9db80fd2b33b8dcbb3cee61b5c1acbc750cc8bf36d09a2d2544f",
+      "size": 19701
+    },
+    {
+      "file": "tests/bounded_work_routes.gd.uid",
+      "sha256": "d6e4b98c0ed6535fc2896768cc646b2f3d0752bc85dee1633bedb8dcb9d5437f",
+      "size": 20
+    },
+    {
+      "file": "tests/canopy_geometry_contract.gd",
+      "sha256": "49313c3a17d6c9d6b85afaad963bcea3a17acc0f47fc4d85cb8622a5d277532a",
+      "size": 6121
+    },
+    {
+      "file": "tests/canopy_geometry_contract.gd.uid",
+      "sha256": "005cc751aaa77413361c782e03ae61aa057ede82f633c293570483ac47dc916b",
+      "size": 20
+    },
+    {
+      "file": "tests/construction_visual.gd",
+      "sha256": "014346875fda37b9eee15feeefa95b4a202a97fc0052e77bceadb3cd6243c8fc",
+      "size": 6504
+    },
+    {
+      "file": "tests/construction_visual.gd.uid",
+      "sha256": "39e41a8861a42f0e674d75b33fe5c60b14cc0fd62a6c16b1f126b2853ede9fd3",
+      "size": 20
+    },
+    {
+      "file": "tests/economy_ledger_contract.gd",
+      "sha256": "d923b646c9188533b814548b4ade48c64c9b0b35bafbb87ae82f438b5bfc8d0c",
+      "size": 19274
+    },
+    {
+      "file": "tests/economy_ledger_contract.gd.uid",
+      "sha256": "9dd300e285b2ddbc320df4af9c9e7e2ada9b5928af6ae20a8330cf6c457ae569",
+      "size": 20
+    },
+    {
+      "file": "tests/map80_contract.gd",
+      "sha256": "af4f08522bf448aae2de55546a9edca27ae25cae19c113ed796b0e900a5e64f4",
+      "size": 10462
+    },
+    {
+      "file": "tests/map80_contract.gd.uid",
+      "sha256": "2c7e69b6b4e8fa736cc641677e6f25398c2bcd00ca3c232d9797fbe601a62ffd",
+      "size": 19
+    },
+    {
+      "file": "tests/map80_phone_edges.gd",
+      "sha256": "adfae8ab73d3a4faa56a21160eeb573e794124c351a4fb7b4720966b93cb0a5a",
+      "size": 12756
+    },
+    {
+      "file": "tests/map80_phone_edges.gd.uid",
+      "sha256": "8874dd0834245cbe29669b0b9133c0599825316d4cba9d03ac191895ee9bc428",
+      "size": 20
+    },
+    {
+      "file": "tests/map80_phone_flow.gd",
+      "sha256": "ee2f6791c00181597b329fb8c7786e2464b21579c15db921c42e3fcc87542b7d",
+      "size": 8918
+    },
+    {
+      "file": "tests/map80_phone_flow.gd.uid",
+      "sha256": "00962e40804b953ffb43ab6db8ddb49bab075427f27e4fff9a015d537daf61e0",
+      "size": 19
+    },
+    {
+      "file": "tests/map80_placement_races.gd",
+      "sha256": "abb8deb035e9415c58f16bb3a239afcf92c4e44ce62cacb0ad9cb70b11734b2c",
+      "size": 6811
+    },
+    {
+      "file": "tests/map80_placement_races.gd.uid",
+      "sha256": "0a64f0025e05f00034cca3e88f1c4540a0c202bc24e594423bc89920ee9e67f9",
+      "size": 20
+    },
+    {
+      "file": "tests/map80_sparse_memory.gd",
+      "sha256": "62876df1003c18eb143b987a42fff9715cebda0a8fb5c7acfa2fad0b6be69e26",
+      "size": 3796
+    },
+    {
+      "file": "tests/map80_sparse_memory.gd.uid",
+      "sha256": "ccc494a9fd7f2b633dffd52c0d3c2a658cd5f5e4e2dd0e2a7abf631b0ce70128",
+      "size": 19
+    },
+    {
+      "file": "tests/occlusion_geometry_contract.gd",
+      "sha256": "22e294c2ef4c8682d73967d7dda89629db13cc0a63ef0cd7c8fbc75a915d0cec",
+      "size": 2507
+    },
+    {
+      "file": "tests/occlusion_observation_lifecycle.gd",
+      "sha256": "d1333014d1b741a7f78959ed3ca4307ccced15e6e4f96b32afae3b4655ac83f8",
+      "size": 7542
+    },
+    {
+      "file": "tests/occlusion_render_fixture.gd",
+      "sha256": "3642f5b7ada6049bec5be6666da4a89b6e8f187df66a5a5e944557e8ff263f68",
+      "size": 6699
+    },
+    {
+      "file": "tests/occlusion_render_fixture.gd.uid",
+      "sha256": "9142475a196a90198569bd2632feca0ad6a5a2ab3c99ac6e439d8073353c44bf",
+      "size": 20
+    },
+    {
+      "file": "tests/occlusion_stencil_contract.gd",
+      "sha256": "f1531ef60c4911a4ec7d105f29d65d3c28de2ce0a1a1c949139464d2f51cb413",
+      "size": 6352
+    },
+    {
+      "file": "tests/occlusion_stencil_matrix.gd",
+      "sha256": "2c2ec7e4efa5554c9f7adbc4f94eebf787e9e0fb7ff53ed1bc266870bc273100",
+      "size": 12617
+    },
+    {
+      "file": "tests/occlusion_viewport_lifecycle.gd",
+      "sha256": "f87a161fe77fe7a7815ad3243bc47e30d5d88232fe4b02814493a413b5bbd56e",
+      "size": 9662
+    },
+    {
+      "file": "tests/support/route_queue_harness.gd",
+      "sha256": "a1f374230fce37d797a744cb525174ee6583f01ec08392c563ffb3bbd13edbf2",
+      "size": 2280
+    },
+    {
+      "file": "tests/support/route_queue_harness.gd.uid",
+      "sha256": "d812aebd5fcf478cfeff7717e89df1999653375f7f66e7d9b3607fad26a0d89c",
+      "size": 19
+    },
+    {
+      "file": "tools/build_licensed_action_characters.py",
+      "sha256": "e778ba3997de50915d482bf7a88b92bd34cee188be2ae1189af4ebdb59ec6eac",
+      "size": 24009
+    },
+    {
+      "file": "tools/import_action_characters.gd",
+      "sha256": "648e439a934ff6ab6cfcb721d572a119f6d2a986fc777003bd18a2b9651d2621",
+      "size": 5750
+    },
+    {
+      "file": "tools/import_action_characters.gd.uid",
+      "sha256": "63dbce28f7c0fe0ef087695656e29d40610d36b263be6ea33d70ae9063f350b7",
+      "size": 20
+    },
+    {
+      "file": "tools/runtime_manifest.py",
+      "sha256": "832e7df9c6219fa2c131fb7f2dd52ea753ed80b9afb769f4ceda45f0190c980b",
+      "size": 2431
+    },
+    {
+      "file": "tools/stamp_build.py",
+      "sha256": "a7455874168ec6118a3cfa6b842007fc6c02ed47e0787b8f19712524ef33779a",
+      "size": 2058
+    }
+  ],
+  "base_files": [
+    {
+      "file": "GODOT-LICENSES.txt",
+      "sha256": "f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f",
+      "size": 105300
+    },
+    {
+      "file": "README.md",
+      "sha256": "7322ec8acc678aa6abb89a56428273b19d9b4627abb88e11e542eea0cb337eb4",
+      "size": 2681
+    },
+    {
+      "file": "THIRD_PARTY_NOTICES.txt",
+      "sha256": "ea32b923c8dcdec23b053f691f8f1f6f9257e20e2c2d1a2477843a8cda2bf924",
+      "size": 1780
+    },
+    {
+      "file": "art/.gdignore",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "file": "art/action_characters/COVERAGE.md",
+      "sha256": "8d417b6c79c70d7fdd83825e98da24e4f72718ee4ebc2ee23db2b540416ba305",
+      "size": 4754
+    },
+    {
+      "file": "art/action_characters/DIRECTION.md",
+      "sha256": "bb9f7ec06f6bac99eb682bc64445fe6bcde130c5350944d691a411c680b8f3d5",
+      "size": 2637
+    },
+    {
+      "file": "art/action_characters/OCCLUSION.md",
+      "sha256": "719c56320d55dcab0fa232b7f8c221e63366b346a1c7386987d298219369e19c",
+      "size": 7002
+    },
+    {
+      "file": "art/action_characters/archer.blend",
+      "sha256": "11861efce4b0a33fbad2a5192626a7e722fc3cf9ca368b47bff8731a1a9926d2",
+      "size": 6935148
+    },
+    {
+      "file": "art/action_characters/input-manifest.json",
+      "sha256": "1cbfddb27a4ce08a765208d262f545e4bf560e382281caf505216c9be1f32bce",
+      "size": 11419
+    },
+    {
+      "file": "art/action_characters/interchange/archer.glb",
+      "sha256": "c1459f625d3f14af2f2503bf57f125ade7ce60db6d4eeecacc5778c3a64d640f",
+      "size": 1285124
+    },
+    {
+      "file": "art/action_characters/interchange/scout.glb",
+      "sha256": "e08380280a4f0df3bb69546f04db8d4163a5ebe677cb99f18706f7f1c63d5248",
+      "size": 1205680
+    },
+    {
+      "file": "art/action_characters/interchange/spearman.glb",
+      "sha256": "863af58cc438fa1a5f6c7e134022e97e4e31d3286d88822beefa22f9d3b2b997",
+      "size": 943324
+    },
+    {
+      "file": "art/action_characters/interchange/villager.glb",
+      "sha256": "c2a8c01f4c6066a4815816bbc16c792fb3dce0cc223ae1ee3da9417fc5ea491f",
+      "size": 1115936
+    },
+    {
+      "file": "art/action_characters/licenses/kaykit-animations.txt",
+      "sha256": "373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9",
+      "size": 1548
+    },
+    {
+      "file": "art/action_characters/licenses/quaternius-base.txt",
+      "sha256": "0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e",
+      "size": 806
+    },
+    {
+      "file": "art/action_characters/licenses/quaternius-outfits.txt",
+      "sha256": "2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb",
+      "size": 728
+    },
+    {
+      "file": "art/action_characters/licenses/quaternius-ual.txt",
+      "sha256": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+      "size": 332
+    },
+    {
+      "file": "art/action_characters/licenses/quaternius-ual2.txt",
+      "sha256": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+      "size": 332
+    },
+    {
+      "file": "art/action_characters/scout.blend",
+      "sha256": "a8f76ed0a35aee9e7bc99d78568e3a9fb97296f57333f3f280ac10806b211e95",
+      "size": 6865816
+    },
+    {
+      "file": "art/action_characters/spearman.blend",
+      "sha256": "1735befa4446490dd6a93ce45fcf130de57dc06ff116adb8a55782faadd7d680",
+      "size": 6656312
+    },
+    {
+      "file": "art/action_characters/textures/archer_atlas.png",
+      "sha256": "06ace4ddba4a1fea7bb2353dbebd04c05da7a774d10a9a2e279850cd80792000",
+      "size": 454308
+    },
+    {
+      "file": "art/action_characters/textures/scout_atlas.png",
+      "sha256": "06ace4ddba4a1fea7bb2353dbebd04c05da7a774d10a9a2e279850cd80792000",
+      "size": 454308
+    },
+    {
+      "file": "art/action_characters/textures/spearman_atlas.png",
+      "sha256": "a0517d9c5449a7041e6fb24a3642c324263581a0f42183cb0515a0cde7fd263c",
+      "size": 316138
+    },
+    {
+      "file": "art/action_characters/textures/villager_atlas.png",
+      "sha256": "a0517d9c5449a7041e6fb24a3642c324263581a0f42183cb0515a0cde7fd263c",
+      "size": 316138
+    },
+    {
+      "file": "art/action_characters/villager.blend",
+      "sha256": "04e8f04abcabc3690cfd9cd75379b0a7394c3922048747ef22ca28539ffd5cd3",
+      "size": 10065688
+    },
+    {
+      "file": "assets/audio/build.wav",
+      "sha256": "43e33302fec777a3ea0dd8d897f44d7458a4bd9466def39f30310a7e53b621d2",
+      "size": 13274
+    },
+    {
+      "file": "assets/audio/build.wav.import",
+      "sha256": "a70e0138a63dede30d483078151ea71dd943beb2ae17ecc717363ecdcdf557bc",
+      "size": 485
+    },
+    {
+      "file": "assets/audio/combat.wav",
+      "sha256": "d41195510efcd4896a3250dac4d9b2f7665fbb1094a8afb5b7c21788bf49c918",
+      "size": 8864
+    },
+    {
+      "file": "assets/audio/combat.wav.import",
+      "sha256": "60d6f03b1ea03e2e6b871d315d558b5525fcb51125ac487672fd3f99ff7a36bd",
+      "size": 489
+    },
+    {
+      "file": "assets/audio/select.wav",
+      "sha256": "69bc2494d8cdc92291b521b99d7d5542baaddba2758be0ea18017e8582834c3c",
+      "size": 4454
+    },
+    {
+      "file": "assets/audio/select.wav.import",
+      "sha256": "3c66001bf967831728bd946e2bc2e153e2ab5771fa66307030330684d6bd8c06",
+      "size": 489
+    },
+    {
+      "file": "assets/audio/train.wav",
+      "sha256": "b25d9addb55c6470fa4228880e2025bc9413fa14c8224849e2d6a26148b08b80",
+      "size": 8864
+    },
+    {
+      "file": "assets/audio/train.wav.import",
+      "sha256": "0841800be27dd59a26bb6295b33256e16e1ca3989ab0a9c2398e496f185357f8",
+      "size": 486
+    },
+    {
+      "file": "assets/fonts/DEJAVU-LICENSE.txt",
+      "sha256": "f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9",
+      "size": 7237
+    },
+    {
+      "file": "assets/fonts/NOTO-LICENSE.txt",
+      "sha256": "849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b",
+      "size": 14712
+    },
+    {
+      "file": "assets/fonts/body.ttf",
+      "sha256": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e",
+      "size": 759720
+    },
+    {
+      "file": "assets/fonts/body.ttf.import",
+      "sha256": "996e95b6d1c4d654ad88e0689217c41ad4b754b22787434a2d26b55e629ec88d",
+      "size": 750
+    },
+    {
+      "file": "assets/fonts/title.ttf",
+      "sha256": "8cb29f7db250ebb2551a6ce2c1e0bfd5a0eb520e9e233370db0493e82e1f36f7",
+      "size": 380660
+    },
+    {
+      "file": "assets/fonts/title.ttf.import",
+      "sha256": "8a2281e6016912982b268a31ecd179e7c0918500bfddd5d7bd7e9e16b9800b3c",
+      "size": 753
+    },
+    {
+      "file": "assets/fonts/ui_tc.otf",
+      "sha256": "d8dc3f7d8ba62fb1172a6bdd867f8a09e503d3ac5cb349e726491736b5008790",
+      "size": 179936
+    },
+    {
+      "file": "assets/fonts/ui_tc.otf.import",
+      "sha256": "6c6eadb81e995f7d386286402e41759ed2c50267bf9932fe0a8e45a2807a52d1",
+      "size": 752
+    },
+    {
+      "file": "assets/mature/models/archer.scn",
+      "sha256": "e6e2829509097748c8fc204da1464028e61939c4b52628c1759b1534e54b22e9",
+      "size": 209419
+    },
+    {
+      "file": "assets/mature/models/archer_action.scn",
+      "sha256": "55b11a40f6533197b04df899c661249293344d942232809a2f27d21f7c0c83bc",
+      "size": 3990067
+    },
+    {
+      "file": "assets/mature/models/barracks.scn",
+      "sha256": "12c99f22053cbdc4a1d90df1ea52231aaf932e6699a6148fd878bda30f3d9722",
+      "size": 126929
+    },
+    {
+      "file": "assets/mature/models/berry.scn",
+      "sha256": "1d94b6a40a93a5480555252568643f02735b625bb4bb7ccd8c62bb3c2c52f393",
+      "size": 90091
+    },
+    {
+      "file": "assets/mature/models/house.scn",
+      "sha256": "dd2cdaa4520a29ed18aa619df8f4f81ac48f3ef6a0031b79030f346fca9be8cd",
+      "size": 77390
+    },
+    {
+      "file": "assets/mature/models/oak_0.scn",
+      "sha256": "dfe9ca162c87cd839b7e271050ee44eaea644e43de965e97b747f63ecfa24076",
+      "size": 53259
+    },
+    {
+      "file": "assets/mature/models/oak_1.scn",
+      "sha256": "d2619f3eedebe124bb4f3f70446300a32bea6a281a56edae383c5e61b0d16230",
+      "size": 53259
+    },
+    {
+      "file": "assets/mature/models/pine_0.scn",
+      "sha256": "ccfa668729adca99b70800bb5dbfe90b3515571dafc1077c2691664b24104219",
+      "size": 82827
+    },
+    {
+      "file": "assets/mature/models/pine_1.scn",
+      "sha256": "8e73e04f481645605d819fcbf15a1f9dbca0fbad5eac592287b6c1df851423fb",
+      "size": 82827
+    },
+    {
+      "file": "assets/mature/models/pine_2.scn",
+      "sha256": "269e643f27297db9944fa4bcf8ddc732287d920c31850c785823c72296e70459",
+      "size": 82827
+    },
+    {
+      "file": "assets/mature/models/range.scn",
+      "sha256": "d527dd15a07714e6f9cdfa709b42115d3c960a335f4ad3ebf3f8a36b8ed677e7",
+      "size": 113486
+    },
+    {
+      "file": "assets/mature/models/scout.scn",
+      "sha256": "124cd2b5c243b6743befbdb29c7e3dc6989b1ca60bb472cafce3d290cb94bc04",
+      "size": 180234
+    },
+    {
+      "file": "assets/mature/models/scout_action.scn",
+      "sha256": "3e724d611b3cea019dbc0ff3e409840856e45daee06975784054c22d1e0af63c",
+      "size": 3934963
+    },
+    {
+      "file": "assets/mature/models/spearman.scn",
+      "sha256": "9c25b8b439f7fa6600d1b94cf432363e604300c831beda599a43563eab8a8320",
+      "size": 204621
+    },
+    {
+      "file": "assets/mature/models/spearman_action.scn",
+      "sha256": "a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89",
+      "size": 3860938
+    },
+    {
+      "file": "assets/mature/models/storehouse.scn",
+      "sha256": "3f9dfb0a3f59677b18e9a2d277a2c03e086bf52488288b6ee50d3b05b454c84e",
+      "size": 74703
+    },
+    {
+      "file": "assets/mature/models/town_center.scn",
+      "sha256": "a0688f69ece2c49e0eb0d152bb06c975b595d81c8fbfcf8b3d9d42f6e4f4e625",
+      "size": 133460
+    },
+    {
+      "file": "assets/mature/models/villager.scn",
+      "sha256": "b16e75a81d92973af38bd7fb920327689a0f8dacba5a9e0680841d4ba49f4ad2",
+      "size": 182349
+    },
+    {
+      "file": "assets/mature/models/villager_action.scn",
+      "sha256": "5fbc8ea6892ff0758625ca46bc5afff01bbafe862e2152e33ea46400940a132a",
+      "size": 4268708
+    },
+    {
+      "file": "assets/mature/shaders/observed_occlusion.gdshader",
+      "sha256": "23d8f2999549031194e91de6db31eba7808e8dcae5347ae7de0ceb9c68585925",
+      "size": 772
+    },
+    {
+      "file": "assets/mature/shaders/observed_occlusion.gdshader.uid",
+      "sha256": "051026e38c76fb76a9fe0bbbe2bef682232696994d607b466db38811fe07f3fd",
+      "size": 20
+    },
+    {
+      "file": "assets/mature/shaders/observed_visibility_mask.gdshader",
+      "sha256": "46dbc2f787c2219f0393e41d28100c1627e84e8206ae4ce7a10eb5a814d51971",
+      "size": 518
+    },
+    {
+      "file": "assets/mature/shaders/observed_visibility_mask.gdshader.uid",
+      "sha256": "cfe2118fe47b4779ff4743b66d99db352866655ff933812a83d3400717a2fe02",
+      "size": 18
+    },
+    {
+      "file": "assets/mature/terrain/earth.png",
+      "sha256": "7e08264e2166b40fc101c4bb1fea7e5717a41880a7dd5f75f64852394d5f8ec3",
+      "size": 222607
+    },
+    {
+      "file": "assets/mature/terrain/earth.png.import",
+      "sha256": "f0a5c016af8d07e0b7c03e19c5f1acbc8ab55d6fe5b92fae6961ffe7b1c32c4c",
+      "size": 940
+    },
+    {
+      "file": "assets/mature/terrain/grass.png",
+      "sha256": "93d7ecf6ba7c842f32927e92e8c91cd1194903652bece08489ea4356d45cb25c",
+      "size": 232521
+    },
+    {
+      "file": "assets/mature/terrain/grass.png.import",
+      "sha256": "9f7e02a27c2379adc3120bb9f1640234c788b8664d2c02751cf1e5003aa156d8",
+      "size": 938
+    },
+    {
+      "file": "assets/mature/terrain/ground.gdshader",
+      "sha256": "cee6f0d9faf6da09311b7b2515ce085c9a77dbc070720826906bc15b61d3d800",
+      "size": 2053
+    },
+    {
+      "file": "assets/mature/terrain/ground.gdshader.uid",
+      "sha256": "262f68235c73da264cb363fedfc0837a25855318d7e06becbe5593a4098e8172",
+      "size": 20
+    },
+    {
+      "file": "assets/mature/textures/clay.png",
+      "sha256": "e6e954ab8f2f4637806daffc5fa51a349d6e6d56de2ea05a65e18509c5f45b7e",
+      "size": 66809
+    },
+    {
+      "file": "assets/mature/textures/clay.png.import",
+      "sha256": "f526b8dfa3eca51ae95e06c4734fd0bd0d6eb2194983d4feebf1acac29ffa306",
+      "size": 938
+    },
+    {
+      "file": "assets/mature/textures/fir_spray.png",
+      "sha256": "9d4b69116a6dc229fd69b5d69dde62039cc0a14641853cacc6711f9caab2bac1",
+      "size": 24362
+    },
+    {
+      "file": "assets/mature/textures/fir_spray.png.import",
+      "sha256": "41345d03b8e8a7a64410d887ed951d11c996a6572b161dcc155d7b176d021c75",
+      "size": 953
+    },
+    {
+      "file": "assets/mature/textures/oak.png",
+      "sha256": "cd4982a2c2d06545d6a61d0b23a984fc3a884392df28c7e988ba9388514fac89",
+      "size": 81238
+    },
+    {
+      "file": "assets/mature/textures/oak.png.import",
+      "sha256": "43884553809c18c128bff39f65a85de49fdc21667f520678639033b9c6a6298a",
+      "size": 935
+    },
+    {
+      "file": "assets/mature/textures/oak_leaves.png",
+      "sha256": "77651428736b47d45b7ac1c3168d725488dbfcd325fd884fc99726945edd41dc",
+      "size": 9263
+    },
+    {
+      "file": "assets/mature/textures/oak_leaves.png.import",
+      "sha256": "edc06c5d2e1bcc9653df32064874ddf7b71c925cdc88052cae5b9057ee245e27",
+      "size": 956
+    },
+    {
+      "file": "assets/mature/textures/plaster.png",
+      "sha256": "62942c7cb58688f6289f44745bd6bed44c90f3031694f8df655102a46f959e61",
+      "size": 207438
+    },
+    {
+      "file": "assets/mature/textures/plaster.png.import",
+      "sha256": "814fd0f6680ff12fba47fd21cb05b60131026c911413069b55ace9a0344505f5",
+      "size": 947
+    },
+    {
+      "file": "assets/mature/textures/slate.png",
+      "sha256": "eec02e142da383f76af7b498d24c9bbfe6f98e2630d980232b9c6b73e547a00f",
+      "size": 56772
+    },
+    {
+      "file": "assets/mature/textures/slate.png.import",
+      "sha256": "ee8147062a018cc37e46f09586974eb5111908dad15a742aec067a4183cd2312",
+      "size": 941
+    },
+    {
+      "file": "assets/mature/textures/stone.png",
+      "sha256": "1f44113552f2f795aa137c9be728a2e3b8f3bc87d5a004a108f9e0bef3bbe336",
+      "size": 238195
+    },
+    {
+      "file": "assets/mature/textures/stone.png.import",
+      "sha256": "af47cd0c8b9d7e7f3023f921c25ffaa65c9e7a2af8ec4bb472e2e7ba1ab25239",
+      "size": 941
+    },
+    {
+      "file": "assets/mature/visual_library.gd",
+      "sha256": "b1f0990c730f07e7f24abba0f9bd5b993a555d6a9755fddfa62708909a9a73eb",
+      "size": 1261
+    },
+    {
+      "file": "assets/mature/visual_library.gd.uid",
+      "sha256": "fd0ab5870f671265d4037fd76df898beb032d3e73b9ac97abb2c960aabfad1d8",
+      "size": 20
+    },
+    {
+      "file": "assets/models/archer.glb",
+      "sha256": "8a1f3e93e953a22fda2515d6de10652a2726272105fccb131e854c60d7a615a6",
+      "size": 184040
+    },
+    {
+      "file": "assets/models/archer.glb.import",
+      "sha256": "252cfc3895c65c99c78c82b990eb72ef082d4229e360b8f357f8af660f1cb4e3",
+      "size": 1038
+    },
+    {
+      "file": "assets/models/barracks.glb",
+      "sha256": "1f3ded26ee7669a54b54e4734255bd199d1b039faa342e8ecefec7e0e808a0ce",
+      "size": 81080
+    },
+    {
+      "file": "assets/models/barracks.glb.import",
+      "sha256": "dec2ee0f5c1bd5e78b73ca0d670c6d11e6e87791c0e770cf827599b836d63627",
+      "size": 1044
+    },
+    {
+      "file": "assets/models/berry.glb",
+      "sha256": "ca6dcc327305b07a87150c2530f68b2c001d96e52bb0a0bf4b910ced38b3ac46",
+      "size": 109216
+    },
+    {
+      "file": "assets/models/berry.glb.import",
+      "sha256": "a27f22fb0971894a01880b9cf81c458d987c97eb6b4ed68399a52c6195f10c08",
+      "size": 1035
+    },
+    {
+      "file": "assets/models/gold.glb",
+      "sha256": "f3ea17a937bd333bfa9a0de1b697c8f5edbc573f7ee751ca6dc727d5de00d020",
+      "size": 34864
+    },
+    {
+      "file": "assets/models/gold.glb.import",
+      "sha256": "8350910f5312e0675e109de804b84446bcd0f7a7078197e9e0b8c9f9a171e7ca",
+      "size": 1032
+    },
+    {
+      "file": "assets/models/house.glb",
+      "sha256": "02face3306030af63e571887e8ce7052ee2b4557526e4a3217b83200ae2ec903",
+      "size": 64764
+    },
+    {
+      "file": "assets/models/house.glb.import",
+      "sha256": "e451fa52dc4f9bc6d44bece40ca67e04ae999afad84e317f36a8d716b04cb475",
+      "size": 1035
+    },
+    {
+      "file": "assets/models/mill.glb",
+      "sha256": "25ded1c3724a7f36342974243f1f0e49ce50d1ad9877d551553b5864e8df0d17",
+      "size": 56760
+    },
+    {
+      "file": "assets/models/mill.glb.import",
+      "sha256": "2a4caa7701dc45250a7f7ac8e2acfa383549cf58607f58ccc08b4d1f0fa0d093",
+      "size": 1032
+    },
+    {
+      "file": "assets/models/oak.glb",
+      "sha256": "49e661f9208b52a894f534a17970a0fda37f09c11cb6f762c43a22a629379834",
+      "size": 104324
+    },
+    {
+      "file": "assets/models/oak.glb.import",
+      "sha256": "7df7068d1b400f07c2d9418a264c10b4d2189768eabd4fefac3dbcafdaae3883",
+      "size": 1028
+    },
+    {
+      "file": "assets/models/pine.glb",
+      "sha256": "8b6d9b458caaa1c6734f475b1118d712699afa12dc819009d22191c67681464c",
+      "size": 32064
+    },
+    {
+      "file": "assets/models/pine.glb.import",
+      "sha256": "82b9e72ab018268ffd622523a0a263320eb6829130113aefb8f75ef7ec0ed2db",
+      "size": 1032
+    },
+    {
+      "file": "assets/models/scout.glb",
+      "sha256": "016ebeb7085bdf5a474e17cc043fa0b2d4cfbd9bc7ea56adace0b98a91439266",
+      "size": 168520
+    },
+    {
+      "file": "assets/models/scout.glb.import",
+      "sha256": "f4a165d35f6482d63e2e6ce94c7f298910355dfd89f7311ff5950df3e7b5d513",
+      "size": 1035
+    },
+    {
+      "file": "assets/models/spearman.glb",
+      "sha256": "f94cff803f6899452b9f4ffb80b1066322424028bc34dde1cc85e52204e00795",
+      "size": 170504
+    },
+    {
+      "file": "assets/models/spearman.glb.import",
+      "sha256": "241abbedd6f5e327d327d579f76824139a1a4ab4930c7ea26849631ff16b8f02",
+      "size": 1044
+    },
+    {
+      "file": "assets/models/town_center.glb",
+      "sha256": "02f3eac170d95f25d029a6362255d50c24ef57a5cdda2790bb447ae332cb317c",
+      "size": 77596
+    },
+    {
+      "file": "assets/models/town_center.glb.import",
+      "sha256": "1943c45f419a502f146f27baf30c1fcc7727ebfa14ff343d5ad9cc098eef97e2",
+      "size": 1052
+    },
+    {
+      "file": "assets/models/villager.glb",
+      "sha256": "6ad35c97c2d06639faf5ab70b73afec42b538e7a2e7d741fc37643e85f1cab18",
+      "size": 169620
+    },
+    {
+      "file": "assets/models/villager.glb.import",
+      "sha256": "0442f81b3f5194628df92f6b1c8c6aee539a506e2cba4dcdd1c4bfc486b53a30",
+      "size": 1044
+    },
+    {
+      "file": "export_presets.cfg",
+      "sha256": "5fa7d1ebafbbe0bd56ce4c70558acbb071f5af3e3667695592319de3eab6a0af",
+      "size": 842
+    },
+    {
+      "file": "main.tscn",
+      "sha256": "502a45b8d70e44bf4017a7674dcc9c18c0b0ca199fef2daec0b3a437a2fdf54b",
+      "size": 177
+    },
+    {
+      "file": "project.godot",
+      "sha256": "004336145486790f39a32675fa9a73ca7f277a25f61a5ed57b50a9ea9351d737",
+      "size": 929
+    },
+    {
+      "file": "reports/README.md",
+      "sha256": "d2b82426eec5a2366a1caddeec9ac283629f5a07c12270fdb6d32d382e910ff6",
+      "size": 872
+    },
+    {
+      "file": "reports/action-asset-stage.json",
+      "sha256": "43ccc82c2103b6c28efbeffd2e9b3e9a7a7b0e7e59a9c500d1a3253e1a33165b",
+      "size": 3032
+    },
+    {
+      "file": "reports/asset_manifest.json",
+      "sha256": "e42e035006068b346cee6004fa9081cb4572247be4bfa312e8c068c910534144",
+      "size": 109259
+    },
+    {
+      "file": "reports/build-manifest.json",
+      "sha256": "09ee4d5301fbda15fae83d62b1ce61b00453fed0ede3a36dba0ec41014139830",
+      "size": 13266
+    },
+    {
+      "file": "reports/map-input-build-manifest.json",
+      "sha256": "3c0986ccd8c93aa13703e4707eed6f033b02ea987a8bb6fd3759defe91e17aea",
+      "size": 11413
+    },
+    {
+      "file": "scripts/action_character.gd",
+      "sha256": "aded948d60b14234516c39190e7dbb49cc54cee7ea02fb9f8233e10d8c2ef5ef",
+      "size": 9170
+    },
+    {
+      "file": "scripts/action_character.gd.uid",
+      "sha256": "6550c646c8c0b14f79ba03ef9e2f19cd0c6d43cf99618efe637c319589baf796",
+      "size": 20
+    },
+    {
+      "file": "scripts/attack_ledger.gd",
+      "sha256": "bd490422465552a93209881bf4f3690a02234b31541961dda1d13ffc94b183b9",
+      "size": 4215
+    },
+    {
+      "file": "scripts/attack_ledger.gd.uid",
+      "sha256": "82f6b16d4eec6ec9a5a077fdb8b029b877e0e20893cdc47e24edc8d83643fd4c",
+      "size": 20
+    },
+    {
+      "file": "scripts/audio_cue_policy.gd",
+      "sha256": "2d8eee52cd3d270d5bcbe4b98e70372c2ac0715d3e4838dfde55c119c18e20a8",
+      "size": 1496
+    },
+    {
+      "file": "scripts/audio_cue_policy.gd.uid",
+      "sha256": "b726102d31341aade7c5989988da72593aa1eda68c2a5eb6c3117e335d0f1bec",
+      "size": 20
+    },
+    {
+      "file": "scripts/audio_cues.gd",
+      "sha256": "ad0279840f196d4322f13c3913fbfb0418d7ecf51b9b7bd14f96341ce022773a",
+      "size": 1586
+    },
+    {
+      "file": "scripts/audio_cues.gd.uid",
+      "sha256": "6cebef097f71658778e79de15b45b82db64a23c9251199099fe92c98fa96f1cd",
+      "size": 20
+    },
+    {
+      "file": "scripts/bounded_grid_pathfinder.gd",
+      "sha256": "7665b3796b3dae1bb363dcc8e48dc205c354674d7d6cc793ab3fdaed60ff2cf6",
+      "size": 6274
+    },
+    {
+      "file": "scripts/bounded_grid_pathfinder.gd.uid",
+      "sha256": "7ecc2b676bb549c51da878902b6ce52b0873944fc2aaca23315927436fe8a891",
+      "size": 20
+    },
+    {
+      "file": "scripts/bounded_work_routes.gd",
+      "sha256": "b76c5a3e76756f1c90be1cdd9dd38242478e37d2d8e621224a07647e87be6ee7",
+      "size": 8710
+    },
+    {
+      "file": "scripts/bounded_work_routes.gd.uid",
+      "sha256": "395b6f61d9b22a9d882ebf0578894c3ad318c5c8c9239974d87e6fe0a4b19a0f",
+      "size": 19
+    },
+    {
+      "file": "scripts/construction_visual.gd",
+      "sha256": "3579462fd7731457a3a73f5abb73afad7be772cd17372be171e32aee6d357a61",
+      "size": 3597
+    },
+    {
+      "file": "scripts/construction_visual.gd.uid",
+      "sha256": "51ec9f3b316865ece8dcdf2d0902a1414f86a2446e96cd02dcf2e0b4fd351d3f",
+      "size": 20
+    },
+    {
+      "file": "scripts/economy_ledger.gd",
+      "sha256": "b6507f93316ca0d8e5978301f8abf4d684eee08888681fa4a885d9ceaaf30a4a",
+      "size": 16888
+    },
+    {
+      "file": "scripts/economy_ledger.gd.uid",
+      "sha256": "5c00fd1940b699d4be1d6d3af93df3255e86485c24b0980faad7ea7145c61e3d",
+      "size": 20
+    },
+    {
+      "file": "scripts/end_rules.gd",
+      "sha256": "0d1364421a26f4385c2d64bf94155930622395791b15de5b61c69947d75e1d7a",
+      "size": 645
+    },
+    {
+      "file": "scripts/end_rules.gd.uid",
+      "sha256": "d9ffa1fa42576a3c519ec2224f8733add04684a4e2aa876c634292d68d1d7b25",
+      "size": 20
+    },
+    {
+      "file": "scripts/faction_view.gd",
+      "sha256": "5862071a65d1d3a0bf513c8ff48258664013a84ef19f63936c2a891e576a5ab5",
+      "size": 1529
+    },
+    {
+      "file": "scripts/faction_view.gd.uid",
+      "sha256": "adb9a1738643106ae9a9aee52e124cea5e0ac6aa180fd2af1c9fc5a57d9e5247",
+      "size": 20
+    },
+    {
+      "file": "scripts/faction_work_memory.gd",
+      "sha256": "a223ca640285a950e0a1524fb00b100e3c9b022aec5ec8d65fc9a20e99a51100",
+      "size": 2750
+    },
+    {
+      "file": "scripts/faction_work_memory.gd.uid",
+      "sha256": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
+      "size": 20
+    },
+    {
+      "file": "scripts/game.gd",
+      "sha256": "d013cd77ccd51d7f60c499846f03be684c5fd82b742fb5355fba5097a26c3fdf",
+      "size": 192677
+    },
+    {
+      "file": "scripts/game.gd.uid",
+      "sha256": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
+      "size": 20
+    },
+    {
+      "file": "scripts/map_routes.gd",
+      "sha256": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
+      "size": 1666
+    },
+    {
+      "file": "scripts/map_routes.gd.uid",
+      "sha256": "f4e1cdbff702603f0496ccad8079b45832556bce365f5d59c6b8668058499f3c",
+      "size": 20
+    },
+    {
+      "file": "scripts/mature_world_visuals.gd",
+      "sha256": "d9a5f809da857c8354eea652c29093f5ac3dda97f903279a1cf9f17b79aa9218",
+      "size": 1331
+    },
+    {
+      "file": "scripts/mature_world_visuals.gd.uid",
+      "sha256": "4129f1ef603ef8a0925ed5388bcc4d6cade6fe489ac15454abcabcd40108201a",
+      "size": 20
+    },
+    {
+      "file": "scripts/minimap.gd",
+      "sha256": "2b199ddc3fba75e8fd9e638fad1f54bdadf87bc2214b17798027e6337b5db16b",
+      "size": 2123
+    },
+    {
+      "file": "scripts/minimap.gd.uid",
+      "sha256": "f6346a0cf32cd8e5aad3f0538b5b25ffffa16e73be57d921980ad6be42242838",
+      "size": 20
+    },
+    {
+      "file": "scripts/observed_character_presenter.gd",
+      "sha256": "e062cbf808648a68cf1ba7b463e205185fb8694390b5440282d13819cb5dc9b5",
+      "size": 3236
+    },
+    {
+      "file": "scripts/observed_character_presenter.gd.uid",
+      "sha256": "c6934bc6e82d32e4ad2d8c1ce83ee0f2ac45f73985c2a70b0fbf0c6f6f1ca23e",
+      "size": 20
+    },
+    {
+      "file": "scripts/observed_occlusion.gd",
+      "sha256": "deb16e3a60a2cf4a3f5ace472915c379df8ecabc76148361675b3ec9b01ea95a",
+      "size": 6050
+    },
+    {
+      "file": "scripts/observed_occlusion.gd.uid",
+      "sha256": "0d078dece8aed1c6b4ccabf959f90900303650f9057a52d7394c76e553c46470",
+      "size": 19
+    },
+    {
+      "file": "scripts/rules.gd",
+      "sha256": "41d6ebf6e45c209ee257cc93b9ce86e9cf2e3a3ee1fde7b743ad99d5ac5caed7",
+      "size": 2762
+    },
+    {
+      "file": "scripts/rules.gd.uid",
+      "sha256": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
+      "size": 20
+    },
+    {
+      "file": "tests/action_characters.gd",
+      "sha256": "ee8cefbbc55be1a31c7e68bbb212261635551b564e55ed93fd12115123ebe69a",
+      "size": 8108
+    },
+    {
+      "file": "tests/action_characters.gd.uid",
+      "sha256": "639b3adb68173992ca96efb6c94942ce8a9b0f8f154fb7543f611ae0c9937443",
+      "size": 20
+    },
+    {
+      "file": "tests/action_render_fixture.gd",
+      "sha256": "c3bbcbf740babe5d60d5d3565e01ddf856b7403071d5ba64c2e9f36595576040",
+      "size": 5554
+    },
+    {
+      "file": "tests/action_render_fixture.gd.uid",
+      "sha256": "e90700dc99db5cd4206889beb5b8344c3add0178de438e96b37f74d2d4bcee5a",
+      "size": 20
+    },
+    {
+      "file": "tests/bounded_grid_pathfinder.gd",
+      "sha256": "8a4ce8ac297a3927bf953f37ab000b403076d667d6963e3be773a445ed240e83",
+      "size": 17216
+    },
+    {
+      "file": "tests/bounded_grid_pathfinder.gd.uid",
+      "sha256": "3ab82a6d7bea175765ebfd68897ec0cadbfc560283f17c6f6d113c60143cf51b",
+      "size": 20
+    },
+    {
+      "file": "tests/bounded_work_routes.gd",
+      "sha256": "c663a8991f7a9db80fd2b33b8dcbb3cee61b5c1acbc750cc8bf36d09a2d2544f",
+      "size": 19701
+    },
+    {
+      "file": "tests/bounded_work_routes.gd.uid",
+      "sha256": "d6e4b98c0ed6535fc2896768cc646b2f3d0752bc85dee1633bedb8dcb9d5437f",
+      "size": 20
+    },
+    {
+      "file": "tests/canopy_geometry_contract.gd",
+      "sha256": "49313c3a17d6c9d6b85afaad963bcea3a17acc0f47fc4d85cb8622a5d277532a",
+      "size": 6121
+    },
+    {
+      "file": "tests/canopy_geometry_contract.gd.uid",
+      "sha256": "005cc751aaa77413361c782e03ae61aa057ede82f633c293570483ac47dc916b",
+      "size": 20
+    },
+    {
+      "file": "tests/construction_visual.gd",
+      "sha256": "014346875fda37b9eee15feeefa95b4a202a97fc0052e77bceadb3cd6243c8fc",
+      "size": 6504
+    },
+    {
+      "file": "tests/construction_visual.gd.uid",
+      "sha256": "39e41a8861a42f0e674d75b33fe5c60b14cc0fd62a6c16b1f126b2853ede9fd3",
+      "size": 20
+    },
+    {
+      "file": "tests/economy_ledger_contract.gd",
+      "sha256": "d923b646c9188533b814548b4ade48c64c9b0b35bafbb87ae82f438b5bfc8d0c",
+      "size": 19274
+    },
+    {
+      "file": "tests/economy_ledger_contract.gd.uid",
+      "sha256": "9dd300e285b2ddbc320df4af9c9e7e2ada9b5928af6ae20a8330cf6c457ae569",
+      "size": 20
+    },
+    {
+      "file": "tests/map80_contract.gd",
+      "sha256": "af4f08522bf448aae2de55546a9edca27ae25cae19c113ed796b0e900a5e64f4",
+      "size": 10462
+    },
+    {
+      "file": "tests/map80_contract.gd.uid",
+      "sha256": "2c7e69b6b4e8fa736cc641677e6f25398c2bcd00ca3c232d9797fbe601a62ffd",
+      "size": 19
+    },
+    {
+      "file": "tests/map80_phone_edges.gd",
+      "sha256": "adfae8ab73d3a4faa56a21160eeb573e794124c351a4fb7b4720966b93cb0a5a",
+      "size": 12756
+    },
+    {
+      "file": "tests/map80_phone_edges.gd.uid",
+      "sha256": "8874dd0834245cbe29669b0b9133c0599825316d4cba9d03ac191895ee9bc428",
+      "size": 20
+    },
+    {
+      "file": "tests/map80_phone_flow.gd",
+      "sha256": "ee2f6791c00181597b329fb8c7786e2464b21579c15db921c42e3fcc87542b7d",
+      "size": 8918
+    },
+    {
+      "file": "tests/map80_phone_flow.gd.uid",
+      "sha256": "00962e40804b953ffb43ab6db8ddb49bab075427f27e4fff9a015d537daf61e0",
+      "size": 19
+    },
+    {
+      "file": "tests/map80_placement_races.gd",
+      "sha256": "abb8deb035e9415c58f16bb3a239afcf92c4e44ce62cacb0ad9cb70b11734b2c",
+      "size": 6811
+    },
+    {
+      "file": "tests/map80_placement_races.gd.uid",
+      "sha256": "0a64f0025e05f00034cca3e88f1c4540a0c202bc24e594423bc89920ee9e67f9",
+      "size": 20
+    },
+    {
+      "file": "tests/map80_sparse_memory.gd",
+      "sha256": "62876df1003c18eb143b987a42fff9715cebda0a8fb5c7acfa2fad0b6be69e26",
+      "size": 3796
+    },
+    {
+      "file": "tests/map80_sparse_memory.gd.uid",
+      "sha256": "ccc494a9fd7f2b633dffd52c0d3c2a658cd5f5e4e2dd0e2a7abf631b0ce70128",
+      "size": 19
+    },
+    {
+      "file": "tests/occlusion_geometry_contract.gd",
+      "sha256": "22e294c2ef4c8682d73967d7dda89629db13cc0a63ef0cd7c8fbc75a915d0cec",
+      "size": 2507
+    },
+    {
+      "file": "tests/occlusion_observation_lifecycle.gd",
+      "sha256": "d1333014d1b741a7f78959ed3ca4307ccced15e6e4f96b32afae3b4655ac83f8",
+      "size": 7542
+    },
+    {
+      "file": "tests/occlusion_render_fixture.gd",
+      "sha256": "3642f5b7ada6049bec5be6666da4a89b6e8f187df66a5a5e944557e8ff263f68",
+      "size": 6699
+    },
+    {
+      "file": "tests/occlusion_render_fixture.gd.uid",
+      "sha256": "9142475a196a90198569bd2632feca0ad6a5a2ab3c99ac6e439d8073353c44bf",
+      "size": 20
+    },
+    {
+      "file": "tests/occlusion_stencil_contract.gd",
+      "sha256": "f1531ef60c4911a4ec7d105f29d65d3c28de2ce0a1a1c949139464d2f51cb413",
+      "size": 6352
+    },
+    {
+      "file": "tests/occlusion_stencil_matrix.gd",
+      "sha256": "2c2ec7e4efa5554c9f7adbc4f94eebf787e9e0fb7ff53ed1bc266870bc273100",
+      "size": 12617
+    },
+    {
+      "file": "tests/occlusion_viewport_lifecycle.gd",
+      "sha256": "f87a161fe77fe7a7815ad3243bc47e30d5d88232fe4b02814493a413b5bbd56e",
+      "size": 9662
+    },
+    {
+      "file": "tests/support/route_queue_harness.gd",
+      "sha256": "a1f374230fce37d797a744cb525174ee6583f01ec08392c563ffb3bbd13edbf2",
+      "size": 2280
+    },
+    {
+      "file": "tests/support/route_queue_harness.gd.uid",
+      "sha256": "d812aebd5fcf478cfeff7717e89df1999653375f7f66e7d9b3607fad26a0d89c",
+      "size": 19
+    },
+    {
+      "file": "tools/build_licensed_action_characters.py",
+      "sha256": "e778ba3997de50915d482bf7a88b92bd34cee188be2ae1189af4ebdb59ec6eac",
+      "size": 24009
+    },
+    {
+      "file": "tools/import_action_characters.gd",
+      "sha256": "648e439a934ff6ab6cfcb721d572a119f6d2a986fc777003bd18a2b9651d2621",
+      "size": 5750
+    },
+    {
+      "file": "tools/import_action_characters.gd.uid",
+      "sha256": "63dbce28f7c0fe0ef087695656e29d40610d36b263be6ea33d70ae9063f350b7",
+      "size": 20
+    },
+    {
+      "file": "tools/runtime_manifest.py",
+      "sha256": "832e7df9c6219fa2c131fb7f2dd52ea753ed80b9afb769f4ceda45f0190c980b",
+      "size": 2431
+    },
+    {
+      "file": "tools/stamp_build.py",
+      "sha256": "a7455874168ec6118a3cfa6b842007fc6c02ed47e0787b8f19712524ef33779a",
+      "size": 2058
+    }
+  ],
+  "runtime_manifest": {
+    "file": "reports/build-manifest.json",
+    "sha256": "7a4b1923332dcfb9bd6aae422fb99db5f1774e2412c3db29b00490c44efaadd2",
+    "inputs": 122
+  },
+  "overlay_sha256": "1d721527ee68aef2326bb4fb8b532083ba706d9aaf8be11b9fcb88238c6fce49",
+  "rollback_sha256": "b3e631757989dc69ecec2b77acc92b93f92fe53a5287cef588b03e3103217c7f",
+  "changed_files": [
+    "reports/build-manifest.json",
+    "scripts/game.gd",
+    "scripts/rules.gd"
+  ],
+  "engine_expected": "4.6.3.stable.official.7d41c59c4",
+  "reviewed_parent_source_manifest_sha256": "52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa",
+  "suites": [
+    {
+      "name": "construction_visual",
+      "script": "tests/construction_visual.gd",
+      "script_sha256": "014346875fda37b9eee15feeefa95b4a202a97fc0052e77bceadb3cd6243c8fc",
+      "argv": [
+        "GODOT",
+        "--headless",
+        "--path",
+        "PROJECT",
+        "--script",
+        "res://tests/construction_visual.gd",
+        "--",
+        "OUTPUT/construction.json"
+      ],
+      "report": "OUTPUT/construction.json",
+      "report_contract": {
+        "format": "JSON object",
+        "must_be_new_file_from_this_run": true,
+        "process_exit_code": 0,
+        "required_integer_fields": {
+          "passed": {
+            "minimum": 1
+          },
+          "failed": {
+            "equals": 0
+          }
+        },
+        "minimum_rows": 1,
+        "rows_field": "checks",
+        "row_verdict": {
+          "key": "pass",
+          "equals": true,
+          "type": "boolean"
+        },
+        "count_equations": [
+          "passed == len(checks)",
+          "failed == 0"
+        ],
+        "required_field_values": {
+          "build": "vc-34afbb76387d",
+          "passed": 203,
+          "failed": 0
+        },
+        "required_external_receipt": {
+          "candidate_build": "vc-34afbb76387d",
+          "runtime_manifest_sha256": "7a4b1923332dcfb9bd6aae422fb99db5f1774e2412c3db29b00490c44efaadd2",
+          "suite_sha256": "014346875fda37b9eee15feeefa95b4a202a97fc0052e77bceadb3cd6243c8fc",
+          "require_process_and_output_hash_binding": true
+        }
+      }
+    }
+  ],
+  "construction_overlay": {
+    "sha256": "757810906ae8b5503ca1f6c9b9449e992f3b69a6ea52bd2a45b478c250c83817",
+    "files": {
+      "reports/build-manifest.json": "ed6552fc9084a39676f047588c485c556df113b7c6b2fe21e7546073f646f785",
+      "scripts/construction_visual.gd": "3579462fd7731457a3a73f5abb73afad7be772cd17372be171e32aee6d357a61",
+      "scripts/construction_visual.gd.uid": "51ec9f3b316865ece8dcdf2d0902a1414f86a2446e96cd02dcf2e0b4fd351d3f",
+      "scripts/game.gd": "ea9f9927a9d593f0a7a2664763b6702e125d8588b8fdd8048e5af46792aefefc",
+      "scripts/rules.gd": "d2bf6b5d876a5086960285d93dac763f7a3cb70010d18fa5d3bc4435d3b9d921",
+      "tests/construction_visual.gd": "014346875fda37b9eee15feeefa95b4a202a97fc0052e77bceadb3cd6243c8fc",
+      "tests/construction_visual.gd.uid": "39e41a8861a42f0e674d75b33fe5c60b14cc0fd62a6c16b1f126b2853ede9fd3"
+    }
+  },
+  "expected_check_count": 203,
+  "source_archive_bytes": 58998302,
+  "inherited_suites_status": "Import compatibility metadata only. Inherited suites are NOT RUN; only guarded import and separate external lifecycle contract are intended.",
+  "rebind": {
+    "onto_base": "vc-c09af531eecf",
+    "original_ground_preserved": true,
+    "current_ground_candidate_unchanged": true
+  }
+}

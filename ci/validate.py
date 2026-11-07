@@ -1,42 +1,34 @@
 from pathlib import Path
-import argparse,json,hashlib,re,math
-p=argparse.ArgumentParser();p.add_argument('--root',type=Path,required=True);p.add_argument('report',type=Path);a=p.parse_args()
-build="unknown"
-names=['start owns guidance','cancel retires immediately','repeat cancel stays retired','army selection retires','home selection retires','valid preview legal premise','valid preview owns guidance','valid preview retires','invalid preview owns guidance','invalid preview retires']+['ordinary feedback preserved '+s for s in ['建造完成。','資源不足，未有扣款。','已取消指令。']]+['confirm rejection ordinary','confirm rejection preserved','terminal submit legal premise','submit authority rejection preserved','rejected confirm still retires mode','ordinary expiry unchanged','guidance expiry hides','reentry owns fresh guidance','economy and tick unchanged']
-errors=[]
+import argparse, hashlib, json, re
+p=argparse.ArgumentParser(); p.add_argument('--root',type=Path,required=True); p.add_argument('report',type=Path); a=p.parse_args()
+errors=[]; build="unknown"
+sha=lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
 def require(ok,label):
  if not ok: errors.append(label)
-sha=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
+names=['successful authority release creates exactly one cue', 'cooldown failure and exact replay cannot duplicate cue', 'running cue consumes only visual elapsed time', 'gameplay pause cannot expire cue via independent tween', 'background focus freezes cue age', 'suspension freezes cue age', 'first stale focus-return frame is discarded by actual process', 'target motion cannot move or retarget release cue', 'resume retires cue after original bounded visual lifetime', 'presentation cannot settle or mutate combat state', 'expired node is actually freed', 'exploration memory does not retain a cue while paused', 'reappearance cannot replay a revoked cue', 'hidden target suppresses creation', 'hidden attacker suppresses creation', 'enemy origin losing vision revokes cue', 'real tick settles lethal attack while retaining frozen witnessed cue', 'repeated cleanup is safe and immediately hides nodes', 'burst is bounded by match population and hides evicted node', 'terminal state clears all effects without aging', 'terminal state rejects fresh visual effects', 'burst eviction and terminal cleanup free every node', 'reset removes effect ownership and hides old node', 'reset frees old cue node', 'scene exit clears effect registry and hides cue']
 try:
- r=json.loads(a.report.read_text()); build=re.search(r'const BUILD_ID = "([^"]+)"',(a.root/'scripts/rules.gd').read_text())[1]
- lock_path=Path(__file__).with_name('source_lock.json'); lock=json.loads(lock_path.read_text())
- require(build==lock['build'],'expected build')
- require(len(lock['files'])==192,'source lock count')
- actual={p.relative_to(a.root).as_posix() for p in a.root.rglob('*') if p.is_file() and '.godot' not in p.parts and '__pycache__' not in p.parts}
- require(len(lock['imported_extras'])==5 and not (set(lock['files']) & set(lock['imported_extras'])),'import extra count')
+ require(a.report.stat().st_size<=32768,'bounded report')
+ r=json.loads(a.report.read_text()); root=a.root
+ fixture=Path(__file__).resolve().parent
+ lock=json.loads((fixture/'source_lock.json').read_text())
+ build=re.search(r'const BUILD_ID = "([^"]+)"',(root/'scripts/rules.gd').read_text())[1]
+ require(build==lock['build']==r['build'],'build binding')
+ actual={p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() and '.godot' not in p.parts and '__pycache__' not in p.parts}
+ require(len(lock['files'])==192 and len(lock['imported_extras'])==5,'expected source counts')
+ require(not (set(lock['files']) & set(lock['imported_extras'])),'disjoint source sets')
  require(actual==set(lock['files'])|set(lock['imported_extras']),'exact imported source set')
- for path,digest in lock['imported_extras'].items(): require(sha(a.root/path)==digest,'import extra hash '+path)
- for path,digest in lock['files'].items(): require(sha(a.root/path)==digest,'source hash '+path)
- require(r['build']==build,'report build')
- require(r['game_sha256']==sha(a.root/'scripts/game.gd'),'game hash')
- require(r['manifest_sha256']==sha(a.root/'reports/build-manifest.json'),'manifest hash')
- require(r['contract_sha256']==sha(Path(__file__).with_name('contract.gd')),'contract hash')
- require(r['source_lock_sha256']==sha(lock_path),'source lock hash')
- require([c['name'] for c in r['checks']]==names,'ordered exact22 rows')
- require(all(c['pass'] is True for c in r['checks']),'all true')
+ for path,digest in (lock['files']|lock['imported_extras']).items(): require(sha(root/path)==digest,'source hash '+path)
+ require(r['game_sha256']==sha(root/'scripts/game.gd'),'game binding')
+ require(r['manifest_sha256']==sha(root/'reports/build-manifest.json'),'manifest binding')
+ require(r['contract_sha256']==sha(fixture/'contract.gd'),'contract binding')
+ require(r['source_lock_sha256']==sha(fixture/'source_lock.json'),'lock binding')
+ require([c['name'] for c in r['checks']]==names,'ordered exact checks')
+ require(all(set(c)=={'name','pass'} and c['pass'] is True for c in r['checks']),'all strict true')
  require(r['completed'] is True and type(r['failed']) is int and r['failed']==0,'completion')
- premises=r['premises']
- require(type(premises) is list and len(premises)==2,'two legal premises')
- plots=[[-29,0,23],[-21,0,23],[-25,0,28],[-21,0,28],[-31,0,23]]
- for row,name in zip(premises,['valid preview legal premise','terminal submit legal premise']):
-  require(set(row)=={'name','initial_reason','selected_reason','found','examined','builder','position','legal'},'premise fields')
-  require(row['name']==name and row['found'] is True and row['legal'] is True and row['selected_reason']=='','legal premise verdict')
-  require(type(row['initial_reason']) is str and len(row['initial_reason'])<=128,'bounded initial reason')
-  require(type(row['builder']) is int and 1<=row['builder']<=5,'owned builder identity')
-  require(type(row['examined']) is int and 1<=row['examined']<=len(plots),'bounded public plot search')
-  pos=row['position'];require(type(pos) is list and len(pos)==3 and all(type(v) in (int,float) and math.isfinite(v) for v in pos),'finite plot')
-  if type(row['examined']) is int and 1<=row['examined']<=len(plots):require(pos==plots[row['examined']-1],'source-bound public plot')
-
+ require(type(r['passed']) is int and r['passed']==len(names),'passed count')
+ require(set(r['source_sha256'])=={'scripts/game.gd','scripts/attack_ledger.gd','scripts/rules.gd'},'source report fields')
+ for path,digest in r['source_sha256'].items(): require(sha(root/path)==digest,'report source hash '+path)
+ require(r['engine']['major']==4 and r['engine']['minor']==6 and r['engine']['patch']==3,'engine version')
 except Exception as e: errors.append(type(e).__name__)
-print(json.dumps({'status':'FAIL' if errors else 'PASS','build':build,'expected_checks':22,'errors':errors}))
+print(json.dumps({'status':'FAIL' if errors else 'PASS','build':build,'expected_checks':len(names),'errors':errors}))
 raise SystemExit(bool(errors))
