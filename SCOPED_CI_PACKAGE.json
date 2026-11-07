@@ -1,6 +1,6 @@
 {
   "execution_enabled": false,
-  "revision": "f659-combined-regression-v1",
+  "revision": "f659-combined-regression-v2-build-diagnostic",
   "baseline": "vc-8fcc302051f0",
   "candidate": "vc-f659b53824e3",
   "engine_expected": "4.6.3.stable.official.7d41c59c4",
@@ -28,7 +28,9 @@
     "thin_source_v2_sha256": "203852e82ca33d5e5b550e1d8ef07ef989734fd24b1cf54c6d8318307d43d6d8",
     "prior_map_run": 42339914268,
     "prior_map_assertions_not_transferred": 507,
-    "prior_native_scene_assertions_not_full_gameplay_acceptance": 128
+    "prior_native_scene_assertions_not_full_gameplay_acceptance": 128,
+    "preserved_failed_run": 42343889502,
+    "diagnostic_scope": "Only bounded build state and failed predicate details added; all131 assertions unchanged. Expected to fail if applied work is overridden by queued path presentation."
   },
   "files": [
     {
@@ -793,8 +795,8 @@
     },
     {
       "file": "tests/action_game_events.gd",
-      "sha256": "e08d3c2682daa8d23826b7e408ee016e6446ef8f1981859ddc70d50254f6cb73",
-      "size": 15599
+      "sha256": "25c05eec8bce5b3e4100804dfbfa8230a08d76484c4e0a5bc50225d7cc89865e",
+      "size": 16960
     },
     {
       "file": "tests/action_render_fixture.gd",
@@ -1625,7 +1627,7 @@
     {
       "name": "action_game_events",
       "script": "tests/action_game_events.gd",
-      "script_sha256": "e08d3c2682daa8d23826b7e408ee016e6446ef8f1981859ddc70d50254f6cb73",
+      "script_sha256": "25c05eec8bce5b3e4100804dfbfa8230a08d76484c4e0a5bc50225d7cc89865e",
       "argv": [
         "GODOT",
         "--headless",
@@ -1664,7 +1666,7 @@
         "required_external_receipt": {
           "candidate_build": "vc-f659b53824e3",
           "runtime_manifest_sha256": "4a4d5252690c5ae6f13463ac32859c5a163131feaad8e8248ebf3a71792258da",
-          "suite_sha256": "e08d3c2682daa8d23826b7e408ee016e6446ef8f1981859ddc70d50254f6cb73",
+          "suite_sha256": "25c05eec8bce5b3e4100804dfbfa8230a08d76484c4e0a5bc50225d7cc89865e",
           "require_process_and_output_hash_binding": true
         },
         "required_field_values": {
@@ -1690,5 +1692,5 @@
     "long-match balance",
     "live release/deployment"
   ],
-  "new_test_source_review_sha256": "42d1aadb22171be88473889c3ecce041fdfe58b3718b52f06f20b2828930a0cd"
+  "new_test_source_review_sha256": "c9f05df8e3f0e8ffd8a02e70afc9efab5b0f8203e709ff88747c8a3625631c3e"
 }

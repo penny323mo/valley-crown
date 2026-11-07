@@ -2,7 +2,7 @@
 """Scan only declared text evidence; never emit matching sensitive contents."""
 import hashlib,json,pathlib,re,stat,sys
 root=pathlib.Path('evidence'); manifest=pathlib.Path('SCOPED_CI_PACKAGE.json')
-assert hashlib.sha256(manifest.read_bytes()).hexdigest()=='36209784985ffa41144b613280f906d7b6fe045c320ad4bcc6d2b141f778b108'
+assert hashlib.sha256(manifest.read_bytes()).hexdigest()=='a2c7780e2ad3fbeda13646c06bf8edf5cca9795a6cca3b3512ef80b10ef21c7d'
 suites=json.loads(manifest.read_text())['suites']
 allowed={'runner-resources.log'}
 for phase in ['source-import','source-tests']:allowed.add(phase+'/phase-summary.json')

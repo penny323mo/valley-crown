@@ -17,7 +17,7 @@ jobs:
       - name: Verify exact reviewed inputs
         run: |
           set -euo pipefail
-          echo '0fa7368edc79f77cda699c87b771de62b7cc7ef2ea488239379b7859e36a83a9  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
+          echo '3e7bfc4565bdf9e3c947cf0be566f9f8fd16f0ab7ff711837a4f49cf1904c2a1  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
           sha256sum --check --strict ci/PUBLIC_INPUTS.sha256
       - name: Fetch previously accepted licensed character inputs
         uses: actions/download-artifact@v4
@@ -43,7 +43,7 @@ jobs:
       - name: Bind one test overlay to accepted runtime
         run: |
           set -euo pipefail
-          python3 ci/pack_regression_source.py --project project --package SCOPED_CI_PACKAGE.json --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --overlay action-game-test-overlay-v1.zip --archive f659-combined-regression-source.zip --receipt assembly-regression.json
+          python3 ci/pack_regression_source.py --project project --package SCOPED_CI_PACKAGE.json --accepted-lock native-artifact/accepted-runtime/final-source-lock.json --overlay action-game-test-overlay-v2.zip --archive f659-combined-regression-source.zip --receipt assembly-regression.json
       - name: Record runner resource preflight
         run: |
           mkdir evidence engine
@@ -59,17 +59,17 @@ jobs:
       - name: Guarded import of exact182 source
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive f659-combined-regression-source.zip --manifest SCOPED_CI_PACKAGE.json --archive-sha256 c9223299f0714d7612273442b1957d9c40bb88b1232d6835f6c1da95f0727460 --manifest-sha256 36209784985ffa41144b613280f906d7b6fe045c320ad4bcc6d2b141f778b108 --hosted-execution-approved --output evidence/source-import --xdg cache/regression
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive f659-combined-regression-source.zip --manifest SCOPED_CI_PACKAGE.json --archive-sha256 166be32c4d861153f244bca3e6644b8ac2bda3ec6170655a18bb1bfaf63b6465 --manifest-sha256 a2c7780e2ad3fbeda13646c06bf8edf5cca9795a6cca3b3512ef80b10ef21c7d --hosted-execution-approved --output evidence/source-import --xdg cache/regression
       - name: Guarded thirteen combined suites
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py test --project project --godot "$GODOT" --archive f659-combined-regression-source.zip --manifest SCOPED_CI_PACKAGE.json --archive-sha256 c9223299f0714d7612273442b1957d9c40bb88b1232d6835f6c1da95f0727460 --manifest-sha256 36209784985ffa41144b613280f906d7b6fe045c320ad4bcc6d2b141f778b108 --hosted-execution-approved --output evidence/source-tests --xdg cache/regression
+          python3 ci/guarded_manifest_ci.py test --project project --godot "$GODOT" --archive f659-combined-regression-source.zip --manifest SCOPED_CI_PACKAGE.json --archive-sha256 166be32c4d861153f244bca3e6644b8ac2bda3ec6170655a18bb1bfaf63b6465 --manifest-sha256 a2c7780e2ad3fbeda13646c06bf8edf5cca9795a6cca3b3512ef80b10ef21c7d --hosted-execution-approved --output evidence/source-tests --xdg cache/regression
       - name: Scan exact safe evidence
         id: scan
         if: always()
         run: |
           set -euo pipefail
-          echo '75de1aaeb32b962c9d3b6fc3a8ebea69cf0cde29661f8d9bc3f59043ce696c18  ci/scan_regression_evidence.py' | sha256sum --check --strict
+          echo 'b63a74726453a742ebdc0e55c264955c7a576381ca3a0a1f851b8dfc797227a2  ci/scan_regression_evidence.py' | sha256sum --check --strict
           python3 ci/scan_regression_evidence.py
       - name: Retain scanned combined regression evidence
         if: always() && steps.scan.outcome == 'success'
