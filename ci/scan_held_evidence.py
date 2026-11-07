@@ -30,7 +30,7 @@ def main():
   project=Path('project').resolve();destination=project/'held_validation_output';pins=runner.read(Path(__file__).parent/'HELD_INPUTS.json')
   package=Path('CONSTRUCTION_SOURCE_PACKAGE.json');assert sha(package)==runner.PACKAGE
   entries={r['file']:r['sha256'] for r in runner.read(package)['files']};assert len(entries)==192 and s['base_files']==entries and s['proposal_files']==pins
-  expected={'engine':runner.g.ENGINE_SHA,'archive':runner.ARCHIVE,'manifest':runner.PACKAGE,'adapter':runner.ADAPTER,'monitor':runner.g.MONITOR_SHA,'runner':sha(Path(runner.__file__)),'pins':sha(Path(__file__).parent/'HELD_INPUTS.json')}
+  expected={'engine':runner.g.ENGINE_SHA,'archive':runner.ARCHIVE,'manifest':runner.PACKAGE,'adapter':runner.ADAPTER,'monitor':runner.g.MONITOR_SHA,'runner':sha(Path(runner.__file__)),'pins':sha(Path(__file__).parent/'HELD_INPUTS.json'),'evaluator':sha(Path(__file__).parent/'evaluate_held_tracks.py'),'applied-evaluator':sha(Path(__file__).parent/'evaluate_applied_held.py')}
   expected.update({'input:'+k:v for k,v in s['import_snapshot'].items()});expected.update({'input:held_validation/'+k:v for k,v in pins.items()})
   assert all(s['import_snapshot'].get(k)==v for k,v in entries.items())
   for phase,script in [('held','validate_held.gd')]:

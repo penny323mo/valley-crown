@@ -1,7 +1,7 @@
-name: Validate isolated held spear native output
+name: Validate isolated spear readability native output
 on:
   push:
-    branches: [ci/native-held-spear-v1]
+    branches: [ci/native-spear-readability-v1]
     paths: ['.github/workflows/native-held.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
@@ -72,11 +72,13 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          echo 'd0cf95d1a3647c4d9434ab01a1f5be1fe645319381e0c7f1e9d6f3cb86bb5af2  ci/scan_held_evidence.py' | sha256sum --check --strict
-          echo '539a61b7b595819e4b11502be5beffcc334de9635f7db6a614a6aa66d1675871  ci/run_native_held.py' | sha256sum --check --strict
+          echo '4b7428042d0b1e9fbfa4a97ef68f322ea7c43910edf41fbc688ecdcacff00d44  ci/scan_held_evidence.py' | sha256sum --check --strict
+          echo 'eba35bd9a490975601253f8fe2d4f1ee3d6aebb521223858801a6a2386350cb8  ci/run_native_held.py' | sha256sum --check --strict
           echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
           echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo '3352ea5d9eee02b2d8f6182de53320ae10623bfb555f48eac084664775c76cd1  ci/HELD_INPUTS.json' | sha256sum --check --strict
+          echo '3da61c3347046d94b97e6664b0c2af4f309b675ec1f656ef3a19dfb739fbf8b2  ci/HELD_INPUTS.json' | sha256sum --check --strict
+          echo '73f726a3e19fe4c67f30826503f34d5e492a64f326e3a92d689110bb5f6c7399  ci/evaluate_held_tracks.py' | sha256sum --check --strict
+          echo '6fd81b68726e41ebfb0c1575356281dcab8a72d6af26ff3e81f469be2ff47860  ci/evaluate_applied_held.py' | sha256sum --check --strict
           python3 ci/scan_held_evidence.py --import-only
       - name: Preserve admitted import receipts on success or failure
         if: always() && steps.import_scan.outcome == 'success'
@@ -91,11 +93,13 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          echo 'd0cf95d1a3647c4d9434ab01a1f5be1fe645319381e0c7f1e9d6f3cb86bb5af2  ci/scan_held_evidence.py' | sha256sum --check --strict
-          echo '539a61b7b595819e4b11502be5beffcc334de9635f7db6a614a6aa66d1675871  ci/run_native_held.py' | sha256sum --check --strict
+          echo '4b7428042d0b1e9fbfa4a97ef68f322ea7c43910edf41fbc688ecdcacff00d44  ci/scan_held_evidence.py' | sha256sum --check --strict
+          echo 'eba35bd9a490975601253f8fe2d4f1ee3d6aebb521223858801a6a2386350cb8  ci/run_native_held.py' | sha256sum --check --strict
           echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
           echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo '3352ea5d9eee02b2d8f6182de53320ae10623bfb555f48eac084664775c76cd1  ci/HELD_INPUTS.json' | sha256sum --check --strict
+          echo '3da61c3347046d94b97e6664b0c2af4f309b675ec1f656ef3a19dfb739fbf8b2  ci/HELD_INPUTS.json' | sha256sum --check --strict
+          echo '73f726a3e19fe4c67f30826503f34d5e492a64f326e3a92d689110bb5f6c7399  ci/evaluate_held_tracks.py' | sha256sum --check --strict
+          echo '6fd81b68726e41ebfb0c1575356281dcab8a72d6af26ff3e81f469be2ff47860  ci/evaluate_applied_held.py' | sha256sum --check --strict
           python3 ci/scan_held_evidence.py
       - name: Preserve safe complete or failed evidence
         if: always() && steps.scan.outcome == 'success'

@@ -5,8 +5,11 @@ const Preservation = preload("res://held_validation/scene_preservation.gd")
 const SOURCE = "res://assets/mature/models/spearman_action.scn"
 const PROPOSAL = "res://held_validation/spear-held-key-proposal.json"
 const SOURCE_SHA = "a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89"
-const PROPOSAL_SHA = "1a00de57c262f624b8858b372646d338d5ac77812937d5ff9c0144ba5d53f6bf"
+const PROPOSAL_SHA = "0ea84346c5a8710c931d1afd3068dfbdfa7c7def61e8c2a8546d967dc95e5134"
 const OUT = "res://held_validation_output/spearman_action.scn"
+const EVENT_TIMES = {"idle": [], "walk": [], "attack": [0.56, 0.61], "hit": [0.0, 0.05]}
+# Frozen source-model body minimum then shield minimum for each clip; finite probes only.
+const MARGIN_TIMES = {"idle": [1.833353373069763, 1.8666466746139527], "walk": [0.5333133611488342, 0.4666866686534882], "attack": [0.19998000298023225, 0.300020011920929], "hit": [0.0, 0.3333533432674408]}
 var owned: Array[Node] = []
 func cleanup() -> void:
 	for node in owned:
@@ -30,6 +33,7 @@ func selected_ok(player: AnimationPlayer, plan: Dictionary) -> bool:
 		var clip: Animation = player.get_animation(name)
 		for change in plan.clips[name].changes:
 			var track: Dictionary = change.replacement
+			if clip.track_get_interpolation_type(int(track.index)) != int(track.interpolation): return false
 			for key in track.times.size():
 				if clip.track_get_key_value(int(track.index), key) != Held._value(track.type, track.values[key]): return false
 				count += 1
@@ -55,7 +59,7 @@ func run() -> void:
 	if not require_ok(storage == original_storage and Held._snapshot(player, false) == tracks, "Actual instance not equal to untouched source"): return
 	var preserved: PackedByteArray = Held._snapshot(player, true)
 	var result: Dictionary = Held.apply(scene, player, skeleton, SOURCE, PROPOSAL, PROPOSAL_SHA)
-	if not require_ok(result.get("completed", false), "Apply failed; no packing allowed; code=" + str(result.get("failure_code", "HELD_UNSPECIFIED")) + "; time_diagnostic=" + JSON.stringify(result.get("time_diagnostic", {}))): return
+	if not require_ok(result.get("completed", false) and result.get("changed_interpolation_tracks", -1) == 4, "Apply failed; no packing allowed; code=" + str(result.get("failure_code", "HELD_UNSPECIFIED")) + "; time_diagnostic=" + JSON.stringify(result.get("time_diagnostic", {}))): return
 	if not require_ok(selected_ok(player, plan) and Held._snapshot(player, true) == preserved, "Selected or preserved keys mismatch"): return
 	if not require_ok(Preservation.snapshot(scene) == storage and Preservation.snapshot(untouched) == original_storage and Held._snapshot(original_player, false) == tracks, "Stored scene or shared source mutation"): return
 	var corrected: PackedByteArray = Held._snapshot(player, false)
@@ -75,6 +79,8 @@ func run() -> void:
 	root.add_child(check)
 	checked_player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	var samples: Array = []
+	var event_samples: Array = []
+	var margin_samples: Array = []
 	var spear: int = checked_skeleton.find_bone("prop_spear")
 	if not require_ok(spear >= 0, "Spear bone missing"): return
 	for name in Held.CLIPS:
@@ -83,10 +89,16 @@ func run() -> void:
 		var rotation_track: int = clip.find_track(NodePath("FieldRig/Skeleton3D:prop_spear"), Animation.TYPE_ROTATION_3D)
 		var scale_track: int = clip.find_track(NodePath("FieldRig/Skeleton3D:prop_spear"), Animation.TYPE_SCALE_3D)
 		if not require_ok(position_track >= 0 and rotation_track >= 0 and scale_track >= 0, "Missing evaluated tracks"): return
-		for index in 153:
-			var t: float = clip.length * float(index) / 152.0
+		var sample_times: Array[float] = []
+		for index in 153: sample_times.append(clip.length * float(index) / 152.0)
+		sample_times.append_array(EVENT_TIMES[name])
+		sample_times.append_array(MARGIN_TIMES[name])
+		for index in sample_times.size():
+			var t: float = sample_times[index]
 			# Avoid loop-end wrap ambiguity; record both nominal and requested times.
 			var requested: float = minf(t, clip.length - 0.000001) if clip.loop_mode != Animation.LOOP_NONE else t
+			# Extra event probes restart from0 so previous terminal sample cannot cause backward nearest-key selection on unchanged body tracks.
+			if index >= 153: checked_player.stop(true)
 			checked_player.play(name)
 			checked_player.seek(requested, true)
 			checked_player.pause()
@@ -94,20 +106,26 @@ func run() -> void:
 			checked_skeleton.force_update_all_bone_transforms()
 			if not require_ok(str(checked_player.assigned_animation) == name and checked_player.current_animation.is_empty() and absf(checked_player.current_animation_position - requested) <= 0.0000001 and not checked_player.is_playing(), "Wrong sampled clip/time/state"): return
 			var expected_position: Vector3 = clip.position_track_interpolate(position_track, requested)
-			var expected_rotation: Quaternion = clip.rotation_track_interpolate(rotation_track, requested)
+			var track_rotation: Quaternion = clip.rotation_track_interpolate(rotation_track, requested)
+			# AnimationMixer applies interpolate_via_rest(...).normalized(); preserve raw track evidence separately.
+			var expected_rotation: Quaternion = track_rotation.normalized()
 			var expected_scale: Vector3 = clip.scale_track_interpolate(scale_track, requested)
 			var actual_position: Vector3 = checked_skeleton.get_bone_pose_position(spear)
 			var actual_rotation: Quaternion = checked_skeleton.get_bone_pose_rotation(spear)
 			var actual_scale: Vector3 = checked_skeleton.get_bone_pose_scale(spear)
-			if not require_ok(actual_position.is_finite() and actual_rotation.is_finite() and actual_scale.is_finite() and expected_position.is_finite() and expected_rotation.is_finite() and expected_scale.is_finite(), "Nonfinite local pose"): return
+			if not require_ok(actual_position.is_finite() and actual_rotation.is_finite() and actual_scale.is_finite() and expected_position.is_finite() and track_rotation.is_finite() and expected_rotation.is_finite() and expected_scale.is_finite(), "Nonfinite local pose"): return
 			if not require_ok(actual_position.distance_to(expected_position) <= 0.000001 and minf((Vector4(actual_rotation.x,actual_rotation.y,actual_rotation.z,actual_rotation.w) - Vector4(expected_rotation.x,expected_rotation.y,expected_rotation.z,expected_rotation.w)).length(), (Vector4(actual_rotation.x,actual_rotation.y,actual_rotation.z,actual_rotation.w) + Vector4(expected_rotation.x,expected_rotation.y,expected_rotation.z,expected_rotation.w)).length()) <= 0.000001 and actual_scale.distance_to(expected_scale) <= 0.000001, "Native sampled local pose differs from track evaluation"): return
 			var bones: Array = []
 			for bone in checked_skeleton.get_bone_count():
 				var pose: Transform3D = checked_skeleton.get_bone_global_pose(bone)
 				if not require_ok(pose.is_finite(), "Nonfinite sampled bone"): return
 				bones.append([checked_skeleton.get_bone_name(bone), vector(pose.basis.x), vector(pose.basis.y), vector(pose.basis.z), vector(pose.origin)])
-			samples.append({"clip":name, "nominal_time":t, "requested_time":requested, "actual_clip":str(checked_player.assigned_animation), "actual_time":checked_player.current_animation_position, "paused":not checked_player.is_playing(), "actual_position":vector(actual_position), "expected_position":vector(expected_position), "actual_rotation":quaternion(actual_rotation), "expected_rotation":quaternion(expected_rotation), "actual_scale":vector(actual_scale), "expected_scale":vector(expected_scale), "bones":bones})
-	var report: Dictionary = {"schema":"held-native-validation-v1", "passed":true, "source_sha256":SOURCE_SHA, "proposal_sha256":PROPOSAL_SHA, "output_sha256":FileAccess.get_sha256(OUT), "changed_tracks":8, "verified_selected_keys":290, "full_scene_storage_preserved":true, "untouched_source_preserved":true, "exact_reload_verified":true, "sampling_grid":"153 uniform nominal times per clip; loop endpoint clamped length-1e-6; distinct from prior offline612 grid", "local_pose_tolerance":0.000001, "time_tolerance":0.0000001, "finite_sample_count":samples.size(), "samples":samples, "limits":["Finite sampled bone transforms only; not mesh clearance or visual acceptance", "Death unchanged and not accepted", "No gameplay, device, material or camera acceptance"]}
+			var sample_row: Dictionary = {"clip":name, "nominal_time":t, "requested_time":requested, "actual_clip":str(checked_player.assigned_animation), "actual_time":checked_player.current_animation_position, "paused":not checked_player.is_playing(), "actual_position":vector(actual_position), "expected_position":vector(expected_position), "track_rotation":quaternion(track_rotation), "actual_rotation":quaternion(actual_rotation), "expected_rotation":quaternion(expected_rotation), "actual_scale":vector(actual_scale), "expected_scale":vector(expected_scale), "bones":bones}
+			if index < 153: samples.append(sample_row)
+			elif index < 153 + EVENT_TIMES[name].size(): event_samples.append(sample_row)
+			else: margin_samples.append(sample_row)
+	if not require_ok(samples.size() == 612 and event_samples.size() == 4 and margin_samples.size() == 8, "Unexpected sample coverage"): return
+	var report: Dictionary = {"schema":"held-native-readability-validation-v2", "passed":true, "source_sha256":SOURCE_SHA, "proposal_sha256":PROPOSAL_SHA, "output_sha256":FileAccess.get_sha256(OUT), "changed_tracks":8, "changed_interpolation_tracks":result.changed_interpolation_tracks, "verified_selected_keys":290, "full_scene_storage_preserved":true, "untouched_source_preserved":true, "exact_reload_verified":true, "sampling_grid":"153 uniform nominal times per clip; loop endpoint clamped length-1e-6; distinct from prior offline612 grid", "local_pose_tolerance":0.000001, "time_tolerance":0.0000001, "finite_sample_count":samples.size(), "samples":samples, "event_sample_count":event_samples.size(), "event_samples":event_samples, "margin_sample_count":margin_samples.size(), "margin_samples":margin_samples, "limits":["Finite sampled bone transforms only; not mesh clearance or visual acceptance", "Death unchanged and not accepted", "No gameplay, device, material or camera acceptance"]}
 	var file := FileAccess.open("res://held_validation_output/validation-report.json", FileAccess.WRITE)
 	if not require_ok(file != null, "Report write failure"): return
 	file.store_string(JSON.stringify(report, "\t")); file.close()

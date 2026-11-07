@@ -19,7 +19,7 @@ static func _snapshot(player: AnimationPlayer, omit_values: bool) -> PackedByteA
 			var keys: Array = []
 			for key in clip.track_get_key_count(index):
 				keys.append([clip.track_get_key_time(index,key), clip.track_get_key_transition(index,key), null if omit_values and selected else clip.track_get_key_value(index,key)])
-			rows.append([index, path, clip.track_get_type(index), clip.track_get_interpolation_type(index), clip.track_get_interpolation_loop_wrap(index), clip.track_is_enabled(index), clip.track_is_imported(index), keys])
+			rows.append([index, path, clip.track_get_type(index), null if omit_values and selected else clip.track_get_interpolation_type(index), clip.track_get_interpolation_loop_wrap(index), clip.track_is_enabled(index), clip.track_is_imported(index), keys])
 		all.append(rows)
 	return var_to_bytes(all)
 
@@ -41,25 +41,33 @@ static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, 
 		return _failure("HELD_INSTANCE_STATE")
 	var animation_root: Node = player.get_node(player.root_node)
 	var edits: Array = []
+	var interpolation_changes: int = 0
 	# Validate every old value, native timestamp and exact skeleton target before edits.
 	for name in CLIPS:
 		if not plan.clips.has(name) or not player.has_animation(name): return _failure("HELD_CLIP_MISSING")
 		var clip: Animation = player.get_animation(name)
 		var entry: Dictionary = plan.clips[name]
+		if clip.loop_mode != (Animation.LOOP_LINEAR if name in ["idle", "walk"] else Animation.LOOP_NONE): return _failure("HELD_CLIP_LOOP")
 		if clip.length != float(entry.length_unchanged): return _failure("HELD_CLIP_LENGTH")
 		if entry.changes.size() != 2: return _failure("HELD_CHANGE_COUNT")
 		var seen: Array = []
 		for change in entry.changes:
 			var track: Dictionary = change.replacement
+			var original_interpolation: int = 0 if name in ["walk", "attack"] else 1
+			if change.get("original_interpolation", -1) != original_interpolation or track.get("interpolation", -1) != 1: return _failure("HELD_INTERPOLATION_PLAN")
 			var index: int = int(track.index)
 			if index < 0 or index >= clip.get_track_count() or index in seen: return _failure("HELD_TRACK_INDEX")
 			seen.append(index)
+			if clip.track_get_interpolation_type(index) != original_interpolation: return _failure("HELD_ORIGINAL_INTERPOLATION")
+			if original_interpolation != 1: interpolation_changes += 1
+			if track.get("loop_wrap", false) != true or not clip.track_get_interpolation_loop_wrap(index): return _failure("HELD_LOOP_WRAP")
 			var path: NodePath = clip.track_get_path(index)
 			if path.is_absolute() or path.get_subname_count() != 1 or str(path.get_subname(0)) != "prop_spear" or animation_root.get_node_or_null(NodePath(path.get_concatenated_names())) != skeleton: return _failure("HELD_TRACK_TARGET")
 			var expected_type: int = Animation.TYPE_POSITION_3D if track.type == "position_3d" else Animation.TYPE_ROTATION_3D
 			if track.type not in ["position_3d", "rotation_3d"] or clip.track_get_type(index) != expected_type: return _failure("HELD_TRACK_TYPE")
 			if clip.track_get_key_count(index) != track.times.size() or change.original_values.size() != track.times.size() or track.values.size() != track.times.size(): return _failure("HELD_KEY_COUNT")
 			for key in track.times.size():
+				if clip.track_get_key_transition(index, key) != 1.0: return _failure("HELD_TRANSITION")
 				# Native key arrays are pinned PackedFloat32Array. Canonicalize only
 				# the JSON expectation to that exact representation; never retime native keys.
 				var expected_time: float = PackedFloat32Array([track.times[key]])[0]
@@ -69,7 +77,7 @@ static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, 
 				for number in track.values[key]:
 					if not is_finite(float(number)): return _failure("HELD_NONFINITE_REPLACEMENT")
 			edits.append({"clip": name, "track": index, "data": track})
-	if edits.size() != 8: return _failure("HELD_EDIT_COUNT")
+	if edits.size() != 8 or interpolation_changes != 4: return _failure("HELD_EDIT_COUNT")
 	var preserved: PackedByteArray = _snapshot(player, true)
 	var before: PackedByteArray = _snapshot(player, false)
 	# Own all libraries/animations; never modify imported cached shared resources.
@@ -84,7 +92,8 @@ static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, 
 	if _snapshot(player, false) != before: return _failure("HELD_DUPLICATE_SNAPSHOT")
 	for edit in edits:
 		var clip: Animation = player.get_animation(edit.clip)
+		clip.track_set_interpolation_type(edit.track, Animation.INTERPOLATION_LINEAR)
 		for key in edit.data.times.size():
 			clip.track_set_key_value(edit.track,key,_value(edit.data.type,edit.data.values[key]))
 	if _snapshot(player, true) != preserved: return _failure("HELD_PRESERVED_SNAPSHOT")
-	return {"completed": true, "changed_tracks": 8, "source_native_sha256": plan.source_native_sha256, "death_changed": false, "reload_verified": false}
+	return {"completed": true, "changed_tracks": 8, "changed_interpolation_tracks": interpolation_changes, "source_native_sha256": plan.source_native_sha256, "death_changed": false, "reload_verified": false}

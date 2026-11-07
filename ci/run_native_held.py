@@ -45,7 +45,7 @@ def main():
    g.require({k:current.get(k) for k in immutable}==immutable,'Source/cache/proposal changed')
    g.require(set(extra)=={'held_validation_output/'+n for n in allowed},'Unexpected output inventory')
    return extra
-  artifacts={'engine':engine,'archive':archive,'manifest':manifest,'adapter':HERE/'guarded_manifest_ci.py','runner':Path(__file__).resolve(),'monitor':HERE/'hardened_monitored_run.py','pins':HERE/'HELD_INPUTS.json','public-inputs':Path('PUBLIC_INPUTS.json').resolve(),'marker':marker,'import-receipt':receipt,'import-invocation':invocation}
+  artifacts={'engine':engine,'archive':archive,'manifest':manifest,'adapter':HERE/'guarded_manifest_ci.py','runner':Path(__file__).resolve(),'monitor':HERE/'hardened_monitored_run.py','pins':HERE/'HELD_INPUTS.json','public-inputs':Path('PUBLIC_INPUTS.json').resolve(),'evaluator':HERE/'evaluate_held_tracks.py','applied-evaluator':HERE/'evaluate_applied_held.py','marker':marker,'import-receipt':receipt,'import-invocation':invocation}
   artifacts.update({'input:'+k:project/k for k in immutable});expected={k:g.sha(v) for k,v in artifacts.items()}
   monitor=g.load_monitor();env=g.isolated_environment(xdg);env['PYTHONDONTWRITEBYTECODE']='1'
   limits=monitor.Limits(timeout_s=300,sample_target_s=.05,terminate_grace_s=5,kill_reap_grace_s=5,launch_min_available_kib=4194304,runtime_min_available_kib=1048576,max_rss_kib=2097152)
@@ -65,36 +65,53 @@ def main():
 def validate_report(report,destination,pins):
  import math
  require=g.require
- fields={'schema','passed','source_sha256','proposal_sha256','output_sha256','changed_tracks','verified_selected_keys','full_scene_storage_preserved','untouched_source_preserved','exact_reload_verified','sampling_grid','local_pose_tolerance','time_tolerance','finite_sample_count','samples','limits'}
+ fields={'schema','passed','source_sha256','proposal_sha256','output_sha256','changed_tracks','verified_selected_keys','full_scene_storage_preserved','untouched_source_preserved','exact_reload_verified','sampling_grid','local_pose_tolerance','time_tolerance','finite_sample_count','samples','limits','changed_interpolation_tracks','event_sample_count','event_samples','margin_sample_count','margin_samples'}
  require(set(report)==fields,'Report fields mismatch')
- require(report['schema']=='held-native-validation-v1' and report['passed'] is True,'Held verdict failed')
+ require(report['schema']=='held-native-readability-validation-v2' and report['passed'] is True,'Held verdict failed')
  proposal=HERE/'held_validation/spear-held-key-proposal.json'
  g.checked(proposal,pins['spear-held-key-proposal.json']);plan=read(proposal)
  require(report['source_sha256']==plan['source_native_sha256']=='a3c93a0cdf95d6bf049140c384841ecd59c7fc5933ebd53fd9619f16ca9bab89','Source native mismatch')
  require(report['proposal_sha256']==pins['spear-held-key-proposal.json'] and report['output_sha256']==g.sha(destination/'spearman_action.scn'),'Held output binding failed')
- for k,v in {'changed_tracks':8,'verified_selected_keys':290,'finite_sample_count':612}.items():require(type(report[k]) is int and report[k]==v,'Wrong count')
+ for k,v in {'changed_tracks':8,'verified_selected_keys':290,'finite_sample_count':612,'changed_interpolation_tracks':4,'event_sample_count':4,'margin_sample_count':8}.items():require(type(report[k]) is int and report[k]==v,'Wrong count')
  for k in ('full_scene_storage_preserved','untouched_source_preserved','exact_reload_verified'):require(report[k] is True,'Preservation failed')
  require(report['sampling_grid']=='153 uniform nominal times per clip; loop endpoint clamped length-1e-6; distinct from prior offline612 grid','Wrong grid')
  require(report['local_pose_tolerance']==1e-6 and report['time_tolerance']==1e-7,'Wrong tolerances')
  require(report['limits']==['Finite sampled bone transforms only; not mesh clearance or visual acceptance','Death unchanged and not accepted','No gameplay, device, material or camera acceptance'],'Wrong scope')
+ g.checked(HERE/'evaluate_held_tracks.py','73f726a3e19fe4c67f30826503f34d5e492a64f326e3a92d689110bb5f6c7399')
+ g.checked(HERE/'evaluate_applied_held.py','6fd81b68726e41ebfb0c1575356281dcab8a72d6af26ff3e81f469be2ff47860')
+ import evaluate_held_tracks as evaluator
+ import evaluate_applied_held as applied_evaluator
  samples=report['samples'];require(type(samples) is list and len(samples)==612,'Wrong samples')
- keys={'clip','nominal_time','requested_time','actual_clip','actual_time','paused','actual_position','expected_position','actual_rotation','expected_rotation','actual_scale','expected_scale','bones'}
+ keys={'clip','nominal_time','requested_time','actual_clip','actual_time','paused','actual_position','expected_position','actual_rotation','expected_rotation','track_rotation','actual_scale','expected_scale','bones'}
  def number(x):return type(x) in (int,float) and math.isfinite(x)
  def vector(x,n):require(type(x) is list and len(x)==n and all(number(v) for v in x),'Invalid vector')
  bone_names='root,pelvis,spine_01,spine_02,spine_03,neck_01,Head,clavicle_l,upperarm_l,lowerarm_l,hand_l,prop_shield,clavicle_r,upperarm_r,lowerarm_r,hand_r,prop_spear,thigh_l,calf_l,foot_l,ball_l,thigh_r,calf_r,foot_r,ball_r'.split(',')
+ event_times={'idle':[],'walk':[],'attack':[.56,.61],'hit':[0.,.05]}
+ margin_times={'idle':[1.833353373069763,1.8666466746139527],'walk':[.5333133611488342,.4666866686534882],'attack':[.19998000298023225,.300020011920929],'hit':[0.,.3333533432674408]}
+ require(type(report['event_samples']) is list and len(report['event_samples'])==4,'Wrong event rows')
+ require(type(report['margin_samples']) is list and len(report['margin_samples'])==8,'Wrong margin rows')
+ work=[]
  for ci,name in enumerate(('idle','walk','attack','hit')):
   length=plan['clips'][name]['length_unchanged']
-  references={c['replacement']['type']:c['replacement']['values'][0] for c in plan['clips'][name]['changes']}
-  for j,row in enumerate(samples[ci*153:(ci+1)*153]):
+  work.extend((name,length*j/152,row) for j,row in enumerate(samples[ci*153:(ci+1)*153]))
+ for field,grid in [('event_samples',event_times),('margin_samples',margin_times)]:
+  expected=[(name,t) for name in ('idle','walk','attack','hit') for t in grid[name]]
+  work.extend((name,t,row) for (name,t),row in zip(expected,report[field]))
+ require(len(work)==624,'Wrong total rows')
+ for name,nominal,row in work:
+   length=plan['clips'][name]['length_unchanged']
    require(set(row)==keys and row['clip']==row['actual_clip']==name and row['paused'] is True,'Wrong sample identity')
-   nominal=length*j/152;requested=min(nominal,length-1e-6) if name in ('idle','walk') else nominal
+   requested=min(nominal,length-1e-6) if name in ('idle','walk') else nominal
    for k,v in [('nominal_time',nominal),('requested_time',requested),('actual_time',requested)]:require(number(row[k]) and abs(row[k]-v)<=1e-7,'Wrong sample time')
+   vector(row['track_rotation'],4)
+   raw=evaluator.reference(plan,name,'rotation',requested)
+   require(math.dist(row['track_rotation'],raw)<=1e-6,'Raw track rotation differs from source proposal')
    for prop,n in [('position',3),('rotation',4),('scale',3)]:
     a=row['actual_'+prop];b=row['expected_'+prop];vector(a,n);vector(b,n)
     error=math.dist(a,b)
     if prop=='rotation':error=min(error,math.sqrt(sum((x+y)**2 for x,y in zip(a,b))))
     require(error<=1e-6,'Local evaluated pose mismatch')
-    ref=references[prop+'_3d'] if prop!='scale' else [1,1,1]
+    ref=applied_evaluator.applied_reference(plan,name,prop,requested) if prop!='scale' else [1,1,1]
     ref_error=math.dist(b,ref)
     if prop=='rotation':
      ref_error=min(ref_error,math.sqrt(sum((x+y)**2 for x,y in zip(b,ref))))

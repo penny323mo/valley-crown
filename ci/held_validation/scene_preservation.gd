@@ -9,9 +9,9 @@ static func _value(value: Variant, scene: Node, resources: Dictionary) -> Varian
 		for info in value.get_property_list():
 			if (int(info.usage) & PROPERTY_USAGE_STORAGE) == 0:
 				continue
-			# Only serialized key payload is checked by the exact animation snapshots.
-			# Retain all other Animation storage metadata, flags and compression data.
-			if str(info.name).begins_with("tracks/") and str(info.name).ends_with("/keys"):
+			# Serialized key payload and interpolation are checked by exact animation snapshots.
+			# Selected interpolation is separately checked against original and target modes; retain all other metadata.
+			if str(info.name).begins_with("tracks/") and (str(info.name).ends_with("/keys") or str(info.name).ends_with("/interp")):
 				continue
 			properties.append([str(info.name), _value(value.get(info.name), scene, resources)])
 		return ["ANIMATION_KEYS_VERIFIED_SEPARATELY", properties]
