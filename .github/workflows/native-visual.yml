@@ -1,0 +1,66 @@
+name: Capture native source visuals (software OpenGL)
+on:
+  push:
+    branches: [ci/native-visual-vc-8fcc302051f0]
+    paths: ['.github/workflows/native-visual.yml', 'ci/**']
+permissions:
+  contents: read
+concurrency:
+  group: native-source-visuals
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require reviewed frozen execution lock
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          lock=json.loads(pathlib.Path('ci/native-lock.json').read_text())
+          assert lock['reviewed_for_execution'] is True, 'DRAFT: execution has not been approved'
+          for name,digest in lock['support_files'].items():
+              assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest, name
+          PY
+      - name: Install official Ubuntu display dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
+          mkdir -p audit
+          dpkg-query -W xvfb libgl1-mesa-dri libglx-mesa0 > audit/distribution-packages.txt
+      - name: Verify accepted baseline and pinned official engine
+        run: |
+          set -euo pipefail
+          mkdir -p project engine
+          echo '92e660f43172fb731574a5b9f40ff9059cfd036b27845d226b3bd804849c564e  valley-crown-mobile-source-vc-8fcc302051f0-ci.zip' | sha256sum --check --strict
+          unzip -q valley-crown-mobile-source-vc-8fcc302051f0-ci.zip -d project
+          curl --fail --location --retry 2 -o engine/linux.zip https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          unzip -q engine/linux.zip -d engine
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  engine/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --check --strict
+          chmod +x engine/Godot_v4.6.3-stable_linux.x86_64
+          echo "GODOT=$PWD/engine/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+      - name: Fresh hash-bound import (existing reviewed baseline guard)
+        run: |
+          python3 ci/guarded_phone_ci.py import --project project --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output import-evidence --xdg private/import
+      - name: Genuine native portrait framebuffer sequence
+        run: |
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_native.gd --lock ci/native-lock.json --import-marker private/import/import-complete.json --output evidence/portrait --private private/portrait --width 390 --height 844
+          python3 ci/scan_evidence.py --directory evidence/portrait --lock ci/native-lock.json --report evidence/portrait-scan.json
+      - name: Genuine native landscape framebuffer sequence
+        run: |
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_native.gd --lock ci/native-lock.json --import-marker private/import/import-complete.json --output evidence/landscape --private private/landscape --width 844 --height 390
+          python3 ci/scan_evidence.py --directory evidence/landscape --lock ci/native-lock.json --report evidence/landscape-scan.json
+      - name: Retain only scanned successful evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-software-visuals-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/
+          if-no-files-found: error
+          retention-days: 14
