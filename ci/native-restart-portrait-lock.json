@@ -1,16 +1,16 @@
 {
   "reviewed_for_execution": true,
   "build": "vc-d99ac5d19247",
-  "scope": "Fixed390x844 native synthetic ScreenTouch and frozen simulation; synthetic completed queue HUD. Not natural production, physical phone, landscape, art or full gameplay acceptance.",
+  "scope": "Controlled synthetic victory, routed surrender through one normal frame, real restart hold/release and fresh touch order. Portrait only; not natural match or physical phone.",
   "source_archive_sha256": "fc291d2e320df0f95849ca4e5ab82ad2666fbabc9657776292b7f2a62daf02f3",
   "godot_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
-  "harness_sha256": "4ff21bf87241c4d19da0d80d18f00cc6dd140428c56b691e2b6e33ca28b2543e",
-  "supervisor_sha256": "13707557c19e240b4d5ee5901fbd31574108ee1df373bb20bfe2c8abcda7f0bb",
+  "harness_sha256": "f8f758907e530feb2c53c54a1eecdfe0a39d3fb68e7b1250fbb9dc3740375618",
+  "supervisor_sha256": "745f54b6eed6498a31291d38c5a1250241387c4ba4b821ca3545586ab19e0c8e",
   "native_renderer": "linux-x11-mesa-llvmpipe-gl_compatibility",
   "require_skeletal_animation": true,
   "capture_contract": {
-    "mode": "production_guidance",
-    "kind": "native_controlled_production_guidance",
+    "mode": "match_restart",
+    "kind": "native_controlled_match_restart",
     "frame_count": 4
   },
   "import_manifest_sha256": "dd525b8836a31acbd91cda3a46043098d39c0b28fecec75ad3c87d81e5cd63e4",
@@ -209,7 +209,7 @@
     "tools/stamp_build.py": "a7455874168ec6118a3cfa6b842007fc6c02ed47e0787b8f19712524ef33779a"
   },
   "support_files": {
-    ".github/workflows/production-guidance.yml": "b6bc97fef366c344fed8b4679ee31f0d89004e2073e12b7d8332137ce2bfce19",
+    ".github/workflows/match-restart.yml": "1ac9a0857ee3d9ee777cfe85c3b4408e1656c2aa4cc4ef2a1d3fa30e0293a4a4",
     "ACTION_FIX_SOURCE_LOCK.json": "70466a5bef3078de2722d08fd14ff4912061c88191ea2b474e9a8c60345e63b7",
     "CONSTRUCTION_SOURCE_PACKAGE.json": "069473af06b2519fb4fff01c774533e76ac07eb77d89b7d918064ad1e7f92bb4",
     "GUIDANCE_SOURCE_PACKAGE.json": "dd525b8836a31acbd91cda3a46043098d39c0b28fecec75ad3c87d81e5cd63e4",
@@ -224,12 +224,13 @@
     "ci/apply_occlusion_overlay.py": "b0d136b52f3ccfce39babb1939fe99205cbeb9579a6f719bc5f0d21d1a3eb858",
     "ci/apply_unitbar_overlay.py": "c811f4fba58f7d683fc3ee2c1803e23b62ac47586803d0b649c2846b87afb724",
     "ci/assemble_combined.py": "2a378f0bb5ad7e7a59be43d3f7604e181fd1e2774f98ffa9a05c031205bffe92",
-    "ci/capture_production.gd": "4ff21bf87241c4d19da0d80d18f00cc6dd140428c56b691e2b6e33ca28b2543e",
+    "ci/capture_restart.gd": "f8f758907e530feb2c53c54a1eecdfe0a39d3fb68e7b1250fbb9dc3740375618",
+    "ci/check_restart.py": "1743313dd42cf4d9b1ee772d7ad93cebb6399246cfffd72dbc240c28a47cca84",
     "ci/guarded_manifest_ci.py": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
-    "ci/run_native.py": "13707557c19e240b4d5ee5901fbd31574108ee1df373bb20bfe2c8abcda7f0bb",
+    "ci/run_native.py": "745f54b6eed6498a31291d38c5a1250241387c4ba4b821ca3545586ab19e0c8e",
     "ci/scan_evidence.py": "becd97b5c086028b73c2bf9b5fbc18ba6acd6eef62bca753f10803732195ed1b",
-    "ci/scan_production.py": "d6e5cb40c4395911691f7316011cc12ff53fb2ef3043d9da02175455629e4088",
+    "ci/scan_restart.py": "8880851a8a5fe45acba1a613bc2dede4149cac01b41ad51a8c7f989b57ef21c0",
     "ci/xvfb_startup.py": "558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546",
     "construction-overlay.zip": "757810906ae8b5503ca1f6c9b9449e992f3b69a6ea52bd2a45b478c250c83817",
     "guidance-overlay.zip": "17e229f7aa403998bf817d68cfde2978263e3d50e0f613456e11e3512dba273a",
@@ -246,7 +247,7 @@
   ],
   "diagnostic_only": false,
   "fixed_fps": 20,
-  "production_viewport": [
+  "restart_viewport": [
     390,
     844
   ]

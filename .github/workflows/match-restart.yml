@@ -1,8 +1,8 @@
-name: Inspect producer guidance in fixed native portrait
+name: Inspect match-end and restart in fixed native portrait
 on:
   push:
-    branches: [ci/native-production-guidance-portrait-v1]
-    paths: ['.github/workflows/production-guidance.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/native-match-restart-portrait-v1]
+    paths: ['.github/workflows/match-restart.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -14,7 +14,7 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - flow: guidance-portrait
+          - flow: restart-portrait
             width: 390
             height: 844
     runs-on: ubuntu-24.04
@@ -23,14 +23,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Require reviewed production-guidance portrait source
+      - name: Require reviewed match-restart portrait binding
         run: |
           set -euo pipefail
           python3 - <<'PYCODE'
           import hashlib,json,pathlib
           lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
           assert lock['reviewed_for_execution'] is True and lock['build']=='vc-d99ac5d19247'
-          assert lock['production_viewport']==[${{ matrix.width }},${{ matrix.height }}]
+          assert lock['restart_viewport']==[${{ matrix.width }},${{ matrix.height }}]
           assert lock['fixed_fps']==20 and lock['capture_contract']['frame_count']==4
           assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
           for name,digest in lock['support_files'].items():
@@ -92,17 +92,17 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive guidance-source.zip --manifest GUIDANCE_SOURCE_PACKAGE.json --archive-sha256 fc291d2e320df0f95849ca4e5ab82ad2666fbabc9657776292b7f2a62daf02f3 --manifest-sha256 dd525b8836a31acbd91cda3a46043098d39c0b28fecec75ad3c87d81e5cd63e4 --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: Capture four routed native touch and controlled HUD stages
-        id: capture_guidance
+      - name: Capture controlled endings and routed native restart
+        id: capture_restart
         run: |
           set -euo pipefail
-          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_production.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width ${{ matrix.width }} --height ${{ matrix.height }}
-          python3 ci/scan_production.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_restart.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width ${{ matrix.width }} --height ${{ matrix.height }}
+          python3 ci/scan_restart.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
       - name: Retain only independently scanned controlled scene evidence
-        if: ${{ success() && steps.capture_guidance.outcome == 'success' }}
+        if: ${{ success() && steps.capture_restart.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rts-production-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: rts-restart-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             evidence/${{ matrix.flow }}/
             evidence/${{ matrix.flow }}-scan.json
