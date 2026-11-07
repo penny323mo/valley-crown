@@ -60,7 +60,11 @@ static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, 
 			if track.type not in ["position_3d", "rotation_3d"] or clip.track_get_type(index) != expected_type: return _failure("HELD_TRACK_TYPE")
 			if clip.track_get_key_count(index) != track.times.size() or change.original_values.size() != track.times.size() or track.values.size() != track.times.size(): return _failure("HELD_KEY_COUNT")
 			for key in track.times.size():
-				if clip.track_get_key_time(index,key) != float(track.times[key]): return _time_failure(key, clip.track_get_type(index), clip.track_get_key_time(index,key), float(track.times[key]))
+				# Native key arrays are pinned PackedFloat32Array. Canonicalize only
+				# the JSON expectation to that exact representation; never retime native keys.
+				var expected_time: float = PackedFloat32Array([track.times[key]])[0]
+				var actual_time: float = clip.track_get_key_time(index,key)
+				if actual_time != expected_time or PackedFloat32Array([actual_time]).to_byte_array() != PackedFloat32Array([expected_time]).to_byte_array(): return _time_failure(key, clip.track_get_type(index), actual_time, expected_time)
 				if clip.track_get_key_value(index,key) != _value(track.type, change.original_values[key]): return _failure("HELD_OLD_KEY_VALUE")
 				for number in track.values[key]:
 					if not is_finite(float(number)): return _failure("HELD_NONFINITE_REPLACEMENT")

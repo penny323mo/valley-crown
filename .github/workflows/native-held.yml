@@ -76,7 +76,7 @@ jobs:
           echo '539a61b7b595819e4b11502be5beffcc334de9635f7db6a614a6aa66d1675871  ci/run_native_held.py' | sha256sum --check --strict
           echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
           echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo '83da809922c92f64caffaca53ebbce5f522332c0456a36839aa224567ddcbd7d  ci/HELD_INPUTS.json' | sha256sum --check --strict
+          echo '7a1e19a97d90ac0a0742cabce5f5e311338b828d91d56456a0dd6e3822cc2874  ci/HELD_INPUTS.json' | sha256sum --check --strict
           python3 ci/scan_held_evidence.py --import-only
       - name: Preserve admitted import receipts on success or failure
         if: always() && steps.import_scan.outcome == 'success'
@@ -95,7 +95,7 @@ jobs:
           echo '539a61b7b595819e4b11502be5beffcc334de9635f7db6a614a6aa66d1675871  ci/run_native_held.py' | sha256sum --check --strict
           echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
           echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo '83da809922c92f64caffaca53ebbce5f522332c0456a36839aa224567ddcbd7d  ci/HELD_INPUTS.json' | sha256sum --check --strict
+          echo '7a1e19a97d90ac0a0742cabce5f5e311338b828d91d56456a0dd6e3822cc2874  ci/HELD_INPUTS.json' | sha256sum --check --strict
           python3 ci/scan_held_evidence.py
       - name: Preserve safe complete or failed evidence
         if: always() && steps.scan.outcome == 'success'
