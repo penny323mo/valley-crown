@@ -1,8 +1,8 @@
-name: Inspect owned build hint retirement in native portrait
+name: Inspect ordinary rally and paid newborn movement in portrait
 on:
   push:
-    branches: [ci/native-stale-build-hint-portrait-v1]
-    paths: ['.github/workflows/selection-preview.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/native-ground-rally-portrait-v1]
+    paths: ['.github/workflows/ground-rally-portrait.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -14,7 +14,7 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - flow: selection-portrait
+          - flow: rally-portrait
             width: 390
             height: 844
     runs-on: ubuntu-24.04
@@ -23,14 +23,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Require reviewed selection-preview portrait source
+      - name: Require reviewed ordinary rally portrait source
         run: |
           set -euo pipefail
           python3 - <<'PYCODE'
           import hashlib,json,pathlib
           lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
-          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-c09af531eecf'
-          assert lock['selection_viewport']==[${{ matrix.width }},${{ matrix.height }}]
+          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-c9aad346e872'
+          assert lock['rally_viewport']==[${{ matrix.width }},${{ matrix.height }}]
           assert lock['fixed_fps']==20 and lock['capture_contract']['frame_count']==4
           assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
           for name,digest in lock['support_files'].items():
@@ -67,14 +67,16 @@ jobs:
           python3 ci/apply_guidance_overlay.py --project project --base-package UNITBAR_SOURCE_PACKAGE.json --package GUIDANCE_SOURCE_PACKAGE.json --overlay guidance-overlay.zip --receipt assembly-guidance.json
           python3 ci/apply_selection_overlay.py --project project --base-package GUIDANCE_SOURCE_PACKAGE.json --package SELECTION_SOURCE_PACKAGE.json --overlay selection-overlay.zip --receipt assembly-selection.json
           python3 ci/apply_stale_hint_overlay.py --project project --base-package SELECTION_SOURCE_PACKAGE.json --package STALE_HINT_SOURCE_PACKAGE.json --overlay stale-hint-overlay.zip --receipt assembly-stale-hint.json
+          python3 ci/apply_archer_effect_overlay.py --project project --base-package STALE_HINT_SOURCE_PACKAGE.json --package ARCHER_EFFECT_SOURCE_PACKAGE.json --overlay archer-effect-overlay.zip --receipt assembly-archer-effect.json
+          python3 ci/apply_ground_rally_overlay.py --project project --base-package ARCHER_EFFECT_SOURCE_PACKAGE.json --package GROUND_RALLY_SOURCE_PACKAGE.json --overlay ground-rally-overlay.zip --receipt assembly-ground-rally.json
           python3 - <<'PYCODE'
           import json,pathlib,sys
           sys.path.insert(0,'ci')
           from apply_construction_overlay import write_archive
-          package=json.loads(pathlib.Path('STALE_HINT_SOURCE_PACKAGE.json').read_text())
+          package=json.loads(pathlib.Path('GROUND_RALLY_SOURCE_PACKAGE.json').read_text())
           entries={row['file']:row['sha256'] for row in package['files']}
           assert len(entries)==192
-          write_archive(pathlib.Path('project'),entries,pathlib.Path('stale-hint-source.zip'))
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('ground-rally-source.zip'))
           PYCODE
       - name: Install official Ubuntu display dependencies
         run: |
@@ -93,18 +95,18 @@ jobs:
       - name: Guarded native import
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive stale-hint-source.zip --manifest STALE_HINT_SOURCE_PACKAGE.json --archive-sha256 4cea135b474197e9f2a59e4662b94ef34469a37dbeb76f581a5b00af3e1be46f --manifest-sha256 4dc5e2685f6170d96a891fc396efe8c4156bb9c0f830247b71bdc21e0579a698 --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: Capture four controlled before-and-after build hint stages
-        id: capture_selection
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive ground-rally-source.zip --manifest GROUND_RALLY_SOURCE_PACKAGE.json --archive-sha256 c63c2f79f4ce650b704da040691d1a4b1ac45a6adba05e9228947fa40513be1e --manifest-sha256 8c7c4bde61bbebf1d661f751d791beb9be76bfe562f7138b84dae4fc1eb915de --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: Capture four ordinary routed rally and paid production stages
+        id: capture_rally
         run: |
           set -euo pipefail
-          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_selection.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width ${{ matrix.width }} --height ${{ matrix.height }}
-          python3 ci/scan_selection.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
-      - name: Retain only independently scanned controlled scene evidence
-        if: ${{ success() && steps.capture_selection.outcome == 'success' }}
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_rally.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width ${{ matrix.width }} --height ${{ matrix.height }}
+          python3 ci/scan_rally.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
+      - name: Retain only independently scanned native scene evidence
+        if: ${{ success() && steps.capture_rally.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rts-stale-hint-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: rts-ground-rally-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             evidence/${{ matrix.flow }}/
             evidence/${{ matrix.flow }}-scan.json
