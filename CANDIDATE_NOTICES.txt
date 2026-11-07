@@ -1,0 +1,11 @@
+Valley & Crown / 霧谷王旗
+Experimental Web candidate vc-43276605e0fb
+
+This candidate contains the existing integrated game source and native character assets. It is not a production release. Native tests and reproducible exports do not establish browser, Safari, physical-phone, frame-rate, or artistic acceptance. Known limitations include pale/patchy character materials, small landscape actors, and subtle early construction foundations. No lighting or camera prototype is included.
+
+Engine: Godot 4.6.3, MIT license. See GODOT-LICENSES.txt for engine and bundled third-party notices; https://godotengine.org/license/.
+Fonts: Noto Sans CJK subset under SIL Open Font License 1.1 and DejaVu fonts under their included terms. See NOTO-LICENSE.txt and DEJAVU-LICENSE.txt.
+Character source assets and animation donors include Quaternius Universal Base Characters, Modular Character Outfits - Fantasy, Universal Animation Library and Library 2, and KayKit Character Animations. These source packs were distributed under CC0; exact retained notices are included in licenses/. Their game-specific conversions and animation integration do not imply endorsement by their creators.
+Original generated game audio uses sine harmonics rather than external recordings. No additional license for the game's original code or authored content is granted by this notice.
+
+This notice supersedes the older source-tree statement that no external artwork was imported. That historical source file was not edited or used as candidate attribution. The candidate's exact source identity is preserved for verification.
