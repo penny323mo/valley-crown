@@ -1,0 +1,53 @@
+{
+  "scenario": "native_held_spear_studies_v1",
+  "viewport": [
+    844,
+    390
+  ],
+  "fixed_fps": 20,
+  "kind": "spearman",
+  "clips": [
+    "idle",
+    "walk",
+    "attack",
+    "hit"
+  ],
+  "clip_lengths": {
+    "idle": 2.4166667461395264,
+    "walk": 0.8333333134651184,
+    "attack": 1.0,
+    "hit": 0.4166666567325592
+  },
+  "fractions": {
+    "idle": [
+      0,
+      0.35,
+      1
+    ],
+    "walk": [
+      0,
+      0.35,
+      1
+    ],
+    "attack": [
+      0,
+      0.56,
+      1
+    ],
+    "hit": [
+      0,
+      0.35,
+      1
+    ]
+  },
+  "native_output_sha256": "12bb1dad426360ad7cbbe9b782b221bccd9cb66f21577f754696996ed1611f96",
+  "native_artifact": {
+    "run_id": 42400250660,
+    "artifact_id": 13585177501,
+    "sha256": "a8d622af79c3c55e4d6f3690c652f93d7169d0c7acbda3fff84c090c900a83d6",
+    "validation_report_sha256": "e6952b6aea67846aee920774f09b16d92f3203fd0011e318790b3dd88605db7e"
+  },
+  "base_build": "vc-43276605e0fb",
+  "scope": "Four paused held-spear action triptychs; no death, other prop correction, continuous clearance, gameplay or device acceptance",
+  "endpoint_policy": "nominal100% clamped length-1e-6 for idle/walk"
+}
