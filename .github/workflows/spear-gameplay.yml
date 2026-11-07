@@ -1,25 +1,39 @@
-name: Validate isolated width-only spear blade native stream
+name: Inspect mesh-only spear blade width in matched RTS portrait
 on:
   push:
-    branches: [ci/native-blade-width-v1]
-    paths: ['.github/workflows/native-held.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/native-blade-width-portrait-v1]
+    paths: ['.github/workflows/spear-gameplay.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
 jobs:
   validate:
+    name: ${{ matrix.flow }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - flow: blade-portrait
+            width: 390
+            height: 844
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Verify exact reviewed public inputs
+      - name: Require reviewed exact candidate portrait source
         run: |
           set -euo pipefail
           python3 - <<'PYCODE'
-          import pathlib,json,hashlib
-          for name,digest in json.loads(pathlib.Path('PUBLIC_INPUTS.json').read_text()).items():
+          import hashlib,json,pathlib
+          lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
+          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-8b74d2fbc5ef'
+          assert lock['spear_viewport']==[${{ matrix.width }},${{ matrix.height }}]
+          assert lock['fixed_fps']==20 and lock['capture_contract']['frame_count']==4
+          assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
+          for name,digest in lock['support_files'].items():
               assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest,name
           PYCODE
       - name: Fetch previously accepted licensed character artifact
@@ -46,6 +60,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: held-artifact
           merge-multiple: true
+      - name: Fetch independently accepted width-only native output
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13587454184'
+          run-id: '42407840971'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: blade-artifact
+          merge-multiple: true
       - name: Reassemble exact accepted 181 files without a test overlay
         run: |
           set -euo pipefail
@@ -67,6 +89,19 @@ jobs:
           assert len(entries)==192
           write_archive(pathlib.Path('project'),entries,pathlib.Path('held-source.zip'))
           PYCODE
+      - name: Apply width-only native SCN to disposable exact pose baseline
+        run: |
+          set -euo pipefail
+          python3 ci/apply_blade_overlay.py --project project --base-package HELD_SOURCE_PACKAGE.json --package BLADE_SOURCE_PACKAGE.json --native-output blade-artifact --receipt assembly-blade.json
+          python3 - <<'PYCODE'
+          import json,pathlib,sys
+          sys.path.insert(0,'ci')
+          from apply_construction_overlay import write_archive
+          package=json.loads(pathlib.Path('BLADE_SOURCE_PACKAGE.json').read_text())
+          entries={row['file']:row['sha256'] for row in package['files']}
+          assert len(entries)==192
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('blade-source.zip'))
+          PYCODE
       - name: Install official Ubuntu display dependencies
         run: |
           set -euo pipefail
@@ -84,53 +119,20 @@ jobs:
       - name: Guarded native import
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive held-source.zip --manifest HELD_SOURCE_PACKAGE.json --archive-sha256 69994f5d4e7476adc012590d0c5b9e537c5b821d5d17984bf21c990a27cc65a1 --manifest-sha256 f7e900121ac2d2d5baf83d7d1db2033ea8fcf2c017907782a0a8f1aa2c3abe5a --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: Guarded held-only native validation
-        id: native
-        run: python3 ci/run_native_blade.py
-      - name: Admit bounded import evidence independently
-        id: import_scan
-        if: always()
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive blade-source.zip --manifest BLADE_SOURCE_PACKAGE.json --archive-sha256 88ed6e720729d2a49506edebc367e866ea8e1415abb468eb3bab79c0a45a26f6 --manifest-sha256 c20601fded1ce4f066356e022f463c6dc50d85fcad7e0ee3bb370af648820ca3 --xdg private/import --hosted-execution-approved --output import-evidence
+      - name: Capture four controlled real RTS-camera events
+        id: capture_spear
         run: |
           set -euo pipefail
-          echo 'a11e0d52ee42a178499e868eb7a3ae15a06ce48f7df3aa728738e21f0ea8be73  ci/scan_blade_evidence.py' | sha256sum --check --strict
-          echo 'da5f472c7bfea9a094d25799197e5440cadc8040813b0d78aae83fd531ed3991  ci/run_native_blade.py' | sha256sum --check --strict
-          echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
-          echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo '0d819f078ebeb960deb5fb2d522293212a5bfb3d6a8c3c5e1be199002cffe13b  ci/BLADE_INPUTS.json' | sha256sum --check --strict
-          python3 ci/scan_blade_evidence.py --import-only
-      - name: Preserve admitted import receipts on success or failure
-        if: always() && steps.import_scan.outcome == 'success'
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_spear_gameplay.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width ${{ matrix.width }} --height ${{ matrix.height }}
+          python3 ci/scan_spear_gameplay.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
+      - name: Retain only independently scanned controlled scene evidence
+        if: ${{ success() && steps.capture_spear.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: native-blade-import-${{ github.sha }}-${{ github.run_attempt }}
-          path: safe-import-evidence/
-          if-no-files-found: error
-          retention-days: 14
-      - name: Admit only bounded privacy-scanned evidence
-        id: scan
-        if: always()
-        run: |
-          set -euo pipefail
-          echo 'a11e0d52ee42a178499e868eb7a3ae15a06ce48f7df3aa728738e21f0ea8be73  ci/scan_blade_evidence.py' | sha256sum --check --strict
-          echo 'da5f472c7bfea9a094d25799197e5440cadc8040813b0d78aae83fd531ed3991  ci/run_native_blade.py' | sha256sum --check --strict
-          echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
-          echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
-          echo '0d819f078ebeb960deb5fb2d522293212a5bfb3d6a8c3c5e1be199002cffe13b  ci/BLADE_INPUTS.json' | sha256sum --check --strict
-          python3 ci/scan_blade_evidence.py
-      - name: Preserve safe complete or failed evidence
-        if: always() && steps.scan.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: native-blade-evidence-${{ github.sha }}-${{ github.run_attempt }}
-          path: safe-blade-evidence/
-          if-no-files-found: error
-          retention-days: 14
-      - name: Retain validated native candidate outputs
-        if: success() && steps.native.outcome == 'success' && steps.scan.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: native-blade-output-${{ github.sha }}-${{ github.run_attempt }}
-          path: safe-blade-output/
+          name: rts-spear-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/${{ matrix.flow }}/
+            evidence/${{ matrix.flow }}-scan.json
           if-no-files-found: error
           retention-days: 14
