@@ -1,156 +1,118 @@
 extends SceneTree
-var game
-var trace=[]
-var previews=[]
-var checkpoints=[]
-var budget={}
-var claimed={}
-var attempts={}
-var strategy=1
-var milestones={}
+# External validation harness. Ordinary economy opening, natural defeat, real end-button keyboard route.
 const EXPECTED_BUILD="vc-c7211e1083c8"
 const MAX_TICKS=48000
-var attack_started=false
+var game
+var inputs=[]
+var assigned={}
+var checkpoints=[]
+var invariants=[]
+var restarted={}
+var reload_events=0
+var phase="opening"
+func snapshot():
+	return {"snapshot":game._snapshot().duplicate(true),"ai_enabled":game.ai_enabled,"records":game.faction_views[0].records().duplicate(true)}
 func issue(kind,data,actor,target={}):
-	assert(actor.owned and actor.alive)
-	assert(target.is_empty() or not target.remembered)
+	assert(actor.owned and actor.alive and not actor.remembered)
+	assert(target.is_empty() or (target.alive and not target.remembered))
 	game._submit(kind,data,0)
-	trace.append({"tick":game.tick_count,"command":game.commands.back().duplicate(true),"actor":actor,"target":target})
-func can_pay(kind):
-	for r in game.Rules.COSTS[kind]:
-		if budget[r]<game.Rules.COSTS[kind][r]: return false
-	return true
-func spend(kind):
-	for r in game.Rules.COSTS[kind]: budget[r]-=game.Rules.COSTS[kind][r]
-func build(kind,workers):
-	if not can_pay(kind): return false
-	var builder={}
-	for w in workers:
-		if w.state!="build" and not claimed.has(w.id): builder=w; break
-	if builder.is_empty(): return false
-	for p in game.MapRoutes.build_plots(0,game.Rules.FOOTPRINT[kind]):
-		var reason=game._placement_reason(kind,p,0,builder.id)
-		previews.append({"tick":game.tick_count,"kind":kind,"position":p,"builder":builder.id,"reason":reason})
-		if reason=="":
-			issue("build",{"kind":kind,"position":p,"builder":builder.id},builder)
-			claimed[builder.id]=true; spend(kind); return true
-	return false
-func scout(unit):
-	if unit.state!="idle": return
-	var point=Vector3.INF; var distance=INF; var chosen=-1
-	for y in range(game.Rules.MAP_BORDER,game.Rules.MAP_SIZE-game.Rules.MAP_BORDER):
-		for x in range(game.Rules.MAP_BORDER,game.Rules.MAP_SIZE-game.Rules.MAP_BORDER):
-			var index=y*game.Rules.MAP_SIZE+x
-			if game.explored_cells[0][index]!=0 or attempts.has(index): continue
-			var p=Vector3(x-game.Rules.MAP_HALF+0.5,0,y-game.Rules.MAP_HALF+0.5); var d=unit.pos.distance_squared_to(p)
-			if d<distance: point=p; distance=d; chosen=index
-	if chosen>=0:
-		attempts[chosen]=true; issue("order",{"ids":[unit.id],"target":-1,"position":point},unit)
+	inputs.append({"phase":phase,"tick":game.tick_count,"command":game.commands.back().duplicate(true),"actor":actor.duplicate(true),"target":target.duplicate(true)})
 func policy():
-	var records=game.faction_views[0].records().values()
-	var workers=[]; var army=[]; var buildings=[]; var enemies=[]; var castle={}; var enemy_keep={}
-	var reserved=0; var queued_workers=0; var houses=0; var producers=0
-	var snapshot=game._snapshot()
-	budget={"food":snapshot.food,"wood":snapshot.wood}; claimed={}
-	for e in records:
-		if e.owned:
-			if e.kind=="villager": workers.append(e)
-			elif e.category=="unit": army.append(e)
-			if e.category=="building":
-				buildings.append(e); reserved+=e.queue.size()
-				for item in e.queue:
-					if item.kind=="villager": queued_workers+=1
-				if e.kind=="town_center": castle=e
-				if e.kind=="house": houses+=1
-				if e.kind=="range": producers+=1
-		elif not e.remembered and e.team==1:
-			enemies.append(e)
-			if e.kind=="town_center": enemy_keep=e
-	if castle.is_empty(): return
-	var built_now=false
-	if producers<1: built_now=build("range",workers)
-	elif houses<2 and snapshot.capacity-snapshot.population<=3: built_now=build("house",workers)
-	elif producers<2 and houses>=1: built_now=build("range",workers)
-	# Recover any own site whose builder died or stopped.
-	for b in buildings:
-		if b.built: continue
-		var attended=false
-		for w in workers:
-			if w.state=="build" and w.target==b.id: attended=true
-		if not attended and not built_now:
-			for w in workers:
-				if w.state!="build" and not claimed.has(w.id):
-					issue("order",{"ids":[w.id],"target":b.id,"position":b.pos},w,b); claimed[w.id]=true; break
-	var free=snapshot.capacity-snapshot.population
-	if workers.size()+queued_workers<7 and castle.queue.is_empty() and free>0 and can_pay("villager"):
-		issue("train",{"building":castle.id,"kind":"villager"},castle); spend("villager"); free-=1
-	for b in buildings:
-		if b.kind=="range" and b.built and b.queue.size()<2 and free>0 and can_pay("archer"):
-			issue("train",{"building":b.id,"kind":"archer"},b); spend("archer"); free-=1
-	for i in workers.size():
-		var w=workers[i]
-		if claimed.has(w.id) or w.state!="idle": continue
-		var want_food=i<3; var source={}
-		for r in records:
-			if r.category!="resource" or r.remembered: continue
-			if (r.kind=="berry")!=want_food: continue
-			if source.is_empty() or w.pos.distance_squared_to(r.pos)<w.pos.distance_squared_to(source.pos): source=r
-		if not source.is_empty(): issue("order",{"ids":[w.id],"target":source.id,"position":source.pos},w,source)
-	if army.size()>=9: attack_started=true
-	for u in army:
-		var target={}; var best=INF
-		for e in enemies:
-			if e.category!="unit": continue
-			var d=u.pos.distance_squared_to(e.pos)
-			if d<best and d<144: target=e; best=d
-		if target.is_empty() and attack_started and not enemy_keep.is_empty(): target=enemy_keep
-		if not target.is_empty():
-			if u.state!="attack" or u.target!=target.id: issue("order",{"ids":[u.id],"target":target.id,"position":target.pos},u,target)
-		elif u.kind=="scout" or attack_started:
-			scout(u)
-func checkpoint():
-	return {"snapshot":game._snapshot().duplicate(true),"records":game.faction_views[0].records().duplicate(true),"ai_enabled":game.ai_enabled,"toast":game.toast_label.text}
+	var records=game.faction_views[0].records()
+	for ent in records.values():
+		if not ent.owned: continue
+		if ent.kind=="town_center" and game.tick_count==0:
+			issue("train",{"building":ent.id,"kind":"villager"},ent)
+		if ent.kind!="villager" or assigned.has(ent.id): continue
+		var source={}
+		for candidate in records.values():
+			if candidate.category!="resource" or candidate.remembered or candidate.kind!="berry": continue
+			if source.is_empty() or ent.pos.distance_squared_to(candidate.pos)<ent.pos.distance_squared_to(source.pos): source=candidate
+		if source.is_empty(): continue
+		issue("order",{"ids":[ent.id],"target":source.id,"position":source.pos},ent,source)
+		assigned[ent.id]=true
+func on_scene_changed():
+	reload_events+=1
+	game=current_scene
+	if game==null: return
+	game.set_process(false)
+	restarted=snapshot()
+	restarted["end_panel_visible"]=game.end_panel.visible
+	restarted["scene_file_path"]=game.scene_file_path
+	restarted["commands_empty"]=game.commands.is_empty()
+	restarted["action_history_empty"]=game.unit_action_cues==[{},{}] and game.pending_visual_deaths.is_empty()
+	restarted["corpses_empty"]=game.character_presenter.corpses.is_empty()
 func _initialize(): call_deferred("run")
-func observe_milestones():
-	var snapshot=game._snapshot()
-	for key in ["delivered","built","trained"]:
-		if snapshot[key]>0 and not milestones.has(key): milestones[key]=game.tick_count
-	# Reporting only. No hidden state is consulted, and this does not steer policy.
-	for e in game.faction_views[0].records().values():
-		if e.owned and e.category=="unit" and e.state=="attack" and not milestones.has("combat_state"):
-			milestones["combat_state"]=game.tick_count
-	if game.game_over and not milestones.has("terminal"): milestones.terminal=game.tick_count
 func run():
 	var args=OS.get_cmdline_user_args()
-	if args.size()!=1:
-		push_error("Expected one absolute output JSON path; no smoke-test flag."); quit(2); return
-	game=load("res://main.tscn").instantiate(); root.add_child(game); game.set_process(false)
-	if game.Rules.BUILD_ID!=EXPECTED_BUILD or game.Rules.MAP_SIZE!=80 or not game.ai_enabled or game.test_mode:
-		push_error("Wrong candidate or non-ordinary startup; refusing replay."); quit(2); return
-	var start=Time.get_ticks_msec(); checkpoints.append(checkpoint())
-	var invariant_failures=[]
-	var capacity_loss_overcap=[]
+	if args.size()!=1: push_error("Expected one absolute output report path."); quit(2); return
+	game=load("res://main.tscn").instantiate(); root.add_child(game); current_scene=game; game.set_process(false)
+	if game.Rules.BUILD_ID!=EXPECTED_BUILD or not game.ai_enabled or game.test_mode:
+		push_error("Wrong identity or non-ordinary startup."); quit(2); return
+	var start=Time.get_ticks_msec()
+	checkpoints.append(snapshot())
 	for i in MAX_TICKS:
-		if game.tick_count%40==0: policy()
-		var previous=game.tick_count
+		if game.tick_count%20==0: policy()
 		game._tick(game.Rules.TICK)
-		observe_milestones()
 		var snap=game._snapshot()
 		if not game.ai_enabled or snap.food<0 or snap.wood<0 or snap.population>game.Rules.POP_LIMIT:
-			invariant_failures.append({"tick":game.tick_count,"snapshot":snap.duplicate(true),"ai_enabled":game.ai_enabled}); break
-		if snap.population>snap.capacity and (capacity_loss_overcap.is_empty() or capacity_loss_overcap[-1].capacity!=snap.capacity or capacity_loss_overcap[-1].population!=snap.population):
-			capacity_loss_overcap.append({"tick":game.tick_count,"population":snap.population,"capacity":snap.capacity})
-		if previous%40==0:
-			checkpoints.append({"post_command_tick":game.tick_count,"toast":game.toast_label.text,"snapshot":snap.duplicate(true),"ai_enabled":game.ai_enabled})
+			invariants.append(snap.duplicate(true)); break
 		if game.tick_count%1200==0:
-			print("REPLAY_PROGRESS ",game.tick_count," ",JSON.stringify(snap))
+			checkpoints.append(snapshot()); print("DEFEAT_PROGRESS ",game.tick_count," ",game.outcome)
 		if game.game_over or game.paused: break
-	var audit=game.economy.audit()
-	var coverage_complete=game.game_over and game.outcome in ["victory","defeat"] and milestones.has("delivered") and milestones.has("built") and milestones.has("trained") and milestones.has("combat_state")
-	var passed=coverage_complete and invariant_failures.is_empty() and audit.ok
-	var report={"scope":"Accelerated native ordinary-command simulation only; no selection/touch/render/fog-pixel/restart/performance acceptance", "status":"PASS_CORE_SIMULATION" if passed else "INCOMPLETE_OR_FAILED", "strategy":strategy,"build":game.Rules.BUILD_ID,"seed":824613,"map_size":game.Rules.MAP_SIZE,"source_sha256":FileAccess.get_sha256("res://scripts/game.gd"),"harness_sha256":FileAccess.get_sha256(get_script().resource_path),"input_trace":trace,"placement_previews":previews,"checkpoints":checkpoints,"milestones":milestones,"invariant_failures":invariant_failures,"capacity_loss_overcap":capacity_loss_overcap,"population_limit":game.Rules.POP_LIMIT,"terminal":checkpoint(),"end_reason":game.end_reason,"wall_ms":Time.get_ticks_msec()-start,"bound_ticks":MAX_TICKS,"economy_audit":audit,"engine":Engine.get_version_info().string}
+	var terminal=snapshot(); var reason=game.end_reason; var audit=game.economy.audit().duplicate(true)
+	var natural_defeat=game.game_over and game.outcome=="defeat" and reason in ["keep_destroyed","irrecoverable"]
+	var ui={"attempted":false,"route":"focused actual end-panel Button + InputEventKey Enter through root.push_input; no signal emission or direct reload call"}
+	var old_ref=weakref(game); var old_id=game.get_instance_id()
+	if natural_defeat:
+		# Let normal Control layout settle, without advancing simulation.
+		for i in 3: await process_frame
+		var button=null
+		for candidate in game.end_panel.find_children("*","Button",true,false):
+			if candidate.text=="再開一局" and candidate.is_visible_in_tree(): button=candidate
+		ui["button_found"]=button!=null
+		ui["terminal_panel_visible"]=game.end_panel.is_visible_in_tree()
+		if button!=null:
+			button.grab_focus()
+			ui["focus_owned"]=root.gui_get_focus_owner()==button
+			ui["button_text"]=button.text
+			ui["button_enabled"]=not button.disabled
+			if ui.focus_owned and ui.button_enabled:
+				scene_changed.connect(on_scene_changed)
+				ui["attempted"]=true
+				var press=InputEventKey.new(); press.keycode=KEY_ENTER; press.pressed=true
+				root.push_input(press,true)
+				var release=InputEventKey.new(); release.keycode=KEY_ENTER; release.pressed=false
+				root.push_input(release,true)
+				for i in 10:
+					await process_frame
+					if reload_events>0: break
+	ui["reload_events"]=reload_events
+	ui["old_instance_released"]=old_ref.get_ref()==null
+	ui["new_instance"]=current_scene!=null and current_scene.get_instance_id()!=old_id
+	var post_restart={}
+	if reload_events==1 and not restarted.is_empty():
+		# Fresh match receives one current observed worker->berry command, then ordinary ticks.
+		phase="restarted"; assigned={}; var before=inputs.size(); policy()
+		for i in 40: game._tick(game.Rules.TICK)
+		post_restart=snapshot(); post_restart["command_count"]=inputs.size()-before
+		post_restart["economy_audit"]=game.economy.audit().duplicate(true)
+	var execution={"paid_villager":false,"training_advanced":false,"gather_target_active":false}
+	if not post_restart.is_empty():
+		execution.paid_villager=post_restart.snapshot.food==restarted.snapshot.food-game.Rules.COSTS.villager.food and post_restart.snapshot.wood==restarted.snapshot.wood
+		for record in post_restart.records.values():
+			if record.owned and record.kind=="town_center" and record.queue.size()==1:
+				var order=record.queue[0]
+				execution.training_advanced=order.kind=="villager" and order.started and order.remaining_ticks==game.Rules.TRAIN_TICKS.villager-40
+			if record.owned and record.alive and record.kind=="villager" and record.state=="gather" and record.last_seen_tick==40:
+				for command in inputs:
+					if command.phase=="restarted" and command.command.type=="order" and command.actor.id==record.id and command.target.id==record.target:
+						execution.gather_target_active=true
+	var restart_ok=reload_events==1 and ui.old_instance_released and ui.new_instance and not restarted.is_empty() and restarted.snapshot.tick==0 and not restarted.snapshot.game_over and not restarted.snapshot.paused and restarted.ai_enabled and restarted.commands_empty and restarted.action_history_empty and restarted.corpses_empty and not restarted.end_panel_visible
+	var passed=natural_defeat and restart_ok and execution.paid_villager and execution.training_advanced and execution.gather_target_active and invariants.is_empty() and audit.ok and not post_restart.is_empty() and post_restart.snapshot.tick==40 and post_restart.ai_enabled and post_restart.economy_audit.ok
+	var report={"scope":"One accelerated native economy-only natural defeat plus keyboard UI restart; no touch/browser/render/performance/art acceptance","status":"PASS_DEFEAT_RESTART" if passed else "FAILED_OR_INCOMPLETE","build":EXPECTED_BUILD,"seed":824613,"bound_ticks":MAX_TICKS,"restart_tick_bound":40,"population_limit":game.Rules.POP_LIMIT,"source_sha256":FileAccess.get_sha256("res://scripts/game.gd"),"harness_sha256":FileAccess.get_sha256(get_script().resource_path),"engine":Engine.get_version_info().string,"input_trace":inputs,"initial":checkpoints[0],"checkpoints":checkpoints,"terminal":terminal,"end_reason":reason,"invariant_failures":invariants,"economy_audit":audit,"ui_restart":ui,"restarted":restarted,"post_restart":post_restart,"restart_execution":execution,"wall_ms":Time.get_ticks_msec()-start}
 	var file=FileAccess.open(args[0],FileAccess.WRITE)
-	if file==null: push_error("Cannot write output report."); quit(2); return
+	if file==null: push_error("Cannot write report."); quit(2); return
 	file.store_string(JSON.stringify(report,"\t")); file.close()
-	print("REPLAY_RESULT ",report.status," ",game.outcome," ",game.end_reason," tick=",game.tick_count)
+	print("DEFEAT_RESTART_RESULT ",report.status," reason=",reason," tick=",terminal.snapshot.tick)
 	quit(0 if passed else 1)

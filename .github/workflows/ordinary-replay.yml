@@ -1,7 +1,7 @@
-name: Validate one ordinary c721 simulation
+name: Validate natural defeat and supported restart
 on:
   push:
-    branches: [ci/ordinary-c721-replay-v1]
+    branches: [ci/defeat-restart-c721-v1]
     paths: ['.github/workflows/ordinary-replay.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
       - name: Verify exact reviewed public inputs
         run: |
           set -euo pipefail
-          echo '2e81af88a8b24d3e3ce4abe28b445f7e7355cb3f5c10835b0ce57a3aadaa075c  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
+          echo 'c2491f716e60fa844e3b255b46623b3118061169b90d3afe8f71c1d4d11e1df4  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
           sha256sum --check --strict ci/PUBLIC_INPUTS.sha256
       - name: Fetch previously accepted licensed character artifact
         uses: actions/download-artifact@v4
@@ -70,13 +70,13 @@ jobs:
         if: always() && steps.replay.outcome != 'skipped'
         run: |
           set -euo pipefail
-          echo 'd39e6215c28a88ccf6f274bef8837399952fee6df76c9aac5a1463628f5b1391  ci/scan_replay_evidence.py' | sha256sum --check --strict
+          echo 'ca67742a7de781b5984eee817bddae2f4e2d64103228dfa5ce9d62f3df4f6599  ci/scan_replay_evidence.py' | sha256sum --check --strict
           python3 ci/scan_replay_evidence.py
       - name: Retain only admitted replay evidence
         if: always() && steps.scan.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: ordinary-c721-replay-${{ github.sha }}
+          name: defeat-restart-c721-${{ github.sha }}
           path: |
             safe-replay-evidence/
           if-no-files-found: error

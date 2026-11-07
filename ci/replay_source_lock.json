@@ -1,9 +1,9 @@
 {
   "expected_build": "vc-c7211e1083c8",
   "candidate_root": "rts_occlusion_host_candidate",
-  "scope": "Local frozen inputs; not runtime execution evidence",
+  "scope": "Natural defeat and actual native keyboard restart, no runtime changes",
   "original_harness_sha256": "87a1cb1f8eadb6c12f3f43e4fe65eda9198a2707b70da9722b2b67297ec7a3c2",
-  "harness_sha256": "0f2020fce1c4643c6df69c0094d0feba04f55dc2d5c071e3b013e5cf9a5bbf32",
+  "harness_sha256": "775d10759cceaad7452817777d84d085de0a4517758d298ec5c56a3b36a3f18d",
   "runtime_sha256": {
     "assets/audio/build.wav": "43e33302fec777a3ea0dd8d897f44d7458a4bd9466def39f30310a7e53b621d2",
     "assets/audio/build.wav.import": "a70e0138a63dede30d483078151ea71dd943beb2ae17ecc717363ecdcdf557bc",

@@ -29,8 +29,8 @@ def main():
   assert summary.get('source_preserved') is True and summary['replay_attempts']==1
   package_path=Path('OCCLUSION_SOURCE_PACKAGE.json');assert sha(package_path)==runner.PACKAGE
   package=json.loads(package_path.read_text());pins=json.loads((Path(__file__).parent/'REPLAY_INPUTS.json').read_text())
-  assert pins['ordinary_map80_replay.gd']=='0f2020fce1c4643c6df69c0094d0feba04f55dc2d5c071e3b013e5cf9a5bbf32'
-  assert pins['check_replay.py']=='b8846b6b9cfbb7fffd8bd0754df1e422e7d899a58790cc63f7be69b5106be338'
+  assert pins['ordinary_map80_replay.gd']=='775d10759cceaad7452817777d84d085de0a4517758d298ec5c56a3b36a3f18d'
+  assert pins['check_replay.py']=='9d7011b727bb600e44c934e3653b93930d9173939aff681c6ccce37d9cb4487f'
   expected={'engine':runner.g.ENGINE_SHA,'archive':runner.ARCHIVE,'manifest':runner.PACKAGE,'adapter':runner.ADAPTER,'monitor':runner.g.MONITOR_SHA,**pins}
   expected.update({'source:'+row['file']:row['sha256'] for row in package['files']})
   assert len(package['files'])==188 and package['candidate']==summary['build']
