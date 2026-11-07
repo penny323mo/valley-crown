@@ -1,7 +1,7 @@
 name: Validate owned build guidance lifecycle
 on:
   push:
-    branches: [ci/native-stale-build-hint-v1]
+    branches: [ci/native-stale-build-hint-v2]
     paths: ['.github/workflows/stale-build-hint.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
@@ -109,9 +109,9 @@ jobs:
         if: always() && steps.replay.outcome != 'skipped'
         run: |
           set -euo pipefail
-          echo '47b15133b9c9879695b024f89b7d2d8b4963c233ddeaded33f430c40cdedb2e1  ci/scan_replay_evidence.py' | sha256sum --check --strict
+          echo '84e75970efb5a450c68a285ed731fdb7dfabda0818903d95af515554408d8c6b  ci/scan_replay_evidence.py' | sha256sum --check --strict
           echo 'c55e0f1a9a265111564b8d737d2c1c333650ef5535ef240c10e367200204649b  ci/run_ordinary_replay.py' | sha256sum --check --strict
-          echo '2c6714d632f1b46e4226e373cce43f1769d1f4737d4cc530046af649d04a5cc9  ci/REPLAY_INPUTS.json' | sha256sum --check --strict
+          echo '566a01cee9c399852b18481c04fdf758ee7d17ed1c94216b9f8f8c3643008174  ci/REPLAY_INPUTS.json' | sha256sum --check --strict
           python3 ci/scan_replay_evidence.py
       - name: Retain only admitted contract evidence
         if: always() && steps.scan.outcome == 'success'

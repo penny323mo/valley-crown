@@ -193,5 +193,12 @@
     "tools/import_action_characters.gd.uid": "63dbce28f7c0fe0ef087695656e29d40610d36b263be6ea33d70ae9063f350b7",
     "tools/runtime_manifest.py": "832e7df9c6219fa2c131fb7f2dd52ea753ed80b9afb769f4ceda45f0190c980b",
     "tools/stamp_build.py": "a7455874168ec6118a3cfa6b842007fc6c02ed47e0787b8f19712524ef33779a"
+  },
+  "imported_extras": {
+    "tests/occlusion_geometry_contract.gd.uid": "64a779a10a38cd8ce1151758b5c750e8f55fbf6908d039ccdcffee6899ce639e",
+    "tests/occlusion_observation_lifecycle.gd.uid": "c39891554201704045ea80f5a82a97422c4b617b818e5f70f03ea1187f638ff9",
+    "tests/occlusion_stencil_contract.gd.uid": "4585c4b2bf70253b95a7dd955915733aff1bf0c8489fbcc30e33c86b4e16b485",
+    "tests/occlusion_stencil_matrix.gd.uid": "5563adc409fa9f63c03ab09a6a0be6a44c0fab56cc15031c376a55c5a3293155",
+    "tests/occlusion_viewport_lifecycle.gd.uid": "a6d1e9b09ea83ac9be5d695cf4f2271a9862bd8ce1a6932accb2e76e37987df5"
   }
 }

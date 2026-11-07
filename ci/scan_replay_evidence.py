@@ -29,8 +29,8 @@ def main():
   assert summary.get('source_preserved') is True and summary['replay_attempts']==1
   package_path=Path('STALE_HINT_SOURCE_PACKAGE.json');assert sha(package_path)==runner.PACKAGE
   package=json.loads(package_path.read_text());pins=json.loads((Path(__file__).parent/'REPLAY_INPUTS.json').read_text())
-  assert pins['contract.gd']=='9bc4c6b3ffcb8d4f5488e50190e2dca95167f95f1578b59168b9e5c7f29b13d3'
-  assert pins['validate.py']=='b98946cf014fc01554c47a7e4c2567b2ff2fb3c458e55ce411d43c68c4ea553e'
+  assert pins['contract.gd']=='351de48c426456d05cd1cc38353afed305465595b6aa6699ed32aef7fbbe0701'
+  assert pins['validate.py']=='3de8395e480b2bfb46fc7be4ec2f3ba4c050d83fa3b439e0750a44be451b73ab'
   expected={'engine':runner.g.ENGINE_SHA,'archive':runner.ARCHIVE,'manifest':runner.PACKAGE,'adapter':runner.ADAPTER,'monitor':runner.g.MONITOR_SHA,**pins}
   expected.update({'source:'+row['file']:row['sha256'] for row in package['files']})
   assert len(package['files'])==192 and package['candidate']==summary['build']
@@ -43,7 +43,7 @@ def main():
    else:
     assert a[1:]==[i['artifacts']['validate.py']['path'],'--root',project,report]
     assert i['artifacts']['report']['sha256']==sha(SOURCE/'stale-hint-contract.json') and r['post_run_binding_matches']['artifact:report'] is True
-  verdict=json.loads((SOURCE/'checker.log').read_text());assert verdict=={'status':'PASS','build':'vc-c09af531eecf','expected_checks':20,'errors':[]}
+  verdict=json.loads((SOURCE/'checker.log').read_text());assert verdict=={'status':'PASS','build':'vc-c09af531eecf','expected_checks':22,'errors':[]}
   verified_pass=True
  DEST.mkdir()
  for p in files:shutil.copyfile(p,DEST/p.name)
