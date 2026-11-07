@@ -28,6 +28,16 @@ static func _pose(row: Dictionary) -> Transform3D:
 	assert(absf(rotation.length_squared()-1.0)<0.00002)
 	return Transform3D(Basis(rotation.normalized()),Vector3(p[0],p[1],p[2]))
 
+static func _pose_at(samples: Array, time: float) -> Transform3D:
+	var left: int = 0
+	while left + 1 < samples.size() and float(samples[left + 1].time) <= time:
+		left += 1
+	var right: int = mini(left + 1, samples.size() - 1)
+	var a: Transform3D = _pose(samples[left])
+	var b: Transform3D = _pose(samples[right])
+	var alpha: float = 0.0 if left == right else (time - float(samples[left].time)) / (float(samples[right].time) - float(samples[left].time))
+	return Transform3D(Basis(a.basis.get_rotation_quaternion().slerp(b.basis.get_rotation_quaternion(), alpha)), a.origin.lerp(b.origin, alpha))
+
 static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, kind: String, source_native_sha: String, sidecar_path: String, sidecar_sha: String) -> Dictionary:
 	assert(ALLOWED.has(kind),"No contact edit allowed for this class")
 	assert(sidecar_path=="res://native_contact/"+kind+".json")
@@ -88,21 +98,27 @@ static func apply(scene: Node3D, player: AnimationPlayer, skeleton: Skeleton3D, 
 		for sample in samples:
 			var row: Dictionary = sample
 			assert(row.time is float or row.time is int)
-			var t: float = float(row.time)
+			var source_time: float = float(row.time)
+			assert(is_finite(source_time) and source_time >= 0.0 and source_time <= death.length)
+			# Match native TRS key serialization BEFORE seeking/compensating the parent.
+			var t: float = PackedFloat32Array([source_time])[0]
+			assert(absf(t - source_time) < 0.0000001)
 			assert(is_finite(t) and t>=0 and t<=death.length and t>previous)
 			if previous>=0: assert(t-previous<=1.0/120.0+0.0000001)
 			previous=t
 			player.play("death"); player.seek(t,true); player.pause()
 			skeleton.force_update_all_bone_transforms()
 			var held: Transform3D = skeleton.get_bone_global_pose(bone)
-			var desired: Transform3D = skeleton_from_scene*_pose(row)
+			var desired: Transform3D = skeleton_from_scene*_pose_at(samples,t)
 			if absf(t-release)<0.0000001:
 				release_seen=true
 				assert(held.origin.distance_to(desired.origin)<0.00002)
 				assert(absf(held.basis.get_rotation_quaternion().dot(desired.basis.get_rotation_quaternion()))>0.999999)
 			if absf(t-float(spec.contact_seconds))<0.0000001: contact_seen=true
 			if absf(t-float(spec.settled_seconds))<0.0000001: settle_seen=true
-			if t<=release: desired=held
+			# Classify the shared release source key as held even when float32
+			# rounds its timestamp a few nanoseconds above one third second.
+			if source_time<=release: desired=held
 			var local: Transform3D = skeleton.get_bone_global_pose(parent).affine_inverse()*desired
 			var scale: Vector3 = local.basis.get_scale()
 			assert(scale.distance_to(Vector3.ONE)<0.00002)

@@ -61,7 +61,9 @@ func _run() -> void:
 			var diagnostic: Dictionary = Diagnostic.describe(kind, corrected_tracks, reloaded_tracks)
 			print("NATIVE_CONTACT_RELOAD_DIAGNOSTIC=" + JSON.stringify(diagnostic))
 			push_error("Corrected track keys or metadata changed during native reload")
-			quit(1)
+			check.free()
+			untouched.free()
+			call_deferred("quit", 1)
 			return
 		assert(reloaded_tracks == corrected_tracks, "Corrected track keys or metadata changed during native reload")
 		assert(not checked_player.is_playing() and checked_player.autoplay.is_empty())

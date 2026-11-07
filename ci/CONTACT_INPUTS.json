@@ -1,6 +1,6 @@
 {
-  "apply_native_contact.gd": "0c21ad59aae04c26535644338619ec3909d365f2ba854620609e4288d3f679a4",
-  "patch_native_scenes.gd": "29d89e00ca15a02a715020938f7ecf9dccfe90f48df59278f3aad57577d9170d",
+  "apply_native_contact.gd": "256bf8a95c37a3a095eb99b0ddc7a9316ebf3aa11978f7ae019cebe1c8d4cc23",
+  "patch_native_scenes.gd": "7666a9f41b91e0babba17c61cf33f1be50cb8311e0f871293eadd7f6343e1e39",
   "scene_preservation.gd": "a8e4efafb2f8d0bfc6697133f2df0220da479c89539b2d810614db6f6793ff39",
   "probe_native_contact.gd": "15ebf3f528c969cba51c46108e0a2b6e39f36aa4cd36ec77e062eb268548bd79",
   "validate_native_contact.gd": "b40320b978dcf1e64552359e1a3075bc15a521068cdd85a8e8b7e2a580965571",
