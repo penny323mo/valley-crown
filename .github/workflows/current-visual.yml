@@ -71,30 +71,66 @@ jobs:
           set -euo pipefail
           python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive current-source.zip --manifest ci/current-import-manifest.json --archive-sha256 b69166f26392b16f6b4a62c14c1636391815f1252aaba2e94d2922725c8c7b74 --manifest-sha256 587345c92f663c6203146b06c45ede12caa6ce7528a441a436ab6b2c1a810946 --output import-evidence --xdg private/import --hosted-execution-approved
       - name: Real game portrait opening, walking and woodcutting
+        id: capture_portrait
         run: |
           set -euo pipefail
           python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_native.gd --lock ci/native-gameplay-lock.json --import-marker private/import/import-complete.json --output evidence/portrait --private private/portrait --width 390 --height 844
           python3 ci/scan_evidence.py --directory evidence/portrait --lock ci/native-gameplay-lock.json --report evidence/portrait-scan.json
+      - name: Retain independently scanned portrait section
+        if: ${{ success() && steps.capture_portrait.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-current-portrait-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/portrait/
+            evidence/portrait-scan.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Real game landscape opening, walking and woodcutting
+        id: capture_landscape
         run: |
           set -euo pipefail
           python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_native.gd --lock ci/native-gameplay-lock.json --import-marker private/import/import-complete.json --output evidence/landscape --private private/landscape --width 844 --height 390
           python3 ci/scan_evidence.py --directory evidence/landscape --lock ci/native-gameplay-lock.json --report evidence/landscape-scan.json
+      - name: Retain independently scanned landscape section
+        if: ${{ success() && steps.capture_landscape.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-current-landscape-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/landscape/
+            evidence/landscape-scan.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Controlled current four-class 25-clip studies, not gameplay
+        id: capture_rig_studies
         run: |
           set -euo pipefail
           python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_rig_studies.gd --lock ci/native-rig-studies-lock.json --import-marker private/import/import-complete.json --output evidence/rig-studies --private private/rig-studies --width 844 --height 390
           python3 ci/scan_evidence.py --directory evidence/rig-studies --lock ci/native-rig-studies-lock.json --report evidence/rig-studies-scan.json
+      - name: Retain independently scanned rig-studies section
+        if: ${{ success() && steps.capture_rig_studies.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-current-rig-studies-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/rig-studies/
+            evidence/rig-studies-scan.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Controlled portrait occlusion comparisons, not gameplay
+        id: capture_occlusion
         run: |
           set -euo pipefail
           python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_occlusion.gd --lock ci/native-occlusion-lock.json --import-marker private/import/import-complete.json --output evidence/occlusion --private private/occlusion --width 390 --height 844
           python3 ci/scan_evidence.py --directory evidence/occlusion --lock ci/native-occlusion-lock.json --report evidence/occlusion-scan.json
-      - name: Retain only complete scanned native evidence
-        if: success()
+      - name: Retain independently scanned occlusion section
+        if: ${{ success() && steps.capture_occlusion.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: native-current-visuals-${{ github.sha }}-${{ github.run_attempt }}
-          path: evidence/
+          name: native-current-occlusion-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/occlusion/
+            evidence/occlusion-scan.json
           if-no-files-found: error
           retention-days: 14

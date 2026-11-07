@@ -202,15 +202,15 @@
     "ci/assemble_combined.py": "2a378f0bb5ad7e7a59be43d3f7604e181fd1e2774f98ffa9a05c031205bffe92",
     "ci/capture_native.gd": "fd4f7ef47b262d42e391ffa7d8a340bb2dafe0807912a041fcdc482862b5c4c4",
     "ci/capture_occlusion.gd": "6961f7f88af9e67142a81a9b543e169b1e64f356a1608d7f729479264113541d",
-    "ci/capture_rig_studies.gd": "f645af0d5cb31b3164a7ccd068308ed66ae9dffa04067165bedd1852df2eb30b",
+    "ci/capture_rig_studies.gd": "a9eddc89dbc658389f5145c84d25fd4b0980e95acdd9f2634eac12a84d0b0b30",
     "ci/current-import-manifest.json": "587345c92f663c6203146b06c45ede12caa6ce7528a441a436ab6b2c1a810946",
     "ci/guarded_manifest_ci.py": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
     "ci/make_source_archive.py": "d7fa480152884fb44fa0c3012cc7109ca32ef3c0a59c64970144698a220d6d01",
     "ci/run_native.py": "1a8e90a2b0e0c6e429e870f3ba8f2ce58b58124a1f4c461c58e78217b1aa2361",
-    "ci/scan_evidence.py": "f9064648d57ace5e406e5b9287e89940c50583823dcd28fdf32660ab4548283f",
+    "ci/scan_evidence.py": "becd97b5c086028b73c2bf9b5fbc18ba6acd6eef62bca753f10803732195ed1b",
     "ci/xvfb_startup.py": "6df22975a9f1c3aef59ae8b74aa6a875d2bb2a300fcc5b8307fe7c93d828f2fe",
-    ".github/workflows/current-visual.yml": "aa39e64b708d6c1ed84e50a637137afe86e40f438c0fd6e641190f654ec2ba66"
+    ".github/workflows/current-visual.yml": "2246211a752d296d52b181881758bc3cf7dbc4e899a65ef2187903462d0ae2df"
   },
   "allowed_generated_uid_files": [],
   "diagnostic_only": false

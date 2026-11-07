@@ -28,6 +28,10 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def validate_frame_name(name):
+    require(type(name) is str and re.fullmatch(r'\d{3}-[a-z0-9-]+\.png',name) is not None, 'Unsafe frame name')
+
+
 def png_info(path, minimum_colors=128):
     data = path.read_bytes()
     require(len(data) < 8 * 1024 * 1024 and data[:8] == b'\x89PNG\r\n\x1a\n', 'PNG signature/size')
@@ -209,7 +213,7 @@ def scan(directory, lock, lock_sha256):
     previous_usec = -1
     for frame in report['frames']:
         name = frame['image']
-        require(re.fullmatch(r'\d{3}-[a-z0-9-]+\.png', name) is not None, 'Unsafe frame name')
+        validate_frame_name(name)
         allowed.update({'frames/' + name, 'frames/' + name + '.json'})
         path = directory / 'frames' / name
         require(frame['image_sha256'] == sha(path), 'PNG identity mismatch')
@@ -249,16 +253,46 @@ def scan(directory, lock, lock_sha256):
             'scan_limitations': 'High-confidence token/key patterns and private paths only; not proof all possible secrets are absent.'}
 
 
+# Exact source-authored literals only. Never emit arbitrary exception text.
+SAFE_SCAN_REASONS = frozenset(['Artifact size limit', 'Artifact special file', 'Artifact symlink', 'Bone pose hash does not match recorded transforms', 'Build identity mismatch', 'Commanded visible worker is not actually woodcutting', 'Commanded worker bone transforms are static', 'Controlled rig labeling missing', 'Current class/action coverage differs', 'Diagnostic-only run cannot produce accepted visual artifacts', 'Duplicate bone name', 'Economy audit failed', 'Fake/injected process evidence cannot be admitted', 'Frame dimensions mismatch', 'Frame metadata mismatch', 'Framebuffer is blank or implausibly uniform', 'Frozen inventory count differs', 'Gameplay command provenance differs', 'Gameplay frame sequence is static', 'Gameplay sequence differs', 'Generated UID binding set differs', 'Guard capture contract differs', 'Guard did not pass or cleanup is unconfirmed', 'Guard lock identity differs', 'Guard tool identity differs: godot', 'Guard tool identity differs: harness', 'Guard tool identity differs: supervisor', 'Hidden rig leaked pose evidence', 'Import adapter hash differs', 'Incomplete report', 'Invalid IEND', 'Invalid PNG filter', 'Invalid animation seek', 'Invalid generated UID hash binding', 'Invalid rig clip length', 'Invalid skeletal class', 'Malformed bone pose evidence', 'Missing evidence files', 'Nonincreasing capture times', 'Not the reviewed renderer', 'Occlusion binding/framebuffer production failed', 'Occlusion check coverage differs', 'Occlusion functional result inconsistent', 'Occlusion rig/action/toggle differs', 'Occlusion sequence differs', 'Occlusion visibility provenance differs', 'PNG CRC failure', 'PNG IDAT ordering', 'PNG IHDR invalid', 'PNG chunk exceeds file', 'PNG decompression size/stream mismatch', 'PNG identity mismatch', 'PNG signature/size', 'PNG trailing/missing data', 'Pinned software-renderer configuration differs', 'Refusing to replace scan evidence', 'Rig asset identity differs', 'Rig bone evidence count differs', 'Rig sample seek does not match clip fraction', 'Rig study binding/overlay differs', 'Rig study bone transforms do not change', 'Rig study checks failed', 'Rig study phases differ', 'Rules mismatch', 'Source mismatch', 'Startup helper completion/resource evidence differs', 'Startup helper hash differs', 'Startup helper pair differs', 'Truncated PNG chunk', 'Unapproved framebuffer dimensions', 'Unexpected metadata/chunk in unmodified framebuffer PNG', 'Unknown capture kind', 'Unsafe frame name', 'Unsupported PNG layout', 'Visible game-root pose evidence missing', 'Worker public state differs', 'Xvfb startup was not completed before capture'])
+SAFE_EXCEPTION_TYPES = frozenset(('ValueError','KeyError','FileNotFoundError','PermissionError','IsADirectoryError','JSONDecodeError','TypeError','OSError','RuntimeError'))
+
+
+def safe_scan_exception(exc):
+    kind=type(exc).__name__
+    message=str(exc)
+    if isinstance(exc,ValueError) and message in SAFE_SCAN_REASONS:
+        reason=message
+    elif isinstance(exc,ValueError) and message.startswith('Unapproved artifact file: '):
+        reason='Unapproved artifact file; path withheld'
+    elif kind=='JSONDecodeError':reason='Malformed JSON evidence'
+    elif kind=='KeyError':reason='Required evidence field missing'
+    else:reason='Unexpected scanner exception; details withheld'
+    return {'type':kind if kind in SAFE_EXCEPTION_TYPES else 'Exception','reason':reason}
+
+
+def scan_to_report(directory, lock_path, report_path):
+    require(not report_path.exists(), 'Refusing to replace scan evidence')
+    try:
+        result=scan(directory,json.loads(lock_path.read_text()),sha(lock_path))
+    except Exception as exc:
+        result={'passed':False,'error':safe_scan_exception(exc)}
+    report_path.write_text(json.dumps(result,indent=2)+'\n')
+    summary={'passed':result.get('passed') is True}
+    if 'error' in result:summary['error']=result['error']
+    else:
+        summary['admitted_file_count']=min(128,len(result.get('files',{}))) if result.get('passed') is True else 0
+        summary['finding_counts']={key:min(1000,sum(row.get('kind')==key for row in result.get('findings',[]))) for key in SIGNATURES}
+        summary['visual_finding_count']=min(3,len(result.get('visual_findings',[])))
+    # Bounded, sanitized diagnostic only; no filenames, paths or captured bytes.
+    print('NATIVE_SCAN_RESULT '+json.dumps(summary,sort_keys=True),flush=True)
+    return 0 if result['passed'] else 1
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--lock', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args()
-    require(not args.report.exists(), 'Refusing to replace scan evidence')
-    try:
-        result = scan(args.directory, json.loads(args.lock.read_text()), sha(args.lock))
-    except Exception as exc:
-        result = {'passed': False, 'error': {'type': type(exc).__name__, 'message': str(exc)}}
-    args.report.write_text(json.dumps(result, indent=2) + '\n')
-    raise SystemExit(0 if result['passed'] else 1)
+    raise SystemExit(scan_to_report(args.directory,args.lock,args.report))

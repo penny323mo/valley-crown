@@ -124,7 +124,7 @@ func evidence_frame(label: String, poses: Array, details: Dictionary = {}) -> Di
 	var image: Image = root.get_texture().get_image()
 	if DisplayServer.get_name() != "X11" or image == null or image.is_empty() or image.get_size() != evidence_size:
 		push_error("Invalid real framebuffer"); quit(1); return {}
-	var filename := "%03d-%s.png" % [evidence_frames.size(),label]
+	var filename := "%03d-%s.png" % [evidence_frames.size(),label.replace("_","-")]
 	var path: String = output.path_join(filename)
 	if image.save_png(path) != OK:
 		push_error("Cannot save raw framebuffer"); quit(1); return {}
