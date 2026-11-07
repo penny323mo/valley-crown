@@ -1,7 +1,9 @@
 extends SceneTree
 ## Ordinary seeded game; only viewport-routed synthetic touch changes player intent.
 ## No reset, direct commands, authority ticks, camera edits or resource grants.
-const SCENARIO := "native_routed_touch_gather_build_v1"
+const SCENARIO := "native_routed_touch_independent_v2"
+const FIXED_FPS := 20
+var flow: String
 const EXPECTED_BUILD := "vc-c7211e1083c8"
 var game
 var destination: String
@@ -120,9 +122,13 @@ func await_stage(stage: String, maximum_frames: int) -> bool:
 		var site: Dictionary = current_site()
 		var pose: Dictionary = worker_pose()
 		if stage=="wood" and worker.get("state","")=="gather" and worker.get("target",-1)==resource_id and pose.get("clip","")=="gather_wood": return true
+		if stage=="cargo" and worker.get("carry",0)>0 and worker.get("carry_type","")=="wood" and worker.get("state","")=="gather": return true
+		if stage=="return" and worker.get("state","")=="deliver" and worker.get("carry",0)>0 and pose.get("clip","")=="carry_walk": return true
+		if stage=="resumed" and worker.get("state","")=="gather" and worker.get("target",-1)==resource_id and worker.get("carry",-1)==0: return true
 		if stage=="deposit" and public_state().delivered>deposit_start and not observations.is_empty(): return true
 		if stage=="site" and not site.is_empty() and not site.built: house_id=site.id; return true
 		if stage=="construction" and not site.is_empty() and site.id==house_id and not site.built and site.progress>0 and worker.get("state","")=="build" and worker.get("target",-1)==house_id and pose.get("clip","")=="build": return true
+		if stage in ["quarter","half","near-complete"] and not site.is_empty() and site.id==house_id and not site.built and site.progress>={"quarter":0.25,"half":0.5,"near-complete":0.9}[stage]: return true
 		if stage=="complete" and not site.is_empty() and site.id==house_id and site.built: return true
 	return false
 
@@ -140,7 +146,7 @@ func capture(label: String):
 		if not record.owned: continue
 		if record.category=="unit": own.append({"id":record.id,"kind":record.kind,"state":record.state,"target":record.target,"position":[record.pos.x,record.pos.y,record.pos.z],"carry":record.carry,"carry_type":record.carry_type,"path_points":record.path.size()})
 		if record.category=="building": buildings.append({"id":record.id,"kind":record.kind,"built":record.built,"progress":record.progress,"hp":record.hp,"position":[record.pos.x,record.pos.y,record.pos.z]})
-	var frame := {"image":name,"image_sha256":FileAccess.get_sha256(path),"capture_kind":"genuine_native_game_viewport","scenario":SCENARIO,"label":label,
+	var frame := {"image":name,"image_sha256":FileAccess.get_sha256(path),"capture_kind":"genuine_native_game_viewport","scenario":SCENARIO,"flow":flow,"fixed_fps":FIXED_FPS,"label":label,
 		"utc":Time.get_datetime_string_from_system(true,true),"unix_time":Time.get_unix_time_from_system(),"monotonic_usec":Time.get_ticks_usec(),"process_frame":Engine.get_process_frames(),
 		"build":game.Rules.BUILD_ID,"game_sha256":FileAccess.get_sha256("res://scripts/game.gd"),"rules_sha256":FileAccess.get_sha256("res://scripts/rules.gd"),
 		"engine":Engine.get_version_info(),"display":DisplayServer.get_name(),"rendering_method":RenderingServer.get_current_rendering_method(),"rendering_driver":RenderingServer.get_current_rendering_driver_name(),"adapter_name":RenderingServer.get_video_adapter_name(),"adapter_vendor":RenderingServer.get_video_adapter_vendor(),
@@ -149,29 +155,17 @@ func capture(label: String):
 		"test_mode":game.test_mode,"ai_enabled":game.ai_enabled,"selected":game.selected.duplicate(),"economy_audit_ok":game.economy.audit().ok,"snapshot":public_state(),
 		"own_units":own,"own_buildings":buildings,"animation_poses":pose_evidence(),"input_event_count":events.size(),
 		"ui":{"toast":game.toast_label.text,"toast_visible":game.toast_label.is_visible_in_tree(),"touch_command":game.touch_command,"build_mode":game.build_mode,"held":game.build_preview_held,"placement_ok":game.placement_ok,"confirm":widget(game.build_confirm),"pointer_world":[game.pointer_world.x,game.pointer_world.y,game.pointer_world.z],"preview_position":[game.ghost.position.x,game.ghost.position.y,game.ghost.position.z] if is_instance_valid(game.ghost) else []},
-		"limitations":["Synthesized viewport-routed native ScreenTouch, not physical iPhone or Web","Normal game process at fixed engine delta, not performance evidence","Known gray atlas/material defect remains","No defeat or restart coverage in this slice"]}
+		"limitations":["Synthesized viewport-routed native ScreenTouch, not physical iPhone or Web","Normal game process at fixed20 engine delta; independently restarted subflows, not performance evidence","Known gray atlas/material defect remains","No defeat or restart coverage in this slice"]}
 	records.append(frame)
 	var file := FileAccess.open(path+".json",FileAccess.WRITE)
 	if not require_ok(file!=null,"Cannot save touch frame provenance"): return
 	file.store_string(JSON.stringify(frame,"  ")+"\n"); file.close(); print("NATIVE_FRAME ",name); progress(label,"capture-saved")
 
-func run():
-	progress("startup","entered")
-	var args := OS.get_cmdline_user_args()
-	if not require_ok(args.size()==4 and args[1]==EXPECTED_BUILD and args[2]=="390" and args[3]=="844","Wrong frozen touch scenario identity or viewport"): return
-	destination=args[0]; root.size=Vector2i(390,844); root.content_scale_factor=1.0
-	game=load("res://main.tscn").instantiate(); root.add_child(game); progress("startup","scene-added"); await settle(12)
-	if not require_ok(game.Rules.BUILD_ID==EXPECTED_BUILD and running(),"Ordinary accepted runtime did not start"): return
-	for record in observed().values():
-		if record.owned and record.kind=="house": house_ids.append(record.id)
-	deposit_start=public_state().delivered
-	await capture("opening"); if failed: return
-	var worker: Dictionary = choose_worker(); var resource: Dictionary = choose_wood(worker) if not worker.is_empty() else {}
-	if not require_ok(not worker.is_empty() and not resource.is_empty(),"Touchable opening worker or visible wood missing"): return
-	worker_id=worker.id; resource_id=resource.id
-	await tap(screen(worker),"select-worker",worker_id)
-	if not require_ok(worker_id in game.selected,"Routed worker touch did not select"): return
-	await capture("worker-selected"); if failed: return
+func gather_flow():
+	var worker: Dictionary = observed().get(worker_id,{})
+	var resource: Dictionary = choose_wood(worker)
+	if not require_ok(not resource.is_empty(),"Touchable visible wood missing"): return
+	resource_id=resource.id
 	await tap(screen(resource),"target-guidance",resource_id)
 	if not require_ok(worker_id in game.selected and not game.touch_command and game.toast_label.text.contains("指令") and actions.back().after.own_pending_commands==0,"Target guidance or explicit-command separation failed"): return
 	await capture("target-guidance"); if failed: return
@@ -180,14 +174,24 @@ func run():
 	await capture("command-mode"); if failed: return
 	await tap(screen(resource),"order-wood",resource_id)
 	if not require_ok(actions.back().after.own_pending_commands==1 and not game.touch_command,"Resource touch did not queue one ordinary order"): return
-	if not require_ok(await await_stage("wood",1800),"Normal touch order did not reach woodcutting"): return
+	await capture("gather-order-accepted"); if failed: return
+	if not require_ok(await await_stage("wood",1200),"Normal touch order did not reach woodcutting"): return
 	await capture("woodcutting"); if failed: return
-	if not require_ok(await await_stage("deposit",2700),"Normal worker did not carry and deposit wood"): return
+	if not require_ok(await await_stage("cargo",1200),"Normal worker did not gather wood cargo"): return
+	await capture("wood-cargo"); if failed: return
+	if not require_ok(await await_stage("return",1800),"Normal worker did not begin cargo return"): return
+	await capture("cargo-return"); if failed: return
+	if not require_ok(await await_stage("deposit",1800),"Normal worker did not deposit wood"): return
 	await capture("deposit-complete"); if failed: return
+	if not require_ok(await await_stage("resumed",120),"Normal worker did not resume resource order after deposit"): return
+	await capture("gather-resumed")
+
+func build_flow():
 	var house_button: Button = find_house_button()
 	if not require_ok(house_button!=null and await reveal_house(house_button),"House action cannot be reached through touch strip"): return
 	await tap_button(house_button,"house-button")
 	if not require_ok(game.build_mode=="house" and not game.build_preview_held and actions.back().after.own_pending_commands==0,"House action was not preview-only"): return
+	await capture("build-action-preview"); if failed: return
 	plot=game.pointer_world
 	var plot_screen: Vector2 = game.camera.unproject_position(plot)
 	if not require_ok(game._box_point_in_world(plot_screen),"Suggested public building plot is not visible"): return
@@ -198,17 +202,48 @@ func run():
 	confirm_bank=public_state().bank_milli.duplicate()
 	await tap_button(game.build_confirm,"confirm-build")
 	if not require_ok(actions.back().after.own_pending_commands==1 and game.build_mode.is_empty(),"Confirm touch did not queue exactly one build"): return
-	if not require_ok(await await_stage("site",180),"Confirmed paid house site was not created"): return
+	if not require_ok(await await_stage("site",120),"Confirmed paid house site was not created"): return
 	if not require_ok(public_state().bank_milli.wood==confirm_bank.wood-50000,"House did not pay its exact ordinary wood cost"): return
 	await capture("build-confirmed"); if failed: return
-	if not require_ok(await await_stage("construction",1800),"Paid site did not reach visible natural construction"): return
+	if not require_ok(await await_stage("construction",1200),"Paid site did not reach visible natural construction"): return
 	await capture("construction-active"); if failed: return
-	if not require_ok(await await_stage("complete",1800),"House did not complete through ordinary construction"): return
-	await capture("house-complete"); if failed: return
-	var report := {"passed":true,"build":EXPECTED_BUILD,"scenario":SCENARIO,"frame_count":records.size(),"frames":records,"events":events,"actions":actions,"observations":observations,
+	if not require_ok(await await_stage("quarter",1200),"Ordinary construction did not reach quarter progress"): return
+	await capture("construction-quarter"); if failed: return
+	if not require_ok(await await_stage("half",1200),"Ordinary construction did not reach half progress"): return
+	await capture("construction-half"); if failed: return
+	if not require_ok(await await_stage("near-complete",1200),"Ordinary construction did not approach completion"): return
+	await capture("construction-near-complete"); if failed: return
+	if not require_ok(await await_stage("complete",1200),"House did not complete through ordinary construction"): return
+	await capture("house-complete")
+
+func run():
+	progress("startup","entered")
+	var args := OS.get_cmdline_user_args()
+	if not require_ok(args.size()==4 and args[1]==EXPECTED_BUILD and args[2]=="390" and args[3]=="844","Wrong frozen touch scenario identity or viewport"): return
+	destination=args[0]; flow=destination.get_base_dir().get_file()
+	var engine_args := OS.get_cmdline_args(); var fps_index := engine_args.find("--fixed-fps")
+	if not require_ok(flow in ["touch-gather","touch-build"] and fps_index>=0 and fps_index+1<engine_args.size() and engine_args[fps_index+1]==str(FIXED_FPS),"Wrong independent flow or fixed pacing"): return
+	root.size=Vector2i(390,844); root.content_scale_factor=1.0
+	game=load("res://main.tscn").instantiate(); root.add_child(game); progress("startup","scene-added"); await settle(12)
+	if not require_ok(game.Rules.BUILD_ID==EXPECTED_BUILD and running() and public_state().bank_milli=={"food":150000,"wood":200000} and public_state().delivered==0 and public_state().built==0,"Fresh ordinary accepted runtime did not start"): return
+	for record in observed().values():
+		if record.owned and record.kind=="house": house_ids.append(record.id)
+	deposit_start=public_state().delivered
+	await capture("opening"); if failed: return
+	var worker: Dictionary = choose_worker()
+	if not require_ok(not worker.is_empty(),"Touchable opening worker missing"): return
+	worker_id=worker.id
+	await tap(screen(worker),"select-worker",worker_id)
+	if not require_ok(worker_id in game.selected,"Routed worker touch did not select"): return
+	await capture("worker-selected"); if failed: return
+	if flow=="touch-gather": await gather_flow()
+	else: await build_flow()
+	if failed: return
+	var report := {"passed":true,"build":EXPECTED_BUILD,"scenario":SCENARIO,"flow":flow,"fixed_fps":FIXED_FPS,"frame_count":records.size(),"frames":records,"events":events,"actions":actions,"observations":observations,
 		"worker_id":worker_id,"resource_id":resource_id,"house_id":house_id,"initial_house_ids":house_ids,"initial_delivered":deposit_start,"confirm_bank_milli":confirm_bank,"plot":[plot.x,plot.y,plot.z],
-		"simulation":"Normal seeded game and AI; normal _process with --fixed-fps 30; no test reset or direct authority ticks",
-		"not_verified":["physical iPhone","Web/Safari","FPS/performance","all UI flows","victory/defeat/restart","material/visual maturity"]}
+		"required_house_work_ticks":400,"tick_seconds":0.05,"required_house_work_seconds":20.0,
+		"simulation":"Independent fresh normal seeded game and AI; normal _process with --fixed-fps20; no test reset or direct authority ticks",
+		"not_verified":["single uninterrupted gather and build chain","physical iPhone","Web/Safari","FPS/performance","all UI flows","victory/defeat/restart","material/visual maturity"]}
 	var file := FileAccess.open(destination.path_join("capture-report.json"),FileAccess.WRITE)
 	if not require_ok(file!=null,"Cannot save touch sequence report"): return
 	file.store_string(JSON.stringify(report,"  ")+"\n"); file.close(); quit(0)

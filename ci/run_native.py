@@ -457,7 +457,7 @@ def run(args):
                     os.pipe2, os.read, xvfb_startup.distribution_inventory, xvfb_startup.StartupTree), REAL_DEPENDENCIES)),
                'system_before': before, 'limits': {'timeout_seconds': 120, 'minimum_available_kib': 1048576,
                    'aggregate_rss_kib': 3145728, 'godot_rss_kib': 2621440, 'xvfb_rss_kib': 524288},
-               'fixed_fps': 30, 'expected_framebuffer': [args.width, args.height],
+               'fixed_fps': 20, 'expected_framebuffer': [args.width, args.height],
                'not_verified': ['Web', 'Safari', 'physical iPhone', 'mobile GPU', 'FPS', 'touch input', 'visual quality']}
     children = {}
     tracked_descendants = []
@@ -575,7 +575,7 @@ def run(args):
         require(xvfb.poll() is None, 'Private Xvfb exited before engine launch')
         godot = spawn('godot', [str(inputs['godot']), '--path', str(project), '--display-driver', 'x11',
             '--rendering-method', 'gl_compatibility', '--rendering-driver', 'opengl3',
-            '--audio-driver', 'Dummy', '--resolution', f'{args.width}x{args.height}', '--fixed-fps', '30',
+            '--audio-driver', 'Dummy', '--resolution', f'{args.width}x{args.height}', '--fixed-fps', '20',
             '--script', str(inputs['harness']), '--', str(frame_dir), lock['build'], str(args.width), str(args.height)])
         diagnostic_deadline = time.monotonic() + 2.0
         while godot.poll() is None:

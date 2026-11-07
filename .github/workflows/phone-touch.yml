@@ -1,13 +1,19 @@
-name: Capture one ordinary native phone touch sequence
+name: Capture two independent ordinary native phone touch flows
 on:
   push:
-    branches: [ci/phone-touch-c721-v1]
+    branches: [ci/phone-touch-subflows-c721-v2]
     paths: ['.github/workflows/phone-touch.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
 jobs:
   validate:
+    name: ${{ matrix.flow }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        flow: [touch-gather, touch-build]
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     steps:
@@ -19,8 +25,9 @@ jobs:
           set -euo pipefail
           python3 - <<'PYCODE'
           import hashlib,json,pathlib
-          lock=json.loads(pathlib.Path('ci/native-touch-lock.json').read_text())
+          lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
           assert lock['reviewed_for_execution'] is True and lock['build']=='vc-c7211e1083c8'
+          assert lock['fixed_fps']==20 and lock['touch_contract']['flow']=='${{ matrix.flow }}'
           assert len(lock['project_files'])==188 and len(lock['allowed_generated_uid_files'])==5
           for name,digest in lock['support_files'].items():
               assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest,name
@@ -66,22 +73,22 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive occlusion-source.zip --manifest OCCLUSION_SOURCE_PACKAGE.json --archive-sha256 fd9d9f3d2fe759fb0fa0df80d0a9813c16ff8725922d3d930dc75b194b81de8a --manifest-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: Capture ordinary touch gather deposit and paid house
+      - name: Capture the independent normal touch subflow
         id: capture_touch
         run: |
           set -euo pipefail
-          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_touch.gd --lock ci/native-touch-lock.json --import-marker private/import/import-complete.json --output evidence/touch --private private/touch --width 390 --height 844
-          python3 ci/scan_touch.py --directory evidence/touch --lock ci/native-touch-lock.json --report evidence/touch-scan.json
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_touch.gd --lock ci/native-${{ matrix.flow }}-lock.json --import-marker private/import/import-complete.json --output evidence/${{ matrix.flow }} --private private/${{ matrix.flow }} --width 390 --height 844
+          python3 ci/scan_touch.py --directory evidence/${{ matrix.flow }} --lock ci/native-${{ matrix.flow }}-lock.json --report evidence/${{ matrix.flow }}-scan.json
       - name: Report bounded touch progress after capture
         if: ${{ !cancelled() && steps.capture_touch.outcome != 'skipped' }}
-        run: python3 ci/touch_progress.py --log evidence/touch/godot.log
+        run: python3 ci/touch_progress.py --log evidence/${{ matrix.flow }}/godot.log
       - name: Retain independently scanned ordinary touch section
         if: ${{ success() && steps.capture_touch.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: native-phone-touch-${{ github.sha }}-${{ github.run_attempt }}
+          name: native-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
-            evidence/touch/
-            evidence/touch-scan.json
+            evidence/${{ matrix.flow }}/
+            evidence/${{ matrix.flow }}-scan.json
           if-no-files-found: error
           retention-days: 14

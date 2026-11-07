@@ -1,11 +1,11 @@
 {
   "reviewed_for_execution": true,
   "build": "vc-c7211e1083c8",
-  "scope": "One ordinary seeded c721 game driven only by synthesized viewport ScreenTouch; ten raw portrait frames. No physical iPhone, Web, restart, performance or artistic acceptance. Known gray atlas remains.",
+  "scope": "Independent normal seeded native ScreenTouch functional subflow; fixed20 synthetic frame pacing, not real-time or phone performance.",
   "source_archive_sha256": "fd9d9f3d2fe759fb0fa0df80d0a9813c16ff8725922d3d930dc75b194b81de8a",
   "godot_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
-  "harness_sha256": "92c3be9f9c224b1fe43904706964c411c5499aa61b47261ac33986d6327ba189",
-  "supervisor_sha256": "40a0eba0399db69b34f9c7606b7216c603c3f5dd6c61d40afa89d02d1f6ebe20",
+  "harness_sha256": "3839f038e9075939dbc40b1c9d78ec8be510787f8726a194edd7f4167d0d69a2",
+  "supervisor_sha256": "4808ff6028e53a0d02f9a334a37170468440f72a2b2f865c0eb7b701feb0d1b5",
   "native_renderer": "linux-x11-mesa-llvmpipe-gl_compatibility",
   "require_skeletal_animation": true,
   "capture_contract": {
@@ -205,7 +205,7 @@
     "tools/stamp_build.py": "a7455874168ec6118a3cfa6b842007fc6c02ed47e0787b8f19712524ef33779a"
   },
   "support_files": {
-    ".github/workflows/phone-touch.yml": "afe9032ec130d66c785c779c235ef9f3b1e86f7e862f5f501bf1aca92297a910",
+    ".github/workflows/phone-touch.yml": "a2f1f82e66cd08b783f1f24db4b0c6a3814f34e15e474337884347632d03df35",
     "ACTION_FIX_SOURCE_LOCK.json": "70466a5bef3078de2722d08fd14ff4912061c88191ea2b474e9a8c60345e63b7",
     "OCCLUSION_SOURCE_PACKAGE.json": "52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa",
     "SOURCE_INPUT_LOCK.json": "1d94d4f2feb0618c50a0be4b7bc056d79403c28cd85246dd3115decf63d020af",
@@ -214,16 +214,16 @@
     "ci/apply_native_delta.py": "d8731c0bb0d8f70278b08bafaa3e204a1cd98d2823ecc2af3579dee83799c2c0",
     "ci/apply_occlusion_overlay.py": "b0d136b52f3ccfce39babb1939fe99205cbeb9579a6f719bc5f0d21d1a3eb858",
     "ci/assemble_combined.py": "2a378f0bb5ad7e7a59be43d3f7604e181fd1e2774f98ffa9a05c031205bffe92",
-    "ci/capture_touch.gd": "92c3be9f9c224b1fe43904706964c411c5499aa61b47261ac33986d6327ba189",
+    "ci/capture_touch.gd": "3839f038e9075939dbc40b1c9d78ec8be510787f8726a194edd7f4167d0d69a2",
     "ci/guarded_manifest_ci.py": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
-    "ci/run_native.py": "40a0eba0399db69b34f9c7606b7216c603c3f5dd6c61d40afa89d02d1f6ebe20",
+    "ci/run_native.py": "4808ff6028e53a0d02f9a334a37170468440f72a2b2f865c0eb7b701feb0d1b5",
     "ci/scan_evidence.py": "becd97b5c086028b73c2bf9b5fbc18ba6acd6eef62bca753f10803732195ed1b",
-    "ci/scan_touch.py": "a1169a389dc2bce140ba1dec1122340c38e1ba9e0bbc0fe9443586163c01b5eb",
+    "ci/scan_touch.py": "cffc9af9b7788854d6180a48afedc2e7e14403c7e875976b6cb5282e3e16ff4d",
     "ci/xvfb_startup.py": "558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546",
     "map80-actions-thin-source-v2.zip": "203852e82ca33d5e5b550e1d8ef07ef989734fd24b1cf54c6d8318307d43d6d8",
     "occlusion-source-overlay-v3.zip": "db53893af8b703b57a32c328b56086394d12682809edd7e67673cd285f4f58a4",
-    "ci/touch_progress.py": "c6401f9016b09530269d0e9a55c2ebf9bf293ec03751054aa2cd7b7d17fa618a"
+    "ci/touch_progress.py": "623f10f09d210bd22dad2e938ff229aa7777bc0c46f7b0a628d3665b9ab68a9c"
   },
   "allowed_generated_uid_files": [
     "tests/occlusion_geometry_contract.gd.uid",
@@ -234,7 +234,8 @@
   ],
   "diagnostic_only": false,
   "touch_contract": {
-    "scenario": "native_routed_touch_gather_build_v1",
+    "scenario": "native_routed_touch_independent_v2",
+    "flow": "touch-gather",
     "viewport": [
       390,
       844
@@ -244,15 +245,18 @@
       "worker-selected",
       "target-guidance",
       "command-mode",
+      "gather-order-accepted",
       "woodcutting",
+      "wood-cargo",
+      "cargo-return",
       "deposit-complete",
-      "build-preview",
-      "build-confirmed",
-      "construction-active",
-      "house-complete"
+      "gather-resumed"
     ],
     "input": "viewport.push_input(InputEventScreenTouch,false)",
-    "simulation": "normal_seeded_process_fixed30",
-    "restart": false
-  }
+    "simulation": "independent_normal_seeded_fixed20",
+    "fixed_fps": 20,
+    "restart": false,
+    "single_uninterrupted_combined_chain": false
+  },
+  "fixed_fps": 20
 }
