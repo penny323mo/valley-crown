@@ -1,4 +1,4 @@
-name: Validate frozen phone candidate
+name: Validate frozen phone Web artifacts
 on:
   push:
     branches: ['ci/phone-vc-8fcc302051f0']
@@ -24,9 +24,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p evidence source engine
+          mkdir -p evidence clean-a clean-b engine
           echo '92e660f43172fb731574a5b9f40ff9059cfd036b27845d226b3bd804849c564e  valley-crown-mobile-source-vc-8fcc302051f0-ci.zip' | sha256sum --check --strict
-          unzip -q valley-crown-mobile-source-vc-8fcc302051f0-ci.zip -d source
+          unzip -q valley-crown-mobile-source-vc-8fcc302051f0-ci.zip -d clean-a
+          unzip -q valley-crown-mobile-source-vc-8fcc302051f0-ci.zip -d clean-b
+      - name: Record accepted source validation
+        shell: bash
+        run: |
+          printf '%s\n' '{"source_run":42332163102,"source_commit":"258ae720d8c621e9aa61bfe77825d70ae6055a27","source_zip_sha256":"92e660f43172fb731574a5b9f40ff9059cfd036b27845d226b3bd804849c564e","assertions_passed":893,"assertions_failed":0,"scope":"Prior native synthetic and inert JavaScript checks only"}' > evidence/prior-source-validation.json
       - name: Install pinned official engine
         shell: bash
         run: |
@@ -36,22 +41,71 @@ jobs:
           echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  engine/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --check --strict
           chmod +x engine/Godot_v4.6.3-stable_linux.x86_64
           echo "GODOT=$PWD/engine/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
-      - name: Guarded import of frozen source
+      - name: Fetch pinned no-thread Web template
         shell: bash
         run: |
           set -euo pipefail
-          python3 ci/guarded_phone_ci.py import --project source --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/source-import --xdg cache/source
-      - name: Guarded eight portable suites
+          curl --fail --location --retry 2 -o engine/templates.tpz https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_export_templates.tpz
+          unzip -p engine/templates.tpz templates/web_nothreads_release.zip > engine/web_nothreads_release.zip
+          echo '1446f79dc12f60ce5d244c39fb6628ec298337ca5c4f91a16491feea72aa1bc9  engine/web_nothreads_release.zip' | sha256sum --check --strict
+      - name: Guarded fresh import a
         shell: bash
         run: |
           set -euo pipefail
-          python3 ci/guarded_phone_ci.py test --project source --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/source-tests --xdg cache/source
-      - name: Retain initial test evidence
+          python3 ci/guarded_phone_ci.py import --project clean-a --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/clean-a-import --xdg cache/clean-a
+      - name: Guarded fresh Web export a
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_phone_artifacts.py export --project clean-a --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/clean-a-export --xdg cache/clean-a --template engine/web_nothreads_release.zip --dest artifacts/clean-a
+      - name: Guarded fresh import b
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_phone_ci.py import --project clean-b --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/clean-b-import --xdg cache/clean-b
+      - name: Guarded fresh Web export b
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_phone_artifacts.py export --project clean-b --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/clean-b-export --xdg cache/clean-b --template engine/web_nothreads_release.zip --dest artifacts/clean-b
+      - name: Compare exact clean Web payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_phone_artifacts.py compare --first evidence/clean-a-export --second evidence/clean-b-export --output evidence/export-comparison
+      - name: Guarded source-state reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_phone_artifacts.py source-state --project clean-a --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/source-state --xdg cache/clean-a
+      - name: Guarded packed validation a
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_phone_artifacts.py packed --project clean-a --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/pack-a --xdg cache/pack-a --export-evidence evidence/clean-a-export --source-state evidence/source-state/state.report.json --empty-project pack-root-a
+      - name: Guarded packed validation b
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_phone_artifacts.py packed --project clean-b --godot "$GODOT" --archive valley-crown-mobile-source-vc-8fcc302051f0-ci.zip --output evidence/pack-b --xdg cache/pack-b --export-evidence evidence/clean-b-export --source-state evidence/source-state/state.report.json --empty-project pack-root-b
+      - name: Retain export and packed validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phone-candidate-vc-8fcc302051f0-${{ github.run_attempt }}
+          name: phone-web-artifacts-vc-8fcc302051f0-${{ github.run_attempt }}
           path: |
             evidence/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain validated candidate Web payloads
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phone-web-payloads-vc-8fcc302051f0-${{ github.run_attempt }}
+          path: |
+            artifacts/
+            clean-a/GODOT-LICENSES.txt
+            clean-a/assets/fonts/NOTO-LICENSE.txt
+            clean-a/assets/fonts/DEJAVU-LICENSE.txt
           if-no-files-found: error
           retention-days: 14
