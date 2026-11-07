@@ -87,7 +87,8 @@ def run(out, argv, env=None, limits=Limits(), artifacts=None, expected_artifact_
     start = time.monotonic()
     result = {'passed': False, 'child_started': False, 'cleanup_complete': False, 'pid': None,
               'exit': None, 'stop_reason': None, 'exception': None, 'cleanup_errors': [],
-              'signal_attempts': [], 'samples': [], 'system_before': None, 'system_after': None,
+              'signal_attempts': [], 'samples': [], 'terminal_telemetry_gaps': [],
+              'system_before': None, 'system_after': None,
               'post_run_binding_matches': {}, 'output_errors': []}
     invocation = {'time_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   'requested_argv': list(argv), 'limits': asdict(limits),
@@ -198,7 +199,27 @@ def run(out, argv, env=None, limits=Limits(), artifacts=None, expected_artifact_
                 break
             system = validate_metrics(_system(), ('MemAvailable_kB', 'oom_kill'))
             try:
-                process = validate_metrics(_process(child.pid), ('VmRSS',))
+                process = _process(child.pid)
+                if isinstance(process, dict) and 'VmRSS' not in process:
+                    # Linux may release an exiting child's mm before waitpid can
+                    # observe its exit. Never invent RSS or accept a live gap.
+                    remaining = limits.timeout_s - (time.monotonic() - child_started)
+                    grace = min(0.05, limits.sample_target_s, max(0.0, remaining))
+                    try:
+                        exit_code = child.wait(timeout=grace)
+                    except subprocess.TimeoutExpired:
+                        pass  # Still live: normal validation below must fail.
+                    else:
+                        result['terminal_telemetry_gaps'].append({
+                            'elapsed_s': round(time.monotonic() - child_started, 6),
+                            'reason': 'VmRSS absent; owned child exit confirmed',
+                            'wait_bound_s': grace, 'exit': exit_code, 'system': system})
+                        if system['oom_kill'] > result['system_before']['oom_kill']:
+                            result['stop_reason'] = 'GLOBAL_OOM_INCREMENT_STOP_OWNED_PROCESS'
+                        elif system['MemAvailable_kB'] < limits.runtime_min_available_kib:
+                            result['stop_reason'] = 'LOW_AVAILABLE_MEMORY_STOP_OWNED_PROCESS'
+                        break
+                process = validate_metrics(process, ('VmRSS',))
             except (FileNotFoundError, ProcessLookupError):
                 if child.poll() is not None:
                     break
