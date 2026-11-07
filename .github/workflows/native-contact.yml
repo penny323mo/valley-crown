@@ -76,12 +76,31 @@ jobs:
       - name: Guarded native patch and independent reload probe
         id: native
         run: python3 ci/run_native_contact.py
+      - name: Admit bounded import evidence independently
+        id: import_scan
+        if: always()
+        run: |
+          set -euo pipefail
+          echo 'd1581bec536849ad73d71c614c58820f25c397d8ac50be21772cd858342b189c  ci/scan_contact_evidence.py' | sha256sum --check --strict
+          echo 'f2b6c6e68efcd03ee7029630894391225bd5e4cc78f7ec47eeb1a555318a5598  ci/run_native_contact.py' | sha256sum --check --strict
+          echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
+          echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
+          echo '73269e158472ed138565b5a4be8fbc50ba08e30163b1a93747f3383a1fbf2082  ci/CONTACT_INPUTS.json' | sha256sum --check --strict
+          python3 ci/scan_contact_evidence.py --import-only
+      - name: Preserve admitted import receipts on success or failure
+        if: always() && steps.import_scan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-contact-import-${{ github.sha }}-${{ github.run_attempt }}
+          path: safe-import-evidence/
+          if-no-files-found: error
+          retention-days: 14
       - name: Admit only bounded privacy-scanned evidence
         id: scan
         if: always()
         run: |
           set -euo pipefail
-          echo 'd8999258b1ba25bd6a045a57912e7f9e9959efbcea8c5b41178bae6504a1a492  ci/scan_contact_evidence.py' | sha256sum --check --strict
+          echo 'd1581bec536849ad73d71c614c58820f25c397d8ac50be21772cd858342b189c  ci/scan_contact_evidence.py' | sha256sum --check --strict
           echo 'f2b6c6e68efcd03ee7029630894391225bd5e4cc78f7ec47eeb1a555318a5598  ci/run_native_contact.py' | sha256sum --check --strict
           echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
           echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict

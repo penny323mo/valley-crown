@@ -1,6 +1,6 @@
 """Admit bounded safe failure evidence; stage native outputs only after exact success reconciliation."""
 from pathlib import Path
-import hashlib,json,re,shutil,stat
+import hashlib,json,re,shutil,stat,sys
 import run_native_contact as runner
 SOURCE=Path('contact-evidence');DEST=Path('safe-contact-evidence');OUTPUT=Path('safe-contact-output')
 ALLOWED={'summary.json','patch-report.json','native-probe-report.json'}|{n+s for n in ('patch','probe') for s in ('.json','.invocation.json','.log')}
@@ -58,6 +58,38 @@ def main():
   for n in output_files:shutil.copyfile(Path('project/native_contact_output')/n,OUTPUT/n)
   (OUTPUT/'provenance.json').write_text(json.dumps({'base_build':runner.BUILD,'native_probe_passed':True,'continuous_clearance_certified':False,'visual_acceptance':False,'outputs':output_files,'source_files':s['base_files'],'proposal_files':pins,'evidence_admission_sha256':sha(DEST/'admission.json')},indent=2)+'\n')
  print(json.dumps({'safe_evidence':True,'native_probe_passed':passed,'file_count':len(files)}))
+
+def admit_import():
+ source=Path('import-evidence');dest=Path('safe-import-evidence')
+ assert source.is_dir() and not source.is_symlink() and not dest.exists() and not dest.is_symlink()
+ files=list(source.iterdir());names={p.name for p in files}
+ assert names and names<={'import.json','import.invocation.json','import.log','phase-summary.json'} and 'phase-summary.json' in names
+ assert sum(p.lstat().st_size for p in files)<=64*1024*1024
+ for p in files:safe(p)
+ summary=runner.read(source/'phase-summary.json')
+ assert summary.get('build')==runner.BUILD and summary.get('phase')=='import' and type(summary.get('passed')) is bool
+ assert summary.get('manifest_sha256')==runner.PACKAGE and summary.get('archive_sha256')==runner.ARCHIVE
+ if 'import.json' in names:
+  assert {'import.invocation.json','import.log'}<=names
+  receipt=runner.read(source/'import.json');inv=runner.read(source/'import.invocation.json')
+  assert receipt['log_sha256']==sha(source/'import.log') and receipt['invocation_sha256']==sha(source/'import.invocation.json')
+  assert inv['test_dependencies'] is False and inv['helper']['load_sha256']==inv['helper']['invocation_sha256']==runner.g.MONITOR_SHA
+  package=Path('GROUND_SOURCE_PACKAGE.json');assert sha(package)==runner.PACKAGE
+  expected={'adapter':runner.ADAPTER,'monitor':runner.g.MONITOR_SHA,'engine':runner.g.ENGINE_SHA,'archive':runner.ARCHIVE,'suite-manifest':runner.PACKAGE}
+  expected.update({'source:'+row['file']:row['sha256'] for row in runner.read(package)['files']});assert len(expected)==197
+  for name,digest in expected.items():assert inv['artifacts'][name]['sha256']==digest
+  engine=inv['artifacts']['engine']['path'];project=inv['artifacts']['source:main.tscn']['path'].removesuffix('/main.tscn')
+  assert inv['argv']==inv['requested_argv']==[engine,'--headless','--editor','--path',project,'--import']
+  assert inv['executable']=={'path':engine,'sha256':runner.g.ENGINE_SHA}
+ elif names!={'phase-summary.json'}:
+  assert names<={'phase-summary.json','import.invocation.json','import.log'}
+ dest.mkdir()
+ for p in files:shutil.copyfile(p,dest/p.name)
+ (dest/'admission.json').write_text(json.dumps({'safe_evidence':True,'evidence_only':True,'native_contact_acceptance':False,'files':{p.name:sha(p) for p in files}},indent=2)+'\n')
+ print(json.dumps({'safe_import_evidence':True,'evidence_only':True,'file_count':len(files)}))
 if __name__=='__main__':
- try:main()
+ try:
+  if sys.argv[1:]==['--import-only']:admit_import()
+  else:
+   assert not sys.argv[1:];main()
  except BaseException:print('NATIVE_CONTACT_ADMISSION_FAILED');raise SystemExit(1)
