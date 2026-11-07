@@ -25,6 +25,9 @@ var complete = false
 var forward_assigned = {}
 var forward_cargo = {}
 var cargo_evidence = {}
+# External-policy retry spacing only; no runtime movement/path mutations.
+var recovery_after = {}
+var rally_after = {}
 
 func records(): return game.faction_views[0].records()
 func own(kind):
@@ -63,11 +66,56 @@ func nearest_source(w, food, forward_only):
 		if not forward_only and e.pos.distance_to(game.MapRoutes.home(0)) >= 14: continue
 		if source.is_empty() or w.pos.distance_squared_to(e.pos) < w.pos.distance_squared_to(source.pos): source = e
 	return source
+func recover_loaded_workers(workers):
+	# Retained failure: loaded idle workers were excluded forever by the gather loop.
+	for w in workers:
+		if w.state != "idle" or w.cargo_milli <= 0 or game.tick_count < recovery_after.get(w.id,0): continue
+		var depot = {}
+		for e in records().values():
+			if not e.owned or not e.alive or e.remembered or not e.built or e.kind not in ["town_center","storehouse"]: continue
+			if depot.is_empty() or w.pos.distance_squared_to(e.pos) < w.pos.distance_squared_to(depot.pos): depot = e
+		if depot.is_empty(): continue
+		issue("order",{"ids":[w.id],"target":depot.id,"position":depot.pos},w,depot)
+		recovery_after[w.id] = game.tick_count + 200
+		claimed[w.id] = true
+
+func maintain_keep_defense(keep, barracks):
+	# DEFEND's 3-unit spawn anchor did not cover observed keep attackers.
+	var threats = []
+	for e in records().values():
+		if e.owned or e.remembered or not e.alive or e.team != 1 or e.category != "unit": continue
+		if e.pos.distance_to(keep.pos) <= 10.0: threats.append(e)
+	threats.sort_custom(func(a,b): return a.id < b.id)
+	var rally_ids = []
+	var rally_actor = {}
+	for s in own("spearman"):
+		var target = {}
+		for e in threats:
+			if target.is_empty() or s.pos.distance_squared_to(e.pos) < s.pos.distance_squared_to(target.pos): target = e
+		if not target.is_empty():
+			# Do not restart a live attack path every policy tick.
+			if s.state != "attack" or s.target != target.id:
+				issue("order",{"ids":[s.id],"target":target.id,"position":target.pos},s,target)
+			continue
+		if s.state != "idle" or game.tick_count < rally_after.get(s.id,0): continue
+		var at_exit = false
+		for b in barracks:
+			if b.built and s.pos.distance_to(b.pos) <= 3.25: at_exit = true
+		if not at_exit: continue
+		rally_ids.append(s.id); rally_actor = s
+		rally_after[s.id] = game.tick_count + 200
+	if not rally_ids.is_empty():
+		# Public keep-relative ground destination; normal group move allocates slots.
+		# This frees occupied producer exits without spawning or moving authority directly.
+		var rally = keep.pos + (-keep.pos).normalized()*6.0
+		issue("order",{"ids":rally_ids,"target":-1,"position":rally},rally_actor)
+
 func policy():
 	budget = game.economy.bank_units_floor(0); claimed = {}
 	var workers = own("villager")
 	var keeps = own("town_center")
 	if keeps.is_empty(): return
+	recover_loaded_workers(workers)
 	# Capture only actually observed home nodes, never hidden authority resources.
 	for e in records().values():
 		if e.category == "resource" and e.kind == "berry" and not e.remembered and e.pos.distance_to(keeps[0].pos) < 14:
@@ -146,9 +194,7 @@ func policy():
 		if funded:
 			replacement_requested = true
 			events.append({"type":"replacement_requested","tick":game.tick_count,"earmarked_forward_milli":pool.duplicate(),"bank_units":budget.duplicate(),"lost_ids":lost_spears.duplicate()})
-	# Keep troops at home; normal DEFEND targeting fights only discovered opponents.
-	for s in own("spearman"):
-		if s.mode != "DEFEND": issue("defend",{"ids":[s.id]},s)
+	maintain_keep_defense(keeps[0],barracks)
 
 func observe(before, bank_before):
 	var after = records()

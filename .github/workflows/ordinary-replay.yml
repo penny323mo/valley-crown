@@ -74,7 +74,7 @@ jobs:
         if: always() && steps.replay.outcome != 'skipped'
         run: |
           set -euo pipefail
-          echo '74132bd48b4d329df115fb3384ca9ef3946a4ee8605625a8b9f7aec4f0dc7ab1  ci/scan_replay_evidence.py' | sha256sum --check --strict
+          echo 'b57aeb4a2a597a6bb79e4f74752a77b9164cf25be036932e9e6f73d6af6b4997  ci/scan_replay_evidence.py' | sha256sum --check --strict
           python3 ci/scan_replay_evidence.py
       - name: Retain only admitted replay evidence
         if: always() && steps.scan.outcome == 'success'

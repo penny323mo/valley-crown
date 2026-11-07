@@ -29,7 +29,7 @@ def main():
   assert summary.get('source_preserved') is True and summary['replay_attempts']==1
   package_path=Path('CONSTRUCTION_SOURCE_PACKAGE.json');assert sha(package_path)==runner.PACKAGE
   package=json.loads(package_path.read_text());pins=json.loads((Path(__file__).parent/'REPLAY_INPUTS.json').read_text())
-  assert pins['expansion.gd']=='3b5066e63e9d6b5d822bd9bc868efb3323763115909d81a026708f7f242521b5'
+  assert pins['expansion.gd']=='8f32d8ef5c63b2bb41d5322560960d14acfbfe28eb6eca314f7c17380c4b3bc0'
   assert pins['validate.py']=='6efbecbe13ed5bbccc31733faaffdf5dd71187f0811ca2798a7eb747a0501a33'
   expected={'engine':runner.g.ENGINE_SHA,'archive':runner.ARCHIVE,'manifest':runner.PACKAGE,'adapter':runner.ADAPTER,'monitor':runner.g.MONITOR_SHA,**pins}
   expected.update({'source:'+row['file']:row['sha256'] for row in package['files']})
