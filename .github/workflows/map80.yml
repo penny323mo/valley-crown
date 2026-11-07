@@ -1,0 +1,71 @@
+name: Validate scoped Map80 candidate
+on:
+  push:
+    branches: ['ci/map80-vc-eb734476b9f1']
+    paths: ['map80-review-v4-source.zip', '.github/workflows/map80.yml', 'ci/**', 'SCOPED_CI_PACKAGE.json']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      GODOT_SILENCE_ROOT_WARNING: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify reviewed support files
+        run: |
+          set -euo pipefail
+          echo '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0  ci/guarded_manifest_ci.py' | sha256sum --check --strict
+          echo '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py' | sha256sum --check --strict
+          echo '31bfe09fbbe94bb859939d95f857bd723f4b3518c45543cbfb93e1f07d1ed411  SCOPED_CI_PACKAGE.json' | sha256sum --check --strict
+      - name: Record runner resource preflight
+        shell: bash
+        run: |
+          mkdir -p evidence
+          { uname -a; free -h; df -h .; nproc; } | tee evidence/runner-resources.log
+      - name: Verify and extract reviewed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence source engine
+          echo 'e47e1cf560014d068b6b4bf7542456633a8291f43a80452ca88bf8931a88be4d  map80-review-v4-source.zip' | sha256sum --check --strict
+          unzip -q map80-review-v4-source.zip -d source
+      - name: Install pinned official engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 -o engine/linux.zip https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip
+          unzip -q engine/linux.zip -d engine
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  engine/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --check --strict
+          chmod +x engine/Godot_v4.6.3-stable_linux.x86_64
+          echo "GODOT=$PWD/engine/Godot_v4.6.3-stable_linux.x86_64" >> "$GITHUB_ENV"
+      - name: Guarded import of frozen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_manifest_ci.py import --project source --godot "$GODOT" --archive map80-review-v4-source.zip --manifest SCOPED_CI_PACKAGE.json --archive-sha256 e47e1cf560014d068b6b4bf7542456633a8291f43a80452ca88bf8931a88be4d --manifest-sha256 31bfe09fbbe94bb859939d95f857bd723f4b3518c45543cbfb93e1f07d1ed411 --hosted-execution-approved --output evidence/source-import --xdg cache/source
+      - name: Guarded twelve scoped suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci/guarded_manifest_ci.py test --project source --godot "$GODOT" --archive map80-review-v4-source.zip --manifest SCOPED_CI_PACKAGE.json --archive-sha256 e47e1cf560014d068b6b4bf7542456633a8291f43a80452ca88bf8931a88be4d --manifest-sha256 31bfe09fbbe94bb859939d95f857bd723f4b3518c45543cbfb93e1f07d1ed411 --hosted-execution-approved --output evidence/source-tests --xdg cache/source
+      - name: Scan exact safe evidence
+        id: scan
+        if: always()
+        run: |
+          set -euo pipefail
+          echo 'b9b988cd72cf667eec31da9349c0a5888dfb28797753306074088fc149d25adc  ci/scan_map_evidence.py' | sha256sum --check --strict
+          python3 ci/scan_map_evidence.py
+      - name: Retain scanned test evidence
+        if: always() && steps.scan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: map80-candidate-vc-eb734476b9f1-${{ github.run_attempt }}
+          path: |
+            evidence/
+            evidence-scan.json
+          if-no-files-found: error
+          retention-days: 14
