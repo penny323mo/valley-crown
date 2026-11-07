@@ -1,0 +1,8 @@
+Valley & Crown / 霧谷王旗 experimental game test
+Build: vc-8fcc302051f0
+
+Godot Engine and bundled dependencies: GODOT-LICENSES.txt
+Noto font license: assets/fonts/NOTO-LICENSE.txt
+DejaVu font license: assets/fonts/DEJAVU-LICENSE.txt
+
+This is an experimental test build. Browser and physical-phone validation remain pending.

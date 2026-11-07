@@ -1,10 +1,11 @@
-name: Publish experimental game test
+name: Publish verified phone-controls test
 on:
   push:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 concurrency:
@@ -12,30 +13,54 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Verify and unpack exact experimental build
+        with:
+          persist-credentials: false
+      - name: Download exact reviewed candidate artifact
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '13557879064'
+          run-id: '42333575309'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: candidate
+          merge-multiple: true
+      - name: Verify every candidate byte and package public assets
         shell: bash
         run: |
+          set -euo pipefail
+          python3 - <<'PYVERIFY'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('candidate')
+          expected={'artifacts/clean-a/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-a/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-a/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-a/index.html': 'f5f6f11449850a467044ea67a8cde6c831b53184d82ff9fc44cb349f5c131ab3', 'artifacts/clean-a/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-a/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-a/index.pck': '18da7e0921b0b177e33ca4a62d82e57676498541d6c7ea5a0bf9cb4f3baddc17', 'artifacts/clean-a/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-a/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-b/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-b/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-b/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-b/index.html': 'f5f6f11449850a467044ea67a8cde6c831b53184d82ff9fc44cb349f5c131ab3', 'artifacts/clean-b/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-b/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-b/index.pck': '18da7e0921b0b177e33ca4a62d82e57676498541d6c7ea5a0bf9cb4f3baddc17', 'artifacts/clean-b/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-b/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'clean-a/GODOT-LICENSES.txt': 'f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f', 'clean-a/assets/fonts/DEJAVU-LICENSE.txt': 'f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9', 'clean-a/assets/fonts/NOTO-LICENSE.txt': '849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b'}
+          actual={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          assert actual==expected, 'Candidate artifact allowlist/hash mismatch'
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Candidate symlink rejected'
+          target=pathlib.Path('site/builds/vc-8fcc302051f0')
+          shutil.copytree(root/'artifacts/clean-a',target)
+          for source,dest in [('GODOT-LICENSES.txt','GODOT-LICENSES.txt'),('assets/fonts/NOTO-LICENSE.txt','assets/fonts/NOTO-LICENSE.txt'),('assets/fonts/DEJAVU-LICENSE.txt','assets/fonts/DEJAVU-LICENSE.txt')]:
+              out=target/dest;out.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/'clean-a'/source,out)
+          for name in ['WEB_EXPORT_MANIFEST.json','THIRD_PARTY_NOTICES.txt']:
+              shutil.copyfile(name,target/name)
+          (target/'.nojekyll').touch()
+          manifest=json.loads((target/'WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']=='vc-8fcc302051f0'
+          for name,digest in manifest['files_sha256'].items():
+              assert hashlib.sha256((target/name).read_bytes()).hexdigest()==digest,name
+          assert len([p for p in target.rglob('*') if p.is_file()])==15
+          shutil.copytree(target,'site/play')
+          shutil.copyfile('landing.html','site/index.html')
+          pathlib.Path('site/.nojekyll').touch()
+          print('Verified immutable mobile candidate and current play route')
+          PYVERIFY
           echo '0d6c1bd6f8d8b42bc605ad74401c1f600f9f66d7485fd3b706d9278516095fa7  valley-crown-vc-bff2dcf4109a-web.zip' | sha256sum --check --strict
-          mkdir -p site/play
-          unzip -q valley-crown-vc-bff2dcf4109a-web.zip -d site/play
-          cp landing.html site/index.html
-          touch site/.nojekyll
-          python3 - <<'PY'
-          import hashlib, json, pathlib
-          root = pathlib.Path('site/play')
-          manifest = json.loads((root / 'WEB_EXPORT_MANIFEST.json').read_text())
-          assert manifest['build'] == 'vc-bff2dcf4109a'
-          for name, expected in manifest['files_sha256'].items():
-              assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected, name
-          assert len([p for p in root.rglob('*') if p.is_file()]) == 15
-          print('Verified all 15 public game assets for vc-bff2dcf4109a')
-          PY
+          mkdir -p site/builds/vc-bff2dcf4109a
+          unzip -q valley-crown-vc-bff2dcf4109a-web.zip -d site/builds/vc-bff2dcf4109a
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
