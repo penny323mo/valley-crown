@@ -3,7 +3,7 @@
 This is a prototype authoring recipe. Asset acceptance requires reopened deformation
 checks plus real Godot contact/texture/silhouette review. Never installs into live.
 """
-import argparse, hashlib, json, math, sys
+import argparse, hashlib, json, math, re, sys
 from pathlib import Path
 import bpy, bmesh
 from mathutils import Matrix, Quaternion, Vector
@@ -193,9 +193,13 @@ def add_prop_geometry(rig,kind,materials):
     part('faction_cloth',c+Vector((0,-.13,-.08)),(.12,.018,.30),'spine_03',(1,1,1),True)
     return result
 
-def action_named(actions,name):
-    matches=[a for a in actions if a.name==name or a.name.startswith(name+'_') or a.name.startswith(name+'.')]
-    assert len(matches)==1,(name,[a.name for a in actions]);return matches[0]
+def action_named(actions,name,rig_name):
+    # Blender4.3 appends the exact imported armature object name. Only a
+    # numeric datablock collision suffix is optional; semantic variants are not.
+    canonical=name+'_'+rig_name
+    pattern=re.escape(canonical)+r'(?:\.[0-9]{3,})?'
+    matches=[a for a in actions if re.fullmatch(pattern,a.name)]
+    assert len(matches)==1,(canonical,[a.name for a in actions]);return matches[0]
 
 def bake_action(dst,source,action,name,duration,kay=False,segments=None):
     dst.animation_data_create();out=bpy.data.actions.new(name);dst.animation_data.action=out
@@ -308,8 +312,8 @@ def main():
         else:choices['attack']=('u1','Sword_Attack')
         actions={};origins={}
         for name,(key,original) in choices.items():
-            source,all_actions=libs[key];action=action_named(all_actions,original);segments=None
-            if kind=='archer' and name=='attack':segments=[(0,.62,action),(.62,1,action_named(all_actions,'Ranged_Bow_Release'))]
+            source,all_actions=libs[key];action=action_named(all_actions,original,source.name);segments=None
+            if kind=='archer' and name=='attack':segments=[(0,.62,action),(.62,1,action_named(all_actions,'Ranged_Bow_Release',source.name))]
             actions[name]=bake_action(rig,source,action,name,DURATION[name],key not in ['u1','u2'],segments)
             origins[name]={'library':key,'source_action':original,'duration_seconds':DURATION[name],'frames':round(DURATION[name]*FPS)+1}
         remove_objects(source_objects)
