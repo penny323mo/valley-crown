@@ -22,6 +22,8 @@ import time
 from types import SimpleNamespace
 import xvfb_startup
 
+NATIVE_RENDER_ENV = {'DRI_PRIME': '0', 'LIBGL_ALWAYS_SOFTWARE': '1', 'GALLIUM_DRIVER': 'llvmpipe'}
+
 
 def require(value, message):
     if not value:
@@ -131,6 +133,7 @@ def emit_result_diagnostics(out, receipt):
     summary['unexpected_descendants'] = receipt.get('unexpected_descendants', [])[:16]
     summary['observed_descendant_cleanup'] = receipt.get('observed_descendant_cleanup', [])[:16]
     summary['startup'] = receipt.get('startup', {})
+    summary['renderer_configuration'] = receipt.get('renderer_configuration', {})
     for key in ('error', 'final_error'):
         if receipt.get(key):
             summary[key] = {name: safe_diagnostic_text(value) for name, value in receipt[key].items()}
@@ -321,8 +324,8 @@ def private_auth(path, display):
 def clean_environment(private):
     # No GitHub token, cloud credential, inherited display, or browser setting.
     env = {'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'TZ': 'UTC',
-           'GODOT_SILENCE_ROOT_WARNING': '1', 'LIBGL_ALWAYS_SOFTWARE': '1',
-           'GALLIUM_DRIVER': 'llvmpipe', 'LP_NUM_THREADS': '2', 'OMP_NUM_THREADS': '1'}
+           'GODOT_SILENCE_ROOT_WARNING': '1', **NATIVE_RENDER_ENV,
+           'LP_NUM_THREADS': '2', 'OMP_NUM_THREADS': '1'}
     for key, name in [('HOME', 'home'), ('TMPDIR', 'tmp'), ('XDG_DATA_HOME', 'data'),
                       ('XDG_CONFIG_HOME', 'config'), ('XDG_CACHE_HOME', 'cache'),
                       ('MESA_SHADER_CACHE_DIR', 'mesa')]:
@@ -425,6 +428,7 @@ def run(args):
     started = time.monotonic()
     receipt = {'passed': False, 'scope': 'native_software_rendered_source', 'build': lock['build'],
                'diagnostic_only': lock.get('diagnostic_only') is True,
+               'renderer_configuration': {key: env[key] for key in NATIVE_RENDER_ENV},
                'time_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                'input_sha256': bindings, 'source_file_count': len(source),
                'original_file_count': len(lock['project_files']), 'generated_uid_sha256': generated_uids,

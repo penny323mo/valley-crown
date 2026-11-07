@@ -95,6 +95,8 @@ def scan(directory, lock, lock_sha256):
             guard.get('cleanup_complete') is True, 'Guard did not pass or cleanup is unconfirmed')
     require(guard.get('test_dependencies') is False, 'Fake/injected process evidence cannot be admitted')
     require(guard.get('diagnostic_only') is False, 'Diagnostic-only run cannot produce accepted visual artifacts')
+    require(guard.get('renderer_configuration') == {'DRI_PRIME': '0', 'LIBGL_ALWAYS_SOFTWARE': '1', 'GALLIUM_DRIVER': 'llvmpipe'},
+            'Pinned software-renderer configuration differs')
     require(guard.get('startup', {}).get('complete') is True, 'Xvfb startup was not completed before capture')
     require(guard['input_sha256']['startup'] == lock['support_files']['ci/xvfb_startup.py'], 'Startup helper hash differs')
     startup_helpers = guard['startup'].get('helpers', [])
