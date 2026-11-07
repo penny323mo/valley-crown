@@ -1,8 +1,8 @@
-name: Validate natural defeat and supported restart
+name: Capture one ordinary native phone touch sequence
 on:
   push:
-    branches: [ci/defeat-restart-c721-v1]
-    paths: ['.github/workflows/ordinary-replay.yml', 'ci/**', '*.json', '*.zip']
+    branches: [ci/phone-touch-c721-v1]
+    paths: ['.github/workflows/phone-touch.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
   actions: read
@@ -14,11 +14,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Verify exact reviewed public inputs
+      - name: Require reviewed exact touch inputs
         run: |
           set -euo pipefail
-          echo 'c2491f716e60fa844e3b255b46623b3118061169b90d3afe8f71c1d4d11e1df4  ci/PUBLIC_INPUTS.sha256' | sha256sum --check --strict
-          sha256sum --check --strict ci/PUBLIC_INPUTS.sha256
+          python3 - <<'PYCODE'
+          import hashlib,json,pathlib
+          lock=json.loads(pathlib.Path('ci/native-touch-lock.json').read_text())
+          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-c7211e1083c8'
+          assert len(lock['project_files'])==188 and len(lock['allowed_generated_uid_files'])==5
+          for name,digest in lock['support_files'].items():
+              assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==digest,name
+          PYCODE
       - name: Fetch previously accepted licensed character artifact
         uses: actions/download-artifact@v4
         with:
@@ -60,24 +66,19 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive occlusion-source.zip --manifest OCCLUSION_SOURCE_PACKAGE.json --archive-sha256 fd9d9f3d2fe759fb0fa0df80d0a9813c16ff8725922d3d930dc75b194b81de8a --manifest-sha256 52711be56c32b5f1a8b861ff4578843cebd3e16a1501b78466a5ac0492ad05aa --xdg private/import --hosted-execution-approved --output import-evidence
-      - name: One bounded ordinary replay and separate verdict
-        id: replay
+      - name: Capture ordinary touch gather deposit and paid house
+        id: capture_touch
         run: |
           set -euo pipefail
-          python3 ci/run_ordinary_replay.py
-      - name: Admit bounded partial or complete replay evidence
-        id: scan
-        if: always() && steps.replay.outcome != 'skipped'
-        run: |
-          set -euo pipefail
-          echo 'ca67742a7de781b5984eee817bddae2f4e2d64103228dfa5ce9d62f3df4f6599  ci/scan_replay_evidence.py' | sha256sum --check --strict
-          python3 ci/scan_replay_evidence.py
-      - name: Retain only admitted replay evidence
-        if: always() && steps.scan.outcome == 'success'
+          python3 ci/run_native.py --project project --godot "$GODOT" --harness ci/capture_touch.gd --lock ci/native-touch-lock.json --import-marker private/import/import-complete.json --output evidence/touch --private private/touch --width 390 --height 844
+          python3 ci/scan_touch.py --directory evidence/touch --lock ci/native-touch-lock.json --report evidence/touch-scan.json
+      - name: Retain independently scanned ordinary touch section
+        if: ${{ success() && steps.capture_touch.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: defeat-restart-c721-${{ github.sha }}
+          name: native-phone-touch-${{ github.sha }}-${{ github.run_attempt }}
           path: |
-            safe-replay-evidence/
+            evidence/touch/
+            evidence/touch-scan.json
           if-no-files-found: error
           retention-days: 14
