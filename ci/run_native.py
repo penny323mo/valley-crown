@@ -50,6 +50,102 @@ def tree(root, exclude_cache=False):
     return result
 
 
+UID_ALPHABET = b'abcdefghijklmnopqrstuvwxy012345678'
+SENSITIVE_TEXT = re.compile(r'(?:gh[pousr]_[A-Za-z0-9]{36,255}|github_pat_[A-Za-z0-9_]{40,255}|AKIA[0-9A-Z]{16}|sk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{40,255}|xox[baprs]-[A-Za-z0-9-]{20,255}|-----BEGIN .*PRIVATE KEY-----|(?i:authorization:|password\s*[=:]|access_token\s*[=:]|secret\s*[=:]))')
+
+
+def safe_diagnostic_text(value):
+    """Bound, redact and flatten diagnostics; never dump environment/file contents."""
+    value = str(value)
+    if SENSITIVE_TEXT.search(value):
+        return '[redacted-sensitive-pattern]'
+    value = re.sub(r'/(?:home/agent|workspace/scratch|workspace/shared|agent_notes|user_notes)/[^\s]*', '[private-path]', value)
+    value = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', value)
+    return ''.join(char if char.isprintable() else ' ' for char in value)[:240]
+
+
+def inventory_differences(actual, original, generated):
+    original_names, actual_names, generated_names = set(original), set(actual), set(generated)
+    groups = {
+        'missing_original': sorted(original_names - actual_names),
+        'changed_original': sorted(name for name in original_names & actual_names if actual[name] != original[name]),
+        'missing_generated_uid': sorted(generated_names - actual_names),
+        'unexpected_files': sorted(actual_names - original_names - generated_names),
+    }
+    return {key: {'count': len(names), 'paths': [safe_diagnostic_text(name) for name in names[:32]],
+                  'truncated': len(names) > 32} for key, names in groups.items()}
+
+
+def parse_generated_uid(data):
+    # Godot 4.6.3 ResourceUID::id_to_text: base 34, no z/9, canonical 63-bit ID.
+    require(re.fullmatch(rb'uid://[a-y0-8]{1,13}\n', data) is not None, 'Malformed generated UID sidecar')
+    digits = data[6:-1]
+    require(len(digits) == 1 or digits[0] != ord('a'), 'Noncanonical generated UID sidecar')
+    number = 0
+    for digit in digits:
+        number = number * 34 + UID_ALPHABET.index(digit)
+    require(number <= 0x7fffffffffffffff, 'Generated UID exceeds Godot signed ID range')
+    return number
+
+
+def source_inventory(project, lock, expected_generated=None):
+    """Original archive hashes stay mandatory; only explicit generated UIDs exist."""
+    original = lock['project_files']
+    allowed = lock['allowed_generated_uid_files']
+    expected = sorted(name + '.uid' for name in original if name.endswith('.gd') and name + '.uid' not in original)
+    require(type(allowed) is list and allowed == expected, 'Generated UID allowlist differs from exact frozen script set')
+    actual = tree(project, exclude_cache=True)
+    differences = inventory_differences(actual, original, allowed)
+    if any(row['count'] for row in differences.values()):
+        print('NATIVE_INVENTORY_FAILURE ' + json.dumps(differences, sort_keys=True), flush=True)
+        raise RuntimeError('Frozen source/explicit generated UID inventory mismatch')
+    ids = set()
+    original_uid_contents = {(project / name).read_bytes() for name in original if name.endswith('.uid')}
+    for name in allowed:
+        try:
+            path = regular(project / name)
+            require(path.stat().st_size <= 20, 'Oversize generated UID sidecar')
+            data = path.read_bytes()
+            number = parse_generated_uid(data)
+            require(number not in ids and data not in original_uid_contents, 'Duplicate generated UID sidecar')
+        except Exception as exc:
+            print('NATIVE_UID_FAILURE ' + json.dumps({'path': safe_diagnostic_text(name),
+                  'reason': safe_diagnostic_text(exc)}, sort_keys=True), flush=True)
+            raise
+        ids.add(number)
+    generated = {name: actual[name] for name in allowed}
+    if expected_generated is not None and generated != expected_generated:
+        changed = sorted(name for name in set(generated) | set(expected_generated) if generated.get(name) != expected_generated.get(name))
+        print('NATIVE_UID_DRIFT ' + json.dumps({'count': len(changed), 'paths': changed[:32]}, sort_keys=True), flush=True)
+        raise RuntimeError('Generated UID hashes changed after import binding')
+    return actual, generated
+
+
+def emit_result_diagnostics(out, receipt):
+    summary = {key: receipt.get(key) for key in ('passed', 'cleanup_complete', 'capture_completed', 'seconds')}
+    summary['children'] = {name: {key: info.get(key) for key in ('complete', 'exit', 'signals')}
+                           for name, info in receipt.get('cleanup', {}).items()}
+    for key in ('error', 'final_error'):
+        if receipt.get(key):
+            summary[key] = {name: safe_diagnostic_text(value) for name, value in receipt[key].items()}
+    # Only diagnostic lines from owned child logs, never entire logs or private dirs.
+    errors = []
+    for name in ('godot', 'xvfb'):
+        path = out / (name + '.log')
+        if path.is_file() and not path.is_symlink():
+            with path.open('rb') as stream:
+                prefix = stream.read(65536).decode('utf-8', errors='replace')
+            for line in prefix.splitlines():
+                if re.search(r'(?i)(script error:|parse error:|error:|fatal:|at:.*(?:res://|\.gd:))', line):
+                    errors.append({'process': name, 'line': safe_diagnostic_text(line)})
+                    if len(errors) >= 12:
+                        break
+        if len(errors) >= 12:
+            break
+    summary['bounded_child_errors'] = errors
+    print('NATIVE_RESULT ' + json.dumps(summary, sort_keys=True), flush=True)
+
+
 def metrics():
     mem = dict((line.split(':')[0], int(line.split()[1])) for line in Path('/proc/meminfo').read_text().splitlines())
     vm = dict((line.split()[0], int(line.split()[1])) for line in Path('/proc/vmstat').read_text().splitlines())
@@ -158,8 +254,7 @@ def run(args):
     out, private = args.output.resolve(), args.private.resolve()
     require(not out.exists() and not private.exists(), 'Output and private directory must be new')
     require(not out.is_relative_to(project) and not private.is_relative_to(project), 'Outputs must be outside source')
-    source = tree(project, exclude_cache=True)
-    require(source == lock['project_files'], 'Project file set or hashes differ from reviewed lock')
+    source, generated_uids = source_inventory(project, lock)
     require((project / '.godot/imported').is_dir(), 'A successful fresh guarded import is required first')
     cache = cache_inputs(project)
     require(cache, 'Empty imported cache')
@@ -197,6 +292,7 @@ def run(args):
     receipt = {'passed': False, 'scope': 'native_software_rendered_source', 'build': lock['build'],
                'time_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                'input_sha256': bindings, 'source_file_count': len(source),
+               'original_file_count': len(lock['project_files']), 'generated_uid_sha256': generated_uids,
                'cache_files': len(cache), 'samples': [], 'children': {}, 'cleanup': {},
                'unexpected_descendants': [], 'cleanup_complete': False,
                'test_dependencies': any(actual is not original for actual, original in zip(
@@ -308,7 +404,8 @@ def run(args):
         try:
             after = metrics(); receipt['system_after'] = after
             require(after['oom_kill'] == before['oom_kill'], 'Final OOM count changed')
-            require(tree(project, exclude_cache=True) == source, 'Source changed during rendering')
+            final_source, final_uids = source_inventory(project, lock, generated_uids)
+            require(final_source == source and final_uids == generated_uids, 'Source/generated UID changed during rendering')
             require(cache_inputs(project) == cache, 'Imported cache changed during rendering')
             require(all(digest(path) == bindings[key] for key, path in inputs.items()), 'Bound helper changed')
             for name in children:
@@ -324,6 +421,7 @@ def run(args):
         except BaseException as exc:
             receipt['final_error'] = {'type': type(exc).__name__, 'message': str(exc)}
         receipt['seconds'] = round(time.monotonic() - started, 3); save()
+        emit_result_diagnostics(out, receipt)
     return 0 if receipt['passed'] else 1
 
 

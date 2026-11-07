@@ -97,6 +97,11 @@ def scan(directory, lock, lock_sha256):
     require(guard['input_sha256']['lock'] == lock_sha256, 'Guard lock identity differs')
     for key in ('harness', 'godot', 'supervisor'):
         require(guard['input_sha256'][key] == lock[key + '_sha256'], 'Guard tool identity differs: ' + key)
+    generated = guard.get('generated_uid_sha256', {})
+    require(set(generated) == set(lock['allowed_generated_uid_files']), 'Generated UID binding set differs')
+    require(all(re.fullmatch(r'[0-9a-f]{64}', digest) for digest in generated.values()), 'Invalid generated UID hash binding')
+    require(guard.get('original_file_count') == len(lock['project_files']) and
+            guard.get('source_file_count') == len(lock['project_files']) + len(generated), 'Frozen inventory count differs')
     require(guard['build'] == report['build'] == lock['build'], 'Build identity mismatch')
     require(report.get('passed') is True and len(report['frames']) == report['frame_count'] == 10, 'Incomplete report')
     allowed = {'guard-receipt.json', 'godot.log', 'xvfb.log', 'frames/capture-report.json'}
