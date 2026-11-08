@@ -215,8 +215,8 @@
   },
   "support_files": {
     "ci/run_native.py": "56704a1f789b9322e113fb8e3a50c0b2d836f2d755f1dc95672ac85c559b5698",
-    "ci/scan_evidence.py": "9ba26756e321cf709dd070025187fcaedf4cf7315f2574c689d2bd9549fadea2",
-    "ci/material_contract.py": "0482828bd669fe7121bfb6339e13e6f80762067df5762becae99ca3810f5df29",
+    "ci/scan_evidence.py": "8cd57ac9f3f47a4060aaa36a7e972d0dd853eeaa822725a2d16b4d23fa40fb67",
+    "ci/material_contract.py": "751251aceccc72645dbbbb01bdf72a499c870258c69d5237a1912d7ef4c90c67",
     "ci/xvfb_startup.py": "558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546",
     "ci/guarded_manifest_ci.py": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0",
     "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
@@ -253,7 +253,7 @@
   },
   "independent_review": {
     "passed": true,
-    "report_sha256": "91938a101a0fb3ef22e5fda5b16238efe704cc2cd9121463f522cb09c232b46f"
+    "report_sha256": "cdda7cb4b364eeffc797d3f1bcc53dc0d0074968208da6850d7b1517c221cd5c"
   },
   "import_certificate_sha256": null
 }

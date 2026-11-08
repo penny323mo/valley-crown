@@ -241,9 +241,11 @@ SAFE_EXCEPTION_TYPES = frozenset(('ValueError','KeyError','FileNotFoundError','P
 
 
 def safe_scan_exception(exc):
+    from material_contract import MATERIAL_ASSERTION_IDS
     kind=type(exc).__name__
     message=str(exc)
-    if isinstance(exc,ValueError) and message in SAFE_SCAN_REASONS:
+    material_reasons={'Material contract rejected: '+code for code in MATERIAL_ASSERTION_IDS}
+    if isinstance(exc,ValueError) and message in SAFE_SCAN_REASONS | material_reasons:
         reason=message
     elif isinstance(exc,ValueError) and message.startswith('Unapproved artifact file: '):
         reason='Unapproved artifact file; path withheld'

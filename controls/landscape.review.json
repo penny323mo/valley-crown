@@ -1,7 +1,7 @@
 {
   "peer_reviewed": true,
   "passed": true,
-  "scope": "Technical review of actual accepted native source and this narrow capture core. Final delivery gate and genuine clean-import certificate are still required. No rendered or phone/performance acceptance.",
+  "scope": "Technical revised capture-core review: fixed source-authored diagnostic identifiers only. Every acceptance predicate, order and tolerance is unchanged. No actual failure-cause, rendered-pixel or performance acceptance.",
   "scenario": "landscape",
   "viewport": [
     844,
@@ -13,8 +13,7 @@
     "kind": "genuine_native_material_game_viewport",
     "frame_count": 2
   },
-  "render_contract_core_sha256": "8540be6ac689b4b1be2738bb60543f58845e23076debbac53969477ccaf1be10",
-  "reviewed_disabled_candidate_sha256": "cce44f5b2efec51b1c1615913e0de03876a45fb17ddac3854b8df137a0df2562",
+  "render_contract_core_sha256": "b5efe14ebbde5fbb542498a50fc255af31eb84a7b8d223ace6b8792ca22f40fb",
   "binder_sha256": "be7889a332b41d20018669b0c55809ce26dac530514d45a5b9f4cbc739d6ae7c",
   "assembly_helper_sha256": "732f1b634788bd15d5dad4211a1f876468ed76455e6be11cfdff7057d7be2487",
   "native_output_review_sha256": "c8867d33557947321b784110d31d7c8cc088c09a128458fa1240bda84d81f520",
@@ -26,12 +25,24 @@
   "future_import_certificate_sha256": null,
   "requires_actual_import_binding": true,
   "permitted_prepared_lock_changes": [
-    "reviewed_for_execution false to true",
-    "independent_review passed plus exact report hash"
+    "independent_review passed plus exact revised report SHA only; import_certificate_sha256 remains null until genuine import"
   ],
   "studies_policy": "Controlled front/rear close views explicitly labeled; overlay disabled only for studies",
   "ordinary_game_policy": "Original source camera, lighting, gameplay and normal occlusion overlay retained; real-touch clear moving villager plus mandatory raw-pixel review",
-  "guard_scanner_harness_source_unchanged": true,
   "reviewer_engine_executed": false,
-  "rendered_pixel_acceptance": false
+  "rendered_pixel_acceptance": false,
+  "reviewed_prepared_candidate_sha256": "1ae8ea79d2ee654b87a72c2febd5eaf2a37099dfe703090eb6d328ab4cef027b",
+  "prior_input_review_sha256": "bff0a8aef03656282b5e311e0d205a6fc0a477227340d79c6df5f99f5475de65",
+  "source_diagnostic_changes_sha256": {
+    "source/render/ci/material_contract.py": "751251aceccc72645dbbbb01bdf72a499c870258c69d5237a1912d7ef4c90c67",
+    "source/render/ci/scan_evidence.py": "8cd57ac9f3f47a4060aaa36a7e972d0dd853eeaa822725a2d16b4d23fa40fb67"
+  },
+  "acceptance_predicates_and_order_identical": true,
+  "frozen_guard_and_harness_source_unchanged": true,
+  "scanner_change": "Only safe_scan_exception admits the exact 72 fixed source-authored reason strings. All other scanner logic is unchanged.",
+  "independent_non_review_offline_tests_passed": 64,
+  "independent_test_interpreter": "Python 3.12.14, same minor version as hosted interpreter",
+  "independent_test_log_sha256": "1a2a2efaf35e6107885f41abeb775918ec66c140e11955eaad39ce144292e604",
+  "actual_scan_failure_reason_known": false,
+  "actual_failed_run": 42458380555
 }
