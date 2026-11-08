@@ -1,0 +1,187 @@
+{
+  "passed": true,
+  "all_generation_phases_passed": true,
+  "diagnostic_only": false,
+  "run_id": 42447623186,
+  "artifact_id": 13604855256,
+  "archive_sha256": "e7897331adf344ebcda27da74ee2a9e92b204ec03a9b230f6903449339c1729b",
+  "generation_commit": "be868db8051c8dbcbcde076a1ca4b481a445bf8a",
+  "generation_tree": "33ce95b56c0a1a8a607564344b310a3f3d20aef8",
+  "evidence_artifact_id": 13604730583,
+  "evidence_archive_sha256": "85910df5da3754ce1bf835a42c418e368fe1f3e19f5ccd04a5a04ac27b593fc1",
+  "scope": "Accept exact generated source artifacts for narrow file-only material assembly and subsequent independently gated native validation. Not native, rendered, gameplay, phone, performance or deployment acceptance.",
+  "generation_source_pins": {
+    ".github/workflows/material-assets.yml": "d82ef1816a8f67e875490ef19bf81e2b5367e0944c111303758bb82b035da879",
+    "ci/run_blender_pipeline.py": "a1a0a1fb2c7c892c4b46cbd61a972628172295dbbbd6fc1381624199ae606f72",
+    "ci/hardened_monitored_run.py": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50",
+    "ci/build_licensed_action_characters.py": "0d66d1c6836192d18a15d1425e007c6ecf6b37519a3d87d3c6afd553d5e9318a",
+    "ci/validate_generated_glbs.py": "511f3bbdfad597072fa879670b86849fb5de4c8e5ba44366054b06aa760fc665",
+    "ci/probe_generated_blends.py": "2159f25cc96f011ac1a9091ed5cce57abd386e1a96aa690754684b4593f89ff6",
+    "licensed-character-inputs-v2.zip": "145b44667a1a174cbf1efea19de9b081082a4e38fc1a808c80a731ad8d984e8a"
+  },
+  "phases": [
+    {
+      "name": "generate",
+      "seconds": 51.57188,
+      "sampled_peak_rss_kib": 866976,
+      "cleanup_complete": true,
+      "invocation_sha256": "c5871b73db87b3aa72f9aa9266e55d441c5464cb612672aa0974defda46507e2",
+      "log_sha256": "70a364ac21bee3d3cc91ee870df9738961ce3cc94ecb8400aa0abd8b80a1d931",
+      "terminal_telemetry_gaps": [
+        {
+          "elapsed_s": 49.832769,
+          "reason": "VmRSS absent; owned child exit confirmed",
+          "wait_bound_s": 0.05,
+          "exit": 0,
+          "system": {
+            "MemAvailable_kB": 15290784,
+            "oom_kill": 0
+          }
+        }
+      ],
+      "exit": 0,
+      "passed": true,
+      "no_oom_or_guard_stop": true
+    },
+    {
+      "name": "validate-glbs",
+      "seconds": 12.994173,
+      "sampled_peak_rss_kib": 34988,
+      "cleanup_complete": true,
+      "invocation_sha256": "7655294cae99c2fbc73449c15e1856279a4e0cbaec837525c85b6cbdc3f6baf9",
+      "log_sha256": "7d38991d1491c9810632adf1c06d284d2d339a77fea89b50d18af215a7a959b3",
+      "terminal_telemetry_gaps": [],
+      "exit": 0,
+      "passed": true,
+      "no_oom_or_guard_stop": true
+    },
+    {
+      "name": "reopen-deformation",
+      "seconds": 4.700218,
+      "sampled_peak_rss_kib": 490248,
+      "cleanup_complete": true,
+      "invocation_sha256": "7fb21043ed1a95977f6b6d0e69dcf6529128fe95de8d96911b65a02c9ca43ea8",
+      "log_sha256": "4fdd23d945f846b0f1240c737dbe7f892f6adc1fb84ee87d2f81da48b8029dae",
+      "terminal_telemetry_gaps": [],
+      "exit": 0,
+      "passed": true,
+      "no_oom_or_guard_stop": true
+    }
+  ],
+  "archive_inventory": {
+    "actual_count": 19,
+    "runner_count": 20,
+    "omitted_from_success_archive": "Only declared empty art/.gdignore, which baseline assembly preserves; no file reconstructed here",
+    "files_sha256": {
+      "reports/asset_manifest.json": "3925038d79983fbc30e267506f46b65d280b120f1c12c3319baf317570cc38b6",
+      "art/action_characters/villager.blend": "8d43a1e693343bcf44f1f00fe138f0a2906ff51b8053f3e80d3b202b173a70db",
+      "art/action_characters/scout.blend": "effca2c4ccece6b815640f449da1786db66d5ec61433447621475b4ba8212e75",
+      "art/action_characters/spearman.blend": "70ad16d2cd92cd239547bcf21e2384acb75cd8b6dea71c11d9cf6ab18025b898",
+      "art/action_characters/archer.blend": "7456bcb026fbd2045656766fbffcf65aa4c95f15f6aa6e57b621544480a83206",
+      "art/action_characters/input-manifest.json": "1cbfddb27a4ce08a765208d262f545e4bf560e382281caf505216c9be1f32bce",
+      "art/action_characters/textures/villager_atlas.png": "138cccee93845e4d50a7198ac83df872539affe3bdb226aec9b5a20b1a946d7b",
+      "art/action_characters/textures/scout_atlas.png": "7305bf3ac740a73c819e7ae75703132c7135a0fd4dccf6ba377875aad287151e",
+      "art/action_characters/textures/archer_atlas.png": "7305bf3ac740a73c819e7ae75703132c7135a0fd4dccf6ba377875aad287151e",
+      "art/action_characters/textures/spearman_atlas.png": "138cccee93845e4d50a7198ac83df872539affe3bdb226aec9b5a20b1a946d7b",
+      "art/action_characters/licenses/quaternius-outfits.txt": "2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb",
+      "art/action_characters/licenses/kaykit-animations.txt": "373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9",
+      "art/action_characters/licenses/quaternius-ual.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+      "art/action_characters/licenses/quaternius-ual2.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+      "art/action_characters/licenses/quaternius-base.txt": "0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e",
+      "art/action_characters/interchange/villager.glb": "e03d710a8fef9d514b6f10cb332d31d4bbc4d03bd7473fac183ffe8627c923bf",
+      "art/action_characters/interchange/spearman.glb": "b8c3771d00fe23903a1626f3b6f07ccc32157425c8a00b4f6eceb59a0e4bddc1",
+      "art/action_characters/interchange/archer.glb": "802a9be2b7b21b78ca4374602aa2e4be3a4128361fd58271853f3652002e5d7d",
+      "art/action_characters/interchange/scout.glb": "fc2ee4caef3e79325aa0bdac9f136ac7865c5eebfba7d8eb4bbe0cb6eba82e4e"
+    }
+  },
+  "generated_manifest_sha256": "3925038d79983fbc30e267506f46b65d280b120f1c12c3319baf317570cc38b6",
+  "units": {
+    "villager": {
+      "glb_sha256": "e03d710a8fef9d514b6f10cb332d31d4bbc4d03bd7473fac183ffe8627c923bf",
+      "blend_sha256": "8d43a1e693343bcf44f1f00fe138f0a2906ff51b8053f3e80d3b202b173a70db",
+      "atlas_sha256": "138cccee93845e4d50a7198ac83df872539affe3bdb226aec9b5a20b1a946d7b",
+      "nonmaterial_exact_decoded_match": true,
+      "unchanged_sections": [
+        "triangles",
+        "animation",
+        "skins",
+        "nodes",
+        "geometry_counts",
+        "scene",
+        "scenes",
+        "mesh_names"
+      ],
+      "clips": 10,
+      "deformation_samples": 50,
+      "reopened_source_color_max_linear_error": 0,
+      "eye_seam_triangles": 17
+    },
+    "spearman": {
+      "glb_sha256": "b8c3771d00fe23903a1626f3b6f07ccc32157425c8a00b4f6eceb59a0e4bddc1",
+      "blend_sha256": "70ad16d2cd92cd239547bcf21e2384acb75cd8b6dea71c11d9cf6ab18025b898",
+      "atlas_sha256": "138cccee93845e4d50a7198ac83df872539affe3bdb226aec9b5a20b1a946d7b",
+      "nonmaterial_exact_decoded_match": true,
+      "unchanged_sections": [
+        "triangles",
+        "animation",
+        "skins",
+        "nodes",
+        "geometry_counts",
+        "scene",
+        "scenes",
+        "mesh_names"
+      ],
+      "clips": 5,
+      "deformation_samples": 25,
+      "reopened_source_color_max_linear_error": 0,
+      "eye_seam_triangles": 17
+    },
+    "archer": {
+      "glb_sha256": "802a9be2b7b21b78ca4374602aa2e4be3a4128361fd58271853f3652002e5d7d",
+      "blend_sha256": "7456bcb026fbd2045656766fbffcf65aa4c95f15f6aa6e57b621544480a83206",
+      "atlas_sha256": "7305bf3ac740a73c819e7ae75703132c7135a0fd4dccf6ba377875aad287151e",
+      "nonmaterial_exact_decoded_match": true,
+      "unchanged_sections": [
+        "triangles",
+        "animation",
+        "skins",
+        "nodes",
+        "geometry_counts",
+        "scene",
+        "scenes",
+        "mesh_names"
+      ],
+      "clips": 5,
+      "deformation_samples": 25,
+      "reopened_source_color_max_linear_error": 0,
+      "eye_seam_triangles": 17
+    },
+    "scout": {
+      "glb_sha256": "fc2ee4caef3e79325aa0bdac9f136ac7865c5eebfba7d8eb4bbe0cb6eba82e4e",
+      "blend_sha256": "effca2c4ccece6b815640f449da1786db66d5ec61433447621475b4ba8212e75",
+      "atlas_sha256": "7305bf3ac740a73c819e7ae75703132c7135a0fd4dccf6ba377875aad287151e",
+      "nonmaterial_exact_decoded_match": true,
+      "unchanged_sections": [
+        "triangles",
+        "animation",
+        "skins",
+        "nodes",
+        "geometry_counts",
+        "scene",
+        "scenes",
+        "mesh_names"
+      ],
+      "clips": 5,
+      "deformation_samples": 25,
+      "reopened_source_color_max_linear_error": 0,
+      "eye_seam_triangles": 17
+    }
+  },
+  "independent_validator_report_sha256": "54dca25b27d07c1475b61d554b0c876ab03546ebf0af96f5697c191c08361384",
+  "hosted_glb_report_sha256": "54dca25b27d07c1475b61d554b0c876ab03546ebf0af96f5697c191c08361384",
+  "hosted_reopened_report_sha256": "67ed12a4f22f64125e4139065dd5c5f5ca2ffcd69925d7ec744235cbe1cf7925",
+  "nonmaterial_verifier_sha256": "2537a24116a110e44dba10f2665d94f861dfc33c1073e626a118959d3d6cbd52",
+  "native_validation_passed": false,
+  "rendered_pixel_acceptance": false,
+  "reviewer_engine_executed": false
+}
