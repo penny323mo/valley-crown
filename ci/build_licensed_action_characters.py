@@ -105,55 +105,135 @@ def reduce_mesh(mesh,budget):
     mesh.data.calc_loop_triangles()
     return {'source_triangles':before,'mobile_triangles':len(mesh.data.loop_triangles)}
 
-def atlas_material(meshes,kind,out):
-    # Outfit retains512px; arms/head/hair/eye each get256px in one1024 atlas.
-    images=[]
+def resolve_base_color(material):
+    # Imported glTF COLOR_0 creates image * vertex color, not a direct image link.
+    # Only the reviewed opaque white-factor graph is accepted; never guess a slot.
+    assert material and material.use_nodes,'Missing source node material'
+    principled=[n for n in material.node_tree.nodes if n.type=='BSDF_PRINCIPLED']
+    assert len(principled)==1,'Ambiguous source BSDF'
+    socket=principled[0].inputs['Base Color']
+    assert len(socket.links)==1,'Missing source base-color link'
+    node=socket.links[0].from_node
+    color_layer=None
+    if node.type=='MIX':
+        assert node.data_type=='RGBA' and node.blend_type=='MULTIPLY' and not node.inputs[0].is_linked and abs(node.inputs[0].default_value-1)<1e-7,'Unsupported source color mix'
+        assert len(node.inputs[6].links)==len(node.inputs[7].links)==1,'Incomplete image/color mix'
+        image_node=node.inputs[6].links[0].from_node
+        color_node=node.inputs[7].links[0].from_node
+        assert image_node.type=='TEX_IMAGE' and color_node.type=='VERTEX_COLOR','Unexpected glTF color chain'
+        color_layer=color_node.layer_name # Empty means render_color_index, never COLOR_1.
+        node=image_node
+    assert node.type=='TEX_IMAGE' and node.image and node.extension=='REPEAT','Missing/unsupported source color image'
+    vector=node.inputs['Vector']
+    uv_name=None
+    if vector.is_linked:
+        assert len(vector.links)==1 and vector.links[0].from_node.type=='UVMAP','Unsupported source UV transform'
+        uv_name=vector.links[0].from_node.uv_map
+    return node.image,color_layer,uv_name
+
+
+def atlas_uv_domain(points):
+    assert points and all(math.isfinite(v) for p in points for v in p),'Invalid source UV'
+    minimum=[min(p[a] for p in points) for a in range(2)]
+    maximum=[max(p[a] for p in points) for a in range(2)]
+    low=[math.floor(v) for v in minimum]
+    high=[max(low[a]+1,math.ceil(maximum[a])) for a in range(2)]
+    span=[high[a]-low[a] for a in range(2)]
+    assert all(1<=n<=3 for n in span),'Unexpected tiled UV extent'
+    return minimum,maximum,low,span
+
+
+def atlas_uv_point(point,transform):
+    low,span,origin,size=transform
+    return tuple((point[a]-low[a])/span[a]*size[a]/1024+origin[a]/1024 for a in range(2))
+
+
+def atlas_material(meshes,kind,out,src):
+    bindings=[];sources={}
     for mesh in meshes:
-        for material in mesh.data.materials:
-            if not material or not material.use_nodes:continue
-            p=material.node_tree.nodes.get('Principled BSDF')
-            node=p.inputs['Base Color'].links[0].from_node if p and p.inputs['Base Color'].is_linked else None
-            if node and node.type=='TEX_IMAGE' and node.image not in images:images.append(node.image)
-    assert len(images)<=9,[(i.name) for i in images]
+        assert mesh.data.uv_layers,'Missing source UV'
+        render_uv=[layer for layer in mesh.data.uv_layers if layer.active_render]
+        assert len(render_uv)==1,'Ambiguous source render UV'
+        for index,material in enumerate(mesh.data.materials):
+            polygons=[p for p in mesh.data.polygons if p.material_index==index]
+            if not polygons:continue
+            image,color_name,uv_name=resolve_base_color(material)
+            uv=mesh.data.uv_layers.get(uv_name) if uv_name else render_uv[0]
+            assert uv is not None,'Source material UV missing'
+            if color_name is not None:
+                attr=mesh.data.color_attributes.get(color_name) if color_name else mesh.data.color_attributes[mesh.data.color_attributes.render_color_index]
+                assert attr is not None and attr.domain in ['POINT','CORNER'],'Rendered COLOR_0 missing'
+                for poly in polygons:
+                    for li in poly.loop_indices:
+                        ci=li if attr.domain=='CORNER' else mesh.data.loops[li].vertex_index
+                        assert all(abs(v-1)<1e-6 for v in attr.data[ci].color),'Nonwhite rendered COLOR_0 needs explicit preservation'
+            path=Path(bpy.path.abspath(image.filepath)).resolve()
+            assert path.is_relative_to(src) and path.is_file(),'Unbound base-color source'
+            key=sha(path);relative=path.relative_to(src).as_posix()
+            coordinates={li:tuple(uv.data[li].uv) for poly in polygons for li in poly.loop_indices}
+            assert coordinates and all(math.isfinite(v) for xy in coordinates.values() for v in xy),'Invalid source UV'
+            source=sources.setdefault(key,{'image':image,'path':relative,'uv':[]})
+            source['uv'].extend(coordinates.values())
+            bindings.append({'mesh':mesh,'material':material.name,'key':key,'coordinates':coordinates,'polygons':len(polygons),'uv_layer':uv.name,'rendered_color':'white COLOR_0' if color_name is not None else 'none'})
+    expected_outfit='T_Peasant_BaseColor.png' if kind in ['villager','spearman'] else 'T_Ranger_BaseColor.png'
+    assert len(sources)==5,'Expected outfit, arm skin, head skin, eyes and hair textures'
+    ordered=sorted(sources,key=lambda key:(Path(sources[key]['path']).name!=expected_outfit,sources[key]['path']))
+    assert Path(sources[ordered[0]]['path']).name==expected_outfit,'Primary outfit texture missing'
     atlas=bpy.data.images.new(kind+'_mobile_atlas',width=1024,height=1024,alpha=False)
-    pixels=[1.0]*(1024*1024*4)
-    image_slots={}
-    for index,image in enumerate(images):
+    pixels=[1.0]*(1024*1024*4);audit_sources=[]
+    for index,key in enumerate(ordered):
+        source=sources[key];image=source['image'];points=source['uv']
+        minimum,maximum,low,span=atlas_uv_domain(points)
         size=512 if index==0 else 256
         ox,oy=(0,0) if index==0 else (512+((index-1)%2)*256,((index-1)//2)*256)
-        image.scale(size,size);data=list(image.pixels)
-        image_slots[image]=(ox/1024,oy/1024,size/1024)
+        gutter=4;tw=(size-2*gutter)//span[0];th=(size-2*gutter)//span[1]
+        iw,ih=tw*span[0],th*span[1]
+        # Repeat an entire affine UV rectangle, including seam-crossing triangles.
+        # Never clamp or modulo per vertex. Gutter also repeats the source edge.
+        copy=image.copy();copy.scale(tw,th);data=list(copy.pixels)
         for y in range(size):
-            start=((oy+y)*1024+ox)*4;pixels[start:start+size*4]=data[y*size*4:(y+1)*size*4]
-    # Reserve white 4x4 texels for painted original prop geometry.
-    for y in range(4):
-        for x in range(4):pixels[(y*1024+x)*4:(y*1024+x)*4+4]=[1,1,1,1]
+            sy=(y-gutter)%th
+            for x in range(size):
+                sx=(x-gutter)%tw;si=(sy*tw+sx)*4;di=((oy+y)*1024+ox+x)*4
+                pixels[di:di+4]=data[si:si+4]
+        bpy.data.images.remove(copy)
+        source['transform']=(low,span,(ox+gutter,oy+gutter),(iw,ih))
+        audit_sources.append({'source':source['path'],'sha256':key,'uv_min':minimum,'uv_max':maximum,'tile_low':low,'tile_span':span,'pixel_rect':[ox+gutter,oy+gutter,iw,ih],'gutter_pixels':gutter})
+    # The prop white swatch is in unused upper-left atlas space, not the outfit.
     atlas.pixels=pixels;atlas.filepath_raw=str(out/(kind+'_atlas.png'));atlas.file_format='PNG';atlas.save();atlas.pack()
     mat=bpy.data.materials.new('field_textured');mat.use_nodes=True
     p=mat.node_tree.nodes.get('Principled BSDF');p.inputs['Roughness'].default_value=.92;p.inputs['Specular IOR Level'].default_value=.14
     tex=mat.node_tree.nodes.new('ShaderNodeTexImage');tex.image=atlas
+    uv_node=mat.node_tree.nodes.new('ShaderNodeUVMap');uv_node.uv_map='FieldUV';mat.node_tree.links.new(uv_node.outputs['UV'],tex.inputs['Vector'])
     colors=mat.node_tree.nodes.new('ShaderNodeVertexColor');colors.layer_name='FieldColor'
     mix=mat.node_tree.nodes.new('ShaderNodeMix');mix.data_type='RGBA';mix.blend_type='MULTIPLY';mix.inputs[0].default_value=1
-    # Blender4.3 glTF explicitly recognizes modern MIX/RGBA multiplication for COLOR_0.
     mat.node_tree.links.new(tex.outputs['Color'],mix.inputs[6]);mat.node_tree.links.new(colors.outputs['Color'],mix.inputs[7]);mat.node_tree.links.new(mix.outputs[2],p.inputs['Base Color'])
+    audit_bindings=[]
     for mesh in meshes:
-        uv=mesh.data.uv_layers.active
-        assert uv is not None
-        for poly in mesh.data.polygons:
-            source=mesh.data.materials[poly.material_index];p=source.node_tree.nodes.get('Principled BSDF')
-            node=p.inputs['Base Color'].links[0].from_node if p and p.inputs['Base Color'].is_linked else None
-            slot=image_slots.get(node.image if node and node.type=='TEX_IMAGE' else None,(0,0,.5))
-            for li in poly.loop_indices:
-                point=uv.data[li].uv
-                point.x=min(max(point.x,0),1)*slot[2]+slot[0]
-                point.y=min(max(point.y,0),1)*slot[2]+slot[1]
-            poly.material_index=0
-        mesh.data.materials.clear();mesh.data.materials.append(mat)
+        assert mesh.data.uv_layers.get('FieldUV') is None,'Unexpected preexisting atlas UV'
+        uv=mesh.data.uv_layers.new(name='FieldUV');uv.active_render=True
+        mesh.data.uv_layers.active_index=len(mesh.data.uv_layers)-1
         attr=mesh.data.color_attributes.get('FieldColor') or mesh.data.color_attributes.new(name='FieldColor',type='FLOAT_COLOR',domain='CORNER')
         for item in attr.data:item.color=(1,1,1,1)
+        for binding in [b for b in bindings if b['mesh']==mesh]:
+            low,span,origin,size=sources[binding['key']]['transform']
+            for li,point in binding['coordinates'].items():
+                uv.data[li].uv=atlas_uv_point(point,(low,span,origin,size))
+            audit_bindings.append({'mesh':mesh.name,'material':binding['material'],'source_sha256':binding['key'],'source_uv_layer':binding['uv_layer'],'rendered_color':binding['rendered_color'],'polygons':binding['polygons'],'mapped_loops':len(binding['coordinates'])})
+        # Export one UV/tint set only: Godot Compatibility consumes TEXCOORD_0.
+        # Source UV/color semantics are captured above; originals remain input assets.
+        for layer in list(mesh.data.uv_layers):
+            if layer.name!='FieldUV':mesh.data.uv_layers.remove(layer)
+        mesh.data.uv_layers.active_index=0;mesh.data.uv_layers[0].active_render=True
+        for attribute in list(mesh.data.color_attributes):
+            if attribute.name!='FieldColor':mesh.data.color_attributes.remove(attribute)
+        mesh.data.color_attributes.render_color_index=0
+        for poly in mesh.data.polygons:poly.material_index=0
+        mesh.data.materials.clear();mesh.data.materials.append(mat)
     team=bpy.data.materials.new('team_blue');team.use_nodes=True;p=team.node_tree.nodes.get('Principled BSDF')
     p.inputs['Base Color'].default_value=(.058,.11,.15,1);p.inputs['Roughness'].default_value=.94;p.inputs['Specular IOR Level'].default_value=.12
-    return mat,team
+    audit={'atlas_sha256':sha(out/(kind+'_atlas.png')),'size':[1024,1024],'sources':audit_sources,'bindings':audit_bindings,'field_uv':'FieldUV','prop_uv':[.125,.875],'source_graph':'opaque texture times explicitly verified white rendered COLOR_0; no fallback'}
+    return (mat,team),audit
 
 def add_prop_geometry(rig,kind,materials):
     result=[]
@@ -162,7 +242,8 @@ def add_prop_geometry(rig,kind,materials):
         mod=o.modifiers.new('Soft forged edge','BEVEL');mod.width=.008;mod.segments=1;bpy.ops.object.modifier_apply(modifier=mod.name)
         o.data.materials.append(materials[1 if team else 0]);attr=o.data.color_attributes.new(name='FieldColor',type='FLOAT_COLOR',domain='CORNER')
         for item in attr.data:item.color=(*color,1)
-        for uv in o.data.uv_layers.active.data:uv.uv=(.001,.001)
+        o.data.uv_layers.active.name='FieldUV'
+        for uv in o.data.uv_layers.active.data:uv.uv=(.125,.875)
         g=o.vertex_groups.new(name=bone);g.add(list(range(len(o.data.vertices))),1,'REPLACE');o.parent=rig
         m=o.modifiers.new('Prop skin','ARMATURE');m.object=rig;result.append(o)
         return o
@@ -245,6 +326,8 @@ def pack_meshes(meshes,rig,kind):
     bpy.ops.object.select_all(action='DESELECT')
     for o in meshes:o.select_set(True)
     bpy.context.view_layer.objects.active=meshes[0];bpy.ops.object.join();mesh=bpy.context.object;mesh.name=kind+'_mobile_skin'
+    assert len(mesh.data.uv_layers)==1 and mesh.data.uv_layers[0].name=='FieldUV'
+    assert len(mesh.data.color_attributes)==1 and mesh.data.color_attributes[0].name=='FieldColor'
     unique=[];remap={}
     for index,mat in enumerate(mesh.data.materials):
         if mat not in unique:unique.append(mat)
@@ -295,7 +378,7 @@ def main():
         for mesh,weight in zip(meshes,weights):
             lod[mesh.name]=reduce_mesh(mesh,max(60,int(4900*weight/sum(weights))))
             normalize_weights(mesh)
-        materials=atlas_material(meshes,kind,textures)
+        materials,atlas_audit=atlas_material(meshes,kind,textures,src)
         meshes.extend(add_prop_geometry(rig,kind,materials))
         mesh=pack_meshes(meshes,rig,kind)
         # Load source libraries only after geometry preparation. Delete all source
@@ -330,7 +413,7 @@ def main():
         glb=glbdir/(kind+'.glb')
         bpy.ops.export_scene.gltf(filepath=str(glb),export_format='GLB',use_selection=True,export_yup=True,export_apply=False,export_animations=True,export_skins=True,export_animation_mode='ACTIONS',export_force_sampling=True,export_frame_range=False,export_anim_slide_to_zero=True,export_rest_position_armature=True)
         weights={g.name:sum(1 for v in mesh.data.vertices for w in v.groups if w.group==g.index and w.weight>0) for g in mesh.vertex_groups}
-        manifest['units'][kind]={'source_outfit':folder+'/'+model,'blend_sha256':sha(blend),'glb_sha256':sha(glb),'bones':[b.name for b in rig.data.bones],'weighted_vertices':weights,'armature_modifiers':[m.name for m in mesh.modifiers if m.type=='ARMATURE'],'triangles':len(mesh.data.loop_triangles),'material_surfaces':len(mesh.data.materials),'lod':lod,'clips':origins,'keyed_paths':{n:sorted(set(c.data_path for c in act.fcurves)) for n,act in actions.items()},'root_motion_removed':True}
+        manifest['units'][kind]={'source_outfit':folder+'/'+model,'atlas':atlas_audit,'blend_sha256':sha(blend),'glb_sha256':sha(glb),'bones':[b.name for b in rig.data.bones],'weighted_vertices':weights,'armature_modifiers':[m.name for m in mesh.modifiers if m.type=='ARMATURE'],'triangles':len(mesh.data.loop_triangles),'material_surfaces':len(mesh.data.materials),'lod':lod,'clips':origins,'keyed_paths':{n:sorted(set(c.data_path for c in act.fcurves)) for n,act in actions.items()},'root_motion_removed':True}
     import shutil
     shutil.copytree(src/'licenses',art/'licenses');shutil.copy2(src/'input-manifest.json',art/'input-manifest.json')
     (reports/'asset_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n');print(json.dumps(manifest,indent=2))

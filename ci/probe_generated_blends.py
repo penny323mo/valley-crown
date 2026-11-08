@@ -14,8 +14,47 @@ WORK = {'carry_walk', 'gather_wood', 'gather_food', 'build', 'repair'}
 def sha(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
+def probe_material(mesh, unit, root, inputs_root):
+    audit=unit['atlas'];assert audit['field_uv']=='FieldUV'
+    assert len(mesh.data.uv_layers)==1 and mesh.data.uv_layers[0].name=='FieldUV' and mesh.data.uv_layers[0].active_render
+    assert len(mesh.data.color_attributes)==1 and mesh.data.color_attributes[0].name=='FieldColor' and mesh.data.color_attributes.render_color_index==0
+    field=next(m for m in mesh.data.materials if m.name=='field_textured')
+    nodes=field.node_tree.nodes;bsdf=next(n for n in nodes if n.type=='BSDF_PRINCIPLED')
+    mix=bsdf.inputs['Base Color'].links[0].from_node
+    assert mix.type=='MIX' and mix.data_type=='RGBA' and mix.blend_type=='MULTIPLY' and abs(mix.inputs[0].default_value-1)<1e-7
+    tex=mix.inputs[6].links[0].from_node;color=mix.inputs[7].links[0].from_node
+    assert tex.type=='TEX_IMAGE' and color.type=='VERTEX_COLOR' and color.layer_name=='FieldColor'
+    uv=tex.inputs['Vector'].links[0].from_node;assert uv.type=='UVMAP' and uv.uv_map=='FieldUV'
+    atlas=tex.image;assert list(atlas.size)==[1024,1024] and atlas.packed_file
+    assert hashlib.sha256(bytes(atlas.packed_file.data)).hexdigest()==audit['atlas_sha256']
+    atlas_path=root/'art/action_characters/textures'/(unit['unit_kind']+'_atlas.png')
+    assert sha(atlas_path)==audit['atlas_sha256']
+    disk=bpy.data.images.load(str(atlas_path),check_existing=False)
+    actual=list(disk.pixels);bpy.data.images.remove(disk)
+    manifest=json.loads((inputs_root/'input-manifest.json').read_text())
+    assert sha(inputs_root/'input-manifest.json')=='1cbfddb27a4ce08a765208d262f545e4bf560e382281caf505216c9be1f32bce'
+    checks=[]
+    for source in audit['sources']:
+        path=inputs_root/source['source'];assert path.resolve().is_relative_to(inputs_root) and not path.is_symlink()
+        assert sha(path)==source['sha256']==manifest['files'][source['source']]['sha256']
+        image=bpy.data.images.load(str(path),check_existing=False)
+        x,y,w,h=source['pixel_rect'];sx,sy=source['tile_span'];assert w%sx==h%sy==0
+        tw,th=w//sx,h//sy;image.scale(tw,th);expected=list(image.pixels);bpy.data.images.remove(image)
+        error=0;points=0
+        # Reload original source and rescale independently. Test interior, repeated
+        # tiles and opposite-edge gutters in the saved PNG, not generator buffers.
+        for py in range(y-4,y+h+4,max(1,th//13)):
+            for px in range(x-4,x+w+4,max(1,tw//13)):
+                si=(((py-y)%th)*tw+(px-x)%tw)*4;ai=(py*1024+px)*4
+                delta=max(abs(actual[ai+c]-expected[si+c]) for c in range(3));error=max(error,delta);points+=1
+        assert error<.012,('Saved atlas color differs from independent source samples',source['source'],error)
+        checks.append({'source_sha256':source['sha256'],'sampled_pixels':points,'max_linear_rgb_error':error})
+    assert len(checks)==5
+    return {'reopened_shader_uses_FieldUV0_FieldColor':True,'packed_png_hash_bound':True,'saved_png_source_color_checks':checks}
+
+
 def main():
-    parser = argparse.ArgumentParser(); parser.add_argument('--output-root', required=True, type=Path); parser.add_argument('--report', required=True, type=Path)
+    parser = argparse.ArgumentParser(); parser.add_argument('--output-root', required=True, type=Path); parser.add_argument('--report', required=True, type=Path); parser.add_argument('--inputs', required=True, type=Path)
     args = parser.parse_args(sys.argv[sys.argv.index('--')+1:]); root = args.output_root.resolve()
     assert bpy.app.version == (4,3,2)
     assert not bpy.context.preferences.filepaths.use_scripts_auto_execute
@@ -46,6 +85,7 @@ def main():
         assert {a.name for a in bpy.data.actions} == expected
         for tr in rig.animation_data.nla_tracks: tr.mute = True
         unit = {'blend_sha256':sha(path), 'clips':{}}
+        unit['material']=probe_material(mesh,{**manifest['units'][kind],'unit_kind':kind},root,args.inputs.resolve())
         for name in sorted(expected):
             action = bpy.data.actions[name]; rig.animation_data.action = action
             assert all(c.data_path.startswith('pose.bones[') for c in action.fcurves)

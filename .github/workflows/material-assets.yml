@@ -1,8 +1,8 @@
-name: Generate licensed character prototypes
+name: Regenerate source-bound character materials
 on:
   push:
-    branches: [ci/licensed-blender-v1]
-    paths: ['.github/workflows/blender-assets.yml', 'ci/**', 'licensed-character-inputs-v2.zip']
+    branches: [ci/licensed-material-v1]
+    paths: ['.github/workflows/material-assets.yml', 'ci/**', 'licensed-character-inputs-v2.zip']
 permissions:
   contents: read
 jobs:
@@ -33,7 +33,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: licensed-blender-evidence-${{ github.sha }}
+          name: licensed-material-evidence-${{ github.sha }}
           path: |
             evidence/
             runner-resources.txt
@@ -43,7 +43,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: licensed-character-prototypes-${{ github.sha }}
+          name: licensed-material-prototypes-${{ github.sha }}
           path: generated/
           if-no-files-found: error
           retention-days: 14

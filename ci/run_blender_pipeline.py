@@ -3,7 +3,7 @@
 from pathlib import Path
 import argparse,hashlib,importlib.util,json,os,sys,zipfile
 H=Path(__file__).resolve().parent
-PINS={'hardened_monitored_run.py':'4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50','build_licensed_action_characters.py':'e778ba3997de50915d482bf7a88b92bd34cee188be2ae1189af4ebdb59ec6eac','validate_generated_glbs.py':'09552b32857692a588b4d29774b0e5035ea725dce328b0526f5658b1f4792008','probe_generated_blends.py':'0796d6c2c8c3babbd5b82e904f6daf4865af2eb3e471b5f6b363ac37331e3a94'}
+PINS={'hardened_monitored_run.py':'4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50','build_licensed_action_characters.py':'1a5479bb4ab378847e7e48898946b946f8d06d0e0a4ab04661e31f9fa742786d','validate_generated_glbs.py':'eecd4a65b6fe0c18bcfdbbbb3b9da861fb0fe26aafba6b40414f714f004894fe','probe_generated_blends.py':'2159f25cc96f011ac1a9091ed5cce57abd386e1a96aa690754684b4593f89ff6'}
 ZIP_SHA='145b44667a1a174cbf1efea19de9b081082a4e38fc1a808c80a731ad8d984e8a'
 ARCHIVE_SHA='4da1c956673c0485e63054e563ee69198cc8f80d8157dd7592dffc8a6a5592e6'
 MANIFEST_SHA='1cbfddb27a4ce08a765208d262f545e4bf560e382281caf505216c9be1f32bce'
@@ -45,8 +45,8 @@ def main():
   for x in generated.rglob('*'):
    require(not x.is_symlink(),'Generated symlink rejected')
    if x.is_file():artifacts['output:'+x.relative_to(generated).as_posix()]=x;digests['output:'+x.relative_to(generated).as_posix()]=sha(x)
-  invoke('validate-glbs',[sys.executable,str(H/'validate_generated_glbs.py'),'--output-root',str(generated),'--report',str(evidence/'glb-data.json')])
-  invoke('reopen-deformation',prefix+['--python',str(H/'probe_generated_blends.py'),'--','--output-root',str(generated),'--report',str(evidence/'blend-deformation.json')])
+  invoke('validate-glbs',[sys.executable,str(H/'validate_generated_glbs.py'),'--output-root',str(generated),'--inputs',str(inputs),'--report',str(evidence/'glb-data.json')])
+  invoke('reopen-deformation',prefix+['--python',str(H/'probe_generated_blends.py'),'--','--output-root',str(generated),'--inputs',str(inputs),'--report',str(evidence/'blend-deformation.json')])
   summary['output_sha256']={x.relative_to(generated).as_posix():sha(x) for x in generated.rglob('*') if x.is_file()};summary['passed']=True;save();return 0
  except BaseException as e:
   summary['error']={'type':type(e).__name__,'message':str(e)};save();print(json.dumps(summary['error']),flush=True);return 1
