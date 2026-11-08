@@ -1,0 +1,21 @@
+{
+  "passed_source_review": true,
+  "scope": "Render failure diagnostic collector only; final workflow review still required",
+  "collector_sha256": "4b59fcc7e13360df5aa7647a2331e85948ea434f57d095d08ce3b941d5c7d252",
+  "independent_offline_test_count": 18,
+  "test_log_sha256": "aee3779356b96e82e266faec67d2853a3f3efd095094272cb26b7480c9795233",
+  "actual_prior_guard_schema_checked": true,
+  "output_allowlist": "Import log/receipt/invocation plus at most godot.log/xvfb.log/guard-receipt.json for each of three fixed scenarios, then UNACCEPTED index",
+  "maximum_output_count": 13,
+  "bounds": {
+    "log_bytes": 4194304,
+    "json_bytes": 16777216,
+    "total_bytes": 67108864
+  },
+  "cleanup_requirements": "Owned import child cleanup and hash binding; owned render children, helper parent/lifetime/pidfd exit, integer exit and no unresolved readiness/private-auth cleanup",
+  "excluded": "All frame payloads, caches, private auth, runtime assets and semantic success reports",
+  "diagnostic_only": true,
+  "reviewer_engine_executed": false,
+  "supersedes_source_review_sha256": "3fb183667f5a0c8faf8f473d9c4f79da47c5fe708eeb66c91cc81229d547d9f0",
+  "difference": "Only math import and finite parse_float overflow rejection; reconstructed prior source hash matches e13e8f79."
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "material-render-source-v1",
+  "reviewed_for_packaging": true,
+  "execution_enabled": false,
+  "native_run_id": 42448936212,
+  "native_artifact_id": 13605245411,
+  "assembled_lock_sha256": "dc6080d301880dcc62ff0050218235b4ce5dbd4ddb366a18e7bdcdad802f1be4",
+  "native_archive_sha256": "2961c4adf609550abfce5b60590849a18cf4347ac05df30da24603ecb23c76d3",
+  "native_final_lock_sha256": "19640c09fd056a48df332e03e85681c82997eb5a9f3bed6430125c2e1e90af5c",
+  "native_receipt_sha256": "9e452273bccae59b92312aa2d256ebc34b3618a13f33e33c89d3a33f36a8b4ab",
+  "native_review_sha256": "c8867d33557947321b784110d31d7c8cc088c09a128458fa1240bda84d81f520",
+  "baseline_package_sha256": "ac489bbd227660dd1629b74e6351e68ea86c17bae9bf56e3fb1a2c7430f0ae91",
+  "native_artifact_archive_sha256": "62d971c281dbd32584df71f36f1e8bab75120b2e4718d9d91016f7ff18e1c833"
+}

@@ -1,0 +1,25 @@
+{
+  "reviewed_for_execution": false,
+  "build": null,
+  "scope": null,
+  "source_archive_sha256": null,
+  "godot_sha256": null,
+  "harness_sha256": null,
+  "supervisor_sha256": null,
+  "native_renderer": "linux-x11-mesa-llvmpipe-gl_compatibility",
+  "require_skeletal_animation": null,
+  "capture_contract": {
+    "mode": "material_gameplay",
+    "kind": "genuine_native_material_game_viewport",
+    "frame_count": 2
+  },
+  "import_manifest_sha256": null,
+  "project_files": {},
+  "support_files": {},
+  "allowed_generated_uid_files": [],
+  "diagnostic_only": false,
+  "fixed_fps": 20,
+  "material_binding": null,
+  "independent_review": null,
+  "import_certificate_sha256": null
+}

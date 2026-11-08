@@ -1,0 +1,140 @@
+name: Reviewed narrow material render evidence
+on:
+  push:
+    branches: [ci/material-render-proof-v1]
+    paths:
+      - '.github/workflows/material-render.yml'
+      - 'BASELINE_192.json'
+      - 'BASELINE_CHAIN.json'
+      - 'DELIVERY.json'
+      - 'DELIVERY_FILES.json'
+      - 'DELIVERY_REVIEW.json'
+      - 'README.md'
+      - 'baseline-public/ACTION_FIX_SOURCE_LOCK.json'
+      - 'baseline-public/ARCHER_EFFECT_SOURCE_PACKAGE.json'
+      - 'baseline-public/CONSTRUCTION_SOURCE_PACKAGE.json'
+      - 'baseline-public/GROUND_RALLY_SOURCE_PACKAGE.json'
+      - 'baseline-public/GROUND_RALLY_TEXT_SOURCE_PACKAGE.json'
+      - 'baseline-public/GUIDANCE_SOURCE_PACKAGE.json'
+      - 'baseline-public/OCCLUSION_SOURCE_PACKAGE.json'
+      - 'baseline-public/SELECTION_SOURCE_PACKAGE.json'
+      - 'baseline-public/SOURCE_INPUT_LOCK.json'
+      - 'baseline-public/STALE_HINT_SOURCE_PACKAGE.json'
+      - 'baseline-public/UNITBAR_SOURCE_PACKAGE.json'
+      - 'baseline-public/action-presentation-fix-v1.zip'
+      - 'baseline-public/archer-effect-overlay.zip'
+      - 'baseline-public/ci/apply_action_fix.py'
+      - 'baseline-public/ci/apply_archer_effect_overlay.py'
+      - 'baseline-public/ci/apply_construction_overlay.py'
+      - 'baseline-public/ci/apply_ground_rally_overlay.py'
+      - 'baseline-public/ci/apply_ground_rally_text_overlay.py'
+      - 'baseline-public/ci/apply_guidance_overlay.py'
+      - 'baseline-public/ci/apply_native_delta.py'
+      - 'baseline-public/ci/apply_occlusion_overlay.py'
+      - 'baseline-public/ci/apply_selection_overlay.py'
+      - 'baseline-public/ci/apply_stale_hint_overlay.py'
+      - 'baseline-public/ci/apply_unitbar_overlay.py'
+      - 'baseline-public/ci/assemble_combined.py'
+      - 'baseline-public/ci/hardened_monitored_run.py'
+      - 'baseline-public/construction-overlay.zip'
+      - 'baseline-public/ground-rally-overlay.zip'
+      - 'baseline-public/ground-rally-text-overlay.zip'
+      - 'baseline-public/guidance-overlay.zip'
+      - 'baseline-public/map80-actions-thin-source-v2.zip'
+      - 'baseline-public/occlusion-source-overlay-v3.zip'
+      - 'baseline-public/selection-overlay.zip'
+      - 'baseline-public/stale-hint-overlay.zip'
+      - 'baseline-public/unitbar-overlay.zip'
+      - 'collect_render_failure.py'
+      - 'controls/FAILURE_COLLECTOR_REVIEW.json'
+      - 'controls/GENERATION_REVIEW.json'
+      - 'controls/MATERIAL_RENDER_SOURCE_INPUTS.json'
+      - 'controls/MATERIAL_SOURCE_INPUTS.json'
+      - 'controls/NATIVE_OUTPUT_REVIEW.json'
+      - 'controls/landscape.prepared.json'
+      - 'controls/landscape.review.json'
+      - 'controls/portrait.prepared.json'
+      - 'controls/portrait.review.json'
+      - 'controls/studies.prepared.json'
+      - 'controls/studies.review.json'
+      - 'delivery_helpers.py'
+      - 'reconstruct_baseline.py'
+      - 'run_render_delivery.py'
+      - 'source/assemble_material_source.py'
+      - 'source/bind_render_after_import.py'
+      - 'source/prepare_render_source.py'
+      - 'source/render/ci/baseline_192.json'
+      - 'source/render/ci/capture_material_base.gd'
+      - 'source/render/ci/capture_material_gameplay.gd'
+      - 'source/render/ci/capture_material_studies.gd'
+      - 'source/render/ci/guarded_manifest_ci.py'
+      - 'source/render/ci/hardened_monitored_run.py'
+      - 'source/render/ci/material_contract.py'
+      - 'source/render/ci/material_gameplay-lock.disabled.json'
+      - 'source/render/ci/material_studies-lock.disabled.json'
+      - 'source/render/ci/run_native.py'
+      - 'source/render/ci/scan_evidence.py'
+      - 'source/render/ci/xvfb_startup.py'
+      - 'stage_render.py'
+      - 'test_collect_render_failure.py'
+      - 'test_render_delivery.py'
+      - 'tools/build_licensed_action_characters.py'
+      - 'tools/compare_glb_nonmaterial.py'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: material-render-proof-v1
+  cancel-in-progress: false
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+jobs:
+  render:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/ci/material-render-proof-v1' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require exact reviewed public delivery tree
+        run: /usr/bin/python3 delivery_helpers.py preflight --contract DELIVERY.json --mode render
+      - name: Fetch only verified outer artifacts and closed members
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 delivery_helpers.py fetch --contract DELIVERY.json --key old_licensed
+          /usr/bin/python3 delivery_helpers.py fetch --contract DELIVERY.json --key old_native
+          /usr/bin/python3 delivery_helpers.py fetch --contract DELIVERY.json --key generated
+          /usr/bin/python3 delivery_helpers.py fetch --contract DELIVERY.json --key native_accepted
+      - name: Install official Ubuntu display dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
+      - name: Retrieve verified official engine without launching
+        run: /usr/bin/python3 delivery_helpers.py engine --contract DELIVERY.json
+      - name: Reconstruct reviewed source then clean import and three serial captures/scans
+        id: capture
+        run: /usr/bin/python3 run_render_delivery.py --contract DELIVERY.json --phase all --engine engine/Godot_v4.6.3-stable_linux.x86_64
+      - name: Retain only successful scanned raw evidence
+        if: ${{ success() && steps.capture.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: material-render-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: safe-render/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Collect only bounded unaccepted diagnostics after capture-chain failure
+        if: ${{ failure() && steps.capture.outcome == 'failure' }}
+        id: collect_diagnostics
+        run: /usr/bin/python3 collect_render_failure.py --import-evidence work/import-evidence --render-evidence work/evidence --destination work/UNACCEPTED-render-diagnostics --failure-confirmed
+      - name: Retain separately scanned UNACCEPTED render diagnostics
+        if: ${{ failure() && steps.capture.outcome == 'failure' && steps.collect_diagnostics.outputs.diagnostics_scanned == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: UNACCEPTED_DIAGNOSTIC_RENDER_FAILURE-${{ github.sha }}-${{ github.run_attempt }}
+          path: work/UNACCEPTED-render-diagnostics/
+          if-no-files-found: error
+          retention-days: 7

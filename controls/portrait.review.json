@@ -1,0 +1,37 @@
+{
+  "peer_reviewed": true,
+  "passed": true,
+  "scope": "Technical review of actual accepted native source and this narrow capture core. Final delivery gate and genuine clean-import certificate are still required. No rendered or phone/performance acceptance.",
+  "scenario": "portrait",
+  "viewport": [
+    390,
+    844
+  ],
+  "build": "vc-84a95dfec970",
+  "capture_contract": {
+    "mode": "material_gameplay",
+    "kind": "genuine_native_material_game_viewport",
+    "frame_count": 2
+  },
+  "render_contract_core_sha256": "8540be6ac689b4b1be2738bb60543f58845e23076debbac53969477ccaf1be10",
+  "reviewed_disabled_candidate_sha256": "cce44f5b2efec51b1c1615913e0de03876a45fb17ddac3854b8df137a0df2562",
+  "binder_sha256": "be7889a332b41d20018669b0c55809ce26dac530514d45a5b9f4cbc739d6ae7c",
+  "assembly_helper_sha256": "732f1b634788bd15d5dad4211a1f876468ed76455e6be11cfdff7057d7be2487",
+  "native_output_review_sha256": "c8867d33557947321b784110d31d7c8cc088c09a128458fa1240bda84d81f520",
+  "source_archive_sha256": "233850979155595d169a97a5c5fe570f7dedc6057899af83916ecf050c603944",
+  "source_manifest_sha256": "077e6b449e74ad97b9597692da9fe4e78a927a566fabdbc27b9aac4c61179e3e",
+  "source_file_count": 197,
+  "runtime_input_count": 122,
+  "source_matches_accepted_native_final_lock": true,
+  "future_import_certificate_sha256": null,
+  "requires_actual_import_binding": true,
+  "permitted_prepared_lock_changes": [
+    "reviewed_for_execution false to true",
+    "independent_review passed plus exact report hash"
+  ],
+  "studies_policy": "Controlled front/rear close views explicitly labeled; overlay disabled only for studies",
+  "ordinary_game_policy": "Original source camera, lighting, gameplay and normal occlusion overlay retained; real-touch clear moving villager plus mandatory raw-pixel review",
+  "guard_scanner_harness_source_unchanged": true,
+  "reviewer_engine_executed": false,
+  "rendered_pixel_acceptance": false
+}

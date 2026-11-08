@@ -1,73 +1,11 @@
 {
   "schema": "material-delivery-v1",
-  "mode": "native",
+  "mode": "render",
   "execution_enabled": true,
   "public_manifest": "DELIVERY_FILES.json",
   "review": {
     "path": "DELIVERY_REVIEW.json",
-    "sha256": "390da5926efb506927505d0ba15ccc652ff58bc501926a8bd8d4097ee08863ea"
-  },
-  "bindings": {
-    "reconstructor": {
-      "path": "rts_material_render_gate/delivery/native/reconstruct_baseline.py",
-      "sha256": "a6d4ffd2ad7da698e78a36ba31ae484112a138da9b507968530a32723169a9c7"
-    },
-    "baseline_chain": {
-      "path": "rts_material_render_gate/delivery/native/BASELINE_CHAIN.json",
-      "sha256": "9613bef92081d977ea984b8b2c68ed6e825fa0d33d9248582e51aef164aec0e2"
-    },
-    "baseline_lock": {
-      "path": "rts_material_render_gate/native/BASELINE_192.json",
-      "sha256": "36e6441b6dac681d4194a6d21e14c18660b38ea7082c1cddc7d9e48e5b07a93c"
-    },
-    "assembler": {
-      "path": "rts_material_render_gate/assemble_material_source.py",
-      "sha256": "732f1b634788bd15d5dad4211a1f876468ed76455e6be11cfdff7057d7be2487"
-    },
-    "generator": {
-      "path": "ci/build_licensed_action_characters.py",
-      "sha256": "0d66d1c6836192d18a15d1425e007c6ecf6b37519a3d87d3c6afd553d5e9318a"
-    },
-    "assembly_inputs": {
-      "path": "MATERIAL_SOURCE_INPUTS.json",
-      "sha256": "d18e810182b52bb80bf679abed8e0fe9b7b77dcfd95e19040c781144778181fb"
-    },
-    "generation_review": {
-      "path": "GENERATION_REVIEW.json",
-      "sha256": "1acfdd69aab310eadd88010c48cea2f15fed1caa2080ecd69653eae93efef78e"
-    },
-    "geometry_check": {
-      "path": "rts_material_validation_review/compare_glb_nonmaterial.py",
-      "sha256": "2537a24116a110e44dba10f2665d94f861dfc33c1073e626a118959d3d6cbd52"
-    },
-    "native_inputs": {
-      "path": "MATERIAL_NATIVE_INPUTS.json",
-      "sha256": "1a37f89a94de5d572fde91fcd9dd886171648c73b90b652f779e0115b48e2eb7"
-    },
-    "native_review": {
-      "path": "NATIVE_REVIEW.json",
-      "sha256": "738d362f745a49ce6f5d1f00f4d405b12846823739ddd24bcf522a7d7e67acf0"
-    },
-    "probe": {
-      "path": "rts_material_render_gate/native/probe_native_materials.gd",
-      "sha256": "1601f6a9b05de6cbc6c47f20a0f35d0c8b1284c84c56ffcd9bc67b194fdff43b"
-    },
-    "adapter": {
-      "path": "rts_material_render_gate/native/run_material_native.py",
-      "sha256": "84a9915ee935fd4b54cc638a9f6f3014547a2112443f18f46ab1b314a5fd4b61"
-    },
-    "scanner": {
-      "path": "rts_material_render_gate/native/scan_material_native.py",
-      "sha256": "e8ab34c8e580a3c192f44c7f5d972ca669556b6e4f909c6dba5e1f69715e447d"
-    },
-    "monitor": {
-      "path": "ci/hardened_monitored_run.py",
-      "sha256": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50"
-    },
-    "failure_collector": {
-      "path": "ci/collect_native_failure.py",
-      "sha256": "c897893522d8f086b9b912103b8bda9b8b5036c96d7584c5f87882d89fb70bee"
-    }
+    "sha256": "d5833c2bcd6279718b035d089d8a4f44ef22492de610af72973643eff1e26655"
   },
   "artifacts": {
     "old_licensed": {
@@ -97,7 +35,7 @@
         "reports/asset_manifest.json": "e42e035006068b346cee6004fa9081cb4572247be4bfa312e8c068c910534144"
       },
       "archive_path": "downloads/old_licensed.zip",
-      "destination": "licensed-artifact"
+      "destination": "inputs/old_licensed"
     },
     "old_native": {
       "run_id": 42345297400,
@@ -111,7 +49,7 @@
         "scan.json": "30b2772a3e07627f3132fdf11a91eb5f74fc74d0d5e439f8729e1f45ea71a6d9"
       },
       "archive_path": "downloads/old_native.zip",
-      "destination": "native-artifact"
+      "destination": "inputs/old_native"
     },
     "generated": {
       "run_id": 42447623186,
@@ -140,7 +78,202 @@
         "art/action_characters/interchange/scout.glb": "fc2ee4caef3e79325aa0bdac9f136ac7865c5eebfba7d8eb4bbe0cb6eba82e4e"
       },
       "archive_path": "downloads/generated.zip",
-      "destination": "generated-artifact"
+      "destination": "inputs/generated"
+    },
+    "native_accepted": {
+      "run_id": 42448936212,
+      "artifact_id": 13605245411,
+      "head_sha": "b900ae33d1e9eaa04e15d973edd7a2a854ade938",
+      "archive_sha256": "62d971c281dbd32584df71f36f1e8bab75120b2e4718d9d91016f7ff18e1c833",
+      "members": {
+        "accepted-runtime/final-source-lock.json": "19640c09fd056a48df332e03e85681c82997eb5a9f3bed6430125c2e1e90af5c",
+        "accepted-runtime/receipt.json": "9e452273bccae59b92312aa2d256ebc34b3618a13f33e33c89d3a33f36a8b4ab",
+        "accepted-runtime/runtime-delta.zip": "2961c4adf609550abfce5b60590849a18cf4347ac05df30da24603ecb23c76d3",
+        "import.before.json": "744cb004588271c10f50678cb59417461d247ad2fb8ee551eed907ac85b0f613",
+        "import.invocation.json": "46948f08459196cbf9a43f73216b8d95704ca6d847ab81307bdeaac28a533c91",
+        "import.json": "e5e8ab13d600772bb0916f309fe705cba942c1ff989c10b520ebd478f8408537",
+        "import.log": "bc412bb8c296e85ac7c345ea282a2b4b3183fa23c6f8db660ba80921aa9f8115",
+        "material-baseline.before.json": "d4d8b50f3d896e98cd0848e3e9e4437bba02fe0b30e66d5b463903fd509dd445",
+        "material-baseline.invocation.json": "ca77b5ebfac491ebc0d816dbf0eae56987a6162115906ee109637c385edcb312",
+        "material-baseline.json": "614087e143f81279da625752fbb4c65e664d5d19595c64f767c45e8d4d472741",
+        "material-baseline.log": "962e0757f5a9c001784585310a96394e63c258cdc521e100f294849bc4acc7a3",
+        "material-baseline.report.json": "ca8278899e9ef6acff70449f49630fed20e72d5bc42d36743e252953667dbc68",
+        "material-proof.before.json": "426531582c28b076371c6581350529a5b87d8563bcc93158ee100897f419fbdc",
+        "material-proof.invocation.json": "1d6e914d2d57be11c18245ee88894367b3086623482e03ffa08bd4ee07410d83",
+        "material-proof.json": "008b30cb5d1b7f7e42932c8e0da4ba2a6c4a031b785ee04dbb3aec9c91de1d16",
+        "material-proof.log": "15d27a465e1f5569d05139bf9b2e3ac8fb9db609725a6ba850f67a86225d37f7",
+        "material-proof.report.json": "2f31abfa04605b4f947d30587bd9577068b671062c1a5935dd13fbe6c4d75494",
+        "native-pack.before.json": "b116868880faf84fde67ac3deab18dc842fb6b2469ddefe94c399caed50af935",
+        "native-pack.invocation.json": "2eba9fb5811775455676c5d780b6bbcd4270279388d604e6dfcdaf06b48bd62f",
+        "native-pack.json": "cad33112526f406725ddba4fc7daceb5a0bcfec7952c011ee3667694e9e768be",
+        "native-pack.log": "80a3fd741ac1cb3f6d9ecc3a37991c54ad6f46fc0f5f27f9e2f62d327689de73",
+        "native-pack.report.json": "68a5d245b0f3572f91135b776087991c9748ce8477afe037543100e42b75b530",
+        "reload-diagnostic.before.json": "befff2e9f7ddf1476cf5bcf0dbc5e0d0ea69fc7a55ea57b9fd7701c7d5585e62",
+        "reload-diagnostic.invocation.json": "76dd26d3b018ca65b01c6c2c8d3db86b4f4750511e69ae5f62d5be26bc0bd605",
+        "reload-diagnostic.json": "22d35ad67d17f443c126f6ab3efae8c0f2e0460a9b4824cfb6fb01a68c5eb2c3",
+        "reload-diagnostic.log": "0392f69062c25ec52c92a4636c0c99286b2df304c55b0eea90e43f4063d3ee36",
+        "reload-diagnostic.report.json": "70dce0425af7f12d215bd54ca1787fad0e617fd0ccd56e521da0992fe5506230",
+        "reload-final.before.json": "c593da1c81a172e0757fadf8bb2e07c944cac876ec8cca94a14a992f34ac1eb5",
+        "reload-final.invocation.json": "5e0c73a737bcabcb975e481cd33cb7b81128809f69588710b78064d7e7e2bea5",
+        "reload-final.json": "4e50df856a8fcafb4119e5a12f44c048a04640db2ec8167d08487564856f0da8",
+        "reload-final.log": "0392f69062c25ec52c92a4636c0c99286b2df304c55b0eea90e43f4063d3ee36",
+        "reload-final.report.json": "70dce0425af7f12d215bd54ca1787fad0e617fd0ccd56e521da0992fe5506230",
+        "stamp.before.json": "095b5c00929a402751682de7b7461f60f6f6815b3bc4ab6e31560eb6aa2223aa",
+        "stamp.invocation.json": "3c799bb9fb34d756c189cc9b97abaad72d3bfb24c7449eb1dc763195f8440507",
+        "stamp.json": "3bca7254510b14d9b51dc693726b983b7bb46d3ebbc42ed516fc4a752da4e63a",
+        "stamp.log": "a868e36d96f520797a83f993cb6de0377fe207e9e91e137ce8c20a5d59502f23",
+        "stamp.report.json": "0442c4c704885f921fe4a427ce57d34028461b7220558b1f62e77f2fa6c73dd5",
+        "summary.json": "b381f5cb85daa5650c46ae10ac9ae5601fe2b309f5b0cd15eb018dabeb15537b",
+        "scan.json": "cbe5889a9108b7fecb5f7d3c165bbf29cd2bbd586834ca3978ac6747bc3f214f"
+      },
+      "archive_path": "downloads/native_accepted.zip",
+      "destination": "inputs/native_accepted"
+    }
+  },
+  "bindings": {
+    "BASELINE_192_json": {
+      "path": "BASELINE_192.json",
+      "sha256": "36e6441b6dac681d4194a6d21e14c18660b38ea7082c1cddc7d9e48e5b07a93c"
+    },
+    "BASELINE_CHAIN_json": {
+      "path": "BASELINE_CHAIN.json",
+      "sha256": "9613bef92081d977ea984b8b2c68ed6e825fa0d33d9248582e51aef164aec0e2"
+    },
+    "controls_GENERATION_REVIEW_json": {
+      "path": "controls/GENERATION_REVIEW.json",
+      "sha256": "1acfdd69aab310eadd88010c48cea2f15fed1caa2080ecd69653eae93efef78e"
+    },
+    "controls_MATERIAL_RENDER_SOURCE_INPUTS_json": {
+      "path": "controls/MATERIAL_RENDER_SOURCE_INPUTS.json",
+      "sha256": "26396ad49593bfef1b1141ccb6b7d069dc880a75a861a63c528b8c78653ad0c0"
+    },
+    "controls_MATERIAL_SOURCE_INPUTS_json": {
+      "path": "controls/MATERIAL_SOURCE_INPUTS.json",
+      "sha256": "d18e810182b52bb80bf679abed8e0fe9b7b77dcfd95e19040c781144778181fb"
+    },
+    "controls_NATIVE_OUTPUT_REVIEW_json": {
+      "path": "controls/NATIVE_OUTPUT_REVIEW.json",
+      "sha256": "c8867d33557947321b784110d31d7c8cc088c09a128458fa1240bda84d81f520"
+    },
+    "controls_landscape_prepared_json": {
+      "path": "controls/landscape.prepared.json",
+      "sha256": "9376f7c2d195f64b7ff2da48a89d2c1c010b10a7a12bee303a9243249768e3f2"
+    },
+    "controls_landscape_review_json": {
+      "path": "controls/landscape.review.json",
+      "sha256": "bff0a8aef03656282b5e311e0d205a6fc0a477227340d79c6df5f99f5475de65"
+    },
+    "controls_portrait_prepared_json": {
+      "path": "controls/portrait.prepared.json",
+      "sha256": "3f2c8cec5d877beec8f5e84ad9f6e500308253c44b49e46c75c785b7cd78917a"
+    },
+    "controls_portrait_review_json": {
+      "path": "controls/portrait.review.json",
+      "sha256": "c5d80c0fe72e02529de3d44f83da91a4e96e8e654c3161ae7d61ee629bf23a21"
+    },
+    "controls_studies_prepared_json": {
+      "path": "controls/studies.prepared.json",
+      "sha256": "2acfa41a93862fece8ee6a736a7539b4f887bfa6cccc6b7545f48148904da01f"
+    },
+    "controls_studies_review_json": {
+      "path": "controls/studies.review.json",
+      "sha256": "91938a101a0fb3ef22e5fda5b16238efe704cc2cd9121463f522cb09c232b46f"
+    },
+    "reconstruct_baseline_py": {
+      "path": "reconstruct_baseline.py",
+      "sha256": "a6d4ffd2ad7da698e78a36ba31ae484112a138da9b507968530a32723169a9c7"
+    },
+    "run_render_delivery_py": {
+      "path": "run_render_delivery.py",
+      "sha256": "7ac90328533cdf1950ca752a2acb386d0027d2209828b799cdad34c6b4d60026"
+    },
+    "source_assemble_material_source_py": {
+      "path": "source/assemble_material_source.py",
+      "sha256": "732f1b634788bd15d5dad4211a1f876468ed76455e6be11cfdff7057d7be2487"
+    },
+    "source_bind_render_after_import_py": {
+      "path": "source/bind_render_after_import.py",
+      "sha256": "be7889a332b41d20018669b0c55809ce26dac530514d45a5b9f4cbc739d6ae7c"
+    },
+    "source_prepare_render_source_py": {
+      "path": "source/prepare_render_source.py",
+      "sha256": "7c61e3c57511c7d9da28f82d873a03c3cdb62d90b574a4852079ab684e005246"
+    },
+    "source_render_ci_baseline_192_json": {
+      "path": "source/render/ci/baseline_192.json",
+      "sha256": "36e6441b6dac681d4194a6d21e14c18660b38ea7082c1cddc7d9e48e5b07a93c"
+    },
+    "source_render_ci_capture_material_base_gd": {
+      "path": "source/render/ci/capture_material_base.gd",
+      "sha256": "98ded858e41488d56e5616c7cb3bcca65a954ec5613b1bbfd5acc37abb7c008a"
+    },
+    "source_render_ci_capture_material_gameplay_gd": {
+      "path": "source/render/ci/capture_material_gameplay.gd",
+      "sha256": "7958c90b2eb083b6bcdbb21d8d41c8844321bd8882cc7b255b711fdafb079a56"
+    },
+    "source_render_ci_capture_material_studies_gd": {
+      "path": "source/render/ci/capture_material_studies.gd",
+      "sha256": "ad0f3ac4b17b0f9d1abdd8ac531979d8676a701eb99af34aa216019213656204"
+    },
+    "source_render_ci_guarded_manifest_ci_py": {
+      "path": "source/render/ci/guarded_manifest_ci.py",
+      "sha256": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0"
+    },
+    "source_render_ci_hardened_monitored_run_py": {
+      "path": "source/render/ci/hardened_monitored_run.py",
+      "sha256": "4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50"
+    },
+    "source_render_ci_material_contract_py": {
+      "path": "source/render/ci/material_contract.py",
+      "sha256": "0482828bd669fe7121bfb6339e13e6f80762067df5762becae99ca3810f5df29"
+    },
+    "source_render_ci_material_gameplay_lock_disabled_json": {
+      "path": "source/render/ci/material_gameplay-lock.disabled.json",
+      "sha256": "47bc5a2ad91dc2cafcc22e3156bae65c1009a8bb561c5976cabae0b7f7b8fe92"
+    },
+    "source_render_ci_material_studies_lock_disabled_json": {
+      "path": "source/render/ci/material_studies-lock.disabled.json",
+      "sha256": "fedb66186d72f232d7c74357089c49f71e409fd7e84d107f46cb84160471b56a"
+    },
+    "source_render_ci_run_native_py": {
+      "path": "source/render/ci/run_native.py",
+      "sha256": "56704a1f789b9322e113fb8e3a50c0b2d836f2d755f1dc95672ac85c559b5698"
+    },
+    "source_render_ci_scan_evidence_py": {
+      "path": "source/render/ci/scan_evidence.py",
+      "sha256": "9ba26756e321cf709dd070025187fcaedf4cf7315f2574c689d2bd9549fadea2"
+    },
+    "source_render_ci_xvfb_startup_py": {
+      "path": "source/render/ci/xvfb_startup.py",
+      "sha256": "558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546"
+    },
+    "stage_render_py": {
+      "path": "stage_render.py",
+      "sha256": "dd9fa43fe4df46d690fecf5cba422b44742711a8282c6ff3e50804667a2d595d"
+    },
+    "tools_build_licensed_action_characters_py": {
+      "path": "tools/build_licensed_action_characters.py",
+      "sha256": "0d66d1c6836192d18a15d1425e007c6ecf6b37519a3d87d3c6afd553d5e9318a"
+    },
+    "tools_compare_glb_nonmaterial_py": {
+      "path": "tools/compare_glb_nonmaterial.py",
+      "sha256": "2537a24116a110e44dba10f2665d94f861dfc33c1073e626a118959d3d6cbd52"
+    },
+    "delivery_helpers_py": {
+      "path": "delivery_helpers.py",
+      "sha256": "5fece44f4849979178b336cc32f30bf26a345aef7642d91f254739ae1d70c620"
+    },
+    "collect_render_failure_py": {
+      "path": "collect_render_failure.py",
+      "sha256": "4b59fcc7e13360df5aa7647a2331e85948ea434f57d095d08ce3b941d5c7d252"
+    },
+    "test_collect_render_failure_py": {
+      "path": "test_collect_render_failure.py",
+      "sha256": "de941c98b9f2d33de46cc4ab8c4b26307be753bea5e05920af66b23121eec0bb"
+    },
+    "controls_FAILURE_COLLECTOR_REVIEW_json": {
+      "path": "controls/FAILURE_COLLECTOR_REVIEW.json",
+      "sha256": "cf993b0e706173aa9851d7cb198b84f255a7b6adc1f00b3740410360aa8c3142"
     }
   },
   "engine": {
@@ -151,7 +284,7 @@
     "destination": "engine"
   },
   "workflow": {
-    "path": ".github/workflows/material-native.yml",
-    "sha256": "c46f81b4c0feabbb5ac207bf590cc47634c6444fd13c208cb66af6c7ff3b987b"
+    "path": ".github/workflows/material-render.yml",
+    "sha256": "515a7f647f06741d4138e1b35b9786b70cd8c8cdc552c54dfc82c9990a92c1cf"
   }
 }
