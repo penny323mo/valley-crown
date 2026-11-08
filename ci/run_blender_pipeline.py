@@ -3,13 +3,64 @@
 from pathlib import Path
 import argparse,hashlib,importlib.util,json,os,sys,zipfile
 H=Path(__file__).resolve().parent
-PINS={'hardened_monitored_run.py':'4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50','build_licensed_action_characters.py':'73743e1da16e50260623d322dc70ff5ba2ca71053c062a5d0f7d2a2d19043486','validate_generated_glbs.py':'eecd4a65b6fe0c18bcfdbbbb3b9da861fb0fe26aafba6b40414f714f004894fe','probe_generated_blends.py':'2159f25cc96f011ac1a9091ed5cce57abd386e1a96aa690754684b4593f89ff6'}
+PINS={'hardened_monitored_run.py':'4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50','build_licensed_action_characters.py':'73743e1da16e50260623d322dc70ff5ba2ca71053c062a5d0f7d2a2d19043486','validate_generated_glbs.py':'511f3bbdfad597072fa879670b86849fb5de4c8e5ba44366054b06aa760fc665','probe_generated_blends.py':'2159f25cc96f011ac1a9091ed5cce57abd386e1a96aa690754684b4593f89ff6'}
 ZIP_SHA='145b44667a1a174cbf1efea19de9b081082a4e38fc1a808c80a731ad8d984e8a'
 ARCHIVE_SHA='4da1c956673c0485e63054e563ee69198cc8f80d8157dd7592dffc8a6a5592e6'
 MANIFEST_SHA='1cbfddb27a4ce08a765208d262f545e4bf560e382281caf505216c9be1f32bce'
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def require(ok,msg):
  if not ok:raise RuntimeError(msg)
+def stage_rejected_outputs(generated, inputs, destination, output_hashes):
+ """Copy only closed, hash-bound generation outputs for rejected-file diagnosis."""
+ import re,shutil,stat,struct
+ kinds=('villager','spearman','archer','scout');base='art/action_characters/'
+ license_names=('quaternius-base.txt','quaternius-ual.txt','quaternius-outfits.txt','quaternius-ual2.txt','kaykit-animations.txt')
+ expected={'art/.gdignore','reports/asset_manifest.json',base+'input-manifest.json'}
+ expected.update(base+'licenses/'+n for n in license_names)
+ for kind in kinds:expected.update({base+kind+'.blend',base+'interchange/'+kind+'.glb',base+'textures/'+kind+'_atlas.png'})
+ require(len(expected)==20,'Rejected-output allowlist size mismatch')
+ require(generated.is_dir() and not generated.is_symlink() and not destination.exists(),'Rejected-output roots must be closed and fresh')
+ require(all(not p.is_symlink() for p in generated.rglob('*')),'Rejected output symlink forbidden')
+ require(all(stat.S_ISREG(p.lstat().st_mode) or stat.S_ISDIR(p.lstat().st_mode) for p in generated.rglob('*')),'Rejected output special file forbidden')
+ files={p.relative_to(generated).as_posix():p for p in generated.rglob('*') if p.is_file()}
+ require(set(files)==expected==set(output_hashes),'Rejected-output inventory differs from exact allowlist')
+ sizes={n:p.stat().st_size for n,p in files.items()};require(sum(sizes.values())<128*1024*1024,'Rejected-output total size exceeded')
+ for n,p in files.items():
+  limit=32*1024*1024 if p.suffix in ('.blend','.glb') else 8*1024*1024 if p.suffix=='.png' else 2*1024*1024
+  require(0<=sizes[n]<limit and (sizes[n]>0 or n=='art/.gdignore'),'Rejected-output file size outside bound: '+n)
+  require(sha(p)==output_hashes[n],'Rejected output changed after generation: '+n)
+  raw=p.read_bytes()
+  private_paths=(b'/workspace/scratch',b'/workspace/shared',b'/home/agent',b'/agent_notes',b'/user_notes')
+  secret_patterns=(rb'gh[pousr]_[A-Za-z0-9]{20,}',rb'github_pat_[A-Za-z0-9_]{20,}',rb'sk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}',rb'AKIA[0-9A-Z]{16}',rb'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----')
+  require(not any(marker in raw for marker in private_paths) and not any(re.search(pattern,raw) for pattern in secret_patterns),'Private path or credential signature in rejected bytes: '+n)
+ manifest=json.loads(files['reports/asset_manifest.json'].read_text())
+ require(manifest['blender']=='4.3.2' and manifest['input_manifest_sha256']==MANIFEST_SHA and set(manifest['units'])==set(kinds),'Rejected output manifest identity mismatch')
+ require(sha(files[base+'input-manifest.json'])==MANIFEST_SHA==sha(inputs/'input-manifest.json'),'Rejected copied input manifest mismatch')
+ input_manifest=json.loads((inputs/'input-manifest.json').read_text())
+ require(files['art/.gdignore'].read_bytes()==b'','Unexpected gdignore bytes')
+ for n in license_names:require(sha(files[base+'licenses/'+n])==input_manifest['files']['licenses/'+n]['sha256']==sha(inputs/'licenses'/n),'Rejected license provenance mismatch')
+ def scan_text(value):
+  if isinstance(value,dict):
+   for k,v in value.items():scan_text(k);scan_text(v)
+  elif isinstance(value,list):
+   for v in value:scan_text(v)
+  elif isinstance(value,str):
+   require(not value.startswith(('/','file:','data:')) and not any(t in value for t in ('/home/','/workspace/','-----BEGIN PRIVATE','github_pat_','ghp_','sk-proj-')),'Unexpected private or local text in rejected manifest')
+ scan_text(manifest)
+ for kind in kinds:
+  unit=manifest['units'][kind]
+  for n,key in [(base+kind+'.blend','blend_sha256'),(base+'interchange/'+kind+'.glb','glb_sha256')]:require(output_hashes[n]==unit[key],'Rejected unit hash mismatch')
+  n=base+'textures/'+kind+'_atlas.png';require(output_hashes[n]==unit['atlas']['atlas_sha256'],'Rejected atlas hash mismatch')
+  require(files[base+kind+'.blend'].read_bytes()[:7]==b'BLENDER','Rejected blend header mismatch')
+  raw=files[base+'interchange/'+kind+'.glb'].read_bytes();require(struct.unpack_from('<III',raw)==(0x46546c67,2,len(raw)),'Rejected GLB header mismatch')
+  raw=files[n].read_bytes();require(raw[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack_from('>II',raw,16)==(1024,1024),'Rejected atlas header mismatch')
+ # No copying occurs until inventory, size, format, provenance and hash checks pass.
+ destination.mkdir()
+ for n,p in files.items():
+  dest=destination/'files'/n;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,dest);require(sha(dest)==output_hashes[n],'Rejected copy hash mismatch')
+ report={'status':'UNVALIDATED_REJECTED_OUTPUTS','acceptance':'DIAGNOSTIC ONLY. Do not integrate or claim corrected rendering.','count':20,'total_bytes':sum(sizes.values()),'files':{n:{'sha256':output_hashes[n],'bytes':sizes[n]} for n in sorted(expected)},'checks':['exact closed 20-file allowlist','no symlinks or special files','all staged bytes private-path/credential-signature scan','per-file and total size bounds','post-generation hashes unchanged','pinned input/license identity','generated unit/atlas manifest hashes','expected binary formats','manifest private/local text scan']}
+ (destination/'STATUS.json').write_text(json.dumps(report,indent=2)+'\n');return report
+
 def main():
  p=argparse.ArgumentParser();p.add_argument('--blender',required=True,type=Path);p.add_argument('--blender-archive',required=True,type=Path);p.add_argument('--inputs-zip',required=True,type=Path);a=p.parse_args()
  evidence=Path('evidence').resolve();private=Path('private').resolve();generated=Path('generated').resolve();inputs=Path('inputs').resolve()
@@ -49,5 +100,9 @@ def main():
   invoke('reopen-deformation',prefix+['--python',str(H/'probe_generated_blends.py'),'--','--output-root',str(generated),'--inputs',str(inputs),'--report',str(evidence/'blend-deformation.json')])
   summary['output_sha256']={x.relative_to(generated).as_posix():sha(x) for x in generated.rglob('*') if x.is_file()};summary['passed']=True;save();return 0
  except BaseException as e:
-  summary['error']={'type':type(e).__name__,'message':str(e)};save();print(json.dumps(summary['error']),flush=True);return 1
+  summary['error']={'type':type(e).__name__,'message':str(e)}
+  if summary['commands'] and summary['commands'][0]['passed'] and all(row['cleanup_complete'] for row in summary['commands']):
+   try:summary['rejected_output']=stage_rejected_outputs(generated,inputs,Path('rejected-output').resolve(),{n[7:]:h for n,h in digests.items() if n.startswith('output:')})
+   except BaseException as stage_error:summary['rejected_output_error']={'type':type(stage_error).__name__,'message':str(stage_error)}
+  save();print(json.dumps(summary['error']),flush=True);return 1
 if __name__=='__main__':sys.exit(main())

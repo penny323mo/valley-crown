@@ -212,7 +212,7 @@ def inspect_material(path, kind, unit, root, input_manifest):
         selected={i for i,p in enumerate(uv) if x/1024-2e-6<=p[0]<=(x+iw)/1024+2e-6 and y/1024-2e-6<=p[1]<=(y+ih)/1024+2e-6}
         assert selected and not assigned&selected;assigned|=selected
         recovered=[((uv[i][0]*1024-x)/iw*span[0]+low[0],(uv[i][1]*1024-y)/ih*span[1]+low[1]) for i in selected]
-        assert all(abs(min(p[a] for p in recovered)-minimum[a])<2e-4 and abs(max(p[a] for p in recovered)-maximum[a])<2e-4 for a in (0,1)),'UV envelope lost or clamped'
+        assert all(abs(min(p[a] for p in recovered)-minimum[a])<2e-4 and abs(max(p[a] for p in recovered)-maximum[a])<2e-4 for a in (0,1)),{'error':'UV envelope lost or clamped','kind':kind,'source':n,'expected_min':minimum,'expected_max':maximum,'actual_min':[min(p[a] for p in recovered) for a in (0,1)],'actual_max':[max(p[a] for p in recovered) for a in (0,1)],'referenced_vertices':len(selected),'source_sha256':source['sha256'],'actual_mapped_loops':sum(i in selected for i in ids),'expected_mapped_loops':sum(b['mapped_loops'] for b in bindings if b['source_sha256']==source['sha256']),'prop_vertices':sum(abs(u-.125)<1e-6 and abs(v-.875)<1e-6 for u,v in uv)}
         assert all(all(abs(c-1)<1e-5 for c in colors[i]) for i in selected),'Source white COLOR_0 changed'
         loops=sum(i in selected for i in ids);expected_loops=sum(b['mapped_loops'] for b in bindings if b['source_sha256']==source['sha256'])
         assert loops==expected_loops,'Source material loop coverage lost'

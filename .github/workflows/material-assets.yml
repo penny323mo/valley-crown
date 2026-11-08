@@ -47,3 +47,12 @@ jobs:
           path: generated/
           if-no-files-found: error
           retention-days: 14
+      - name: Preserve explicitly unvalidated rejected outputs
+        if: failure() && hashFiles('rejected-output/STATUS.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: licensed-material-UNVALIDATED-rejected-${{ github.sha }}
+          path: rejected-output/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
