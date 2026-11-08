@@ -222,12 +222,16 @@ def atlas_material(meshes,kind,out,src):
             audit_bindings.append({'mesh':mesh.name,'material':binding['material'],'source_sha256':binding['key'],'source_uv_layer':binding['uv_layer'],'rendered_color':binding['rendered_color'],'polygons':binding['polygons'],'mapped_loops':len(binding['coordinates'])})
         # Export one UV/tint set only: Godot Compatibility consumes TEXCOORD_0.
         # Source UV/color semantics are captured above; originals remain input assets.
-        for layer in list(mesh.data.uv_layers):
-            if layer.name!='FieldUV':mesh.data.uv_layers.remove(layer)
+        # CustomData removal invalidates cached RNA handles. Keep plain names,
+        # then obtain each live handle immediately before the destructive call.
+        for layer_name in [layer.name for layer in mesh.data.uv_layers]:
+            if layer_name!='FieldUV':mesh.data.uv_layers.remove(mesh.data.uv_layers[layer_name])
+        assert [layer.name for layer in mesh.data.uv_layers]==['FieldUV']
         mesh.data.uv_layers.active_index=0;mesh.data.uv_layers[0].active_render=True
-        for attribute in list(mesh.data.color_attributes):
-            if attribute.name!='FieldColor':mesh.data.color_attributes.remove(attribute)
-        mesh.data.color_attributes.render_color_index=0
+        for attribute_name in [attribute.name for attribute in mesh.data.color_attributes]:
+            if attribute_name!='FieldColor':mesh.data.color_attributes.remove(mesh.data.color_attributes[attribute_name])
+        assert [attribute.name for attribute in mesh.data.color_attributes]==['FieldColor']
+        mesh.data.color_attributes.active_color_index=0;mesh.data.color_attributes.render_color_index=0
         for poly in mesh.data.polygons:poly.material_index=0
         mesh.data.materials.clear();mesh.data.materials.append(mat)
     team=bpy.data.materials.new('team_blue');team.use_nodes=True;p=team.node_tree.nodes.get('Principled BSDF')
