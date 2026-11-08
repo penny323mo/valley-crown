@@ -1,6 +1,6 @@
 extends SceneTree
 # Normal seeded simulation, actual routed native touch. Not physical-phone FPS.
-const EXPECTED_BUILD="vc-c9aad346e872"
+const EXPECTED_BUILD="vc-fe500d2ea0b5"
 const SCENARIO="native_ground_rally_portrait_v1"
 const CAPTURE_KIND="native_controlled_ground_rally"
 var game

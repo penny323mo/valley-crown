@@ -1,7 +1,7 @@
-name: Inspect ordinary rally and paid newborn movement in portrait
+name: Inspect supported rally text in ordinary portrait flow
 on:
   push:
-    branches: [ci/native-ground-rally-portrait-v1]
+    branches: [ci/native-ground-rally-text-portrait-v1]
     paths: ['.github/workflows/ground-rally-portrait.yml', 'ci/**', '*.json', '*.zip']
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
           python3 - <<'PYCODE'
           import hashlib,json,pathlib
           lock=json.loads(pathlib.Path('ci/native-${{ matrix.flow }}-lock.json').read_text())
-          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-c9aad346e872'
+          assert lock['reviewed_for_execution'] is True and lock['build']=='vc-fe500d2ea0b5'
           assert lock['rally_viewport']==[${{ matrix.width }},${{ matrix.height }}]
           assert lock['fixed_fps']==20 and lock['capture_contract']['frame_count']==4
           assert len(lock['project_files'])==192 and len(lock['allowed_generated_uid_files'])==5
@@ -69,14 +69,15 @@ jobs:
           python3 ci/apply_stale_hint_overlay.py --project project --base-package SELECTION_SOURCE_PACKAGE.json --package STALE_HINT_SOURCE_PACKAGE.json --overlay stale-hint-overlay.zip --receipt assembly-stale-hint.json
           python3 ci/apply_archer_effect_overlay.py --project project --base-package STALE_HINT_SOURCE_PACKAGE.json --package ARCHER_EFFECT_SOURCE_PACKAGE.json --overlay archer-effect-overlay.zip --receipt assembly-archer-effect.json
           python3 ci/apply_ground_rally_overlay.py --project project --base-package ARCHER_EFFECT_SOURCE_PACKAGE.json --package GROUND_RALLY_SOURCE_PACKAGE.json --overlay ground-rally-overlay.zip --receipt assembly-ground-rally.json
+          python3 ci/apply_ground_rally_text_overlay.py --project project --base-package GROUND_RALLY_SOURCE_PACKAGE.json --package GROUND_RALLY_TEXT_SOURCE_PACKAGE.json --overlay ground-rally-text-overlay.zip --receipt assembly-ground-rally-text.json
           python3 - <<'PYCODE'
           import json,pathlib,sys
           sys.path.insert(0,'ci')
           from apply_construction_overlay import write_archive
-          package=json.loads(pathlib.Path('GROUND_RALLY_SOURCE_PACKAGE.json').read_text())
+          package=json.loads(pathlib.Path('GROUND_RALLY_TEXT_SOURCE_PACKAGE.json').read_text())
           entries={row['file']:row['sha256'] for row in package['files']}
           assert len(entries)==192
-          write_archive(pathlib.Path('project'),entries,pathlib.Path('ground-rally-source.zip'))
+          write_archive(pathlib.Path('project'),entries,pathlib.Path('ground-rally-text-source.zip'))
           PYCODE
       - name: Install official Ubuntu display dependencies
         run: |
@@ -95,7 +96,7 @@ jobs:
       - name: Guarded native import
         run: |
           set -euo pipefail
-          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive ground-rally-source.zip --manifest GROUND_RALLY_SOURCE_PACKAGE.json --archive-sha256 c63c2f79f4ce650b704da040691d1a4b1ac45a6adba05e9228947fa40513be1e --manifest-sha256 8c7c4bde61bbebf1d661f751d791beb9be76bfe562f7138b84dae4fc1eb915de --xdg private/import --hosted-execution-approved --output import-evidence
+          python3 ci/guarded_manifest_ci.py import --project project --godot "$GODOT" --archive ground-rally-text-source.zip --manifest GROUND_RALLY_TEXT_SOURCE_PACKAGE.json --archive-sha256 cfb891c92224fa594b37fcc40ea3941344cde1afa71a7393bf086a0c004decde --manifest-sha256 ac489bbd227660dd1629b74e6351e68ea86c17bae9bf56e3fb1a2c7430f0ae91 --xdg private/import --hosted-execution-approved --output import-evidence
       - name: Capture four ordinary routed rally and paid production stages
         id: capture_rally
         run: |
@@ -106,7 +107,7 @@ jobs:
         if: ${{ success() && steps.capture_rally.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rts-ground-rally-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: rts-ground-rally-text-${{ matrix.flow }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             evidence/${{ matrix.flow }}/
             evidence/${{ matrix.flow }}-scan.json

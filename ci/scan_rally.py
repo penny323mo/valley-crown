@@ -2,7 +2,7 @@
 from pathlib import Path
 import argparse,json,math,re
 import scan_evidence as base
-BUILD='vc-c9aad346e872'
+BUILD='vc-fe500d2ea0b5'
 SCENARIO='native_ground_rally_portrait_v1'
 SCOPE='normal seeded simulation with routed synthetic native touch; not physical phone or measured frame rate'
 CAPTURE={'mode':'ground_rally','kind':'native_controlled_ground_rally','frame_count':4}
@@ -105,10 +105,10 @@ def validate(report,lock):
    item=hud[key];need(set(item)=={'text','visible','rect','minimum_size','line_count'} and type(item['text']) is str and len(item['text'])<512 and type(item['visible']) is bool and rect(item['rect']) and type(item['minimum_size']) is list and len(item['minimum_size'])==2 and all(num(x) for x in item['minimum_size']) and integer(item['line_count'],0,20),'Rally UI differs')
    if item['visible'] and (not inside(item['rect']) or item['minimum_size'][1]>item['rect'][3]+1):findings.append({'kind':'possible_clipping','frame':LABELS[i],'control':key})
   need(hud['title']['text']=='主堡' and hud['queue']['text']=='','Rally UI differs')
-  need(hud['detail']['text']=='點可見空地設定集合點；只影響之後出生的新單位。' if i==0 else '集合點已設定，新單位將前往' in hud['detail']['text'],'Rally UI differs')
-  if i==1:need(hud['toast']['visible'] is True and hud['toast']['text']=='集合點已設定；只影響之後完成訓練的新單位。','Rally UI differs')
+  need(hud['detail']['text']=='點可見空地設定集合點；新單位自動移動。' if i==0 else '集合點已設定，新單位自動移動' in hud['detail']['text'],'Rally UI differs')
+  if i==1:need(hud['toast']['visible'] is True and hud['toast']['text']=='集合點已設定；新單位自動移動。','Rally UI differs')
   aa=hud['actions'];need(type(aa) is list and len(aa)==(1 if i==0 else 3),'Rally UI differs')
-  need([a['text'] for a in aa]==(['取消集合點'] if i==0 else ['集合點','清除集合點','訓練村民\n食 50 ']),'Rally UI differs')
+  need([a['text'] for a in aa]==(['取消集合點'] if i==0 else ['集合點','取消集合點設定','訓練村民\n食 50 ']),'Rally UI differs')
   for a in aa:
    need(set(a)=={'text','rect','visible','disabled'} and a['visible'] is True and a['disabled'] is False and rect(a['rect']) and a['rect'][3]>=44,'Rally UI differs')
    if not inside(a['rect']) or not encloses(hud['action_scroll_rect'],a['rect']):findings.append({'kind':'action_not_fully_visible','frame':LABELS[i],'text':a['text']})
