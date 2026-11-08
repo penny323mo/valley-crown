@@ -211,9 +211,11 @@ def atlas_material(meshes,kind,out,src):
     audit_bindings=[]
     for mesh in meshes:
         assert mesh.data.uv_layers.get('FieldUV') is None,'Unexpected preexisting atlas UV'
-        uv=mesh.data.uv_layers.new(name='FieldUV');uv.active_render=True
-        mesh.data.uv_layers.active_index=len(mesh.data.uv_layers)-1
-        attr=mesh.data.color_attributes.get('FieldColor') or mesh.data.color_attributes.new(name='FieldColor',type='FLOAT_COLOR',domain='CORNER')
+        mesh.data.uv_layers.new(name='FieldUV')
+        mesh.data.color_attributes.get('FieldColor') or mesh.data.color_attributes.new(name='FieldColor',type='FLOAT_COLOR',domain='CORNER')
+        # Allocate every CustomData layer before retaining any RNA handle.
+        uv=mesh.data.uv_layers['FieldUV'];attr=mesh.data.color_attributes['FieldColor']
+        uv.active_render=True;mesh.data.uv_layers.active_index=len(mesh.data.uv_layers)-1
         for item in attr.data:item.color=(1,1,1,1)
         for binding in [b for b in bindings if b['mesh']==mesh]:
             low,span,origin,size=sources[binding['key']]['transform']
@@ -232,6 +234,12 @@ def atlas_material(meshes,kind,out,src):
             if attribute_name!='FieldColor':mesh.data.color_attributes.remove(mesh.data.color_attributes[attribute_name])
         assert [attribute.name for attribute in mesh.data.color_attributes]==['FieldColor']
         mesh.data.color_attributes.active_color_index=0;mesh.data.color_attributes.render_color_index=0
+        # Reacquire after removals and verify every persisted source loop mapping.
+        final_uv=mesh.data.uv_layers['FieldUV']
+        for binding in [b for b in bindings if b['mesh']==mesh]:
+            for li,point in binding['coordinates'].items():
+                expected=atlas_uv_point(point,sources[binding['key']]['transform'])
+                assert all(abs(final_uv.data[li].uv[a]-expected[a])<1e-6 for a in (0,1)),('Persisted atlas UV mismatch',mesh.name,li)
         for poly in mesh.data.polygons:poly.material_index=0
         mesh.data.materials.clear();mesh.data.materials.append(mat)
     team=bpy.data.materials.new('team_blue');team.use_nodes=True;p=team.node_tree.nodes.get('Principled BSDF')
