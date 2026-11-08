@@ -1,7 +1,7 @@
 {
   "peer_reviewed": true,
   "passed": true,
-  "scope": "Technical revised capture-core review: fixed source-authored diagnostic identifiers only. Every acceptance predicate, order and tolerance is unchanged. No actual failure-cause, rendered-pixel or performance acceptance.",
+  "scope": "Technical capture-core review of two explicitly bounded controlled-study numerical comparisons, justified by Camera3D float32 orthonormalization. Genuine ordinary gameplay cameras, capture scripts, guards and all other acceptance logic remain unchanged. No actual numerical-drift or pixel acceptance.",
   "scenario": "portrait",
   "viewport": [
     390,
@@ -13,7 +13,7 @@
     "kind": "genuine_native_material_game_viewport",
     "frame_count": 2
   },
-  "render_contract_core_sha256": "b5efe14ebbde5fbb542498a50fc255af31eb84a7b8d223ace6b8792ca22f40fb",
+  "render_contract_core_sha256": "e401e396819dd8634f9293e3bd464f8dd8181e7aba3e6e0b160b5f97b9c74a44",
   "binder_sha256": "be7889a332b41d20018669b0c55809ce26dac530514d45a5b9f4cbc739d6ae7c",
   "assembly_helper_sha256": "732f1b634788bd15d5dad4211a1f876468ed76455e6be11cfdff7057d7be2487",
   "native_output_review_sha256": "c8867d33557947321b784110d31d7c8cc088c09a128458fa1240bda84d81f520",
@@ -25,24 +25,38 @@
   "future_import_certificate_sha256": null,
   "requires_actual_import_binding": true,
   "permitted_prepared_lock_changes": [
-    "independent_review passed plus exact revised report SHA only; import_certificate_sha256 remains null until genuine import"
+    "independent_review passed plus exact revised report SHA only; import certificate remains null until genuine import"
   ],
   "studies_policy": "Controlled front/rear close views explicitly labeled; overlay disabled only for studies",
   "ordinary_game_policy": "Original source camera, lighting, gameplay and normal occlusion overlay retained; real-touch clear moving villager plus mandatory raw-pixel review",
   "reviewer_engine_executed": false,
   "rendered_pixel_acceptance": false,
-  "reviewed_prepared_candidate_sha256": "1ae8ea79d2ee654b87a72c2febd5eaf2a37099dfe703090eb6d328ab4cef027b",
-  "prior_input_review_sha256": "c5d80c0fe72e02529de3d44f83da91a4e96e8e654c3161ae7d61ee629bf23a21",
-  "source_diagnostic_changes_sha256": {
-    "source/render/ci/material_contract.py": "751251aceccc72645dbbbb01bdf72a499c870258c69d5237a1912d7ef4c90c67",
-    "source/render/ci/scan_evidence.py": "8cd57ac9f3f47a4060aaa36a7e972d0dd853eeaa822725a2d16b4d23fa40fb67"
+  "reviewed_prepared_candidate_sha256": "427463c9e821eb62a7508d3be4e1ab318edac8a0b24ddc7ad9e261d1da694e92",
+  "prior_input_review_sha256": "0306cf575e37a45b3eafffbb90d5b8a8f837925ea81db1626ce5ea0e59f7f21f",
+  "source_precision_changes_sha256": {
+    "source/render/ci/material_contract.py": "9cddbcf3734b6341a5fd2bfc48f2ca6c0d0b22c368b2ddd37eac61dd0125e120",
+    "source/render/ci/scan_evidence.py": "a4b935bdf6906a1b303287de8821473f8853a36fbfdc5183f577d59f0de39b9f"
   },
-  "acceptance_predicates_and_order_identical": true,
+  "source_reasoning_sha256": "435f17362fb90069ba47a0c94c02dbd6f48d72685a05984ee6ae73e29c754320",
+  "source_identities_sha256": "73a67bd4c159359dbabc9b6399b1e43d35d7ec0040ce4b04314b3a213c2ad068",
+  "study_basis_component_max_abs_delta": 9.5367431640625e-07,
+  "study_basis_max_squared_norm_and_dot_error": 3.814697265625e-06,
+  "study_basis_requires_finite_3x3_unit_right_handed": true,
+  "study_size_rule": "Exact canonical IEEE754 float32 equality to float32(3.2), rejecting adjacent float32 sizes",
+  "ordinary_game_camera_equality_still_exact": true,
   "frozen_guard_and_harness_source_unchanged": true,
-  "scanner_change": "Only safe_scan_exception admits the exact 72 fixed source-authored reason strings. All other scanner logic is unchanged.",
-  "independent_non_review_offline_tests_passed": 64,
-  "independent_test_interpreter": "Python 3.12.14, same minor version as hosted interpreter",
-  "independent_test_log_sha256": "1a2a2efaf35e6107885f41abeb775918ec66c140e11955eaad39ce144292e604",
-  "actual_scan_failure_reason_known": false,
-  "actual_failed_run": 42458380555
+  "scanner_change": "Only fixed bounded study numeric telemetry is added to the already-reviewed diagnostic scanner; no raw values beyond three finite scalars, arrays, paths or arbitrary exception text.",
+  "independent_non_review_offline_tests_passed": 73,
+  "independent_test_interpreters": [
+    "Python 3.12.14",
+    "Python 3.13.5"
+  ],
+  "independent_test_logs_sha256": {
+    "312": "4a2a5634121d3c6974e79ae6dc117489faa9f937ee943471f51a0bb93767e05f",
+    "313": "b917d9d3cdc2476fcf9254ce76c043a5c143eae446ae6370c5e99e0c8ca74f93"
+  },
+  "actual_prior_failure_id": "MC_REPORT_19",
+  "actual_prior_run": 42459285809,
+  "actual_numeric_magnitude_review_required": true,
+  "actual_numeric_magnitude_known": false
 }

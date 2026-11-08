@@ -1,10 +1,10 @@
 {
   "peer_reviewed": true,
   "passed": true,
-  "delivery_core_sha256": "d5cf78b05295df04876a8b7330e428d27aef0023b1f76ae36a9be24fe4c681c1",
+  "delivery_core_sha256": "96af3e98d8f43bd81644c2f19d05ff1cc17d917e6a3c875c23291e180fa7d167",
   "helper_sha256": "5fece44f4849979178b336cc32f30bf26a345aef7642d91f254739ae1d70c620",
   "workflow_sha256": "515a7f647f06741d4138e1b35b9786b70cd8c8cdc552c54dfc82c9990a92c1cf",
-  "scope": "Technical final-source gate for fixed assertion diagnostics in the same isolated 77-file hosted material-render package. No acceptance predicate, numeric tolerance, gameplay, camera, capture, process guard, output-staging or upload-policy change. No actual failure-cause or pixel acceptance.",
+  "scope": "Technical final-source gate for two explicitly bounded controlled-study numerical comparisons and fixed scalar diagnostics, in the same 77-file isolated hosted material package. Ordinary gameplay whole-camera equality remains exact. No capture, gameplay, process guard, staging or upload-policy change. No actual numeric-drift or pixel acceptance.",
   "branch": "ci/material-render-proof-v1",
   "public_file_count": 77,
   "baseline_reused_files": 35,
@@ -15,7 +15,7 @@
     "test_collect_render_failure.py": "de941c98b9f2d33de46cc4ab8c4b26307be753bea5e05920af66b23121eec0bb",
     "BASELINE_192.json": "36e6441b6dac681d4194a6d21e14c18660b38ea7082c1cddc7d9e48e5b07a93c",
     "collect_render_failure.py": "4b59fcc7e13360df5aa7647a2331e85948ea434f57d095d08ce3b941d5c7d252",
-    "test_render_delivery.py": "c82f77ade2e16312d6eae1c1940edc716bd736acb15ae4a87c37bcfcd38a583e",
+    "test_render_delivery.py": "b415f0fb1f4fa011b5b74048f9a1aeedac5dcb2746ebe1760c4a0b23b2f1ff2e",
     "BASELINE_CHAIN.json": "9613bef92081d977ea984b8b2c68ed6e825fa0d33d9248582e51aef164aec0e2",
     "reconstruct_baseline.py": "a6d4ffd2ad7da698e78a36ba31ae484112a138da9b507968530a32723169a9c7",
     "stage_render.py": "dd9fa43fe4df46d690fecf5cba422b44742711a8282c6ff3e50804667a2d595d",
@@ -25,16 +25,16 @@
     "source/bind_render_after_import.py": "be7889a332b41d20018669b0c55809ce26dac530514d45a5b9f4cbc739d6ae7c",
     "source/prepare_render_source.py": "7c61e3c57511c7d9da28f82d873a03c3cdb62d90b574a4852079ab684e005246",
     "source/assemble_material_source.py": "732f1b634788bd15d5dad4211a1f876468ed76455e6be11cfdff7057d7be2487",
-    "controls/portrait.review.json": "0306cf575e37a45b3eafffbb90d5b8a8f837925ea81db1626ce5ea0e59f7f21f",
+    "controls/portrait.review.json": "b7c9c9183df14f2c96cb5dd4b5e978328d6170209414f5598ee3fb2775fab92e",
     "controls/NATIVE_OUTPUT_REVIEW.json": "c8867d33557947321b784110d31d7c8cc088c09a128458fa1240bda84d81f520",
     "controls/MATERIAL_SOURCE_INPUTS.json": "d18e810182b52bb80bf679abed8e0fe9b7b77dcfd95e19040c781144778181fb",
-    "controls/studies.prepared.json": "5d7fee124553997dfc918014890e12307f831d5a06053e38112d586e3a44d83c",
-    "controls/portrait.prepared.json": "60460d3462dcfdf6519f068ef6ec4b617e74c41dfd5a4debb02e641e66d2cd61",
-    "controls/studies.review.json": "cdda7cb4b364eeffc797d3f1bcc53dc0d0074968208da6850d7b1517c221cd5c",
-    "controls/landscape.review.json": "5dea44286f94f3a8bb5066b78d21ca5457ee29b6b2e17e7b6458fdd9b84da21b",
+    "controls/studies.prepared.json": "bf58bad805d791ccb1739971a0a8883f7ddab4d09ef05fcda5bb2c5affa4789d",
+    "controls/portrait.prepared.json": "de87978a61e736122b3f35c9232c6c1de751dd8af9b601f5b070385ff92d0eba",
+    "controls/studies.review.json": "0e70d5df2f4d6bc1b502df7e92089097812fbd2398d2335d434f1bf334e650df",
+    "controls/landscape.review.json": "0abb8e46db287b7728fb0667537074c6d001b7f5973229778052b1af04b717ce",
     "controls/MATERIAL_RENDER_SOURCE_INPUTS.json": "26396ad49593bfef1b1141ccb6b7d069dc880a75a861a63c528b8c78653ad0c0",
     "controls/FAILURE_COLLECTOR_REVIEW.json": "cf993b0e706173aa9851d7cb198b84f255a7b6adc1f00b3740410360aa8c3142",
-    "controls/landscape.prepared.json": "4d5dca58f01d6599bb3097d60cd625aa739148ebdb91ed05219267b2ffbb6ce9",
+    "controls/landscape.prepared.json": "acec85d49fe5f404cbf3b497a0f291e6ab6d32652075da57102a6560fd038adb",
     "controls/GENERATION_REVIEW.json": "1acfdd69aab310eadd88010c48cea2f15fed1caa2080ecd69653eae93efef78e",
     "baseline-public/ground-rally-overlay.zip": "f40f2792cbcdc02497c93cd6adcf55fffa87d63a0bad31eae5248390b99f3739",
     "baseline-public/ground-rally-text-overlay.zip": "823654f3a401b75ff6bf7be44b36d657523008e8a2dd4e98a66877d90a12c6d5",
@@ -59,7 +59,7 @@
     "baseline-public/unitbar-overlay.zip": "aa686079343c9d6162e1da48c32c2e5b9f6548b5cb568a14aa48d51fd20f6660",
     "baseline-public/stale-hint-overlay.zip": "b3e631757989dc69ecec2b77acc92b93f92fe53a5287cef588b03e3103217c7f",
     ".github/workflows/material-render.yml": "515a7f647f06741d4138e1b35b9786b70cd8c8cdc552c54dfc82c9990a92c1cf",
-    "source/render/ci/material_contract.py": "751251aceccc72645dbbbb01bdf72a499c870258c69d5237a1912d7ef4c90c67",
+    "source/render/ci/material_contract.py": "9cddbcf3734b6341a5fd2bfc48f2ca6c0d0b22c368b2ddd37eac61dd0125e120",
     "source/render/ci/guarded_manifest_ci.py": "1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0",
     "source/render/ci/capture_material_studies.gd": "ad0f3ac4b17b0f9d1abdd8ac531979d8676a701eb99af34aa216019213656204",
     "source/render/ci/material_gameplay-lock.disabled.json": "47bc5a2ad91dc2cafcc22e3156bae65c1009a8bb561c5976cabae0b7f7b8fe92",
@@ -68,7 +68,7 @@
     "source/render/ci/material_studies-lock.disabled.json": "fedb66186d72f232d7c74357089c49f71e409fd7e84d107f46cb84160471b56a",
     "source/render/ci/capture_material_base.gd": "98ded858e41488d56e5616c7cb3bcca65a954ec5613b1bbfd5acc37abb7c008a",
     "source/render/ci/xvfb_startup.py": "558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546",
-    "source/render/ci/scan_evidence.py": "8cd57ac9f3f47a4060aaa36a7e972d0dd853eeaa822725a2d16b4d23fa40fb67",
+    "source/render/ci/scan_evidence.py": "a4b935bdf6906a1b303287de8821473f8853a36fbfdc5183f577d59f0de39b9f",
     "source/render/ci/run_native.py": "56704a1f789b9322e113fb8e3a50c0b2d836f2d755f1dc95672ac85c559b5698",
     "source/render/ci/baseline_192.json": "36e6441b6dac681d4194a6d21e14c18660b38ea7082c1cddc7d9e48e5b07a93c",
     "baseline-public/ci/apply_guidance_overlay.py": "4920f6bbf1e0396ea1e1e529b531faf624be3b8520e961e8f54140096f605542",
@@ -89,9 +89,9 @@
   "build": "vc-84a95dfec970",
   "native_output_review_sha256": "c8867d33557947321b784110d31d7c8cc088c09a128458fa1240bda84d81f520",
   "capture_review_sha256": {
-    "studies": "cdda7cb4b364eeffc797d3f1bcc53dc0d0074968208da6850d7b1517c221cd5c",
-    "portrait": "0306cf575e37a45b3eafffbb90d5b8a8f837925ea81db1626ce5ea0e59f7f21f",
-    "landscape": "5dea44286f94f3a8bb5066b78d21ca5457ee29b6b2e17e7b6458fdd9b84da21b"
+    "studies": "0e70d5df2f4d6bc1b502df7e92089097812fbd2398d2335d434f1bf334e650df",
+    "portrait": "b7c9c9183df14f2c96cb5dd4b5e978328d6170209414f5598ee3fb2775fab92e",
+    "landscape": "0abb8e46db287b7728fb0667537074c6d001b7f5973229778052b1af04b717ce"
   },
   "success_artifact_file_count": 46,
   "success_provenance_files": [
@@ -107,13 +107,13 @@
   "failure_collector_sha256": "4b59fcc7e13360df5aa7647a2331e85948ea434f57d095d08ce3b941d5c7d252",
   "failure_collector_review_sha256": "cf993b0e706173aa9851d7cb198b84f255a7b6adc1f00b3740410360aa8c3142",
   "independent_offline_tests": {
-    "total": 65,
+    "total": 74,
     "python312": true,
     "python313": true
   },
   "test_logs_sha256": {
-    "render-diagnostic-final-python312-tests.log": "d695289ccb19c742cbec3166ab6593ada51da2385525d518e0856dbb8e5b04fd",
-    "render-diagnostic-final-python313-tests.log": "9f3b0fa1c31e1597c6d0229139d986a036cd868baeaf5eef025231985836dc83"
+    "render-precision-final-python312-tests.log": "fc8357370aca0c0faae6132e10defff982d61dd5aed4e14711c3c6a3234c1338",
+    "render-precision-final-python313-tests.log": "f1f89d7800d42d017218ddbe540781acd4bae4969fabfc2c06d0c3252f35127b"
   },
   "full_file_only_preflight_rehearsal_passed": true,
   "required_raw_png": 12,
@@ -123,15 +123,25 @@
   "reviewer_engine_executed": false,
   "external_write_performed": false,
   "rendered_pixel_acceptance": false,
-  "prior_delivery_review_sha256": "d5833c2bcd6279718b035d089d8a4f44ef22492de610af72973643eff1e26655",
-  "diagnostic_source_review_sha256": "661124d30ec2dfe539fa2a110321b4448d96809dfbd1c0c3a13d637f50cc4d6b",
+  "prior_delivery_review_sha256": "d952f31621b9b9155559ea49f08ad89c2d49aa75b232aeb30711a70c806920a9",
   "runtime_changes": [
-    "72 fixed assertion identifiers in material_contract.py",
-    "Exact allowlist in scan_evidence.safe_scan_exception only"
+    "MC_REPORT_19: only controlled-study copied basis uses finite unit right-handed comparison with component delta at most 2^-20",
+    "MC_REPORT_23: only study size uses exact canonical float32 identity to 3.2",
+    "Fixed three-scalar study numeric diagnostic, bounded finite values only"
   ],
-  "acceptance_predicates_order_and_tolerances_unchanged": true,
-  "exact_original_contract_bytes_reconstructed_sha256": "0482828bd669fe7121bfb6339e13e6f80762067df5762becae99ca3810f5df29",
-  "actual_scan_failure_reason_known": false,
-  "prior_run": 42458380555,
-  "same_77_public_path_set": true
+  "actual_scan_failure_reason_known": true,
+  "prior_run": 42459285809,
+  "same_77_public_path_set": true,
+  "precision_source_review_sha256": "175297ab4524caea8d80caba3cb149c26807798692ac38f7c9ec3ebb080cd6e0",
+  "changed_predicates": [
+    "MC_REPORT_19 studies branch only",
+    "MC_REPORT_23 study size only"
+  ],
+  "all_other_contract_and_scanner_logic_unchanged": true,
+  "ordinary_game_camera_equality_exact": true,
+  "prior_failure": "MC_REPORT_19",
+  "actual_numeric_drift_review_required": true,
+  "actual_numeric_drift_known": false,
+  "study_basis_component_max_abs_delta": 9.5367431640625e-07,
+  "source_reasoning_sha256": "435f17362fb90069ba47a0c94c02dbd6f48d72685a05984ee6ae73e29c754320"
 }

@@ -5,7 +5,7 @@
   "public_manifest": "DELIVERY_FILES.json",
   "review": {
     "path": "DELIVERY_REVIEW.json",
-    "sha256": "d952f31621b9b9155559ea49f08ad89c2d49aa75b232aeb30711a70c806920a9"
+    "sha256": "c7f213bb74bbcfcc6e2b5a05c70e48dfdd32aaa453ff2709f40ea73e3fb73491"
   },
   "artifacts": {
     "old_licensed": {
@@ -157,27 +157,27 @@
     },
     "controls_landscape_prepared_json": {
       "path": "controls/landscape.prepared.json",
-      "sha256": "4d5dca58f01d6599bb3097d60cd625aa739148ebdb91ed05219267b2ffbb6ce9"
+      "sha256": "acec85d49fe5f404cbf3b497a0f291e6ab6d32652075da57102a6560fd038adb"
     },
     "controls_landscape_review_json": {
       "path": "controls/landscape.review.json",
-      "sha256": "5dea44286f94f3a8bb5066b78d21ca5457ee29b6b2e17e7b6458fdd9b84da21b"
+      "sha256": "0abb8e46db287b7728fb0667537074c6d001b7f5973229778052b1af04b717ce"
     },
     "controls_portrait_prepared_json": {
       "path": "controls/portrait.prepared.json",
-      "sha256": "60460d3462dcfdf6519f068ef6ec4b617e74c41dfd5a4debb02e641e66d2cd61"
+      "sha256": "de87978a61e736122b3f35c9232c6c1de751dd8af9b601f5b070385ff92d0eba"
     },
     "controls_portrait_review_json": {
       "path": "controls/portrait.review.json",
-      "sha256": "0306cf575e37a45b3eafffbb90d5b8a8f837925ea81db1626ce5ea0e59f7f21f"
+      "sha256": "b7c9c9183df14f2c96cb5dd4b5e978328d6170209414f5598ee3fb2775fab92e"
     },
     "controls_studies_prepared_json": {
       "path": "controls/studies.prepared.json",
-      "sha256": "5d7fee124553997dfc918014890e12307f831d5a06053e38112d586e3a44d83c"
+      "sha256": "bf58bad805d791ccb1739971a0a8883f7ddab4d09ef05fcda5bb2c5affa4789d"
     },
     "controls_studies_review_json": {
       "path": "controls/studies.review.json",
-      "sha256": "cdda7cb4b364eeffc797d3f1bcc53dc0d0074968208da6850d7b1517c221cd5c"
+      "sha256": "0e70d5df2f4d6bc1b502df7e92089097812fbd2398d2335d434f1bf334e650df"
     },
     "reconstruct_baseline_py": {
       "path": "reconstruct_baseline.py",
@@ -225,7 +225,7 @@
     },
     "source_render_ci_material_contract_py": {
       "path": "source/render/ci/material_contract.py",
-      "sha256": "751251aceccc72645dbbbb01bdf72a499c870258c69d5237a1912d7ef4c90c67"
+      "sha256": "9cddbcf3734b6341a5fd2bfc48f2ca6c0d0b22c368b2ddd37eac61dd0125e120"
     },
     "source_render_ci_material_gameplay_lock_disabled_json": {
       "path": "source/render/ci/material_gameplay-lock.disabled.json",
@@ -241,7 +241,7 @@
     },
     "source_render_ci_scan_evidence_py": {
       "path": "source/render/ci/scan_evidence.py",
-      "sha256": "8cd57ac9f3f47a4060aaa36a7e972d0dd853eeaa822725a2d16b4d23fa40fb67"
+      "sha256": "a4b935bdf6906a1b303287de8821473f8853a36fbfdc5183f577d59f0de39b9f"
     },
     "source_render_ci_xvfb_startup_py": {
       "path": "source/render/ci/xvfb_startup.py",

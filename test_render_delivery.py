@@ -105,7 +105,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(stage.sha(ROOT/'collect_render_failure.py'),review['collector_sha256'])
     def test_copied_frozen_helpers(self):
         # All source bytes remain pinned, with only the reviewed diagnostic pair revised.
-        expected={'source/assemble_material_source.py': '732f1b634788bd15d5dad4211a1f876468ed76455e6be11cfdff7057d7be2487', 'source/bind_render_after_import.py': 'be7889a332b41d20018669b0c55809ce26dac530514d45a5b9f4cbc739d6ae7c', 'source/prepare_render_source.py': '7c61e3c57511c7d9da28f82d873a03c3cdb62d90b574a4852079ab684e005246', 'source/render/ci/baseline_192.json': '36e6441b6dac681d4194a6d21e14c18660b38ea7082c1cddc7d9e48e5b07a93c', 'source/render/ci/capture_material_base.gd': '98ded858e41488d56e5616c7cb3bcca65a954ec5613b1bbfd5acc37abb7c008a', 'source/render/ci/capture_material_gameplay.gd': '7958c90b2eb083b6bcdbb21d8d41c8844321bd8882cc7b255b711fdafb079a56', 'source/render/ci/capture_material_studies.gd': 'ad0f3ac4b17b0f9d1abdd8ac531979d8676a701eb99af34aa216019213656204', 'source/render/ci/guarded_manifest_ci.py': '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0', 'source/render/ci/hardened_monitored_run.py': '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50', 'source/render/ci/material_contract.py': '751251aceccc72645dbbbb01bdf72a499c870258c69d5237a1912d7ef4c90c67', 'source/render/ci/material_gameplay-lock.disabled.json': '47bc5a2ad91dc2cafcc22e3156bae65c1009a8bb561c5976cabae0b7f7b8fe92', 'source/render/ci/material_studies-lock.disabled.json': 'fedb66186d72f232d7c74357089c49f71e409fd7e84d107f46cb84160471b56a', 'source/render/ci/run_native.py': '56704a1f789b9322e113fb8e3a50c0b2d836f2d755f1dc95672ac85c559b5698', 'source/render/ci/scan_evidence.py': '8cd57ac9f3f47a4060aaa36a7e972d0dd853eeaa822725a2d16b4d23fa40fb67', 'source/render/ci/xvfb_startup.py': '558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546'}
+        expected={'source/assemble_material_source.py': '732f1b634788bd15d5dad4211a1f876468ed76455e6be11cfdff7057d7be2487', 'source/bind_render_after_import.py': 'be7889a332b41d20018669b0c55809ce26dac530514d45a5b9f4cbc739d6ae7c', 'source/prepare_render_source.py': '7c61e3c57511c7d9da28f82d873a03c3cdb62d90b574a4852079ab684e005246', 'source/render/ci/baseline_192.json': '36e6441b6dac681d4194a6d21e14c18660b38ea7082c1cddc7d9e48e5b07a93c', 'source/render/ci/capture_material_base.gd': '98ded858e41488d56e5616c7cb3bcca65a954ec5613b1bbfd5acc37abb7c008a', 'source/render/ci/capture_material_gameplay.gd': '7958c90b2eb083b6bcdbb21d8d41c8844321bd8882cc7b255b711fdafb079a56', 'source/render/ci/capture_material_studies.gd': 'ad0f3ac4b17b0f9d1abdd8ac531979d8676a701eb99af34aa216019213656204', 'source/render/ci/guarded_manifest_ci.py': '1737dfca2778614730b6dd6d3803009460139a19dfe901b830e84120abce75e0', 'source/render/ci/hardened_monitored_run.py': '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50', 'source/render/ci/material_contract.py': '9cddbcf3734b6341a5fd2bfc48f2ca6c0d0b22c368b2ddd37eac61dd0125e120', 'source/render/ci/material_gameplay-lock.disabled.json': '47bc5a2ad91dc2cafcc22e3156bae65c1009a8bb561c5976cabae0b7f7b8fe92', 'source/render/ci/material_studies-lock.disabled.json': 'fedb66186d72f232d7c74357089c49f71e409fd7e84d107f46cb84160471b56a', 'source/render/ci/run_native.py': '56704a1f789b9322e113fb8e3a50c0b2d836f2d755f1dc95672ac85c559b5698', 'source/render/ci/scan_evidence.py': 'a4b935bdf6906a1b303287de8821473f8853a36fbfdc5183f577d59f0de39b9f', 'source/render/ci/xvfb_startup.py': '558daeca491842c43e1212cb39b636c7014fd5e33a6f35b8a05bbf5cbc78b546'}
         actual={p.relative_to(ROOT).as_posix():stage.sha(p) for p in (ROOT/'source').rglob('*') if p.is_file() and '__pycache__' not in p.parts}
         self.assertEqual(actual,expected)
     def test_final_public_tree_exact_and_extra_rejected(self):
@@ -203,7 +203,7 @@ class Tests(unittest.TestCase):
 
 
 # Synthetic in-memory dictionaries only, never capture artifacts.
-import ast,contextlib,copy,io,struct,re
+import ast,contextlib,copy,io,struct,re,math
 sys.path.insert(0,str(ROOT/'source/render/ci'))
 import material_contract as c
 import scan_evidence as scanner
@@ -302,7 +302,7 @@ class GameplayTests(unittest.TestCase):
 
 
 class DiagnosticTests(unittest.TestCase):
-    def test_all_original_acceptance_predicates_and_order_unchanged(self):
+    def test_all_other_original_acceptance_bytes_unchanged(self):
         tree=ast.parse((ROOT/'source/render/ci/material_contract.py').read_text())
         tree.body=[n for n in tree.body if not (isinstance(n,ast.FunctionDef) and n.name=='need') and not (isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='MATERIAL_ASSERTION_IDS' for t in n.targets))]
         codes=[]
@@ -316,6 +316,12 @@ class DiagnosticTests(unittest.TestCase):
         self.assertEqual(set(codes),c.MATERIAL_ASSERTION_IDS)
         # Reconstruct the exact original bytes, avoiding Python-version AST formatting.
         source=(ROOT/'source/render/ci/material_contract.py').read_text()
+        begin=source.index('# BEGIN STUDY_FLOAT32_CONTRACT\n')
+        end=source.index('# END STUDY_FLOAT32_CONTRACT\n\n\n',begin)+len('# END STUDY_FLOAT32_CONTRACT\n\n\n')
+        source=source[:begin]+source[end:]
+        source=source.replace('import struct\n','')
+        source=source.replace("need(study_basis_matches(f['camera']['basis'],report['opening_camera']['basis']) if mode=='material_studies' else f['camera']['basis']==report['opening_camera']['basis'], 'MC_REPORT_19')","need(f['camera']['basis']==report['opening_camera']['basis'], 'MC_REPORT_19')")
+        source=source.replace("need(study_size_matches(f['camera'].get('size')) and f.get('camera_scope')=='detail framing, not gameplay', 'MC_REPORT_23')","need(f['camera'].get('size')==3.2 and f.get('camera_scope')=='detail framing, not gameplay', 'MC_REPORT_23')")
         start=source.index('\n# Closed source-authored diagnostic identifiers.')
         end=source.index('\ndef need(',start)
         source=source[:start]+source[end:]
@@ -335,12 +341,15 @@ class DiagnosticTests(unittest.TestCase):
             with self.subTest(message=message):
                 self.assertEqual(scanner.safe_scan_exception(ValueError(message)),{'type':'ValueError','reason':'Unexpected scanner exception; details withheld'})
         self.assertEqual(scanner.safe_scan_exception(RuntimeError(base)),{'type':'RuntimeError','reason':'Unexpected scanner exception; details withheld'})
-    def test_float32_hypothesis_remains_rejected_with_fixed_identifier(self):
+    def test_exact_float32_size_and_json_decimal_identity(self):
         report,lock=fixture()
         self.assertEqual(c.validate_report(report,lock,lambda p,l:None)[0]['kind'],'human_material_pixel_review_required')
         rounded=struct.unpack('f',struct.pack('f',3.2))[0]
         self.assertEqual(rounded,3.200000047683716);self.assertNotEqual(rounded,3.2)
-        for value in (rounded,3.199,3.201,True,float('nan'),float('inf')):
+        for value in (rounded,float(format(rounded,'.14g')),3.2):
+            report,lock=fixture();report['frames'][0]['camera']['size']=value
+            self.assertEqual(c.validate_report(report,lock,lambda p,l:None)[0]['kind'],'human_material_pixel_review_required')
+        for value in (3.199,3.201,True,float('nan'),float('inf')):
             report,lock=fixture();report['frames'][0]['camera']['size']=value
             with self.assertRaisesRegex(ValueError,'^Material contract rejected: MC_REPORT_23$'):
                 c.validate_report(report,lock,lambda p,l:None)
@@ -361,5 +370,92 @@ class DiagnosticTests(unittest.TestCase):
                 self.assertNotIn('fixture-private-data-unique',out.read_text()+printed.getvalue())
                 self.assertEqual(json.loads(printed.getvalue().removeprefix('NATIVE_SCAN_RESULT ')),result)
                 self.assertEqual({p.name for p in root.iterdir()},{'lock.json','scan.json'})
+
+
+
+class StudyPrecisionTests(unittest.TestCase):
+    def test_basis_exact_boundary_and_just_outside(self):
+        identity=[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
+        self.assertEqual(c.STUDY_BASIS_MAX_DELTA,8*2.0**-23)
+        for delta,accepted in ((0.0,True),(2.0**-24,True),(c.STUDY_BASIS_MAX_DELTA,True),(math.nextafter(c.STUDY_BASIS_MAX_DELTA,math.inf),False),(1e-4,False)):
+            actual=copy.deepcopy(identity);actual[0][1]=delta
+            with self.subTest(delta=delta):self.assertIs(c.study_basis_matches(actual,identity),accepted)
+    def test_basis_shapes_types_finiteness_and_unit_sanity(self):
+        identity=[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]
+        wrongs=[None,{},[],identity[:2],[[1,0],[0,1],[0,0]],[[1,0,0],[1,0,0],[0,0,1]],[[-1,0,0],[0,1,0],[0,0,1]],[[2,0,0],[0,1,0],[0,0,1]]]
+        for bad in (True,'1',float('nan'),float('inf')):
+            value=copy.deepcopy(identity);value[0][0]=bad;wrongs.append(value)
+        for value in wrongs:
+            with self.subTest(value=value):
+                self.assertFalse(c.study_basis_matches(value,identity))
+                self.assertFalse(c.study_basis_matches(identity,value))
+                self.assertFalse(c.study_basis_matches(value,value))
+    def test_float32_gram_schmidt_roundtrip_is_numerically_bounded(self):
+        f32=lambda x:struct.unpack('!f',struct.pack('!f',x))[0]
+        def dot(a,b):return f32(f32(f32(a[0]*b[0])+f32(a[1]*b[1]))+f32(a[2]*b[2]))
+        def normalize(v):
+            length=f32(math.sqrt(dot(v,v)))
+            return [f32(x/length) for x in v]
+        def sub(a,b):return [f32(x-y) for x,y in zip(a,b)]
+        def mul(v,k):return [f32(x*k) for x in v]
+        def cross(a,b):return [f32(f32(a[1]*b[2])-f32(a[2]*b[1])),f32(f32(a[2]*b[0])-f32(a[0]*b[2])),f32(f32(a[0]*b[1])-f32(a[1]*b[0]))]
+        def orthonormalize(basis):
+            x,y,z=copy.deepcopy(basis);x=normalize(x);y=normalize(sub(y,mul(x,dot(x,y))));z=normalize(sub(sub(z,mul(x,dot(x,z))),mul(y,dot(y,z))));return [x,y,z]
+        # Synthetic reconstruction from the unchanged source camera offset.
+        z=normalize([19.0,25.0,23.0]);x=normalize(cross([0.0,1.0,0.0],z));y=cross(z,x)
+        # Node3D.look_at preserves scale through the default YXZ Euler round trip.
+        rotated=orthonormalize([x,y,z]);z=rotated[2]
+        pitch=f32(math.asin(-z[1]));yaw=f32(math.atan2(z[0],z[2]))
+        cx=f32(math.cos(pitch));sx=f32(math.sin(pitch));cy=f32(math.cos(yaw));sy=f32(math.sin(yaw))
+        opening=orthonormalize([[cy,0.0,-sy],[f32(sy*sx),cx,f32(cy*sx)],[f32(cx*sy),-sx,f32(cy*cx)]])
+        copied=orthonormalize(orthonormalize(opening))
+        self.assertNotEqual(opening,copied)
+        self.assertTrue(c.study_basis_matches(copied,opening))
+        self.assertLess(max(abs(a-b) for ac,bc in zip(copied,opening) for a,b in zip(ac,bc)),c.STUDY_BASIS_MAX_DELTA)
+    def test_size_exact_float32_neighbors_rejected(self):
+        bits=struct.unpack('!I',struct.pack('!f',3.2))[0]
+        for offset in (-1,1):
+            value=struct.unpack('!f',struct.pack('!I',bits+offset))[0]
+            self.assertFalse(c.study_size_matches(value))
+        for value in (None,True,'3.2',3.0,4.0,0,1e300,float('nan'),float('inf')):self.assertFalse(c.study_size_matches(value))
+    def test_studies_only_accept_small_copy_roundoff(self):
+        report,lock=fixture();report['frames'][0]['camera']=copy.deepcopy(report['frames'][0]['camera']);report['frames'][0]['camera']['basis'][0][1]=2.0**-24
+        self.assertEqual(c.validate_report(report,lock,lambda p,l:None)[0]['kind'],'human_material_pixel_review_required')
+        report['frames'][0]['camera']['basis'][0][1]=1e-4
+        with self.assertRaisesRegex(ValueError,'MC_REPORT_19'):c.validate_report(report,lock,lambda p,l:None)
+    def test_ordinary_gameplay_basis_and_whole_camera_stay_exact(self):
+        for field in ('basis','size','near','projection','position'):
+            report,lock=game_fixture();report['frames'][1]['camera']=copy.deepcopy(report['frames'][1]['camera'])
+            if field=='basis':report['frames'][1]['camera']['basis'][0][1]=1e-12
+            elif field=='size':report['frames'][1]['camera'][field]=math.nextafter(3.2,math.inf)
+            else:report['frames'][1]['camera'][field]='different'
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'MC_REPORT_19' if field=='basis' else 'MC_REPORT_28'):
+                c.validate_report(report,lock,lambda p,l:None)
+    def test_diagnostic_scalar_schema_bounds_and_no_report_dump(self):
+        report,lock=fixture();report['private']='fixture-private-data-unique'
+        report['frames'][0]['camera']=copy.deepcopy(report['frames'][0]['camera']);report['frames'][0]['camera']['basis'][0][1]=2.0**-24
+        result=scanner.study_camera_numeric_diagnostic(report)
+        self.assertEqual(set(result),{'diagnostic_only','available','basis_max_abs_delta','size_min','size_max'})
+        self.assertIs(result['diagnostic_only'],True);self.assertIs(result['available'],True)
+        self.assertGreater(result['basis_max_abs_delta'],0);self.assertLessEqual(result['basis_max_abs_delta'],4)
+        self.assertEqual((result['size_min'],result['size_max']),(3.2,3.2))
+        self.assertNotIn('fixture-private-data-unique',json.dumps(result))
+        for field,value in (('size',True),('size','3.2'),('size',129),('size',float('nan')),('size',float('inf')),('size',0),('basis',[[2.1,0,0],[0,1,0],[0,0,1]]),('basis',[])):
+            bad=copy.deepcopy(report);bad['frames'][0]['camera'][field]=value
+            self.assertEqual(scanner.study_camera_numeric_diagnostic(bad),{'diagnostic_only':True,'available':False})
+    def test_scalar_diagnostic_precedes_success_or_rejection(self):
+        for delta in (2.0**-24,1e-4):
+            report,lock=fixture();report['frames'][0]['camera']=copy.deepcopy(report['frames'][0]['camera']);report['frames'][0]['camera']['basis'][0][1]=delta
+            printed=io.StringIO()
+            with mock.patch.object(scanner,'pose_identity',return_value=None),contextlib.redirect_stdout(printed):
+                if delta<c.STUDY_BASIS_MAX_DELTA:scanner.validate_scenario(report,lock)
+                else:
+                    with self.assertRaisesRegex(ValueError,'MC_REPORT_19'):scanner.validate_scenario(report,lock)
+            line=printed.getvalue();self.assertTrue(line.startswith('MATERIAL_CAMERA_NUMERIC_DIAGNOSTIC '));self.assertLess(len(line),256)
+            value=json.loads(line.removeprefix('MATERIAL_CAMERA_NUMERIC_DIAGNOSTIC '));self.assertEqual(value,scanner.study_camera_numeric_diagnostic(report))
+    def test_no_study_numeric_allowance_or_telemetry_for_gameplay(self):
+        report,lock=game_fixture();printed=io.StringIO()
+        with mock.patch.object(scanner,'pose_identity',return_value=None),contextlib.redirect_stdout(printed):scanner.validate_scenario(report,lock)
+        self.assertEqual(printed.getvalue(),'')
 
 if __name__=='__main__':unittest.main()

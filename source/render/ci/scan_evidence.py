@@ -125,8 +125,30 @@ def pose_identity(pose, lock):
     return pose['pose_sha256']
 
 
+def study_camera_numeric_diagnostic(report):
+    # Fixed, bounded scalars only. Never paths, raw arrays or exception text.
+    unavailable={'diagnostic_only':True,'available':False}
+    if type(report) is not dict or report.get('mode')!='material_studies':return unavailable
+    frames=report.get('frames');opening=report.get('opening_camera')
+    if type(frames) is not list or len(frames)!=8 or type(opening) is not dict:return unavailable
+    def basis_ok(basis):
+        return type(basis) is list and len(basis)==3 and all(type(column) is list and len(column)==3 and all(type(v) in (int,float) and math.isfinite(v) and abs(v)<=2 for v in column) for column in basis)
+    reference=opening.get('basis')
+    if not basis_ok(reference):return unavailable
+    delta=0.0;sizes=[]
+    for frame in frames:
+        if type(frame) is not dict or type(frame.get('camera')) is not dict:return unavailable
+        basis=frame['camera'].get('basis');size=frame['camera'].get('size')
+        if not basis_ok(basis) or type(size) not in (int,float) or not math.isfinite(size) or not 0<size<=128:return unavailable
+        delta=max(delta,max(abs(a-b) for ac,bc in zip(basis,reference) for a,b in zip(ac,bc)))
+        sizes.append(size)
+    return {'diagnostic_only':True,'available':True,'basis_max_abs_delta':float(format(delta,'.12g')),'size_min':float(format(min(sizes),'.12g')),'size_max':float(format(max(sizes),'.12g'))}
+
+
 def validate_scenario(report, lock):
     from material_contract import validate_report
+    if lock['capture_contract']['mode']=='material_studies':
+        print('MATERIAL_CAMERA_NUMERIC_DIAGNOSTIC '+json.dumps(study_camera_numeric_diagnostic(report),sort_keys=True),flush=True)
     return validate_report(report, lock, pose_identity)
 
 

@@ -3,6 +3,7 @@ import hashlib
 import json
 import math
 import re
+import struct
 from pathlib import Path
 
 KINDS = ('villager', 'spearman', 'archer', 'scout')
@@ -125,6 +126,31 @@ def validate_lock(lock):
 
 def finite(v):return type(v) in (int,float) and math.isfinite(v)
 
+# BEGIN STUDY_FLOAT32_CONTRACT
+# Camera3D disables scale: dirty global-transform reads Gram-Schmidt-normalize.
+# The copied study basis is re-normalized on basis/position assignment. Bound
+# component roundoff to eight float32 epsilons, below Godot CMP_EPSILON (1e-5).
+# Never apply this allowance to the unchanged ordinary-game camera.
+STUDY_BASIS_MAX_DELTA = 2.0 ** -20
+
+def study_basis_matches(actual, opening):
+    for basis in (actual, opening):
+        if type(basis) is not list or len(basis)!=3:return False
+        if not all(type(column) is list and len(column)==3 for column in basis):return False
+        if not all(finite(v) and abs(v)<=1+STUDY_BASIS_MAX_DELTA for column in basis for v in column):return False
+        if not all(abs(sum(v*v for v in column)-1)<=4*STUDY_BASIS_MAX_DELTA for column in basis):return False
+        if not all(abs(sum(a*b for a,b in zip(basis[i],basis[j])))<=4*STUDY_BASIS_MAX_DELTA for i,j in ((0,1),(0,2),(1,2))):return False
+        x,y,z=basis
+        if sum(a*b for a,b in zip((x[1]*y[2]-x[2]*y[1],x[2]*y[0]-x[0]*y[2],x[0]*y[1]-x[1]*y[0]),z))<=0:return False
+    return all(abs(a-b)<=STUDY_BASIS_MAX_DELTA for ac,bc in zip(actual,opening) for a,b in zip(ac,bc))
+
+def study_size_matches(value):
+    # Camera3D stores real_t=float. Godot JSON decimal text need not preserve
+    # every double digit; require the same exact float32 property bit pattern.
+    return finite(value) and 3.0<=value<=4.0 and struct.pack('!f',value)==struct.pack('!f',3.2)
+# END STUDY_FLOAT32_CONTRACT
+
+
 def validate_materials(rows, kind, lock):
     need(type(rows) is list and len(rows)>0, 'MC_MATERIAL_01')
     target=lock['material_binding']['atlas_rgba8_sha256']['art/action_characters/textures/'+kind+'_atlas.png']
@@ -158,13 +184,13 @@ def validate_report(report, lock, pose_identity):
         need(light.get('ambient_color')=='b6bec5ff' and light.get('sun_color')=='ffedceff' and light.get('background_color')=='727967ff', 'MC_REPORT_16')
         need(light.get('tonemap')==0 and light.get('shadow_distance')==80, 'MC_REPORT_17')
         need(len(light.get('sun_rotation_degrees',[]))==3 and all(abs(a-b)<.0001 for a,b in zip(light['sun_rotation_degrees'],[-48,-32,0])), 'MC_REPORT_18')
-        need(f['camera']['basis']==report['opening_camera']['basis'], 'MC_REPORT_19')
+        need(study_basis_matches(f['camera']['basis'],report['opening_camera']['basis']) if mode=='material_studies' else f['camera']['basis']==report['opening_camera']['basis'], 'MC_REPORT_19')
     if mode=='material_studies':
         need([(f.get('kind'),f.get('view')) for f in frames]==[(k,v) for k in KINDS for v in ('front','rear')], 'MC_REPORT_20')
         for f in frames:
             need(f.get('study_label')==LABEL and f.get('framebuffer')==[844,390], 'MC_REPORT_21')
             need(f.get('unit_state')=='controlled_paused_idle' and f.get('clip')=='idle' and f.get('overlay_disabled') is True, 'MC_REPORT_22')
-            need(f['camera'].get('size')==3.2 and f.get('camera_scope')=='detail framing, not gameplay', 'MC_REPORT_23')
+            need(study_size_matches(f['camera'].get('size')) and f.get('camera_scope')=='detail framing, not gameplay', 'MC_REPORT_23')
             poses=f.get('animation_poses');need(type(poses) is list and len(poses)==1, 'MC_REPORT_24')
             need(poses[0].get('kind')==f['kind'] and poses[0].get('clip')=='idle' and poses[0].get('occlusion',{}).get('authorized') is False, 'MC_REPORT_25')
             pose_identity(poses[0],lock)
