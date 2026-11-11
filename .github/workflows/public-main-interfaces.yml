@@ -14,8 +14,9 @@ jobs:
     timeout-minutes: 22
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-      RTS_WORK: ${{ runner.temp }}/public-interfaces-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/public-interfaces-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
