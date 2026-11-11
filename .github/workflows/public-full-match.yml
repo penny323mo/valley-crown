@@ -1,0 +1,68 @@
+# Reviewed scoped construction contracts and exact Web export on a fresh hosted VM.
+name: Measure full ordinary-command match
+on:
+  push:
+    branches: [ci/consolidated-web-vc-e721ebcc3237]
+permissions:
+  contents: read
+concurrency:
+  group: full-match-vc-e721ebcc3237
+  cancel-in-progress: false
+jobs:
+  full_match:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      CONSTRUCTION_SOURCE_COMMIT: b7b8317ec30664de791e6ac3e2d0c3f59baa4b84
+      CONSTRUCTION_GAME_TREE: 501a3d0cfad0d5f50a491d46125679dfc05b2177
+      CONSTRUCTION_BUILD: vc-e721ebcc3237
+      CONSTRUCTION_EXECUTION_APPROVED: 'true'
+      FULL_MATCH_EXECUTION_APPROVED: 'true'
+    steps:
+      - name: Reject pending or unapproved source pins
+        run: |
+          set -euo pipefail
+          test "$CONSTRUCTION_EXECUTION_APPROVED" = true
+          test "$FULL_MATCH_EXECUTION_APPROVED" = true
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_REF" = refs/heads/ci/consolidated-web-vc-e721ebcc3237
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          [[ "$CONSTRUCTION_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CONSTRUCTION_GAME_TREE" =~ ^[0-9a-f]{40}$ ]]
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/public-web-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact tested public game tree
+        run: python3 -B ci/prepare_web_release.py prepare --work "$RTS_WORK"
+      - name: Inert exact full-match adapter preflight
+        run: python3 -B ci/test_adapter.py
+      - name: Prepare pinned official engine without launch
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_web_release.py engine --work "$RTS_WORK"
+      - name: Fresh bounded import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: One bounded ordinary-command full match
+        run: python3 -B ci/run_full_match.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/full-match" --private "$RTS_WORK/private/full-match"
+      - name: Retain complete or partial match evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: normal-full-match-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/full-match/full-match-receipt.json
+            ${{ env.RTS_WORK }}/full-match/full-match/receipt.json
+            ${{ env.RTS_WORK }}/full-match/full-match/godot.log
+            ${{ env.RTS_WORK }}/full-match/full-match/full-match-report.json
+            ${{ env.RTS_WORK }}/export-lock.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# Independent measurement. A failed/partial match remains failed; no next game process.
