@@ -82,9 +82,12 @@ func run():
 			if p==Vector2.INF: continue
 			var sequence=game.command_sequence
 			await tap(p)
-			check(label+" next world tap leaves stance and selection intact",game.command_sequence==sequence and game.commands.is_empty() and scout.mode==pair[2] and game.selected==[scout.id])
+			# This is a NEW completed press after Stop/Defend, not the release of
+			# an interrupted pointer. Contextual touch must accept the new order.
+			check(label+" fresh world tap queues contextual move and retains selection",game.command_sequence==sequence+1 and game.commands.size()==1 and game.commands[0].type=="order" and game.commands[0].target==-1 and game.commands[0].ids==[scout.id] and scout.mode==pair[2] and game.selected==[scout.id] and not game.touch_command)
+			var contextual=game.commands.duplicate(true)
 			await tap(game.touch_button.get_global_rect().get_center()); await tap(p)
-			check(label+" explicit rearm still queues move",game.commands.size()==1 and game.commands[0].type=="order" and game.commands[0].target==-1)
+			check(label+" explicit rearm queues second move without replacing contextual order",game.command_sequence==sequence+2 and contextual.size()==1 and game.commands.size()==2 and game.commands[0]==contextual[0] and game.commands[1].type=="order" and game.commands[1].target==-1 and game.commands[1].ids==[scout.id] and not game.touch_command)
 		# X may interrupt an already-held world touch. Its canceled release
 		# must not become a target, and the same finger index must work again.
 		game._cancel_mode(); game._test_reset(); game._home()

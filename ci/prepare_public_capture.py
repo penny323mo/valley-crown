@@ -4,8 +4,8 @@ from pathlib import Path
 import argparse,hashlib,importlib.util,json,os,re,shutil,subprocess,sys,zipfile
 sys.dont_write_bytecode=True
 HERE=Path(__file__).resolve().parent
-SOURCE_COMMIT='4139ca050ea3fcdc8910fe1836baaf6857f38516'
-GAME_TREE='a322932331d4fb260c6924e2ea73d3bcc841132a'
+SOURCE_COMMIT='13db472be5001be209c823baabe8ec53d469af4b'
+GAME_TREE='099611143f8b777de5ecb0cc18939e5af61230bc'
 BUILD='vc-a0f7fd3365f7'
 ENGINE='4.6.3.stable.official.7d41c59c4'
 ENGINE_SHA='f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'

@@ -8,7 +8,7 @@ FIXTURES = {
  'construction_status_hud': ('tests/construction_status_hud.gd', 'dfb464ce2e645a865845a5a567c7670cb6885e73b460f668ef98246debc0189a'),
  'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '102c1da25e4c526364a340d57cfa0b7ae336b8ee33da032ac3493c2820db4543'),
  'mobile_stop_control_phone': ('tests/mobile_stop_control_phone.gd', '6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a'),
- 'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'dc16951acd2c96d5ff83295222fe851329bf7bb37a46a99d66c84c063c20f37c'),
+ 'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'fe1a38da69e900aeef7edd4403f5b553727a704ca30c2ade83df654116b653e6'),
  'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '0eb10211bc5577f54923f6edc0c86f3ae700020d0ef373d1fe04b09d0e597c24'),
  'contextual_touch_phone': ('tests/contextual_touch_phone.gd', '9da858aa0801cc881bf10dc9b91d03822e16fc4cb70d9a46080f33ea6c4e01d1'),
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', 'be9f81844a2c6aa66bc02a318afeafa9c943c6b620e132b7601c93bdfe4aef47')}
