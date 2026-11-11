@@ -1,0 +1,87 @@
+name: Validate consolidated mobile controls
+on:
+  push:
+    branches: [ci/consolidated-touch-vc-21ae974acec8]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: mobile-stop-web-browser
+  cancel-in-progress: false
+jobs:
+  browser:
+    name: Fixed consolidated mobile (${{ matrix.fixture }})
+    if: ${{ github.run_attempt == 1 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [portrait]
+        fixture: [natural390, short320, contextual390]
+        include:
+          - fixture: natural390
+            bundle: .
+          - fixture: short320
+            bundle: short320
+          - fixture: contextual390
+            bundle: contextual390
+    defaults:
+      run:
+        working-directory: ${{ matrix.bundle }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Select fresh work root
+        working-directory: ${{ github.workspace }}
+        run: |
+          fixture="${{ matrix.fixture }}"
+          echo "RTS_WORK=$RUNNER_TEMP/q-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-${fixture:0:1}" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Test exact observed Node preflight without launching a browser
+        run: python3 -B -m unittest discover -s qa -p 'test_*preflight.py' -v
+      - name: Test fixed Stop fixture and passive diagnostics without launching a browser
+        run: |
+          node --test qa/test_construction_fixture.mjs qa/test_public_observation_assertions.mjs qa/test_passive_diagnostics.mjs qa/test_public_stream_cache_policy.mjs
+          python3 -B -m unittest discover -s qa -p test_construction_binding.py -v
+      - name: Require final reviewed export pins before retrieval
+        id: pins
+        run: python3 -B qa/check_export_pins.py --expected qa/expected-export.json --scenario qa/scenario-manifest.json --github-output "$GITHUB_OUTPUT"
+      - name: Retrieve exact successful export artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ steps.pins.outputs.artifact_id }}
+          run-id: ${{ steps.pins.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ matrix.bundle }}/candidate
+          merge-multiple: true
+      - name: Prepare verified Web bytes, pinned npm packages and stock Chrome metadata
+        run: python3 -B qa/prepare_browser_qa.py --candidate candidate --work "$RTS_WORK" --profile "${{ matrix.profile }}"
+      - name: Bind fixed Stop scenario to the complete reviewed guard identity
+        run: python3 -B qa/validate_construction_binding.py --scenario qa/scenario-manifest.json --lock "$RTS_WORK/browser-lock.json"
+      - name: Test selected profile in owned bounded Chrome service
+        run: python3 -B qa/run_host_browser.py --lock "$RTS_WORK/browser-lock.json" --export "$RTS_WORK/export" --bundle "$GITHUB_WORKSPACE/${{ matrix.bundle }}/qa" --deps "$RTS_WORK/deps" --output "$RTS_WORK/evidence" --receipt "$RTS_WORK/host-guard.json"
+      - name: Verify exact owned service cleanup independently
+        if: always()
+        run: |
+          if [ -f "$RTS_WORK/host-guard.json" ]; then
+            python3 -B qa/run_host_browser.py --cleanup "$RTS_WORK/host-guard.json"
+          fi
+      - name: Retain factual browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mobile-stop-web-browser-${{ matrix.fixture }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/evidence/*.png
+            ${{ env.RTS_WORK }}/evidence/*.json
+            ${{ env.RTS_WORK }}/evidence/*.log
+            ${{ env.RTS_WORK }}/host-guard.json
+            ${{ env.RTS_WORK }}/browser-lock.json
+            ${{ env.RTS_WORK }}/preparation.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# No deployment, privileged browser, custom seccomp, sysctl changes or sandbox bypass.
