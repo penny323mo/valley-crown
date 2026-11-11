@@ -1,6 +1,7 @@
 extends Node3D
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
 const WorkerIdleStatus = preload("res://scripts/worker_idle_status.gd")
+const ConstructionStatus = preload("res://scripts/construction_status.gd")
 const MAP_LIMIT = Rules.MAP_WORLD_LIMIT
 const BLUE = Color("435d6c")
 const RED = Color("813d32")
@@ -2790,7 +2791,7 @@ func _update_hud():
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
 		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / 10" % floori(ent.cargo_milli/1000.0)
 		if ent.built and Rules.PRODUCES.has(ent.kind): selection_detail.text+=" · 集合點已設定，新單位自動移動" if ent.get("rally_point",Vector3.INF)!=Vector3.INF else " · 可設定新單位集合點"
-		if not ent.built: selection_detail.text="施工 %d%% · 村民抵達後繼續建造" % int(ent.progress*100)
+		if not ent.built: selection_detail.text=ConstructionStatus.detail(ent,faction_views[0].records(),own_command_pending,paused)
 		if not ent.queue.is_empty():
 			queue_label.text="訓練 %ds · 隊列 %d" % [ceili(ent.queue[0].remaining_ticks/20.0),ent.queue.size()]
 			if ent.queue[0].remaining_ticks<=0:
@@ -3526,9 +3527,56 @@ func _install_web_bridge():
 		JavaScriptBridge.get_interface("window").valleySnapshot=qa_callback
 
 func _web_snapshot(_args):
+	if not qa_mode: return
 	var state=_snapshot()
 	state.audio=audio_cues.qa_status()
+	state.hud=_qa_hud_snapshot()
 	JavaScriptBridge.eval("window.valleyState="+JSON.stringify(state)+";")
+
+func _qa_visible_rect(control: Control) -> Rect2:
+	if not qa_mode or not is_instance_valid(control) or not control.is_visible_in_tree(): return Rect2()
+	var rect=control.get_global_rect().intersection(get_viewport().get_visible_rect())
+	var parent=control.get_parent()
+	while parent is Control:
+		if parent.clip_contents or parent is ScrollContainer: rect=rect.intersection(parent.get_global_rect())
+		parent=parent.get_parent()
+	# Do not offer a covered control as a touch target under an open overlay.
+	for cover in [compact_menu,end_panel,tutorial_panel]:
+		if is_instance_valid(cover) and cover.is_visible_in_tree() and cover!=control and not cover.is_ancestor_of(control) and rect.intersects(cover.get_global_rect()): return Rect2()
+	if is_instance_valid(compact_menu_dismiss) and compact_menu_dismiss.is_visible_in_tree() and not compact_menu.is_ancestor_of(control) and rect.intersects(compact_menu_dismiss.get_global_rect()): return Rect2()
+	return rect
+
+func _qa_rect_values(rect: Rect2) -> Array:
+	return [rect.position.x,rect.position.y,rect.size.x,rect.size.y]
+
+func _qa_hud_snapshot() -> Dictionary:
+	# Read-only screen observations for ordinary-touch QA. No authority lookup,
+	# commands, placement search, clock control or generic callable bridge.
+	if not qa_mode or not is_instance_valid(ui) or not is_instance_valid(camera): return {}
+	var viewport=get_viewport().get_visible_rect().size
+	var result={"schema":1,"viewport":[viewport.x,viewport.y],"selection_detail":"","selected_own":[],"own_targets":[],"preview":null,"buttons":[],"action_scroll":{"rect":[0,0,0,0],"scroll_horizontal":0}}
+	if _qa_visible_rect(selection_detail).has_area(): result.selection_detail=selection_detail.text
+	for record in faction_views[0].records().values():
+		if not record.get("owned",false) or not record.get("alive",false) or record.get("remembered",false) or record.get("team",-1)!=0: continue
+		var site=record.get("category","")=="building"
+		var summary={"id":record.id,"kind":record.kind,"category":record.category,"built":record.built,"progress":record.progress}
+		if site and record.id in selected: result.selected_own.append(summary.duplicate())
+		if record.kind!="villager" and not (site and not record.built): continue
+		var position=record.pos+Vector3(0,1.0 if site else 0.6,0)
+		if camera.is_position_behind(position): continue
+		var screen=camera.unproject_position(position)
+		if not screen.is_finite() or not _box_point_in_world(screen) or _pick(screen,false)!=record.id: continue
+		summary.screen=[screen.x,screen.y]; result.own_targets.append(summary)
+	if not build_mode.is_empty() and is_instance_valid(ghost) and ghost.is_visible_in_tree() and not camera.is_position_behind(ghost.global_position):
+		var screen=camera.unproject_position(ghost.global_position)
+		if screen.is_finite() and _box_point_in_world(screen): result.preview={"screen":[screen.x,screen.y],"placement_ok":placement_ok,"held":build_preview_held}
+	for button in ui.find_children("*","Button",true,false):
+		var rect=_qa_visible_rect(button)
+		if not rect.has_area(): continue
+		result.buttons.append({"text":button.text,"rect":_qa_rect_values(rect),"disabled":button.disabled,"in_action_scroll":action_scroll.is_ancestor_of(button)})
+	var scroll_rect=_qa_visible_rect(action_scroll)
+	if scroll_rect.has_area(): result.action_scroll={"rect":_qa_rect_values(scroll_rect),"scroll_horizontal":action_scroll.scroll_horizontal}
+	return result
 
 # Local faction 0 only: accepted commands waiting for execution, including AI/player
 # callers on that faction. Enemy commands and private attack-ledger fields are absent.
