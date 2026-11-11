@@ -92,7 +92,7 @@ static func make_mesh(kind: String, level: int) -> ArrayMesh:
 		# Corner apron, independent of shifted halls and their taller roof bounds.
 		var anchors := [Vector2(-1,-1),Vector2(1,1),Vector2(-1,1),Vector2(1,-1),Vector2(1,0.6),Vector2(-0.6,-1)]
 		var center := Vector3(anchors[i].x, 0, anchors[i].y) * (half - 0.15)
-		center.y = 0.024
+		center.y = 0.085 if kind == "farm" else 0.024
 		for j in range(8):
 			var a := float(j) * TAU / 8.0
 			var b := float(j + 1) * TAU / 8.0

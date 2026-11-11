@@ -13,7 +13,7 @@ def regular(root: Path, p: Path) -> bool:
 
 def runtime_paths(root: Path) -> list[Path]:
     paths = [root / n for n in ('project.godot', 'main.tscn', 'main_menu.tscn', 'export_presets.cfg')]
-    for folder, suffixes in [('scripts', {'.gd', '.uid'}), ('assets/audio', {'.wav', '.import'}), ('assets/models', {'.glb', '.import'}), ('assets/fonts', {'.otf', '.ttf', '.import'}), ('assets/mature', MATURE_SUFFIXES)]:
+    for folder, suffixes in [('scripts', {'.gd', '.uid'}), ('assets/audio', {'.wav', '.import'}), ('assets/models', {'.glb', '.import'}), ('assets/advanced_buildings', {'.gltf', '.bin', '.import'}), ('assets/fonts', {'.otf', '.ttf', '.import'}), ('assets/mature', MATURE_SUFFIXES)]:
         base = root / folder
         if base.exists():
             for p in base.rglob('*'):

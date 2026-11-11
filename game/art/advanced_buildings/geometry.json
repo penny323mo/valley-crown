@@ -1,0 +1,138 @@
+{
+  "status": "SOURCE_GEOMETRY_ONLY",
+  "models": [
+    {
+      "kind": "stable",
+      "triangles": 1558,
+      "surfaces": 6,
+      "vertices": 4674,
+      "bounds_min": [
+        -1.385,
+        0.0,
+        -1.3499999999999999
+      ],
+      "bounds_max": [
+        1.385,
+        2.375,
+        1.1480000000000001
+      ],
+      "source_props": [
+        {
+          "source": "Prop_Crate",
+          "position": [
+            -0.96,
+            0.13,
+            0.77
+          ],
+          "scale": [
+            0.32,
+            0.32,
+            0.32
+          ],
+          "rotation_y": 0.11,
+          "material": "oak"
+        }
+      ],
+      "sha256": {
+        ".gltf": "3a8e26b0520c162c00841358dcbdfec3a7478bfbfa1442863b74b22b334a52cc",
+        ".bin": "28401a9ef257b4c299f8cadeccf61ab7cda562c9faae0b5f2ff0c825d5776ab9"
+      }
+    },
+    {
+      "kind": "workshop",
+      "triangles": 1328,
+      "surfaces": 6,
+      "vertices": 3984,
+      "bounds_min": [
+        -1.325,
+        0.0,
+        -1.43
+      ],
+      "bounds_max": [
+        1.4286370330515628,
+        3.0199999999999996,
+        0.97
+      ],
+      "source_props": [
+        {
+          "source": "Prop_Chimney2",
+          "position": [
+            0.62,
+            0.15,
+            -0.68
+          ],
+          "scale": [
+            0.48,
+            0.92,
+            0.48
+          ],
+          "rotation_y": 0,
+          "material": "stone"
+        },
+        {
+          "source": "Prop_Crate",
+          "position": [
+            -0.92,
+            0.13,
+            -0.57
+          ],
+          "scale": [
+            0.34,
+            0.34,
+            0.34
+          ],
+          "rotation_y": 0,
+          "material": "oak"
+        }
+      ],
+      "sha256": {
+        ".gltf": "1ff38fd60b4bc55e16130ef4a8ea45fa9f06766117330c8a9a62d91d2579dd0f",
+        ".bin": "592c58d0616cba573d6fa6f169b6c1ae66c067604148b0394b830c0b17ce3ce7"
+      }
+    },
+    {
+      "kind": "tower",
+      "triangles": 992,
+      "surfaces": 4,
+      "vertices": 2976,
+      "bounds_min": [
+        -0.8834116677273228,
+        0.0,
+        -0.8834116677273228
+      ],
+      "bounds_max": [
+        0.8834116677273228,
+        3.91,
+        0.9299999999999999
+      ],
+      "source_props": [],
+      "sha256": {
+        ".gltf": "77d0d16f912923bab5ffe0b6526e6efd739ed67d80fc267c878d2099817c0e90",
+        ".bin": "6b41f5cf8283f80f9920b2f603eb8bdec375321e59bed1afeef611558b47e35a"
+      }
+    },
+    {
+      "kind": "farm",
+      "triangles": 2318,
+      "surfaces": 4,
+      "vertices": 6954,
+      "bounds_min": [
+        -1.37,
+        0.0,
+        -1.37
+      ],
+      "bounds_max": [
+        1.37,
+        0.7265,
+        1.37
+      ],
+      "source_props": [],
+      "sha256": {
+        ".gltf": "2afe0e81fce12ed4f26d8595561b6db9a19d3c350952edcd80bf79e6d50e72be",
+        ".bin": "8b691683d3dc5ca7f3bcb3ced483660da413f9fc3d794c20bb999d23614925ec"
+      }
+    }
+  ],
+  "engine_import": "NOT_RUN",
+  "visual_acceptance": "NOT_RUN"
+}

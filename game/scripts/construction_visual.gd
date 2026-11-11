@@ -2,10 +2,10 @@ extends RefCounted
 ## Temporary construction presentation only. No authority or visibility inputs.
 ## Uses the existing building's stone/oak materials, with two batched surfaces.
 const DIMENSIONS = {
-	"farm": Vector3(2.5,0.5,2.5),
-	"stable": Vector3(2.5,2.2,2.5),
-	"tower": Vector3(1.6,3.4,1.6),
-	"workshop": Vector3(2.5,2.2,2.5),
+	"farm": Vector3(2.74,0.5,2.74),
+	"stable": Vector3(2.62,1.68,2.30),
+	"tower": Vector3(1.76,2.76,1.76),
+	"workshop": Vector3(2.60,1.72,2.40),
 	"town_center": Vector3(2.65,3.05,2.45),
 	"house": Vector3(1.60,1.90,1.35),
 	"storehouse": Vector3(1.65,1.85,1.38),
@@ -64,6 +64,7 @@ static func _beam(surface: SurfaceTool, a: Vector3, b: Vector3) -> void:
 	surface.append_from(box,0,Transform3D(Basis(x,axis,z),(a+b)*0.5))
 
 static func _make_mesh(body: Node3D, kind: String, stage: int) -> ArrayMesh:
+	if kind == "farm": return _make_farm(body,stage)
 	var size: Vector3 = DIMENSIONS[kind]
 	var stone := SurfaceTool.new()
 	stone.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -85,9 +86,48 @@ static func _make_mesh(body: Node3D, kind: String, stage: int) -> ArrayMesh:
 			_beam(wood,Vector3(sx*x,top,-z),Vector3(sx*x,top,z))
 			_beam(wood,Vector3(sx*x,0.20,-z),Vector3(sx*x,top,z))
 	if stage >= 2:
-		var ridge := top + (0.87 if kind == "house" else 0.75)
-		_beam(wood,Vector3(-x,ridge,0),Vector3(x,ridge,0))
-		for sx in [-1,1]:
-			for sz in [-1,1]: _beam(wood,Vector3(sx*x,top,sz*z),Vector3(sx*x,ridge,0))
+		if kind == "tower":
+			# A working gallery scaffold, not a cottage roof on a stone tower.
+			for sz in [-1,1]: _beam(wood,Vector3(-x,top+0.42,sz*z),Vector3(x,top+0.42,sz*z))
+			for sx in [-1,1]:
+				_beam(wood,Vector3(sx*x,top+0.42,-z),Vector3(sx*x,top+0.42,z))
+				for sz in [-1,1]: _beam(wood,Vector3(sx*x,top,sz*z),Vector3(sx*x,top+0.42,sz*z))
+		else:
+			var rise := 0.65 if kind == "stable" else (0.66 if kind == "workshop" else (0.87 if kind == "house" else 0.75))
+			var ridge := top + rise
+			_beam(wood,Vector3(-x,ridge,0),Vector3(x,ridge,0))
+			for sx in [-1,1]:
+				for sz in [-1,1]: _beam(wood,Vector3(sx*x,top,sz*z),Vector3(sx*x,ridge,0))
 	wood.commit(mesh)
+	return mesh
+
+static func _make_farm(body: Node3D, stage: int) -> ArrayMesh:
+	var soil := SurfaceTool.new()
+	soil.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var earth := StandardMaterial3D.new()
+	earth.albedo_color = Color(0.24,0.17,0.105)
+	earth.roughness = 1.0
+	soil.set_material(earth)
+	_box(soil,Vector3(0,0.035,0),Vector3(2.74,0.07,2.74))
+	if stage >= 1:
+		for row in range(6): _box(soil,Vector3(-1.10+row*0.44,0.10,0),Vector3(0.26,0.08,2.20))
+	var mesh := soil.commit()
+	var timber := SurfaceTool.new()
+	timber.begin(Mesh.PRIMITIVE_TRIANGLES)
+	timber.set_material(_material(body,"oak"))
+	for sx in [-1,1]:
+		for sz in [-1,1]: _beam(timber,Vector3(sx*1.29,0.07,sz*1.28),Vector3(sx*1.29,0.54,sz*1.28))
+	if stage >= 1:
+		for sx in [-1,1]: _beam(timber,Vector3(sx*1.29,0.44,-1.28),Vector3(sx*1.29,0.44,1.28))
+	timber.commit(mesh)
+	if stage >= 2:
+		var sprouts := SurfaceTool.new()
+		sprouts.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var leaf := StandardMaterial3D.new()
+		leaf.albedo_color = Color(0.30,0.36,0.18)
+		leaf.roughness = 1.0
+		sprouts.set_material(leaf)
+		for row in range(6):
+			for plant in range(4): _box(sprouts,Vector3(-1.10+row*0.44,0.20,-0.9+plant*0.6),Vector3(0.05,0.18,0.05))
+		sprouts.commit(mesh)
 	return mesh

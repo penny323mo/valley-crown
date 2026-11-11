@@ -1,0 +1,115 @@
+name: Collect actual advanced building imports
+on:
+  push:
+    branches: [ci/advanced-building-import-vc-886b128c98ce-a1]
+permissions:
+  contents: read
+concurrency:
+  group: advanced-building-import-vc-886b128c98ce-a1
+  cancel-in-progress: false
+jobs:
+  collect:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      BUILDING_IMPORT_COLLECTION_APPROVED: 'true'
+      BUILDING_IMPORT_POLICY_SHA256: '3ec4853d097463e3c638cb80e9f573ab1025da77cd5578b0ef479003d0cf2afc'
+    steps:
+      - name: Enforce exact one-attempt collection scope
+        run: |
+          set -euo pipefail
+          test "$BUILDING_IMPORT_COLLECTION_APPROVED" = true
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_REF" = refs/heads/ci/advanced-building-import-vc-886b128c98ce-a1
+          test "$GITHUB_RUN_ATTEMPT" = 1
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/building-import-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check reviewed support bytes before importing Python modules
+        run: |
+          set -euo pipefail
+          sha256sum -c <<'REVIEWED_SUPPORT'
+          3ec4853d097463e3c638cb80e9f573ab1025da77cd5578b0ef479003d0cf2afc  ci/building_import_policy.py
+          746f11d4beb62ec00d03ebd48c6365ba15390fd56ecd0f4cb51485f8f637e255  ci/guarded_manifest_ci.py
+          5a595752aec95328ad825ed048cddad3d297338ae8eee5094ccac02b65a9c44b  ci/prepare_building_collection.py
+          4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50  ci/hardened_monitored_run.py
+          3dc01d98dd01638960db2634e3c0c3efbf1b67626d1d43745ddc6f1169367d42  ci/official_download.py
+          661338ca149af2b9fb24f520a45e3992c31df276152c3993cba40dd781a8b356  ci/test_building_import_policy.py
+          REVIEWED_SUPPORT
+      - name: Inert descriptor and immutability checks
+        run: python3 -B -m unittest discover -s ci -p test_building_import_policy.py -v
+      - name: Prepare exact source without creating import descriptors
+        run: python3 -B ci/prepare_building_collection.py prepare --work "$RTS_WORK"
+      - name: Prepare pinned official engine without launch
+        run: python3 -B ci/prepare_building_collection.py engine --work "$RTS_WORK"
+      - name: One original bounded import and exact output collection
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: Require final summary and retained bytes, never a certificate alone
+        run: |
+          set -euo pipefail
+          python3 -B - <<'VALIDATE_COLLECTION'
+          from pathlib import Path
+          import hashlib, json, os
+          work = Path(os.environ['RTS_WORK'])
+          evidence = work / 'import-evidence'
+          def digest(path):
+              with path.open('rb') as f: return hashlib.file_digest(f, 'sha256').hexdigest()
+          summary = json.loads((evidence / 'phase-summary.json').read_text())
+          attestation = json.loads((work / 'source-attestation.json').read_text())
+          retained = json.loads((evidence / 'actual-generated/retention.json').read_text())
+          manifest = json.loads((work / 'import-manifest.json').read_text())
+          assert summary['passed'] is True and summary['source_inventory_preserved'] is True
+          assert summary['phase'] == 'import' and summary['build'] == 'vc-886b128c98ce'
+          assert not summary.get('error') and not summary.get('retention_error')
+          assert summary['manifest_sha256'] == attestation['import_manifest_sha256'] == digest(work / 'import-manifest.json')
+          assert summary['archive_sha256'] == attestation['source_archive_sha256'] == digest(work / 'source.zip')
+          assert summary['retention'] == retained and retained['accepted'] is False and retained['errors'] == []
+          rows = summary['generated_buildings']
+          assert set(rows) == {'assets/advanced_buildings/' + kind + '.gltf.import' for kind in ('stable','workshop','tower','farm')}
+          original = {item['file']: item['sha256'] for item in manifest['files']}
+          expected = {name + '.uid' for name in original if name.endswith('.gd') and name + '.uid' not in original}
+          for shader in ('assets/mature/shaders/building_damage_soot.gdshader','assets/mature/menu/menu_backdrop.gdshader'):
+              if shader in original and shader + '.uid' not in original: expected.add(shader + '.uid')
+          for name, row in rows.items():
+              assert row['source_sha256'] == original[row['source']]
+              for artifact, sha in ((name, row['descriptor_sha256']), (row['compiled'], row['compiled_sha256']), (row['md5_path'], row['md5_sha256'])):
+                  expected.add(artifact)
+                  assert retained['files'][artifact]['sha256'] == sha
+          assert set(retained['files']) == expected
+          for name, row in retained['files'].items():
+              path = evidence / 'actual-generated' / row['retained']
+              assert path.is_file() and not any(p.is_symlink() for p in [path, *path.parents])
+              assert digest(path) == row['sha256'] and path.stat().st_size == row['bytes']
+          assert len(summary['commands']) == 1
+          command = summary['commands'][0]
+          assert command['name'] == 'import' and command['receipt'] == 'import.json'
+          assert command['receipt_sha256'] == digest(evidence / 'import.json')
+          assert command['invocation_sha256'] == digest(evidence / 'import.invocation.json')
+          verdict = {'passed': True, 'scope': 'import collection only; independent output review still required', 'summary_sha256': digest(evidence / 'phase-summary.json'), 'retention_sha256': digest(evidence / 'actual-generated/retention.json')}
+          with (evidence / 'collection-verdict.json').open('x') as f: json.dump(verdict, f, indent=2); f.write('\n')
+          print(json.dumps(verdict))
+          VALIDATE_COLLECTION
+      - name: Retain actual import evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: building-import-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/source-attestation.json
+            ${{ env.RTS_WORK }}/import-evidence/phase-summary.json
+            ${{ env.RTS_WORK }}/import-evidence/collection-verdict.json
+            ${{ env.RTS_WORK }}/import-evidence/import.json
+            ${{ env.RTS_WORK }}/import-evidence/import.invocation.json
+            ${{ env.RTS_WORK }}/import-evidence/import.log
+            ${{ env.RTS_WORK }}/import-evidence/actual-generated/
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 30
+# Collection only. No tests in Godot, export, browser, Xvfb, main or Pages write.

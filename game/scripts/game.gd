@@ -16,6 +16,7 @@ const Economy = preload("res://scripts/economy_ledger.gd")
 const AttackLedger = preload("res://scripts/attack_ledger.gd")
 const INITIAL_STOCKS = [{"food":150,"wood":200,"stone":100,"iron":0},{"food":150,"wood":200,"stone":100,"iron":0}]
 const ProgressionVisuals = preload("res://scripts/progression_visuals.gd")
+const AdvancedBuildingVisuals = preload("res://scripts/advanced_building_visuals.gd")
 var age_completed_tick=[-1,-1]
 var large_route_cache=[{},{}]
 const BoundedPath = preload("res://scripts/bounded_grid_pathfinder.gd")
@@ -436,7 +437,7 @@ func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacit
 	_mesh(ring_root,ring,Vector3(0,0.09,0),GOLD if team!=1 else RED)
 	ring_root.visible=false; e.ring=ring_root
 	if category!="resource":
-		var bar=Node3D.new(); n.add_child(bar); bar.position.y=1.95 if category=="unit" else 4.5
+		var bar=Node3D.new(); n.add_child(bar); bar.position.y=1.95 if category=="unit" else AdvancedBuildingVisuals.health_bar_height(kind)
 		_box(bar,Vector3.ZERO,Vector3(1.05,0.07,0.16),DARK)
 		var fill=_box(bar,Vector3(0,0.05,0),Vector3(1.0,0.07,0.15),Color("83bb83") if team==0 else Color("d97c65"))
 		# Horizontal unit bars retain the original projected box width, including depth.
@@ -458,8 +459,8 @@ func _unit_visual(_parent, _kind, _team):
 	pass
 
 func _building_visual(parent,kind,team):
-	if kind in ["farm","stable","tower","workshop"]:
-		ProgressionVisuals.build(parent,kind,RED if team==1 else BLUE); return
+	if kind in AdvancedBuildingVisuals.KINDS:
+		parent.add_child(AdvancedBuildingVisuals.instantiate_asset(kind,RED if team==1 else BLUE)); return
 	if kind in MatureVisuals.BUILDING_KINDS:
 		# Native candidate bounds already fit Rules footprints. No legacy mesh scaling.
 		parent.add_child(MatureVisuals.instantiate_asset(kind,0,RED if team==1 else BLUE))
