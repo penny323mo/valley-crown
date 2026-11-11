@@ -1,12 +1,12 @@
 # Reviewed scoped construction contracts and exact Web export on a fresh hosted VM.
-name: Validate menu and contextual touch, export Web
+name: Export tested military and current menu for Web QA
 on:
   push:
-    branches: [ci/mature-menu-web-vc-10d6c6145978]
+    branches: [ci/military-menu-web-vc-542ddb524e45]
 permissions:
   contents: read
 concurrency:
-  group: consolidated-web-vc-10d6c6145978
+  group: military-menu-web-vc-542ddb524e45
   cancel-in-progress: false
 jobs:
   export:
@@ -15,9 +15,9 @@ jobs:
     timeout-minutes: 25
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-      CONSTRUCTION_SOURCE_COMMIT: 3e84f07b5984135572c089a70fd90392810b8017
-      CONSTRUCTION_GAME_TREE: 5047b4ffcd5b7fea49a668d7769f7fa80a909062
-      CONSTRUCTION_BUILD: vc-10d6c6145978
+      CONSTRUCTION_SOURCE_COMMIT: 422acc862d9fc56f1fe2c95440f411893ded5edf
+      CONSTRUCTION_GAME_TREE: d7d5140ff5c8d17328438dcf60d806773cdef989
+      CONSTRUCTION_BUILD: vc-542ddb524e45
       CONSTRUCTION_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved source pins
@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           test "$CONSTRUCTION_EXECUTION_APPROVED" = true
           test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
-          test "$GITHUB_REF" = refs/heads/ci/mature-menu-web-vc-10d6c6145978
+          test "$GITHUB_REF" = refs/heads/ci/military-menu-web-vc-542ddb524e45
           test "$GITHUB_RUN_ATTEMPT" = 1
           [[ "$CONSTRUCTION_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
           [[ "$CONSTRUCTION_GAME_TREE" =~ ^[0-9a-f]{40}$ ]]
@@ -37,7 +37,10 @@ jobs:
       - name: Verify exact tested public game tree
         run: python3 -B ci/prepare_web_release.py prepare --work "$RTS_WORK"
       - name: Inert construction adapter preflight
-        run: python3 -B -m unittest discover -s ci -p test_contracts.py -v
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s ci -p test_contracts.py -v
+          python3 -B ci/preflight_combined_lock.py "$RTS_WORK/export-lock.json"
       - name: Prepare pinned official engine and Web template without launch
         run: |
           set -euo pipefail
