@@ -6,7 +6,7 @@ import json
 import os
 import prepare_public_capture as source
 
-BRANCH = 'refs/heads/ci/military-menu-logic-vc-542ddb524e45'
+BRANCH = 'refs/heads/ci/natural-match-vc-542ddb524e45'
 OUTPUT_FILES = sorted(['index.html', 'index.js', 'index.wasm', 'index.pck', 'index.png', 'index.icon.png', 'index.apple-touch-icon.png', 'index.audio.worklet.js', 'index.audio.position.worklet.js'])
 
 def admitted():

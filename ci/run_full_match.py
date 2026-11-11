@@ -10,8 +10,8 @@ import run_logic as logic
 import validate_full_match as v
 p=r.p
 LOGIC_SHA='04b8be583b5db6a4bb210adb55af4dde80e51f260579767daff41ee769b7bef1'
-HARNESS_SHA='a4401a8d27478c6ced41120d998f7a53d6098a71474483b15c1a724428500b8e'
-VALIDATOR_SHA='0ebfe8b7c6a87316791df79ce0546fefea9f07fb02e74e111e02472700325740'
+HARNESS_SHA='19b4c3d700f696c5a9571a67820d6c45e89b27d7fb55ce1d283eef2b7ab1ea12'
+VALIDATOR_SHA='228c55fd648c2e8367800e481d3f807e743e067dabf96c95569188608873a500'
 REPORT='full-match-report.json'
 
 def validate_gate(lock):
@@ -35,6 +35,9 @@ def read_report(path,lock):
     report=logic.read_report(path) # unchanged 4MiB/regular-file/duplicate/constants gate
     finite(report) # Also reject JSON exponent overflow such as 1e999.
     p.require(report.get('schema')=='vc-normal-full-match-v1','Wrong report schema')
+    p.require(report.get('policy_version')=='ordinary-integrated-v1','Wrong policy version')
+    p.require(type(report.get('final_public_records')) is list and type(report.get('public_samples')) is list,'Missing final public observations')
+    p.require(len(report['public_samples'])<=64 and len(report.get('commands',[]))<=2048,'Diagnostic evidence bound exceeded')
     p.require(type(report.get('passed')) is bool,'Invalid report pass')
     p.require(report.get('build')==lock['build'],'Report build mismatch')
     for key,name in [('game_sha256','scripts/game.gd'),('rules_sha256','scripts/rules.gd')]:
@@ -42,6 +45,8 @@ def read_report(path,lock):
     p.require(type(report.get('stop_reason')) is str and 0<len(report['stop_reason'])<=128,'Missing stop reason')
     p.require(type(report.get('phases')) is dict and type(report.get('events')) is list and type(report.get('commands')) is list,'Invalid partial evidence')
     p.require(report.get('engine_time_scale')==1,'Wrong engine time scale')
+    v.validate_recoveries(report)
+    v.validate_throughput(report)
     return report
 
 def run(args):
