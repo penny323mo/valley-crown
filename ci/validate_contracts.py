@@ -6,23 +6,23 @@ from pathlib import Path
 FIXTURES = {
  'construction_status': ('tests/construction_status_contract.gd', 'd67dc52d6e60152fb783112ba99afc19d610e20b935566b67b8b9268f7c6065a'),
  'construction_status_hud': ('tests/construction_status_hud.gd', 'dfb464ce2e645a865845a5a567c7670cb6885e73b460f668ef98246debc0189a'),
- 'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '2843c054740012e619385af4e7d5c5a20d9531843ebc7e0a85df78660c7a284e'),
- 'mobile_stop_control_phone': ('tests/mobile_stop_control_phone.gd', 'eaaa3058cf962289d1e8bc03ebfe11edd8dc5cb0d5f0aec3a4eb0af1ee7867f9'),
+ 'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '102c1da25e4c526364a340d57cfa0b7ae336b8ee33da032ac3493c2820db4543'),
+ 'mobile_stop_control_phone': ('tests/mobile_stop_control_phone.gd', '6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a'),
  'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'dc16951acd2c96d5ff83295222fe851329bf7bb37a46a99d66c84c063c20f37c'),
  'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '0eb10211bc5577f54923f6edc0c86f3ae700020d0ef373d1fe04b09d0e597c24'),
  'contextual_touch_phone': ('tests/contextual_touch_phone.gd', '9da858aa0801cc881bf10dc9b91d03822e16fc4cb70d9a46080f33ea6c4e01d1'),
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', 'be9f81844a2c6aa66bc02a318afeafa9c943c6b620e132b7601c93bdfe4aef47')}
 MENU_SHA = '4c42f11ab84ae5c150199e1f21f5f6a4f360439db8bd318f0651653d10bb2003'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-e721ebcc3237'
+BUILD = 'vc-a0f7fd3365f7'
 ARRAY_COUNTS = {'contextual_touch_contract':23, 'contextual_touch_phone':10}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}
 STATUS_SHA = '3d858e112dc953e3365003b535df0843751d3238ad80ffa9b0f25069a7c80d3b'
-GAME_SHA = '3e1b611cb38a85a720099cfbab56868866280e1e46e4e3b8d89669405f12f1fe'
+GAME_SHA = '286174e4f48ed03098fe0cfe05de2105d24b107943d4fefaeb14cd339913aefd'
 FILE_SUITE = 'stance_target_cancel_phone'
 FILE_REPORT = 'stance-target-cancel-phone.json'
-STOP_COUNTS = {'mobile_stop_control_contract':20, 'mobile_stop_control_phone':61,
+STOP_COUNTS = {'mobile_stop_control_contract':21, 'mobile_stop_control_phone':64,
                'stance_target_cancel_phone':58}
 STOP_SCOPES = {
  'mobile_stop_control_contract':'Synthetic control fixture, not rendered or physical-device acceptance',

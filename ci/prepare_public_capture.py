@@ -4,9 +4,9 @@ from pathlib import Path
 import argparse,hashlib,importlib.util,json,os,re,shutil,subprocess,sys,zipfile
 sys.dont_write_bytecode=True
 HERE=Path(__file__).resolve().parent
-SOURCE_COMMIT='b7b8317ec30664de791e6ac3e2d0c3f59baa4b84'
-GAME_TREE='501a3d0cfad0d5f50a491d46125679dfc05b2177'
-BUILD='vc-e721ebcc3237'
+SOURCE_COMMIT='4139ca050ea3fcdc8910fe1836baaf6857f38516'
+GAME_TREE='a322932331d4fb260c6924e2ea73d3bcc841132a'
+BUILD='vc-a0f7fd3365f7'
 ENGINE='4.6.3.stable.official.7d41c59c4'
 ENGINE_SHA='f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 SHADER_UID='assets/mature/shaders/building_damage_soot.gdshader.uid'
@@ -81,7 +81,7 @@ def prepare(project,work,public_blobs):
 def main():
     p=argparse.ArgumentParser();p.add_argument('phase',choices=['prepare','engine']);p.add_argument('--work',type=Path,required=True);a=p.parse_args()
     need(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('RUNNER_ENVIRONMENT')=='github-hosted','Hosted runner required')
-    need(os.environ.get('GITHUB_REPOSITORY')=='penny323mo/valley-crown' and os.environ.get('GITHUB_REF')=='refs/heads/ci/consolidated-web-vc-e721ebcc3237' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','Wrong repository/branch/attempt')
+    need(os.environ.get('GITHUB_REPOSITORY')=='penny323mo/valley-crown' and os.environ.get('GITHUB_REF')=='refs/heads/ci/consolidated-web-vc-a0f7fd3365f7' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','Wrong repository/branch/attempt')
     root=HERE.parent;work=a.work.resolve()
     if a.phase=='prepare':print(json.dumps(prepare(root/'game',work,entries_from_git(root))))
     else:

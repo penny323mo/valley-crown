@@ -161,8 +161,8 @@ class FinalBindingTests(unittest.TestCase):
     def test_success_counts_reported_executed_assertions(self):
         code,receipt,state=self.exercise()
         self.assertEqual(code,0);self.assertTrue(receipt['passed'])
-        self.assertEqual([row['assertions_executed'] for row in receipt['suites']],[34,34,20,61,58,23,10,16])
-        self.assertEqual(receipt['assertions_executed'],256)
+        self.assertEqual([row['assertions_executed'] for row in receipt['suites']],[34,34,21,64,58,23,10,16])
+        self.assertEqual(receipt['assertions_executed'],260)
         self.assertEqual(state['monitor_calls'],8)
     def test_drift_after_last_report_parse_fails(self):
         code,receipt,state=self.exercise(drift_on_parse=True)
@@ -359,7 +359,7 @@ class ConsolidatedTests(unittest.TestCase):
             data=(HERE/name).read_bytes()
             if name=='run_export.py':
                 # Exact reviewed source identity changes only; all monitor bytes remain equal.
-                for current,baseline in [('b7b8317ec30664de791e6ac3e2d0c3f59baa4b84','677096aaaa5131089971c2ec85b598ad20bd91da'),('501a3d0cfad0d5f50a491d46125679dfc05b2177','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-e721ebcc3237','vc-cf764648c52f')]:
+                for current,baseline in [('4139ca050ea3fcdc8910fe1836baaf6857f38516','677096aaaa5131089971c2ec85b598ad20bd91da'),('a322932331d4fb260c6924e2ea73d3bcc841132a','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-a0f7fd3365f7','vc-cf764648c52f')]:
                     self.assertEqual(data.count(current.encode()),1)
                     data=data.replace(current.encode(),baseline.encode())
             self.assertEqual(hashlib.sha256(data).hexdigest(),sha)

@@ -4,7 +4,8 @@ extends SceneTree
 class ControlledHUD:
 	extends "res://scripts/game.gd"
 	# This fixture owns only synthetic controls; the phone suite uses real HUD.
-	func _update_hud(): pass
+	var hud_updates=0
+	func _update_hud(): hud_updates+=1
 var game
 var checks=[]
 func _initialize(): call_deferred("run")
@@ -41,7 +42,12 @@ func run():
 		game._submit_selected_stance("stop")
 		check(blocked+" ordinary submission remains rejected",game.commands.is_empty())
 		game.set(blocked,false)
-	game._refresh_stop_button(); button.pressed.emit(); button.pressed.emit()
+	game._refresh_stop_button()
+	var hud_updates=game.hud_updates
+	game.all_touch_ids=[4]; game.touch_points={4:Vector2(200,200)}
+	game.touch_press_epochs={4:9}; game.dragging=true
+	button.pressed.emit(); button.pressed.emit()
+	check("ordinary Stop retires held pointers without rebuilding HUD",game.hud_updates==hud_updates and game.touch_points.is_empty() and not game.dragging and game.canceled_touch_ids.has(4))
 	check("each explicit tap submits only an ordinary Stop",game.commands.size()==2 and game.commands.all(func(command): return command.type=="stop" and command.ids==[1] and command.team==0))
 	check("repeated tap identifiers remain distinct",game.commands[0].command_id!=game.commands[1].command_id)
 	game.commands.clear(); game.compact_ui=false; game._refresh_stop_button()

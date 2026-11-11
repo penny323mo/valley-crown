@@ -6,7 +6,7 @@ import json
 import os
 import prepare_public_capture as source
 
-BRANCH = 'refs/heads/ci/consolidated-web-vc-e721ebcc3237'
+BRANCH = 'refs/heads/ci/consolidated-web-vc-a0f7fd3365f7'
 OUTPUT_FILES = sorted(['index.html', 'index.js', 'index.wasm', 'index.pck', 'index.png', 'index.icon.png', 'index.apple-touch-icon.png', 'index.audio.worklet.js', 'index.audio.position.worklet.js'])
 
 def admitted():
