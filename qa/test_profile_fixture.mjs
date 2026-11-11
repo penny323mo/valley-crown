@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp, readFile, readdir, rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {selectProfile,pointerClick,runQA,assertQueued,assertCompleted} from './browser_qa.mjs';
+import {selectProfile,pointerClick,runQA,assertQueued,assertCompleted,isExpectedCloseAbort} from './browser_qa.mjs';
 
 test('portrait dispatch uses touch; invalid input fails closed',async()=>{
   const calls=[];const page={touchscreen:{tap:async(...xy)=>calls.push(['touch',...xy])},mouse:{click:async(...xy)=>calls.push(['mouse',...xy])}};
@@ -45,4 +45,26 @@ test('only read-only bridge and ordinary touch; all existing host guard bounds r
   const guard=await readFile(new URL('./run_host_browser.py',import.meta.url),'utf8');
   for(const setting of ['--property=MemoryMax=3G','--property=MemorySwapMax=0','--property=TasksMax=256','--property=CPUQuota=200%','--property=RuntimeMaxSec=100','--property=TimeoutStopSec=5','--property=KillMode=control-group'])assert.ok(guard.includes(setting));
   const host=await readFile(new URL('./host_main.mjs',import.meta.url),'utf8');assert.ok(host.includes('Math.min(90000,'));assert.ok(host.includes('chromiumSandbox:true'));
+});
+
+test('only exact post-close cancellation after completed assertions is classified',()=>{
+  const origin='http://127.0.0.1:12345';
+  const event={elapsed_ms:101,phase:'closing-context',url:origin+'/index.pck',failure:{errorText:'net::ERR_ABORTED'}};
+  assert.equal(isExpectedCloseAbort(event,100,true,origin),true);
+  // Both before the closing checkpoint and while its file writes await have
+  // closeStarted=null. Neither may hide a request failure.
+  assert.equal(isExpectedCloseAbort({...event,phase:'gameplay-and-images-completed'},null,true,origin),false);
+  assert.equal(isExpectedCloseAbort(event,null,true,origin),false);
+  assert.equal(isExpectedCloseAbort({...event,elapsed_ms:99},100,true,origin),false);
+  assert.equal(isExpectedCloseAbort({...event,url:origin+'/index.wasm'},100,true,origin),false);
+  assert.equal(isExpectedCloseAbort({...event,failure:{errorText:'net::ERR_FAILED'}},100,true,origin),false);
+  assert.equal(isExpectedCloseAbort({...event,phase:'gathering-observed'},100,true,origin),false);
+  assert.equal(isExpectedCloseAbort(event,100,false,origin),false);
+  assert.equal(isExpectedCloseAbort(event,100,undefined,origin),false);
+});
+test('classification flag is armed immediately before close, never across a checkpoint await',async()=>{
+  const fixture=await readFile(new URL('./browser_qa.mjs',import.meta.url),'utf8');
+  assert.ok(fixture.includes("assert.equal(evidence.errors.length,0,'Pre-teardown browser errors recorded')"));
+  assert.match(fixture,/await checkpoint\('closing-context'\);\s*closeStarted=Date.now\(\)-started;evidence.contextCloseStartedMs=closeStarted;\s*await context.close\(\);/);
+  assert.ok(fixture.includes('else evidence.errors.push(event)'));
 });

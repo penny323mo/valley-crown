@@ -34,6 +34,11 @@ export function assertCompleted(initial, queued, completed, villagers) {
   assert.equal(villagers.selected.filter(id => ![1,2,3,4,5].includes(id)).length, 1, 'Exactly one new villager ID required');
   assert.equal(villagers.population, queued.population, 'Selection changed population');
 }
+export function isExpectedCloseAbort(event, closeStarted, gameplayDone, origin) {
+  return closeStarted !== null && event.elapsed_ms >= closeStarted && gameplayDone === true &&
+    event.phase === 'closing-context' && event.url === `${origin}/index.pck` &&
+    event.failure?.errorText === 'net::ERR_ABORTED';
+}
 export async function runQA(browser, outputDirectory, origin, profileName) {
   assert.match(origin, /^http:\/\/127\.0\.0\.1:\d+$/);
   const profile = selectProfile(profileName);
@@ -42,7 +47,7 @@ export async function runQA(browser, outputDirectory, origin, profileName) {
   const evidence = {build:'vc-dd795d96905c', profile:profile.name, cases:[], errors:[],
     pointerInput:'Chrome emulated touchscreen taps; not a physical phone',
     basicSmokePassed:false, economyLoopPassed:false, releaseQAPassed:false,
-    phase:'starting', checkpoints:[], inputs:[], observations:[],
+    phase:'starting', checkpoints:[], inputs:[], observations:[], network:[], teardownAborts:[], gameplayAssertionsPassed:false,
     source_commit:'c5b78df4dab1e1f58f83bc2d8678512ddc628045',
     game_tree:'c133ed816d338bfabab2ae617bee917f4080799b',
     not_run:['combat','real iPhone Safari','real Android Chrome','audible audio verification','full-game acceptance']};
@@ -52,7 +57,7 @@ export async function runQA(browser, outputDirectory, origin, profileName) {
   };
   const checkpoint = async (phase,state=null) => {
     evidence.phase=phase;
-    evidence.checkpoints.push({phase,elapsed_ms:Date.now()-started,state});
+    evidence.checkpoints.push({phase,elapsed_ms:Date.now()-started,state,errorCount:evidence.errors.length});
     await persist();
   };
   try {
@@ -62,7 +67,18 @@ export async function runQA(browser, outputDirectory, origin, profileName) {
     page.setDefaultTimeout(10000);
     page.on('pageerror',error=>evidence.errors.push({kind:'pageerror',text:String(error).slice(0,2000)}));
     page.on('console',message=>{if(message.type()==='error') evidence.errors.push({kind:'console',text:message.text().slice(0,2000)});});
-    page.on('requestfailed',request=>evidence.errors.push({kind:'requestfailed',url:request.url(),failure:request.failure()}));
+    let closeStarted=null;
+    page.on('request',request=>evidence.network.push({event:'request',url:request.url(),elapsed_ms:Date.now()-started,phase:evidence.phase}));
+    page.on('requestfinished',request=>evidence.network.push({event:'finished',url:request.url(),elapsed_ms:Date.now()-started,phase:evidence.phase}));
+    page.on('requestfailed',request=>{
+      const event={kind:'requestfailed',url:request.url(),failure:request.failure(),elapsed_ms:Date.now()-started,phase:evidence.phase};
+      evidence.network.push({...event,event:'failed'});
+      // Only the deliberate context-close phase after all assertions and image
+      // writes can classify an exact served-PCK cancellation as teardown.
+      // Every earlier PCK/network failure remains fatal; no global whitelist.
+      if(isExpectedCloseAbort(event,closeStarted,evidence.gameplayAssertionsPassed,origin)) evidence.teardownAborts.push(event);
+      else evidence.errors.push(event);
+    });
     await page.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
     await page.goto(`${origin}/index.html?qa`,{waitUntil:'load',timeout:30000});
     await page.waitForFunction(()=>typeof window.valleySnapshot==='function',null,{timeout:30000});
@@ -116,14 +132,12 @@ export async function runQA(browser, outputDirectory, origin, profileName) {
     }
     assert.ok(completed,'Natural deposit and training did not both finish within bounded observation');
     await checkpoint('training-and-deposit-observed',completed);
-    await capture('portrait-first-deposit');
     // All villagers menu action proves a newborn is an actual selectable unit,
     // not only a counter or reservation. No keyboard shortcuts in this scenario.
     await tap('open menu',344,56);
     await tap('select all villagers',68,252);
     const villagers=await snapshot();assertCompleted(initial,queued,completed,villagers);
     await checkpoint('newborn-and-reservation-asserted',villagers);
-    await capture('portrait-six-villagers');
     await tap('open menu',344,56);
     await tap('return to town center',59,200);
     const home=await snapshot();assert.deepEqual(home.selected,[0]);
@@ -133,8 +147,14 @@ export async function runQA(browser, outputDirectory, origin, profileName) {
       deposit:'One full10-food cargo credited by ordinary gathering and automatic return',
       training:'50food debited; reserved population6→7; trained0→1; living villagers5→6; final population7 means no lingering extra reservation',
       queue:'Queue disappearance is rendered evidence, not an added private queue API'});
+    assert.equal(evidence.errors.length,0,'Pre-teardown browser errors recorded');
+    evidence.gameplayAssertionsPassed=true;
+    await checkpoint('gameplay-and-images-completed',home);
+    await checkpoint('closing-context');
+    closeStarted=Date.now()-started;evidence.contextCloseStartedMs=closeStarted;
     await context.close();
-    assert.equal(evidence.errors.length,0,'Browser errors recorded');
+    evidence.contextCloseFinishedMs=Date.now()-started;
+    assert.equal(evidence.errors.length,0,'Unexpected browser errors recorded');
     evidence.basicSmokePassed=true;evidence.economyLoopPassed=true;
     await checkpoint('completed');
   }catch(error){
