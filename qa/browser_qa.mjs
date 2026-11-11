@@ -59,6 +59,18 @@ export function assertResumedProgress(stopped, active, siteId) {
   assert.ok(active.tick > stopped.tick);
 }
 
+export async function swipeActionStrip(cdp, from, to, delay) {
+  const point = (x,y) => ({x,y,id:7,radiusX:3,radiusY:3,force:1});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point(...from)]});
+  // Two ordinary moves cross the drag threshold and traverse the same visible
+  // strip. Keep150ms gesture duration without six CDP/browser round trips.
+  for (const fraction of [0.5,1]) {
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[point(from[0]+(to[0]-from[0])*fraction,from[1])]});
+    await delay(75);
+  }
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+}
+
 export async function runQA(browser, outputDirectory, origin, profile) {
   assert.equal(profile, 'portrait', 'Construction scenario must remain in one portrait context');
   assert.match(origin, /^http:\/\/127\.0\.0\.1:\d+$/);
@@ -69,7 +81,8 @@ export async function runQA(browser, outputDirectory, origin, profile) {
     phase: 'starting', checkpoints: [], errors: [], error_count: 0, error_limit: 64,
     input: 'Chrome emulated touchscreen taps and ordinary touch swipes; not a physical iPhone',
     observation: 'existing read-only valleySnapshot plus sanitized public HUD telemetry',
-    not_run: ['real iPhone Safari', 'real Android Chrome', 'combat', 'complete house construction', 'audible audio']};
+    not_run: ['real iPhone Safari', 'real Android Chrome', 'combat', 'complete house construction', 'audible audio',
+      'optional paused-HUD screenshot omitted to preserve the fixed scenario budget']};
   const addError = error => {evidence.error_count++; if (evidence.errors.length < evidence.error_limit) evidence.errors.push(error);};
   const network = createNetworkDiagnostics(() => evidence.phase, addError);
   evidence.network = network.data;
@@ -81,11 +94,11 @@ export async function runQA(browser, outputDirectory, origin, profile) {
     evidence.phase = phase; evidence.checkpoints.push({phase, elapsed_ms: Date.now() - started, state}); await persist();
   };
   const withinBudget = () => assert.ok(Date.now() - started < 70000, 'Scenario 70-second inner budget exhausted; external guard unchanged');
-  let context;
+  let context, page;
   try {
     await checkpoint('starting');
     context = await browser.newContext({viewport: {width:390,height:844}, deviceScaleFactor:1, hasTouch:true, serviceWorkers:'block'});
-    const page = await context.newPage();
+    page = await context.newPage();
     page.setDefaultTimeout(5000);
     page.on('pageerror', error => addError({kind:'pageerror', text:String(error).slice(0,2000)}));
     page.on('console', message => {if (message.type() === 'error') addError({kind:'console',text:message.text().slice(0,2000)});});
@@ -96,10 +109,36 @@ export async function runQA(browser, outputDirectory, origin, profile) {
     await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
     await page.goto(`${origin}/index.html?qa`, {waitUntil:'load',timeout:25000});
     await page.waitForFunction(() => typeof window.valleySnapshot === 'function', null, {timeout:20000});
+    const delay = milliseconds => new Promise(resolve => setTimeout(resolve,milliseconds));
+    // Fixed context viewport, no navigation or resize after load. Read the real
+    // canvas box once and fail if observed game viewport changes thereafter.
+    const canvasBox = await page.locator('canvas').boundingBox();
+    assert.ok(canvasBox?.width > 0 && canvasBox?.height > 0);
+    let logicalViewport;
+    evidence.canvas_box = canvasBox;
+    evidence.snapshot_count = 0;
+    evidence.snapshot_total_ms = 0;
+    evidence.read_timings = [];
+    evidence.input_timings = [];
+    const recordInput = record => {evidence.last_input=record; if (evidence.input_timings.length < 32) evidence.input_timings.push(record);};
     const snapshot = async () => {
       withinBudget();
+      const readStarted = Date.now();
       const state = await page.evaluate(() => {window.valleySnapshot(); return window.valleyState;});
       assert.equal(state.build, manifest.build); assert.equal(state.hud?.schema, manifest.hud_schema);
+      if (logicalViewport) assert.deepEqual(state.hud.viewport,logicalViewport,'Viewport changed; cached input geometry invalid');
+      else logicalViewport = [...state.hud.viewport];
+      evidence.snapshot_count++;
+      const duration = Date.now()-readStarted;
+      evidence.snapshot_total_ms += duration;
+      if (evidence.read_timings.length < 64) evidence.read_timings.push({elapsed_ms:Date.now()-started,duration_ms:duration,
+        tick:state.tick,tick_delta:state.tick-(evidence.last_read?.state?.tick ?? state.tick),phase:evidence.phase});
+      evidence.last_read = {elapsed_ms:Date.now()-started,duration_ms:duration,phase:evidence.phase,state,
+        summary:{tick:state.tick,scroll_horizontal:state.hud.action_scroll?.scroll_horizontal,
+          visible_buttons:state.hud.buttons.slice(0,16).map(button => String(button.text).slice(0,80)),
+          read_duration_ms:duration,last_input:evidence.last_input ?? null}};
+      await persist();
+      withinBudget();
       return state;
     };
     const waitFor = async (condition, milliseconds, label) => {
@@ -107,65 +146,79 @@ export async function runQA(browser, outputDirectory, origin, profile) {
       do {
         const state = await snapshot();
         if (condition(state)) return state;
-        await page.waitForTimeout(160);
+        await delay(160);
       } while (Date.now() < until);
       throw new Error('Timed out: ' + label);
     };
-    const screenPoint = async (state, point) => mapPoint(point, state.hud.viewport, await page.locator('canvas').boundingBox());
-    const tap = async (state, point) => {await page.touchscreen.tap(...await screenPoint(state, point)); await page.waitForTimeout(120);};
-    const tapButton = async matcher => {
-      const state = await snapshot(), button = buttonByText(state, matcher);
+    const screenPoint = (state, point) => mapPoint(point, state.hud.viewport, canvasBox);
+    const tap = async (state, point, label='visible-point') => {
+      withinBudget(); const inputStarted=Date.now();
+      await page.touchscreen.tap(...screenPoint(state, point));
+      recordInput({kind:'tap',label:String(label).slice(0,64),elapsed_ms:Date.now()-started,duration_ms:Date.now()-inputStarted,before_tick:state.tick});
+    };
+    const tapButton = async (state, matcher) => {
+      const button = buttonByText(state, matcher);
       assert.ok(button, 'Required visible enabled button absent: ' + matcher);
-      await tap(state, [button.rect[0]+button.rect[2]/2, button.rect[1]+button.rect[3]/2]);
+      await tap(state, [button.rect[0]+button.rect[2]/2, button.rect[1]+button.rect[3]/2],button.text);
     };
     const target = (state, id) => state.hud.own_targets.find(item => item.id === id);
-    const tapOwn = async id => {
-      const state = await snapshot(), item = target(state, id);
+    const tapOwn = async (state, id) => {
+      const item = target(state, id);
       assert.ok(item, 'Own target no longer visibly tappable: ' + id);
-      await tap(state, item.screen);
+      await tap(state, item.screen,'own-target:'+id);
     };
     const initial = await snapshot();
+    await checkpoint('loaded-with-public-hud',initial);
     assert.equal(initial.paused, false);
     const worker = initial.hud.own_targets.find(item => item.kind === 'villager');
     assert.ok(worker, 'No current publicly visible tappable own villager');
-    await tapOwn(worker.id);
-    await waitFor(state => state.selected.length === 1 && state.selected[0] === worker.id, 3000, 'worker selected');
-    await tapButton(/^民居(?:\n|$)/);
+    await tapOwn(initial, worker.id);
+    const workerSelected = await waitFor(state => state.selected.length === 1 && state.selected[0] === worker.id, 3000, 'worker selected');
+    await tapButton(workerSelected, /^民居(?:\n|$)/);
     const preview = await waitFor(state => state.build_mode === 'house' && state.hud.preview?.placement_ok, 4000, 'existing visible legal house preview');
     assert.ok(preview.hud.preview.screen, 'Visible ghost point missing');
     const woodBefore = preview.bank_milli.wood;
     await tap(preview, preview.hud.preview.screen);
-    await waitFor(state => state.hud.preview?.held && state.hud.preview?.placement_ok, 3000, 'ordinary plot tap held');
-    await tapButton(/^確認建造$/);
+    const held = await waitFor(state => state.hud.preview?.held && state.hud.preview?.placement_ok, 3000, 'ordinary plot tap held');
+    await tapButton(held, /^確認建造$/);
     const placed = await waitFor(state => state.build_mode === '' && state.hud.own_targets.some(item => item.category === 'building' && item.kind === 'house' && !item.built), 5000, 'real house site placed');
     assert.equal(placed.bank_milli.wood, woodBefore - 50 * placed.economy_scale, 'One ordinary house payment required');
     const site = placed.hud.own_targets.find(item => item.category === 'building' && item.kind === 'house' && !item.built);
     assert.ok(site); await checkpoint('house-created-through-ui', {workerId:worker.id,siteId:site.id,state:placed});
     // Confirm normally preserves builder selection; do not force a world retap
     // when the newly placed site's pick halo temporarily covers that worker.
-    if (!(placed.selected.length === 1 && placed.selected[0] === worker.id)) await tapOwn(worker.id);
-    await waitFor(state => state.selected.length === 1 && state.selected[0] === worker.id, 3000, 'builder selected');
+    let stripState = placed;
+    if (!(placed.selected.length === 1 && placed.selected[0] === worker.id)) {
+      await tapOwn(placed,worker.id);
+      stripState = await waitFor(state => state.selected.length === 1 && state.selected[0] === worker.id, 3000, 'builder selected');
+    }
     // Scroll the existing action strip through real browser touch input only.
     // No hidden button enumeration, direct scroll setter or game method call.
     const cdp = await context.newCDPSession(page);
+    await checkpoint('finding-visible-stop',stripState);
     for (let swipe = 0; swipe < 6; swipe++) {
-      const state = await snapshot();
+      const state = stripState;
       if (buttonByText(state, /^停止$/)) break;
       const rect = state.hud.action_scroll?.rect;
       assert.ok(rect?.length === 4 && rect[2] >= 48 && rect[3] >= 20, 'Visible action scroll region missing');
-      const from = await screenPoint(state, [rect[0]+rect[2]*0.85,rect[1]+rect[3]/2]);
-      const to = await screenPoint(state, [rect[0]+rect[2]*0.15,rect[1]+rect[3]/2]);
-      const point = (x,y) => ({x,y,id:7,radiusX:3,radiusY:3,force:1});
-      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point(...from)]});
-      for (let step = 1; step <= 6; step++) {
-        await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[point(from[0]+(to[0]-from[0])*step/6,from[1])]});
-        await page.waitForTimeout(25);
-      }
-      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-      await page.waitForTimeout(160);
+      const from = screenPoint(state, [rect[0]+rect[2]*0.85,rect[1]+rect[3]/2]);
+      const to = screenPoint(state, [rect[0]+rect[2]*0.15,rect[1]+rect[3]/2]);
+      withinBudget();
+      const swipeStarted=Date.now();
+      await swipeActionStrip(cdp,from,to,delay);
+      const swipeFinished=Date.now();
+      await delay(160);
+      stripState = await snapshot();
+      recordInput({kind:'swipe',swipe:swipe+1,elapsed_ms:Date.now()-started,input_ms:swipeFinished-swipeStarted,
+        settle_read_ms:Date.now()-swipeFinished,before_tick:state.tick,after_tick:stripState.tick,
+        scroll_before:state.hud.action_scroll.scroll_horizontal,scroll_after:stripState.hud.action_scroll.scroll_horizontal});
+      await checkpoint('action-strip-swipe-observed',{swipe:swipe+1,state:stripState});
     }
-    await tapButton(/^停止$/);
-    await tapOwn(site.id);
+    await tapButton(stripState, /^停止$/);
+    await checkpoint('stop-tapped');
+    // The stationary site is the same just-observed public target; selection is
+    // confirmed by the subsequent actual HUD assertion, never assumed.
+    await tapOwn(stripState, site.id);
     const stopped = await waitFor(state => state.own_pending_commands === 0 && state.hud.selection_detail.includes('無施工村民') && selectedSite(state,site.id), 5000, 'natural no-builder HUD');
     const stable = await waitFor(state => state.tick - stopped.tick >= 20, 6000, 'real simulation second while stopped');
     assertStoppedProgress(stopped, stable, site.id);
@@ -175,25 +228,20 @@ export async function runQA(browser, outputDirectory, origin, profile) {
     const resumeWorker = resumeState.hud.own_targets.find(item => item.id === worker.id) ??
       resumeState.hud.own_targets.find(item => item.kind === 'villager');
     assert.ok(resumeWorker, 'No publicly visible tappable live villager to resume construction');
-    await tapOwn(resumeWorker.id);
-    await waitFor(state => state.selected.length === 1 && state.selected[0] === resumeWorker.id, 3000, 'live villager reselected');
+    await tapOwn(resumeState, resumeWorker.id);
+    const resumeSelected = await waitFor(state => state.selected.length === 1 && state.selected[0] === resumeWorker.id, 3000, 'live villager reselected');
     evidence.resumeWorkerId = resumeWorker.id;
-    await tapButton(/^指令$/);
-    await waitFor(state => state.touch_mode === true, 3000, 'ordinary command mode');
-    await tapOwn(site.id);
-    await waitFor(state => state.touch_mode === false, 3000, 'site command submitted');
-    await tapOwn(site.id);
+    await tapButton(resumeSelected, /^指令$/);
+    const commandState = await waitFor(state => state.touch_mode === true, 3000, 'ordinary command mode');
+    await tapOwn(commandState, site.id);
+    const submitted = await waitFor(state => state.touch_mode === false, 3000, 'site command submitted');
+    await tapOwn(submitted, site.id);
+    await checkpoint('resume-command-submitted',submitted);
     const active = await waitFor(state => state.hud.selection_detail.includes('建造中') &&
       selectedSite(state,site.id)?.progress > selectedSite(stable,site.id).progress, 15000, 'natural resumed active construction');
     assertResumedProgress(stable, active, site.id);
     await checkpoint('resumed-active-progress-increased', active);
     await page.screenshot({path:`${outputDirectory}/portrait-construction-resumed.png`});
-    if (Date.now() - started < 55000) {
-      await tapButton(/^暫停$/);
-      const paused = await waitFor(state => state.paused && state.hud.selection_detail.includes('已暫停'), 3000, 'visible pause HUD');
-      await checkpoint('paused-construction-hud', paused);
-      await page.screenshot({path:`${outputDirectory}/portrait-construction-paused.png`});
-    } else evidence.not_run.push('Optional paused-HUD screenshot skipped to preserve fixed budget');
     assert.equal(evidence.error_count, 0, 'Browser errors recorded');
     await checkpoint('closing-context');
     await context.close(); context = null;
@@ -203,6 +251,13 @@ export async function runQA(browser, outputDirectory, origin, profile) {
   } catch (error) {
     evidence.basicSmokePassed = false;
     evidence.failure = String(error); evidence.failedDuringPhase = evidence.phase; evidence.phase = 'failed';
+    await persist();
+    if (page && !page.isClosed() && Date.now()-started < 68000) {
+      try {
+        await page.screenshot({path:`${outputDirectory}/portrait-construction-failure.png`,timeout:1500});
+        evidence.failure_screenshot = 'written';
+      } catch (captureError) {evidence.failure_screenshot = String(captureError).slice(0,500);}
+    } else evidence.failure_screenshot = 'skipped: no remaining inner budget or page closed';
     throw error;
   } finally {
     if (context) {

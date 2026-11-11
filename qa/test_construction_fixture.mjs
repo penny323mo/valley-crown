@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {validateManifest,mapPoint,buttonByText,selectedSite,assertStoppedProgress,assertResumedProgress,runQA} from './browser_qa.mjs';
+import {validateManifest,mapPoint,buttonByText,selectedSite,assertStoppedProgress,assertResumedProgress,swipeActionStrip,runQA} from './browser_qa.mjs';
 
 const manifest = {reviewed:true,build:'vc-123456789abc',source_commit:'a'.repeat(40),profile:'portrait',hud_schema:1,
   files_sha256:Object.fromEntries(['index.html','index.pck','index.wasm'].map(name => [name,'b'.repeat(64)]))};
@@ -55,4 +55,23 @@ test('fixture contains no arbitrary game state bridge or authority setter', asyn
   assert.ok(source.includes("'Input.dispatchTouchEvent'"));
   assert.ok(source.includes('page.touchscreen.tap'));
   assert.ok(source.includes('70000'));
+});
+test('ordinary action swipe uses two moves and preserves visible path/duration', async () => {
+  const calls=[],delays=[];
+  await swipeActionStrip({send:async (method,args) => calls.push({method,...args})},[330,806],[122,806],async ms => delays.push(ms));
+  assert.deepEqual(calls.map(call => call.type),['touchStart','touchMove','touchMove','touchEnd']);
+  assert.ok(calls.every(call => call.method==='Input.dispatchTouchEvent'));
+  assert.deepEqual(calls.slice(0,3).map(call => call.touchPoints[0].x),[330,226,122]);
+  assert.ok(calls.slice(0,3).every(call => call.touchPoints[0].y===806));
+  assert.deepEqual(delays,[75,75]); assert.deepEqual(calls[3].touchPoints,[]);
+});
+test('fixed geometry and fresh-state inputs avoid hidden extra snapshots', async () => {
+  const source=await readFile(new URL('./browser_qa.mjs',import.meta.url),'utf8');
+  assert.equal((source.match(/\.boundingBox\(\)/g)||[]).length,1);
+  const helpers=source.slice(source.indexOf('const screenPoint ='),source.indexOf('const initial ='));
+  assert.ok(!helpers.includes('await snapshot()'));
+  assert.ok(source.includes('evidence.last_read ='));
+  assert.ok(source.includes('duration_ms:duration'));
+  assert.ok(source.includes('scroll_before:'));
+  assert.ok(source.includes('timeout:1500'));
 });
