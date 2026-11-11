@@ -23,17 +23,12 @@ class MetadataPreflight(unittest.TestCase):
           '--property=RuntimeMaxSec=100','--property=TimeoutStopSec=5','--property=KillMode=control-group',"'supervisor_cleanup_seconds':105"]:self.assertIn(setting,guard)
         host=(HERE/'host_main.mjs').read_text();self.assertIn('Math.min(90000,',host);self.assertIn('chromiumSandbox:true',host)
         scenario=(HERE/'browser_qa.mjs').read_text();self.assertIn('Date.now()-started<70000',scenario);self.assertIn('exceeded5000ms',scenario)
-    def test_four_independent_jobs_and_disable_gate(self):
-        root=HERE.parent.parent
-        workflow=(root/'.github/workflows/public-web-browser.yml').read_text()
-        for fixture in ['menu320','menu390','menu844','menu1440']:self.assertIn('fixture: '+fixture,workflow)
-        self.assertIn('profile: desktop',workflow);self.assertIn('profile: portrait',workflow)
-        reviewed=json.loads((HERE/'scenario-manifest.json').read_text()).get('reviewed') is True
-        if reviewed:
-            self.assertIn('if: ${{ github.run_attempt == 1 }}',workflow)
-            self.assertNotIn('ci/mature-menu-UNREVIEWED',workflow)
-        else:
-            self.assertIn('if: ${{ false }}',workflow)
-        self.assertIn('fail-fast: false',workflow)
-        self.assertIn('index: 0',workflow);self.assertIn('index: 3',workflow)
+    def test_one_diagnostic_job_and_attempt_gate(self):
+        workflow=(HERE.parent.parent/'.github/workflows/public-web-browser.yml').read_text()
+        self.assertEqual(workflow.count('fixture: menu390'),1)
+        for other in ['fixture: menu320','fixture: menu844','fixture: menu1440']:self.assertNotIn(other,workflow)
+        self.assertIn('if: ${{ github.run_attempt == 1 }}',workflow)
+        self.assertIn('qa/test_initial_geometry_diagnostic.mjs',workflow)
+        source=(HERE/'browser_qa.mjs').read_text()
+        self.assertLess(source.index("throw new Error('DIAGNOSTIC_ONLY:"),source.index('let current=await observe();requireHome(current);'))
 if __name__=='__main__':unittest.main()

@@ -4,6 +4,7 @@ import {readFile,writeFile,rename} from 'node:fs/promises';
 import {createNetworkDiagnostics} from './network_diagnostics.mjs';
 import {menuButton,assertMenu,assertCamera,assertPausedMatch,assertFrozenMatch,menuSwipePoints} from './public_observation_assertions.mjs';
 import {assertPublicStreamCompletions} from './public_stream_cache_policy.mjs';
+import {collectInitialGeometry} from './initial_geometry_diagnostic.mjs';
 export const PREPARED_SCENARIO = 'menu390';
 export const PREPARED_VIEWPORT = Object.freeze([390, 844]);
 export const RESIZED_VIEWPORT = Object.freeze([844, 390]);
@@ -109,8 +110,10 @@ export async function runQA(browser,outputDirectory,origin,profile) {
     await page.goto(`${origin}/index.html?qa`,{waitUntil:'load',timeout:25000});
     await page.waitForFunction(()=>typeof window.valleyMenuSnapshot==='function',null,{timeout:20000});
     const recordInput=record=>{evidence.last_input=record;if(evidence.input_timings.length<96)evidence.input_timings.push(record);};
-    const observe=async()=>{
+    const observe=async(absoluteDeadline=null)=>{
       withinBudget();const readStarted=Date.now();
+      const readBudget=absoluteDeadline===null?5000:Math.min(5000,absoluteDeadline-readStarted);
+      assert.ok(readBudget>0,'Initial geometry deadline exhausted');
       const pending=page.evaluate(()=>{
         window.valleyMenuSnapshot();
         const game_bridge=typeof window.valleySnapshot==='function';
@@ -120,7 +123,7 @@ export async function runQA(browser,outputDirectory,origin,profile) {
         return {state:game_bridge?window.valleyState:null,menu:{...window.valleyMenuState,game_bridge},geometry};
       });
       let observation,readTimer;
-      try {observation=await Promise.race([pending,new Promise((_,reject)=>{readTimer=setTimeout(()=>reject(new Error('Canvas geometry/snapshot read exceeded5000ms')),5000);})]);}
+      try {observation=await Promise.race([pending,new Promise((_,reject)=>{readTimer=setTimeout(()=>reject(new Error('Canvas geometry/snapshot read exceeded5000ms')),readBudget);})]);}
       finally {clearTimeout(readTimer);}
       canvasBox=validateCanvasGeometry(observation.geometry,viewport,canvasBox);
       if(observation.state){assert.equal(observation.state.build,manifest.build);assert.equal(observation.state.hud?.schema,2);assert.deepEqual(observation.state.hud.viewport,viewport);}
@@ -171,6 +174,15 @@ export async function runQA(browser,outputDirectory,origin,profile) {
       assertMenu(o.menu,{match_exists:match,game_bridge:match});
       assertMenuControls(o.menu,viewport,match?['ResumeMatchButton','NewMatchButton','HelpButton']:['StartMatchButton','HelpButton']);
     };
+    const diagnosticStarted=Date.now();
+    evidence.readiness_diagnostic={scope:'Read-only opening geometry only, no gameplay/menu acceptance',deadline_ms:5000,observations:[],ready:false};
+    await collectInitialGeometry({observe,validate:o=>requireHome(o),delay,record:async row=>{evidence.readiness_diagnostic.observations.push(row);await persist();},result:evidence.readiness_diagnostic});
+    evidence.readiness_diagnostic.elapsed_ms=Date.now()-diagnosticStarted;
+    await checkpoint('readiness-diagnostic-complete');await shot('readiness-final');
+    assert.equal(evidence.error_count,0,'Browser errors recorded');
+    await context.close();context=null;
+    assert.equal(evidence.error_count,0,'Browser errors during context close');assertPublicStreamCompletions(evidence.network.records,origin);
+    throw new Error('DIAGNOSTIC_ONLY: '+(evidence.readiness_diagnostic.ready?'controls settled':'controls did not settle')+'; full flows not run');
     let current=await observe();requireHome(current);
     await checkpoint('fresh-home',current);await shot('home');
     if(!TOUCH){await page.keyboard.press('Tab');await checkpoint('desktop-keyboard-focus');await shot('keyboard-focus');}

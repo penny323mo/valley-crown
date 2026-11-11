@@ -78,7 +78,7 @@ def main():
     parser.add_argument('--profile', choices=['desktop', 'portrait'], required=True)
     args = parser.parse_args()
     need(os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted', 'Fresh GitHub-hosted VM required')
-    need(os.environ.get('GITHUB_REPOSITORY') == 'penny323mo/valley-crown' and os.environ.get('GITHUB_REF') == 'refs/heads/ci/mature-menu-browser-vc-f136b31c3e2d' and os.environ.get('GITHUB_RUN_ATTEMPT') == '1', 'Wrong repository/branch/attempt')
+    need(os.environ.get('GITHUB_REPOSITORY') == 'penny323mo/valley-crown' and os.environ.get('GITHUB_REF') == 'refs/heads/ci/mature-menu-readiness-vc-f136b31c3e2d' and os.environ.get('GITHUB_RUN_ATTEMPT') == '1', 'Wrong repository/branch/attempt')
     candidate = args.candidate.resolve()
     work = args.work.resolve()
     need(not work.exists() and not work.is_symlink(), 'Fresh work root required')
