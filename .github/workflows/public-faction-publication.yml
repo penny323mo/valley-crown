@@ -2,7 +2,7 @@
 name: Measure faction publication semantics
 on:
   push:
-    branches: [ci/faction-publication-vc-f3d75a2138cc]
+    branches: [ci/faction-publication-bind-vc-f3d75a2138cc]
 permissions:
   contents: read
 concurrency:
@@ -25,7 +25,7 @@ jobs:
           test "$CONSTRUCTION_EXECUTION_APPROVED" = true
           test "$FACTION_EXECUTION_APPROVED" = true
           test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
-          test "$GITHUB_REF" = refs/heads/ci/faction-publication-vc-f3d75a2138cc
+          test "$GITHUB_REF" = refs/heads/ci/faction-publication-bind-vc-f3d75a2138cc
           test "$GITHUB_RUN_ATTEMPT" = 1
           [[ "$CONSTRUCTION_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
       - name: Select isolated runner workspace
@@ -38,6 +38,7 @@ jobs:
       - name: Inert exact adapter preflight
         run: |
           set -euo pipefail
+          python3 -B ci/preflight_faction_lock.py "$RTS_WORK/export-lock.json"
           python3 -B -m unittest discover -s ci -p test_faction.py -v
       - name: Prepare pinned official engine without launch
         run: python3 -B ci/prepare_web_release.py engine --work "$RTS_WORK"
