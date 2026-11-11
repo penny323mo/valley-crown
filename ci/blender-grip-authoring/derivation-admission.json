@@ -1,0 +1,17 @@
+{
+  "schema": "vc-fixed-blender-derivation-v1",
+  "reviewed_for_derivation": true,
+  "files": {
+    "derive_authoring_lock.py": "001d90656b5826723d1ec6b3de8f99a26f174f0157f4edb0f0d700a45aba5f26",
+    "download_official_archive.py": "68d1b4c322274992017aa79feccd23f66ea7f2b6150ebeda366fea911772ec6d",
+    "owned_process.py": "e25db8799c62725ee6af547484c7414a6f2685dcbd5ad97d78ea9b059657f320",
+    "prepare_official_tool.py": "bb90e9a035a3d3487e0af3b276f8961b09c1b5ad5e6eb2c727756f6fb69ac6c0",
+    "run_authoring.py": "fd7f97c31c8963cd5551eadf0abfe51e151a489408fa36090687752ff5b3a0d3"
+  },
+  "code_files": {
+    "correct_public_grips.py": "3dfd3babe8fbe2f7ed183b87df1844cffc8e22832a82ed5eaf13c4e0e197d1cb",
+    "equipment_geometry.py": "958db50349dcb52f4523a75aa5476fbd14b33387822820820f0a79d6a05c4c45"
+  },
+  "calibration_sha256": "7976d9c1247f6dae1e44e0c8558b3bef0e44753e401fb9aa5714460169216be3",
+  "archive_sha256": "4da1c956673c0485e63054e563ee69198cc8f80d8157dd7592dffc8a6a5592e6"
+}
