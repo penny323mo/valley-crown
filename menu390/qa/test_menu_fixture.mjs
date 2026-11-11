@@ -106,7 +106,7 @@ async function fakeRun(mutate=null,failStream=false){
   }finally{await rm(root,{recursive:true,force:true});}
 }
 test('fake end-to-end fixed flow requests genuine captures and records only functional success',async()=>{
-  const r=await fakeRun();assert.ifError(r.error);assert.equal(r.reads,frames().length);assert.equal(r.evidence.basicSmokePassed,true);
+  const r=await fakeRun();assert.ifError(r.error);assert.equal(r.reads,frames().length);assert.equal(r.evidence.basicSmokePassed,true);assert.equal(r.evidence.phase,'completed');
   assert.equal(r.evidence.releaseQAPassed,false);assert.equal(r.evidence.visualAcceptancePassed,false);assert.equal(r.contextCalls,1);
   assert.deepEqual(r.options,{viewport:{width:PREPARED_VIEWPORT[0],height:PREPARED_VIEWPORT[1]},deviceScaleFactor:1,hasTouch:TOUCH,serviceWorkers:'block'});
   assert.deepEqual(r.resizes,[RESIZED_VIEWPORT,PREPARED_VIEWPORT,RESIZED_VIEWPORT,PREPARED_VIEWPORT].map(v=>({width:v[0],height:v[1]})));
@@ -244,4 +244,13 @@ test('confirmed restart rejects retained worker, stale ticks, charges, counters,
 test('fake final new match cannot retain the old worker despite a reset tick',async()=>{
   const r=await fakeRun(fs=>{fs[fs.length-1].state=state(0,false,[7]);});
   assert.ok(r.error);assert.match(String(r.error),/Fresh default selection|owned town center/);assert.equal(r.evidence.basicSmokePassed,false);
+});
+
+test('completion producer matches unchanged guard while pixel acceptance remains separate',async()=>{
+  const source=await readFile(new URL('./browser_qa.mjs',import.meta.url),'utf8');
+  const guard=await readFile(new URL('./run_host_browser.py',import.meta.url),'utf8');
+  assert.ok(guard.includes("evidence.get('phase') == 'completed'"));
+  assert.ok(source.includes("evidence.basicSmokePassed=true;await checkpoint('completed')"));
+  assert.ok(source.includes('releaseQAPassed:false,visualAcceptancePassed:false'));
+  assert.ok(!source.includes('visualAcceptancePassed=true'));
 });

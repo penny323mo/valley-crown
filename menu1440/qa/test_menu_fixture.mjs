@@ -106,7 +106,7 @@ async function fakeRun(mutate=null,failStream=false){
   }finally{await rm(root,{recursive:true,force:true});}
 }
 test('fake end-to-end fixed flow requests genuine captures and records only functional success',async()=>{
-  const r=await fakeRun();assert.ifError(r.error);assert.equal(r.reads,frames().length);assert.equal(r.evidence.basicSmokePassed,true);
+  const r=await fakeRun();assert.ifError(r.error);assert.equal(r.reads,frames().length);assert.equal(r.evidence.basicSmokePassed,true);assert.equal(r.evidence.phase,'completed');
   assert.equal(r.evidence.releaseQAPassed,false);assert.equal(r.evidence.visualAcceptancePassed,false);assert.equal(r.contextCalls,1);
   assert.deepEqual(r.options,{viewport:{width:PREPARED_VIEWPORT[0],height:PREPARED_VIEWPORT[1]},deviceScaleFactor:1,hasTouch:TOUCH,serviceWorkers:'block'});
   assert.deepEqual(r.resizes,[RESIZED_VIEWPORT,PREPARED_VIEWPORT,RESIZED_VIEWPORT,PREPARED_VIEWPORT].map(v=>({width:v[0],height:v[1]})));
@@ -193,7 +193,7 @@ test('no optional active-gameplay PNG replaces any state or required menu eviden
   const s=await readFile(new URL('./browser_qa.mjs',import.meta.url),'utf8');
   for(const label of ['live-before-menu','resumed','confirmed-new-match'])assert.ok(!s.includes("await shot('"+label+"')"));
   for(const label of ['home','keyboard-focus','help-before-scroll','help-after-scroll','help-resized-before-extra-scroll','help-resized-after-scroll','help-restored','paused-home','paused-home-resized','paused-home-restored','new-match-confirmation','new-match-canceled'])assert.ok(s.includes("await shot('"+label+"')"));
-  for(const marker of ['o.state.tick>=40','o.state.tick>=paused.tick+20','o.state.tick<beforeRestart.tick','assertResumedMatch(paused,current.state)','assertFrozenMatch(paused,current.state)','assertConfirmedNewMatch(freshStart,beforeRestart,current.state)',"checkpoint('resumed-same-observed-match'", "checkpoint('confirmed-new-match-observed-reset'"]){
+  for(const marker of ['paused.tick>=40','o.state.tick>=paused.tick+20','o.state.tick<beforeRestart.tick','assertResumedMatch(paused,current.state)','assertFrozenMatch(paused,current.state)','assertConfirmedNewMatch(freshStart,beforeRestart,current.state)',"checkpoint('resumed-same-observed-match'", "checkpoint('confirmed-new-match-observed-reset'"]){
     assert.ok(s.includes(marker),marker);
   }
 });
@@ -244,4 +244,18 @@ test('confirmed restart rejects retained worker, stale ticks, charges, counters,
 test('fake final new match cannot retain the old worker despite a reset tick',async()=>{
   const r=await fakeRun(fs=>{fs[fs.length-1].state=state(0,false,[7]);});
   assert.ok(r.error);assert.match(String(r.error),/Fresh default selection|owned town center/);assert.equal(r.evidence.basicSmokePassed,false);
+});
+
+test('completion producer matches unchanged guard while pixel acceptance remains separate',async()=>{
+  const source=await readFile(new URL('./browser_qa.mjs',import.meta.url),'utf8');
+  const guard=await readFile(new URL('./run_host_browser.py',import.meta.url),'utf8');
+  assert.ok(guard.includes("evidence.get('phase') == 'completed'"));
+  assert.ok(source.includes("evidence.basicSmokePassed=true;await checkpoint('completed')"));
+  assert.ok(source.includes('releaseQAPassed:false,visualAcceptancePassed:false'));
+  assert.ok(!source.includes('visualAcceptancePassed=true'));
+});
+
+test('desktop still requires40natural ticks by pause without waiting separately before menu navigation',async()=>{
+  const r=await fakeRun(fs=>{fs.find(o=>o.state?.paused).state.tick=39;});
+  assert.match(String(r.error),/Fewer than40natural ticks/);assert.equal(r.evidence.basicSmokePassed,false);
 });

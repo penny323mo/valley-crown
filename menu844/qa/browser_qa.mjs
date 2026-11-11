@@ -352,7 +352,7 @@ export async function runQA(browser,outputDirectory,origin,profile) {
     if(session){await session.detach();session=null;}
     await checkpoint('closing-context');await context.close(); context = null;
     assert.equal(evidence.error_count,0,'Browser errors during context close');assertPublicStreamCompletions(evidence.network.records,origin);
-    evidence.basicSmokePassed=true;await checkpoint('completed-functional-only-visual-review-required');
+    evidence.basicSmokePassed=true;await checkpoint('completed');
   }catch(error){
     evidence.basicSmokePassed=false;evidence.failure=String(error);evidence.failedDuringPhase=evidence.phase;evidence.phase='failed';await persist();
     if(page&&!page.isClosed()&&Date.now()-started<68000){try{await page.screenshot({path:`${outputDirectory}/${PREPARED_SCENARIO}-failure.png`,timeout:1500});evidence.failure_screenshot='written';}catch(captureError){evidence.failure_screenshot=String(captureError).slice(0,500);}}

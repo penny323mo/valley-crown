@@ -315,7 +315,7 @@ export async function runQA(browser,outputDirectory,origin,profile) {
     await checkpoint('ordinary-start-default-observed',current);
     const worker=current.state.hud.own_targets.find(t=>t.kind==='villager');assert.ok(worker,'Natural visible villager absent');
     await activate(worker.screen,'select-natural-worker');
-    current=await waitFor(o=>o.state.selected.length===1&&o.state.selected[0]===worker.id&&o.state.tick>=40,'distinct retained selection and natural elapsed ticks',5000);
+    current=await waitFor(o=>o.state.selected.length===1&&o.state.selected[0]===worker.id,'distinct retained selection',5000);
     const before=current.state;await checkpoint('live-match-before-pause',current);
     const openMainMenu=async(o)=>{
       await activateHud(o.state,/^選單$/);
@@ -328,7 +328,7 @@ export async function runQA(browser,outputDirectory,origin,profile) {
       await activateHud(o.state,/^主選單$/);
       o=await waitMenu({page:'home',match:true,allowHidden:true},'paused home opened');requireHome(o,true);return o;
     };
-    current=await openMainMenu(current);const paused=current.state;assertPausedMatch(before,paused);
+    current=await openMainMenu(current);const paused=current.state;assertPausedMatch(before,paused);assert.ok(paused.tick>=40,'Fewer than40natural ticks before pause');
     await checkpoint('paused-three-button-home',current);await shot('paused-home');
     // Resize while a real Resume touch is held. Release cannot resume the match.
     if(TOUCH)await touch('touchStart',[center(menuButton(current.menu,'ResumeMatchButton',viewport).rect)]);
@@ -352,7 +352,7 @@ export async function runQA(browser,outputDirectory,origin,profile) {
     if(session){await session.detach();session=null;}
     await checkpoint('closing-context');await context.close(); context = null;
     assert.equal(evidence.error_count,0,'Browser errors during context close');assertPublicStreamCompletions(evidence.network.records,origin);
-    evidence.basicSmokePassed=true;await checkpoint('completed-functional-only-visual-review-required');
+    evidence.basicSmokePassed=true;await checkpoint('completed');
   }catch(error){
     evidence.basicSmokePassed=false;evidence.failure=String(error);evidence.failedDuringPhase=evidence.phase;evidence.phase='failed';await persist();
     if(page&&!page.isClosed()&&Date.now()-started<68000){try{await page.screenshot({path:`${outputDirectory}/${PREPARED_SCENARIO}-failure.png`,timeout:1500});evidence.failure_screenshot='written';}catch(captureError){evidence.failure_screenshot=String(captureError).slice(0,500);}}
