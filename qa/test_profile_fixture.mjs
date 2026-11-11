@@ -4,7 +4,16 @@ import assert from 'node:assert/strict';
 import {mkdtemp, readFile, readdir, rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {selectProfile, runQA} from './browser_qa.mjs';
+import {selectProfile, pointerClick, runQA} from './browser_qa.mjs';
+
+test('portrait controls dispatch emulated touch, desktop controls dispatch mouse', async () => {
+  const calls = [];
+  const page = {touchscreen:{tap:async (...xy) => calls.push(['touch',...xy])}, mouse:{click:async (...xy) => calls.push(['mouse',...xy])}};
+  await pointerClick(page, 'portrait', 42, 56);
+  await pointerClick(page, 'desktop', 100, 200);
+  await assert.rejects(pointerClick(page, 'unknown', 0, 0));
+  assert.deepEqual(calls, [['touch',42,56], ['mouse',100,200]]);
+});
 
 test('one explicit profile maps to the established viewport', () => {
   assert.deepEqual(selectProfile('desktop'), {name:'desktop', viewport:{width:1440,height:900},hasTouch:false});

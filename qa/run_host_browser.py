@@ -129,6 +129,15 @@ def verify_chrome(lock):
     require(sha(node).hex() == lock.get('node_sha256'), 'Recorded Node executable changed')
 
 
+def verify_socket_path_budget(output):
+    # Linux sockaddr_un.sun_path is 108 bytes including terminating NUL. Actual
+    # stock Chrome uses six random chars; reserve sixteen to fail conservatively.
+    socket_path = output / 'tmp' / ('com.google.Chrome.' + 'X' * 16) / 'SingletonSocket'
+    length = len(os.fsencode(socket_path))
+    require(length <= 107, 'Chrome SingletonSocket path budget exceeded: ' + str(length) + ' bytes (maximum 107)')
+    return {'reserved_socket_path_bytes': length, 'maximum_socket_path_bytes': 107, 'random_suffix_reserved_bytes': 16}
+
+
 def run(lock_path, export, bundle, deps, output, receipt_path):
     require(os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted', 'Fresh GitHub-hosted runner only')
     os_release = dict(line.split('=', 1) for line in Path('/etc/os-release').read_text().splitlines() if '=' in line)
@@ -137,6 +146,7 @@ def run(lock_path, export, bundle, deps, output, receipt_path):
     user, group = pwd.getpwuid(os.getuid()).pw_name, grp.getgrgid(os.getgid()).gr_name
     require(user == 'runner', 'Expected fresh hosted runner identity')
     require(not output.exists() and not receipt_path.exists(), 'Fresh output/receipt paths required')
+    socket_budget = verify_socket_path_budget(output)
     lock = read_json(lock_path)
     require(lock.get('profile') in ('desktop', 'portrait'), 'One reviewed profile required')
     validate_inputs(lock, export, bundle, deps, require_image=False); verify_chrome(lock)
@@ -150,6 +160,7 @@ def run(lock_path, export, bundle, deps, output, receipt_path):
                'chrome_path': lock['chrome_path'], 'chrome_sha256': lock['chrome_sha256'], 'chrome_version': lock['chrome_version']}
     receipt['node_path'], receipt['node_sha256'] = lock['node_path'], lock['node_sha256']
     receipt['profile'] = lock['profile']
+    receipt['socket_path_budget'] = socket_budget
     receipt['limits'] = {'systemd_runtime_seconds':100, 'node_runtime_seconds':90,
                          'supervisor_cleanup_seconds':105, 'stop_timeout_seconds':5,
                          'memory_bytes':3*GIB, 'swap_bytes':0, 'tasks':256, 'cpu_percent':200}

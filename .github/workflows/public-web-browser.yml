@@ -22,12 +22,14 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Select fresh work root
-        run: echo "RTS_WORK=$RUNNER_TEMP/current-web-qa-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-${{ matrix.profile }}" >> "$GITHUB_ENV"
+        run: |
+          profile="${{ matrix.profile }}"
+          echo "RTS_WORK=$RUNNER_TEMP/q-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-${profile:0:1}" >> "$GITHUB_ENV"
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
       - name: Test exact observed Node preflight without launching a browser
-        run: python3 -B -m unittest discover -s qa -p test_node_preflight.py -v
+        run: python3 -B -m unittest discover -s qa -p 'test_*preflight.py' -v
       - name: Test bounded profile fixture without launching a browser
         run: node --test qa/test_profile_fixture.mjs
       - name: Retrieve exact successful export artifact

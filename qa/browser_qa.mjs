@@ -10,11 +10,18 @@ export function selectProfile(name) {
     : {name, viewport: {width: 390, height: 844}, hasTouch: true};
 }
 
+export async function pointerClick(page, profileName, x, y) {
+  selectProfile(profileName); // Reject unknown profiles rather than falling back.
+  if (profileName === 'portrait') await page.touchscreen.tap(x, y);
+  else await page.mouse.click(x, y);
+}
+
 export async function runQA(browser, outputDirectory, origin, profileName) {
   assert.match(origin, /^http:\/\/127\.0\.0\.1:\d+$/);
   const profile = selectProfile(profileName);
   const started = Date.now();
   const evidence = {build: 'vc-dd795d96905c', profile: profile.name, cases: [], errors: [],
+    pointerInput: profile.name === 'portrait' ? 'Chrome emulated touchscreen taps; not a physical phone' : 'desktop mouse clicks',
     basicSmokePassed: false, releaseQAPassed: false, phase: 'starting', checkpoints: [],
     not_run: ['settings (no panel found)',
       'training completion intentionally excluded from bounded beta smoke',
@@ -50,7 +57,8 @@ export async function runQA(browser, outputDirectory, origin, profileName) {
       await checkpoint('load-build-asserted', initial);
       await page.screenshot({path: `${outputDirectory}/${profile.name}-loaded.png`});
       // Existing public keyboard action, not a game-state setter or test reset.
-      await page.keyboard.press('p');
+      if (profile.name === 'portrait') await pointerClick(page, profile.name, profile.viewport.width - 116, 56);
+      else await page.keyboard.press('p');
       await page.waitForTimeout(300);
       const toggled = await snapshot();
       assert.notEqual(toggled.paused, initial.paused, 'Pause action did not toggle');
@@ -59,7 +67,8 @@ export async function runQA(browser, outputDirectory, origin, profileName) {
         assert.equal((await snapshot()).tick, toggled.tick, 'Simulation advanced while paused');
       }
       await page.screenshot({path: `${outputDirectory}/${profile.name}-pause-toggle.png`});
-      await page.keyboard.press('p');
+      if (profile.name === 'portrait') await pointerClick(page, profile.name, profile.viewport.width - 116, 56);
+      else await page.keyboard.press('p');
       await page.waitForTimeout(300);
       const restored = await snapshot();
       assert.equal(restored.paused, initial.paused, 'Repeated pause action failed to restore');
@@ -75,7 +84,7 @@ export async function runQA(browser, outputDirectory, origin, profileName) {
       const topHeight = narrow ? 77 : 54;
       const menuY = margin + topHeight + 6;
       const menuX = Math.max(margin, width - 380 - margin);
-      const click = async (x, y) => {await page.mouse.click(x, y); await page.waitForTimeout(180);};
+      const click = async (x, y) => {await pointerClick(page, profile.name, x, y); await page.waitForTimeout(180);};
       const menuButton = [width - margin - 10 - 30, narrow ? 56 : 35];
       await click(...menuButton);
       await page.screenshot({path: `${outputDirectory}/${profile.name}-menu-open.png`});
