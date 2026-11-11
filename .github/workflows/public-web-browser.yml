@@ -1,37 +1,25 @@
-name: Validate illustrated mature menu across four viewports
+name: Validate military gameplay controls at phone width
 on:
   push:
-    branches: [ci/military-menu-browser-vc-542ddb524e45]
+    branches: [ci/military-gameplay-web-vc-542ddb524e45]
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: mature-menu-web-browser
+  group: military-gameplay-web-vc-542ddb524e45
   cancel-in-progress: false
 jobs:
   browser:
-    name: Fixed mature menu (${{ matrix.fixture }})
+    name: Military gameplay (${{ matrix.fixture }})
     if: ${{ github.run_attempt == 1 }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - fixture: menu320
-            bundle: menu320
+          - fixture: military390
+            bundle: military390
             profile: portrait
             index: 0
-          - fixture: menu390
-            bundle: menu390
-            profile: portrait
-            index: 1
-          - fixture: menu844
-            bundle: menu844
-            profile: portrait
-            index: 2
-          - fixture: menu1440
-            bundle: menu1440
-            profile: desktop
-            index: 3
     defaults:
       run:
         working-directory: ${{ matrix.bundle }}
@@ -52,7 +40,7 @@ jobs:
         run: python3 -B -m unittest discover -s qa -p 'test_*preflight.py' -v
       - name: Test fixed menu fixture and passive diagnostics without launching a browser
         run: |
-          node --test qa/test_menu_fixture.mjs qa/test_public_observation_assertions.mjs qa/test_passive_diagnostics.mjs qa/test_public_stream_cache_policy.mjs
+          node --test qa/test_military_fixture.mjs qa/test_public_observation_assertions.mjs qa/test_passive_diagnostics.mjs qa/test_public_stream_cache_policy.mjs
           python3 -B -m unittest discover -s qa -p test_construction_binding.py -v
       - name: Require final reviewed export pins before retrieval
         id: pins
@@ -81,7 +69,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: mature-menu-web-browser-${{ matrix.fixture }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: military-gameplay-web-${{ matrix.fixture }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             ${{ env.RTS_WORK }}/evidence/*.png
             ${{ env.RTS_WORK }}/evidence/*.json
