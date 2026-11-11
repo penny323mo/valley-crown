@@ -109,7 +109,7 @@ func check_action_scroll_release():
 	var canceled_end=canceled_start-Vector2(216,0)
 	touch(canceled_start,true); await process_frame
 	drag(canceled_end,canceled_end-canceled_start); await process_frame
-	touch(canceled_end,false,true); await settle()
+	touch(canceled_end,false,0,true); await settle()
 	check("canceled active swipe cannot activate old button or world order",game.commands.is_empty() and keep.queue==queue and game.selected==[keep.id] and game.economy.bank_milli(0)==bank and game.build_mode.is_empty() and not game.touch_command)
 	await tap(worker_point)
 	check("first world tap after canceled swipe selects worker",game.selected==[worker.id])
