@@ -1,6 +1,6 @@
 # Valley & Crown game source
 
-This is the integrated main source, build `vc-dd795d96905c`, for the Godot 4.6.3 project. Open `project.godot` in Godot.
+This is the integrated main source, build `vc-cf764648c52f`, for the Godot 4.6.3 project. Open `project.godot` in Godot.
 
 Includes the current gameplay, animated characters, materials, fog/occlusion, construction presentation, cargo return, tutorial, mobile controls and worker feedback. Two additional recovery fixes cancel targeting when the final selected unit dies and keep the final finger of a camera gesture from changing a construction preview.
 
@@ -8,11 +8,13 @@ F12 gameplay screenshots are written to the writable `user://screenshots/` direc
 
 ## Verification status
 
-Source integrity and the two focused code changes were reviewed. This exact integrated build has **not** been parsed, imported, executed, rendered or exported with Godot, and has no browser or physical-iPhone acceptance. Historical results and screenshots are not validation of this build.
+Tested runtime source: `677096aaaa5131089971c2ec85b598ad20bd91da`, game tree `dec0eabb654f36c837e68db547d4282bea0754fb`. 34 value-contract and 30 controlled synthetic HUD assertions and two identical Web exports passed in [run 42973027221](https://github.com/penny323mo/valley-crown/actions/runs/42973027221). Natural portrait touch placement, Stop, stable progress and resumed work passed in [run 42977355259](https://github.com/penny323mo/valley-crown/actions/runs/42977355259), including actual screenshots and strict network/cleanup gates. This is emulated Chrome touch, not physical-phone or full-game acceptance. This later README update does not change the tested runtime bytes.
 
-`python3 -B tools/stamp_build.py --dry-run` computes the deterministic runtime identity without changing files. A clean engine import can generate missing UID sidecars and change the identity; inspect that delta and restamp deliberately before running build-bound tests. The two building-damage tests are bound to the current pre-import identity.
+The construction-status helper and read-only QA observations have source review and bounded grammar checks. Revised construction labels were checked against the unchanged shipped font cmap. These checks are not engine execution or rendered-device acceptance.
 
-The tests in `tests/` cover gameplay contracts and synthetic native input. They are not physical-device checks. Prior to a new playable release, use a suitable runner for import/parser checks, regression tests, ordinary portrait/landscape play, Web export and browser validation. iPhone acceptance requires a real iPhone.
+`python3 -B tools/stamp_build.py --dry-run` computes the deterministic pre-import runtime identity without changing files. Preserve that identity through guarded import. Expected generated UID sidecars are inventoried and hash-bound separately; do not restamp merely because import generated them. Existing UID files must remain unchanged.
+
+The tests in `tests/` include controlled gameplay and HUD fixtures. They are not natural-play or physical-device acceptance. Current browser evidence must distinguish emulated touch from real devices and list untested flows. Public served-byte verification is separate from browser behavior.
 
 ## Artwork and licensing
 
