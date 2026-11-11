@@ -6,7 +6,7 @@ import json
 import os
 import prepare_public_capture as source
 
-BRANCH = 'refs/heads/ci/military-edges-v2-vc-65e548819ad3'
+BRANCH = 'refs/heads/ci/faction-publication-vc-f3d75a2138cc'
 OUTPUT_FILES = sorted(['index.html', 'index.js', 'index.wasm', 'index.pck', 'index.png', 'index.icon.png', 'index.apple-touch-icon.png', 'index.audio.worklet.js', 'index.audio.position.worklet.js'])
 
 def admitted():
@@ -24,7 +24,12 @@ def main():
     if args.phase == 'prepare':
         result = source.prepare(root / 'game', work, source.entries_from_git(root))
         capture = json.loads((work / 'capture-lock.json').read_text())
-        lock = dict(schema='vc-web-export-v1', reviewed_for_execution=os.environ.get('CONSTRUCTION_EXECUTION_APPROVED')=='true',
+        lock = dict(faction_reviewed_for_execution=os.environ.get('FACTION_EXECUTION_APPROVED')=='true',
+            faction_runner_sha256=source.sha(root / 'ci/run_faction.py'),
+            faction_supervisor_sha256=source.sha(root / 'ci/run_logic.py'),
+            faction_validator_sha256=source.sha(root / 'ci/validate_faction.py'),
+            faction_harness_sha256=source.sha(root / 'game/tests/faction_publish_contract.gd'),
+            schema='vc-web-export-v1', reviewed_for_execution=os.environ.get('CONSTRUCTION_EXECUTION_APPROVED')=='true',
             military_reviewed_for_execution=os.environ.get('MILITARY_EXECUTION_APPROVED')=='true',
             military_runner_sha256=source.sha(root / 'ci/run_military.py'),
             military_supervisor_sha256=source.sha(root / 'ci/run_logic.py'),

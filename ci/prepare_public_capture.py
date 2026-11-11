@@ -4,9 +4,9 @@ from pathlib import Path
 import argparse,hashlib,importlib.util,json,os,re,shutil,subprocess,sys,zipfile
 sys.dont_write_bytecode=True
 HERE=Path(__file__).resolve().parent
-SOURCE_COMMIT='bd04f892cd559573d9cce9ae9539d2627d43a9ab'
-GAME_TREE='f0db2450c82106bb957d50a2e1ee05a2e3e95d0f'
-BUILD='vc-65e548819ad3'
+SOURCE_COMMIT='0c15a901d054702b84ec28e66da089de37b36178'
+GAME_TREE='3e1a0725642df930df2555cf989c2fef7a063f48'
+BUILD='vc-f3d75a2138cc'
 ENGINE='4.6.3.stable.official.7d41c59c4'
 ENGINE_SHA='f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 SHADER_UID='assets/mature/shaders/building_damage_soot.gdshader.uid'
@@ -25,7 +25,7 @@ def entries_from_git(root):
         meta,name=line.split('\t',1);mode,kind,digest=meta.split()
         need(mode=='100644' and kind=='blob','Nonregular public source')
         entries[name]=digest
-    need(len(entries)==230,'Public source count differs');return entries
+    need(len(entries)==232,'Public source count differs');return entries
 
 def prepare(project,work,public_blobs):
     project=project.resolve();work=work.resolve()
@@ -40,7 +40,7 @@ def prepare(project,work,public_blobs):
             h=hashlib.sha1(b'blob '+str(size).encode()+b'\0')
             while b:=f.read(1024*1024):h.update(b)
         actual[name]=h.hexdigest();entries[name]=dict(file=name,size=size,sha256=sha(p))
-    need(actual==public_blobs and len(actual)==230,'Exact public source bytes differ')
+    need(actual==public_blobs and len(actual)==232,'Exact public source bytes differ')
     spec=importlib.util.spec_from_file_location('public_runtime',project/'tools/runtime_manifest.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     module.verify_mature_export_exclusions(project)
     runtime_names=[p.relative_to(project).as_posix() for p in module.runtime_paths(project)]
@@ -84,7 +84,7 @@ def prepare(project,work,public_blobs):
 def main():
     p=argparse.ArgumentParser();p.add_argument('phase',choices=['prepare','engine']);p.add_argument('--work',type=Path,required=True);a=p.parse_args()
     need(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('RUNNER_ENVIRONMENT')=='github-hosted','Hosted runner required')
-    need(os.environ.get('GITHUB_REPOSITORY')=='penny323mo/valley-crown' and os.environ.get('GITHUB_REF')=='refs/heads/ci/military-edges-v2-vc-65e548819ad3' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','Wrong repository/branch/attempt')
+    need(os.environ.get('GITHUB_REPOSITORY')=='penny323mo/valley-crown' and os.environ.get('GITHUB_REF')=='refs/heads/ci/faction-publication-vc-f3d75a2138cc' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','Wrong repository/branch/attempt')
     root=HERE.parent;work=a.work.resolve()
     if a.phase=='prepare':print(json.dumps(prepare(root/'game',work,entries_from_git(root))))
     else:
