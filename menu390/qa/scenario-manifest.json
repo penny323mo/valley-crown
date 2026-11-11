@@ -1,0 +1,27 @@
+{
+  "reviewed": true,
+  "build": "vc-542ddb524e45",
+  "source_commit": "422acc862d9fc56f1fe2c95440f411893ded5edf",
+  "files_sha256": {
+    "index.apple-touch-icon.png": "9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a",
+    "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
+    "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
+    "index.html": "b18b210ca1b02aebf69175efde9218c88762057dddd1df95041c54701e548d0c",
+    "index.icon.png": "08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5",
+    "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
+    "index.pck": "f75ccbd9484f33676fc46c413d63711fd3144116c8c7dfbb56f2467b194b5fa5",
+    "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
+    "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6"
+  },
+  "profile": "portrait",
+  "scenario": "menu390",
+  "viewport": [
+    390,
+    844
+  ],
+  "resized_viewport": [
+    844,
+    390
+  ],
+  "hud_schema": 2
+}
