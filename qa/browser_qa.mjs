@@ -1,18 +1,36 @@
 // INERT MODULE: no launch or server on import. Invoke only inside reviewed guard.
 // Caller owns browser lifecycle. Uses existing read-only snapshot bridge only.
 import assert from 'node:assert/strict';
-import {writeFile} from 'node:fs/promises';
+import {writeFile, rename} from 'node:fs/promises';
 
-export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1:8080') {
+export function selectProfile(name) {
+  assert.ok(name === 'desktop' || name === 'portrait', 'One explicit reviewed profile required');
+  return name === 'desktop'
+    ? {name, viewport: {width: 1440, height: 900}, hasTouch: false}
+    : {name, viewport: {width: 390, height: 844}, hasTouch: true};
+}
+
+export async function runQA(browser, outputDirectory, origin, profileName) {
   assert.match(origin, /^http:\/\/127\.0\.0\.1:\d+$/);
-  const evidence = {build: 'vc-dd795d96905c', cases: [], errors: [],
+  const profile = selectProfile(profileName);
+  const started = Date.now();
+  const evidence = {build: 'vc-dd795d96905c', profile: profile.name, cases: [], errors: [],
+    basicSmokePassed: false, releaseQAPassed: false, phase: 'starting', checkpoints: [],
     not_run: ['settings (no panel found)',
-      'real iPhone Safari', 'real Android Chrome', 'audible audio verification']};
+      'training completion intentionally excluded from bounded beta smoke',
+      'combat', 'real iPhone Safari', 'real Android Chrome', 'audible audio verification']};
+  const persist = async () => {
+    await writeFile(`${outputDirectory}/browser-evidence.json.tmp`, JSON.stringify(evidence, null, 2));
+    await rename(`${outputDirectory}/browser-evidence.json.tmp`, `${outputDirectory}/browser-evidence.json`);
+  };
+  const checkpoint = async (phase, state = null) => {
+    evidence.phase = phase;
+    evidence.checkpoints.push({phase, elapsed_ms: Date.now() - started, state});
+    await persist();
+  };
   try {
-    for (const profile of [
-      {name: 'desktop', viewport: {width: 1440, height: 900}, hasTouch: false},
-      {name: 'portrait', viewport: {width: 390, height: 844}, hasTouch: true},
-    ]) {
+    await checkpoint('starting');
+    {
       const context = await browser.newContext({viewport: profile.viewport, hasTouch: profile.hasTouch, deviceScaleFactor: 1, serviceWorkers: 'block'});
       const page = await context.newPage();
       page.setDefaultTimeout(15000);
@@ -29,6 +47,7 @@ export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1
       const initial = await snapshot();
       assert.equal(initial.build, evidence.build, 'Wrong runtime build');
       assert.equal(initial.paused, false, 'Expected normal initial live match');
+      await checkpoint('load-build-asserted', initial);
       await page.screenshot({path: `${outputDirectory}/${profile.name}-loaded.png`});
       // Existing public keyboard action, not a game-state setter or test reset.
       await page.keyboard.press('p');
@@ -48,6 +67,7 @@ export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1
         await page.waitForTimeout(400);
         assert.ok((await snapshot()).tick > restored.tick, 'Simulation failed to resume');
       }
+      await checkpoint('pause-resume-asserted', {toggled, restored});
       // Fixed source-derived canvas geometry, never search/click arbitrary game
       // positions. Assertions fail closed if actual exported layout differs.
       const width = profile.viewport.width, height = profile.viewport.height;
@@ -70,6 +90,7 @@ export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1
       await click(menuX + 14 + 48, menuY + 10 + 46 + 6 + 20 + 6 + 46 + 6 + 23);
       const selected = await snapshot();
       assert.ok(selected.selected.length >= 1, 'Menu villagers action missed: inspect screenshots/geometry');
+      await checkpoint('menu-close-selection-asserted', {afterClose, selected});
       const command = [margin + 10 + 27, height - margin - 4 - 23];
       const cancel = [command[0] + 54 + 8, command[1]];
       for (let round = 0; round < 2; round++) {
@@ -93,6 +114,7 @@ export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1
       assert.equal(repeatedCancel.touch_mode, false);
       assert.equal(repeatedCancel.paused, false);
       assert.deepEqual(repeatedCancel.selected, selected.selected);
+      await checkpoint('command-repeated-cancel-asserted', repeatedCancel);
       const buildCancel = [];
       for (let round = 0; round < 2; round++) {
         const beforeBuild = await snapshot();
@@ -106,6 +128,7 @@ export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1
         assert.equal(afterBuild.paused, false);
         buildCancel.push({before:beforeBuild, after:afterBuild});
       }
+      await checkpoint('build-preview-cancel-asserted', buildCancel);
       let training = {notRun:'desktop-only bounded check'};
       if (profile.name === 'desktop') {
         // Use real Home menu button, avoiding Space being consumed by HUD focus.
@@ -123,16 +146,9 @@ export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1
         const refunded = await snapshot();
         assert.equal(refunded.bank_milli.food, queued.bank_milli.food + 37 * home.economy_scale, 'Started training 75%-floor refund mismatch');
         assert.equal(refunded.population, home.population, 'Cancelled training reservation remained');
-        await click(...train);
-        await page.screenshot({path: `${outputDirectory}/desktop-training-queued.png`});
-        const until = Date.now() + 25000;
-        let completed = await snapshot();
-        while (completed.trained <= home.trained && Date.now() < until) {
-          await page.waitForTimeout(400); completed = await snapshot();
-        }
-        training = {home, queued, refunded, completed, completedWithinBudget:completed.trained > home.trained};
-        if (!training.completedWithinBudget) evidence.not_run.push('Training completion not observed within 25-second budget');
-        await page.screenshot({path: `${outputDirectory}/desktop-training-after-wait.png`});
+        training = {home, queued, refunded, completion:'not run: bounded beta smoke'};
+        await checkpoint('training-debit-cancel-refund-asserted', training);
+        await page.screenshot({path: `${outputDirectory}/desktop-training-cancelled.png`});
       }
       await page.keyboard.down('ArrowRight');
       await page.waitForTimeout(250);
@@ -141,6 +157,7 @@ export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1
       const final = await snapshot();
       assert.equal(final.build, evidence.build);
       assert.equal(final.paused, false);
+      await checkpoint('final-state-asserted', final);
       evidence.cases.push({profile: profile.name, initial, toggled, restored, afterClose, selected, repeatedCancel, buildCancel, training, final,
         camera: 'ArrowRight exercised; screenshot recorded; snapshot has no camera field',
         menu: 'source-derived clicks and villagers-selection assertion; screenshots need visual review',
@@ -151,11 +168,14 @@ export async function runQA(browser, outputDirectory, origin = 'http://127.0.0.1
     evidence.basicSmokePassed = true;
     // Bounded smoke pass is separate from full release/real-device acceptance.
     evidence.releaseQAPassed = false;
+    await checkpoint('completed');
   } catch (error) {
     evidence.failure = String(error);
+    evidence.failedDuringPhase = evidence.phase;
+    evidence.phase = 'failed';
     throw error;
   } finally {
-    await writeFile(`${outputDirectory}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
+    await persist();
   }
   return evidence;
 }

@@ -138,6 +138,7 @@ def run(lock_path, export, bundle, deps, output, receipt_path):
     require(user == 'runner', 'Expected fresh hosted runner identity')
     require(not output.exists() and not receipt_path.exists(), 'Fresh output/receipt paths required')
     lock = read_json(lock_path)
+    require(lock.get('profile') in ('desktop', 'portrait'), 'One reviewed profile required')
     validate_inputs(lock, export, bundle, deps, require_image=False); verify_chrome(lock)
     require(available_memory() >= 4*GIB, 'Need 4 GiB host available')
     output.mkdir(); (output/'home').mkdir(); (output/'tmp').mkdir()
@@ -148,6 +149,7 @@ def run(lock_path, export, bundle, deps, output, receipt_path):
                'build': lock['build'], 'source_commit': lock['source_commit'], 'files_sha256': lock['files_sha256'],
                'chrome_path': lock['chrome_path'], 'chrome_sha256': lock['chrome_sha256'], 'chrome_version': lock['chrome_version']}
     receipt['node_path'], receipt['node_sha256'] = lock['node_path'], lock['node_sha256']
+    receipt['profile'] = lock['profile']
     receipt['limits'] = {'systemd_runtime_seconds':100, 'node_runtime_seconds':90,
                          'supervisor_cleanup_seconds':105, 'stop_timeout_seconds':5,
                          'memory_bytes':3*GIB, 'swap_bytes':0, 'tasks':256, 'cpu_percent':200}
@@ -167,7 +169,7 @@ def run(lock_path, export, bundle, deps, output, receipt_path):
                 '--property=KillMode=control-group', '--property=OOMPolicy=stop',
                 '/usr/bin/env', '-i', 'PATH=/usr/bin:/bin', 'LANG=C.UTF-8', 'HOME=' + str(output/'home'),
                 'TMPDIR=' + str(output/'tmp'), lock['node_path'], str(bundle/'host_main.mjs'),
-                str(export), str(output), str(deps), lock['chrome_path']]
+                str(export), str(output), str(deps), lock['chrome_path'], lock['profile']]
         # Uncertain creation is not retried; finally resolves exact owner unit.
         systemd.create(args)
         record = systemd.show(receipt['unit'])
@@ -191,7 +193,8 @@ def run(lock_path, export, bundle, deps, output, receipt_path):
                 if cg.exists():
                     last = sample(cg)
                     require(last['events'].get('oom', 0) == 0 and last['events'].get('oom_kill', 0) == 0, 'Owned OOM on exit')
-                require(read_json(output/'browser-evidence.json').get('basicSmokePassed') is True, 'Smoke failed/missing')
+                evidence = read_json(output/'browser-evidence.json')
+                require(evidence.get('basicSmokePassed') is True and evidence.get('phase') == 'completed' and evidence.get('profile') == lock['profile'], 'Selected profile smoke failed/missing')
                 receipt['passed'] = True
                 break
             try:

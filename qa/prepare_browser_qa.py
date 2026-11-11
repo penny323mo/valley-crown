@@ -74,6 +74,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--candidate', type=Path, required=True)
     parser.add_argument('--work', type=Path, required=True)
+    parser.add_argument('--profile', choices=['desktop', 'portrait'], required=True)
     args = parser.parse_args()
     need(os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted', 'Fresh GitHub-hosted VM required')
     need(os.environ.get('GITHUB_REPOSITORY') == 'penny323mo/valley-crown' and os.environ.get('GITHUB_REF') == 'refs/heads/ci/public-web-browser-vc-dd795d96905c' and os.environ.get('GITHUB_RUN_ATTEMPT') == '1', 'Wrong repository/branch/attempt')
@@ -99,7 +100,8 @@ def main():
     version = subprocess.check_output(['/usr/bin/dpkg-query', '-W', '-f=${Version}', 'google-chrome-stable'], text=True, timeout=5).strip()
     node = Path(shutil.which('node') or '').resolve()
     need(node.is_file() and not node.is_symlink(), 'Stock Node runtime unavailable')
-    lock = dict(reviewed=True, build=receipt['build'], source_commit=receipt['source_commit'],
+    receipt['profile'] = args.profile
+    lock = dict(reviewed=True, profile=args.profile, build=receipt['build'], source_commit=receipt['source_commit'],
         files_sha256=receipt['files_sha256'], qa_files_sha256=inventory(HERE),
         npm_lock_sha256=receipt['npm_lock_sha256'],
         npm_tarball_sha256=packages['playwright']['sha256'], npm_registry_integrity=INTEGRITY['playwright'],

@@ -5,8 +5,8 @@ import path from 'node:path';
 import {readFile, lstat, realpath, writeFile, appendFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {runQA} from './browser_qa.mjs';
-const [exportRoot, output, deps, chromePath] = process.argv.slice(2);
-if (!exportRoot || !output || !deps || chromePath !== '/opt/google/chrome/chrome') throw new Error('Required explicit paths missing');
+const [exportRoot, output, deps, chromePath, profile] = process.argv.slice(2);
+if (!exportRoot || !output || !deps || chromePath !== '/opt/google/chrome/chrome' || !['desktop','portrait'].includes(profile)) throw new Error('Required explicit paths/profile missing');
 const require = createRequire(path.join(deps, 'package.json'));
 const {chromium} = require('playwright');
 const start = Date.now();
@@ -36,8 +36,8 @@ let browser;
 try {
   browser = await chromium.launch({executablePath:chromePath, headless:true, chromiumSandbox:true, timeout:20000});
   await writeFile(path.join(output, 'browser-runtime.json'), JSON.stringify({origin, browserVersion:browser.version(), executablePath:chromePath,
-    browserSource:'stock official host Chrome; observed version, not a pinned Playwright browser', chromiumSandbox:true}, null, 2));
-  await runQA(browser, output, origin);
+    browserSource:'stock official host Chrome; observed version, not a pinned Playwright browser', chromiumSandbox:true, profile}, null, 2));
+  await runQA(browser, output, origin, profile);
 } catch (error) {
   await appendFile(path.join(output, 'host-browser-error.log'), String(error).slice(0, 12000) + '\n');
   throw error;
