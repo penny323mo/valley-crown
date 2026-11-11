@@ -2560,16 +2560,21 @@ func _update_visuals(delta):
 	pending_visual_deaths.clear()
 	character_presenter.reconcile(records)
 	character_presenter.update_deaths(delta,not paused and application_focused and not application_suspended,func(p): return visible_cells[0][_cell_index(p)]!=0)
-	for proxy in presentation_nodes.values(): proxy.node.visible=false
+	# Keep active proxies visible; retire only proxies not presented this frame.
+	# Shallow copy retains the existing nodes, including orphaned/removed actors.
+	var unused_proxies=presentation_nodes.duplicate()
 	for ent in entities:
-		# Authority nodes for other factions are never presentation memory.
-		ent.node.visible=false; ent.ring.visible=false
-		if is_instance_valid(ent.bar): ent.bar.visible=false
 		var record=records.get(ent.id,{})
+		# Authority nodes for other factions are never presentation memory.
+		var owned_visible=not record.is_empty() and record.owned
+		ent.node.visible=owned_visible
+		ent.ring.visible=owned_visible and record.id in selected
+		if is_instance_valid(ent.bar): ent.bar.visible=owned_visible and (record.id in selected or record.hp<record.max_hp)
 		if record.is_empty(): continue
 		if not record.owned:
 			if not presentation_nodes.has(record.id): continue
 			var proxy=presentation_nodes[record.id]
+			unused_proxies.erase(record.id)
 			proxy.node.visible=true; proxy.node.position=record.pos
 			if record.category=="building": ConstructionVisual.apply(proxy.body,record.kind,record.built,record.progress)
 			proxy.body.rotation.y=record.visual_yaw
@@ -2582,15 +2587,14 @@ func _update_visuals(delta):
 				proxy.bar.visible=not record.remembered and record.hp<record.max_hp
 				if not record.remembered: proxy.fill.scale.x=_health_bar_fill_scale(record,proxy.bar)
 			continue
-		ent.node.visible=true; ent.node.position=record.pos
-		ent.ring.visible=record.id in selected
+		ent.node.position=record.pos
 		if record.category=="building": ConstructionVisual.apply(ent.body,record.kind,record.built,record.progress)
 		if record.category=="unit":
 			if record.kind in MatureVisuals.UNIT_KINDS: character_presenter.present(record,ent.body,BLUE if record.team==0 else RED,delta,running)
 			else: ProgressionVisuals.present(record,ent.body,BLUE if record.team==0 else RED,delta,running)
 		if is_instance_valid(ent.bar):
-			ent.bar.visible=record.id in selected or record.hp<record.max_hp
 			ent.bar_fill.scale.x=_health_bar_fill_scale(record,ent.bar)
+	for proxy in unused_proxies.values(): proxy.node.visible=false
 
 func visual_evidence_snapshot() -> Dictionary:
 	# Current visible presentation only, never hidden authority nodes.

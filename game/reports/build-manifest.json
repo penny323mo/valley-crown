@@ -1,5 +1,5 @@
 {
-  "build": "vc-79ebcaef19e3",
+  "build": "vc-1cb7c74ee588",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -125,7 +125,7 @@
     "scripts/faction_view.gd.uid": "adb9a1738643106ae9a9aee52e124cea5e0ac6aa180fd2af1c9fc5a57d9e5247",
     "scripts/faction_work_memory.gd": "a223ca640285a950e0a1524fb00b100e3c9b022aec5ec8d65fc9a20e99a51100",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
-    "scripts/game.gd": "0596a611029fc7c8867ab4f18e73709aa0f982f6e47909649ee3e96e9dd51d0f",
+    "scripts/game.gd": "32b16b322d99e4922eb421143714b16a65fb35ad6088114132fe92b840aa0dfc",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/main_menu.gd": "4c9997e49f01c4d717b32ee1d03a594a3d4d708ee366e4d7f5cf5580a887bc1d",
     "scripts/map_routes.gd": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
@@ -140,7 +140,7 @@
     "scripts/observed_occlusion.gd.uid": "0d078dece8aed1c6b4ccabf959f90900303650f9057a52d7394c76e553c46470",
     "scripts/progression_visuals.gd": "9727e75c84646f9e7daa2691cbb2e2a2405d73e46d4cc5180deee99ff189e675",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "6ae7a99e08e955ea86dabd55d9831284fb648f03f05acd92b049874ee3cb1cf5",
+    "scripts/rules.gd": "2e736b505922ea248724ffc799938d203d103935f24138205ebaa1f57ef0b7a5",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/worker_idle_status.gd": "d99bf87d3d86c48df14813a47f0ad9d1cc2baf473d0fbf36c53d5b0554b4d236"
   }
