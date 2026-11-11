@@ -1,0 +1,66 @@
+name: Export current tested public game
+on:
+  push:
+    branches: [ci/public-main-web-vc-dd795d96905c]
+permissions:
+  contents: read
+concurrency:
+  group: public-main-web-vc-dd795d96905c
+  cancel-in-progress: false
+jobs:
+  export:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/public-web-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact tested public game tree
+        run: python3 -B ci/prepare_web_release.py prepare --work "$RTS_WORK"
+      - name: Prepare pinned official engine and Web template without launch
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_web_release.py engine --work "$RTS_WORK"
+          python3 -B ci/prepare_web_templates.py --work "$RTS_WORK"
+      - name: Fresh bounded import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: Two guarded exports with exact source and template binding
+        run: python3 -B ci/run_export.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/template/web_nothreads_release.zip" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/exports" --private "$RTS_WORK/private/export"
+      - name: Package exact repeatable Web candidate and notices
+        run: python3 -B ci/package_web_release.py --work "$RTS_WORK"
+      - name: Upload verified candidate
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tested-public-web-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ env.RTS_WORK }}/candidate/
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 30
+      - name: Upload export evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-web-export-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/exports/web-export-receipt.json
+            ${{ env.RTS_WORK }}/exports/export-1/receipt.json
+            ${{ env.RTS_WORK }}/exports/export-1/godot.log
+            ${{ env.RTS_WORK }}/exports/export-2/receipt.json
+            ${{ env.RTS_WORK }}/exports/export-2/godot.log
+            ${{ env.RTS_WORK }}/export-lock.json
+            ${{ env.RTS_WORK }}/template-provenance.json
+            ${{ env.RTS_WORK }}/web-manifest.json
+            ${{ env.RTS_WORK }}/release-summary.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# Export candidate only. Existing Pages workflow, permissions and live site unchanged.
