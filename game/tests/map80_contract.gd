@@ -26,9 +26,9 @@ func world_anchor(x,y,width):
 	return Vector3(x-Rules.MAP_HALF+(0.5 if width%2 else 0),0,y-Rules.MAP_HALF+(0.5 if width%2 else 0))
 func sweep(label):
 	var builder=g._first(0,"villager")
-	# Independent source-model oracle: opening144/89, full-visible5042/4742.
+	# Independent source-model oracle: opening128/66, full-visible4956/4605.
 	# The oracle never derives eligibility from _placement_reason's verdict.
-	var expected_by_width={2:144,3:89} if label=="opening" else {2:5042,3:4742}
+	var expected_by_width={2:128,3:66} if label=="opening" else {2:4956,3:4605}
 	var known_reasons=["","地圖邊界","需要地點及周邊目前可見","與建築或資源重疊","地點有單位","需要留有施工通道","不可阻住生產建築最後出口"]
 	for kind in ["house","barracks","range","storehouse"]:
 		var width=Rules.FOOTPRINT[kind]; var reasons={}; var legal_count=0; var unknown_reasons={}
@@ -54,16 +54,18 @@ func run():
 	for e in g.entities:
 		if e.team==1: hidden=hidden and not g._visible_to(e,0) and g.faction_views[0].get_record(e.id).is_empty()
 	check("opening-enemy-unobserved",hidden)
-	var units=0; var trees=0; var berries=0; var local=[{"wood":0,"food":0},{"wood":0,"food":0}]
+	var units=0; var trees=0; var berries=0; var minerals={"stone":0,"iron":0}; var local=[{"wood":0,"food":0},{"wood":0,"food":0}]
 	for e in g.entities:
 		if e.category=="unit": units+=1
 		elif e.category=="resource":
 			if e.kind=="berry": berries+=1
-			else: trees+=1
+			elif e.kind in ["pine","oak"]: trees+=1
+			elif minerals.has(e.kind): minerals[e.kind]+=1
 			for team in 2:
-				if e.pos.distance_to(Routes.home(team))<13:
+				if e.kind in ["pine","oak","berry"] and e.pos.distance_to(Routes.home(team))<13:
 					local[team]["food" if e.kind=="berry" else "wood"]+=int(e.hp)
 	check("finite-resource-counts",units==12 and trees==40 and berries==24,{"units":units,"trees":trees,"berries":berries})
+	check("v1-mineral-counts-added",minerals=={"stone":12,"iron":12},minerals)
 	check("home-resource-quotas-preserved",local[0]=={"wood":2100,"food":1200} and local[0]==local[1],local)
 	var cell_ok=true
 	for c in [Vector2i(0,0),Vector2i(2,2),Vector2i(40,40),Vector2i(77,77),Vector2i(79,79)]: cell_ok=cell_ok and g._cell(g._point(c))==c

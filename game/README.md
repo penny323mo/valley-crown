@@ -1,5 +1,9 @@
 # Valley & Crown game source
 
+Current integrated development build: `vc-542ddb524e45`. Adds the reviewed military progression and faction-publication optimization while retaining the released illustrated menu. Combined engine, natural-match, browser and model acceptance are pending. New cavalry/siege presentation is provisional and is not final art.
+
+The latest released and separately verified menu beta remains [vc-10d6c6145978](https://penny323mo.github.io/valley-crown/builds/vc-10d6c6145978/). The historical release evidence below applies to that release, not automatically to these development bytes.
+
 Integrated Godot4.6.3 source, deterministic pre-import build `vc-10d6c6145978`. Open `project.godot` in Godot. The ordinary entry is the main menu; Start creates the match.
 
 Tested source `3e84f07b5984135572c089a70fd90392810b8017`, game tree `5047b4ffcd5b7fea49a668d7769f7fa80a909062`. This later README update does not change runtime bytes. The illustrated menu, single-touch Help scrolling and responsive actions are included alongside existing contextual touch, construction feedback and terrain.

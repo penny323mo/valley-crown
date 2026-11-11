@@ -65,6 +65,13 @@ func _initialize():
 	check("soldier resource tap leaves existing orders alone",orders.commands.size()==1)
 	orders.picked=4; orders.selected=[1,2]; orders._send_world_order(Vector2.ZERO,true)
 	check("enemy dispatch retains selected combat group",orders.commands.size()==2 and orders.commands[-1].ids==[1,2])
+	var farm=keep.duplicate(); farm.id=6; farm.kind="farm"
+	orders.faction_views[0].current[6]=farm; orders.picked=6; orders.selected=[1,2]
+	orders._send_world_order(Vector2.ZERO,true)
+	check("farm tap dispatches only capable villagers",orders.commands[-1].ids==[1] and orders.commands[-1].target==6)
+	g.faction_views[0].current[1]=worker; g.faction_views[0].current[6]=farm; g.selected=[1]; g.picked=6
+	g._tap(Vector2.ZERO,true)
+	check("normal farm touch starts work not building selection",g.selected==[1] and g.sent[-1].target==6)
 	orders.order_marker.free(); orders.free()
 	g.free()
 	print("CONTEXTUAL_TOUCH_CONTRACT "+JSON.stringify(checks))

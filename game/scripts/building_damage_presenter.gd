@@ -4,7 +4,7 @@ extends RefCounted
 const Rules = preload("res://scripts/rules.gd")
 const SOOT_SHADER = preload("res://assets/mature/shaders/building_damage_soot.gdshader")
 const MAX_ACTIVE := 64
-const MAX_MESHES := 10
+const MAX_MESHES := 18 # Nine building profiles, two damage tiers; bounded cache.
 var nodes: Dictionary = {}
 var meshes: Dictionary = {}
 

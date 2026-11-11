@@ -39,7 +39,10 @@ func publish(observed: Dictionary, visible, now: int):
 			var record = memory[id].duplicate(true)
 			record.remembered = true
 			next[id] = freeze(record)
-	current = freeze(next)
+	# Both insertion branches deeply freeze each value before it enters next.
+	# Freeze only this fresh outer map; never recopy already-frozen records.
+	next.make_read_only()
+	current = next
 
 func records(): return current
 func get_record(id): return current.get(id, {})
