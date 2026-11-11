@@ -1,0 +1,31 @@
+{
+  "name": "ordinary-rendered-450-ack-v2",
+  "reviewed_for_execution": true,
+  "diagnostic_only": true,
+  "product_source": "ce2ea3d2513bd79cf62cf5c651abe3c47aad8513",
+  "product_tree": "cadc77674b0b3184e7c3af9961f3e6ffdac507e9",
+  "product_build": "vc-79ebcaef19e3",
+  "fixture_seconds": 440,
+  "scenario_seconds": 450,
+  "node_seconds": 460,
+  "service_seconds": 470,
+  "outer_seconds": 475,
+  "snapshot_read_seconds": 5,
+  "viewport": [
+    390,
+    844
+  ],
+  "policy_donor_sha256": "7e91b3ec012c3e74be1ce1a23141d72ee0d015ed4dcb1646c59d5e4f0449e86a",
+  "diagnostic_overlay": {
+    "full_rendered_match.tscn": "0d227a2f84e48c7b5d017bcb2bf74f042b7dd0d8a642217d7623bda354bc29f2",
+    "full_rendered_match.gd": "626ed998070855b6c9d565d30127786e67986ad2aafbc1153df1c72af9bb64d7"
+  },
+  "bound_files_sha256": {
+    "run_host_rendered.py": "8eacda03b68c30dafef864a6c244d8e454c1c3e35900fe22125a97141c25f208",
+    "host_rendered.mjs": "eba42092cfea51825cdd31ed76852b46a127d58540c84c69a88e943402e8a42f",
+    "browser_rendered.mjs": "133b7d085a248aea0fe19e263f01eb5cc3f9c2d9e65e18dc3062c882fa36a875",
+    "rendered_profile.py": "08f9c2e0215e36952f4bdea8aee3a4b9f3c937f6d13c4806d3441e4f29f60285",
+    "capture_handshake.mjs": "54bb76c8bb86e485f3ebd221a1702b80dce5c21cdc5e9332355ea83551ee707f"
+  },
+  "capture_ack_capability": "current_monotonic_id_only_after_png_and_metadata_persistence"
+}

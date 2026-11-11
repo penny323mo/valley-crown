@@ -1,9 +1,0 @@
-{
-  "bound": true,
-  "execution_approved": false,
-  "files": {
-    "diagnostic/full_rendered_match.gd": "626ed998070855b6c9d565d30127786e67986ad2aafbc1153df1c72af9bb64d7",
-    "diagnostic/full_rendered_match.tscn": "0d227a2f84e48c7b5d017bcb2bf74f042b7dd0d8a642217d7623bda354bc29f2"
-  },
-  "status": "Bound bytes; independent exact review and execution approval pending"
-}
