@@ -378,9 +378,51 @@ def reap_owned(child):
     return info
 
 
+
+def validate_capture_lock(lock):
+    """File-only schema checks shared by preparation, renderer and scanner.
+
+    Identity against actual source, tools, import receipt and outputs remains
+    enforced by the existing consumers; this validates their required inputs.
+    """
+    require(type(lock) is dict, 'Lock must be an object')
+    require(lock.get('reviewed_for_execution') is True, 'Draft lock is not approved for execution')
+    require(lock.get('native_renderer') == 'linux-x11-mesa-llvmpipe-gl_compatibility', 'Renderer scope differs')
+    require(type(lock.get('build')) is str and re.fullmatch(r'vc-[0-9a-f]{12}', lock['build']), 'Invalid build identity')
+    for key in ('harness', 'godot', 'supervisor', 'source_archive', 'import_manifest'):
+        value = lock.get(key + '_sha256')
+        require(type(value) is str and re.fullmatch(r'[0-9a-f]{64}', value), 'Missing/invalid tool hash: ' + key)
+    for key in ('project_files', 'support_files'):
+        values = lock.get(key)
+        require(type(values) is dict and values, 'Missing hash map: ' + key)
+        for name, value in values.items():
+            require(type(name) is str and name and not Path(name).is_absolute() and '..' not in Path(name).parts,
+                    'Invalid bound file path')
+            require(type(value) is str and re.fullmatch(r'[0-9a-f]{64}', value), 'Invalid bound file hash')
+    for name in ('ci/xvfb_startup.py', 'ci/guarded_manifest_ci.py'):
+        require(name in lock['support_files'], 'Missing required support file: ' + name)
+    for name in ('scripts/game.gd', 'scripts/rules.gd') + tuple(
+            'assets/mature/models/' + kind + '_action.scn' for kind in ('villager','spearman','archer','scout')):
+        require(name in lock['project_files'], 'Missing required source file: ' + name)
+    uids = lock.get('allowed_generated_uid_files')
+    require(type(uids) is list and all(type(n) is str for n in uids) and len(uids) == len(set(uids)), 'Invalid UID list')
+    expected = {n + '.uid' for n in lock['project_files'] if n.endswith('.gd') and n + '.uid' not in lock['project_files']}
+    shader = 'assets/mature/shaders/building_damage_soot.gdshader'
+    if shader in lock['project_files'] and shader + '.uid' not in lock['project_files']:
+        expected.add(shader + '.uid')
+    require(set(uids) == expected, 'Generated UID scope differs')
+    contract = lock.get('capture_contract')
+    require(contract in [
+        {'mode': 'gameplay', 'kind': 'genuine_native_game_viewport', 'frame_count': 10},
+        {'mode': 'rig_studies', 'kind': 'native_controlled_rig_study', 'frame_count': 25},
+        {'mode': 'occlusion', 'kind': 'native_controlled_occlusion_fixture', 'frame_count': 6}], 'Unreviewed capture contract')
+    return contract
+
+
 def run(args):
     lock_path = regular(args.lock).resolve()
     lock = json.loads(lock_path.read_text())
+    validate_capture_lock(lock)
     require(lock.get('reviewed_for_execution') is True, 'Draft lock is not approved for execution')
     require(os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted',
             'Only an isolated GitHub-hosted runner is within this draft scope')

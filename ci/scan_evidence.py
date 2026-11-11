@@ -183,6 +183,8 @@ def validate_scenario(report, lock):
 
 
 def scan(directory, lock, lock_sha256):
+    from run_native import validate_capture_lock
+    validate_capture_lock(lock)
     report_path = directory / 'frames/capture-report.json'
     report = json.loads(report_path.read_text())
     guard = json.loads((directory / 'guard-receipt.json').read_text())
