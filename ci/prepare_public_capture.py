@@ -83,7 +83,7 @@ def prepare(project,work,public_blobs):
 def main():
     p=argparse.ArgumentParser();p.add_argument('phase',choices=['prepare','engine']);p.add_argument('--work',type=Path,required=True);a=p.parse_args()
     need(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('RUNNER_ENVIRONMENT')=='github-hosted','Hosted runner required')
-    need(os.environ.get('GITHUB_REPOSITORY')=='penny323mo/valley-crown' and os.environ.get('GITHUB_REF')=='refs/heads/ci/mature-menu-web-vc-893b58f24e69' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','Wrong repository/branch/attempt')
+    need(os.environ.get('GITHUB_REPOSITORY')=='penny323mo/valley-crown' and os.environ.get('GITHUB_REF')=='refs/heads/ci/mature-menu-import-metadata-vc-893b58f24e69' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','Wrong repository/branch/attempt')
     root=HERE.parent;work=a.work.resolve()
     if a.phase=='prepare':print(json.dumps(prepare(root/'game',work,entries_from_git(root))))
     else:

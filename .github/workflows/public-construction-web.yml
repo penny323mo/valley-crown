@@ -1,8 +1,8 @@
 # Reviewed scoped construction contracts and exact Web export on a fresh hosted VM.
-name: Validate menu and contextual touch, export Web
+name: Collect bounded menu import descriptors
 on:
   push:
-    branches: [ci/mature-menu-web-vc-893b58f24e69]
+    branches: [ci/mature-menu-import-metadata-vc-893b58f24e69]
 permissions:
   contents: read
 concurrency:
@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           test "$CONSTRUCTION_EXECUTION_APPROVED" = true
           test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
-          test "$GITHUB_REF" = refs/heads/ci/mature-menu-web-vc-893b58f24e69
+          test "$GITHUB_REF" = refs/heads/ci/mature-menu-import-metadata-vc-893b58f24e69
           test "$GITHUB_RUN_ATTEMPT" = 1
           [[ "$CONSTRUCTION_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
           [[ "$CONSTRUCTION_GAME_TREE" =~ ^[0-9a-f]{40}$ ]]
@@ -48,55 +48,41 @@ jobs:
           set -euo pipefail
           source "$RTS_WORK/pins.env"
           python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
-      - name: Eight exact menu, contextual, construction and Stop suites under unchanged 120-second logic supervisor
-        run: python3 -B ci/run_contracts.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/construction-contracts" --private "$RTS_WORK/private/construction-contracts"
-      - name: Two guarded exports with exact source and template binding
-        run: python3 -B ci/run_export.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/template/web_nothreads_release.zip" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/exports" --private "$RTS_WORK/private/export"
-      - name: Package exact repeatable Web candidate and notices
-        run: python3 -B ci/package_web_release.py --work "$RTS_WORK"
-      - name: Upload verified candidate
-        if: success()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: tested-public-web-${{ github.sha }}-${{ github.run_attempt }}
-          path: ${{ env.RTS_WORK }}/candidate/
-          if-no-files-found: error
-          include-hidden-files: false
-          retention-days: 30
-      - name: Upload export evidence
+      - name: Retain only exact generated menu import descriptors
+        if: always()
+        run: |
+          python3 - <<'PYRETAIN'
+          import hashlib,json,os,pathlib,stat
+          work=pathlib.Path(os.environ['RTS_WORK'])
+          out=work/'menu-import-descriptors';out.mkdir(exist_ok=False)
+          def checked(source,base,limit):
+              assert not any(node.is_symlink() for node in [source,*source.parents])
+              assert source.resolve().is_relative_to(base.resolve())
+              assert stat.S_ISREG(source.stat().st_mode) and source.stat().st_size<=limit
+              return source.read_bytes()
+          names=['assets/fonts/menu_title_tc.otf.import','assets/mature/menu/valley_keep.png.import','assets/mature/menu/valley_crown_mark.svg.import']
+          evidence={'scope':'Actual engine-generated descriptor collection only. Guarded import acceptance remains whatever its original receipt states; no export or gameplay acceptance.','files':{},'missing':[]}
+          for name in names:
+              source=work/'project'/name
+              if not source.exists():evidence['missing'].append(name);continue
+              data=checked(source,work/'project',65536);data.decode('utf-8')
+              target=out/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
+              evidence['files'][name]={'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+          retained=['import-evidence/phase-summary.json','import-evidence/import.json','import-evidence/import.invocation.json','import-evidence/import.log','export-lock.json']
+          for name in retained:
+              source=work/name
+              if not source.exists():evidence['missing'].append(name);continue
+              data=checked(source,work if name=='export-lock.json' else work/'import-evidence',4*1024*1024)
+              target=out/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
+              evidence['files'][name]={'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+          (out/'collection.json').write_text(json.dumps(evidence,indent=2)+'\n')
+          PYRETAIN
+      - name: Upload bounded import evidence and exact descriptors
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: public-web-export-evidence-${{ github.sha }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.RTS_WORK }}/construction-contracts/construction-contracts-receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/construction_status/receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/construction_status/godot.log
-            ${{ env.RTS_WORK }}/construction-contracts/construction_status_hud/receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/construction_status_hud/godot.log
-            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_contract/receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_contract/godot.log
-            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_phone/receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_phone/godot.log
-            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/godot.log
-            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/stance-target-cancel-phone.json
-            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_contract/receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_contract/godot.log
-            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_phone/receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_phone/godot.log
-            ${{ env.RTS_WORK }}/construction-contracts/main_menu_flow_contract/receipt.json
-            ${{ env.RTS_WORK }}/construction-contracts/main_menu_flow_contract/godot.log
-            ${{ env.RTS_WORK }}/exports/web-export-receipt.json
-            ${{ env.RTS_WORK }}/exports/export-1/receipt.json
-            ${{ env.RTS_WORK }}/exports/export-1/godot.log
-            ${{ env.RTS_WORK }}/exports/export-2/receipt.json
-            ${{ env.RTS_WORK }}/exports/export-2/godot.log
-            ${{ env.RTS_WORK }}/export-lock.json
-            ${{ env.RTS_WORK }}/template-provenance.json
-            ${{ env.RTS_WORK }}/web-manifest.json
-            ${{ env.RTS_WORK }}/release-summary.json
+          name: menu-import-descriptors-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ env.RTS_WORK }}/menu-import-descriptors/
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
-# Export candidate only. Existing Pages workflow, permissions and live site unchanged.
