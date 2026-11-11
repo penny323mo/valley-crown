@@ -234,6 +234,7 @@ func resource_lifecycle() -> void:
 		game.faction_views[0].memory.erase(ent.id)
 		publish()
 		check(kind+" unseen resource authority and proxy hidden",record_for(ent).is_empty() and not ent.node.visible and (not game.presentation_nodes.has(ent.id) or not game.presentation_nodes[ent.id].node.visible))
+		capture(kind+" unseen",ent)
 		watch_actor(ent,kind+".authority",true)
 		reveal(ent,1); publish()
 		check(kind+" resource proxy created",game.presentation_nodes.has(ent.id))
