@@ -1,0 +1,38 @@
+{
+  "bound": true,
+  "build": "vc-79ebcaef19e3",
+  "diagnostic_only": true,
+  "diagnostic_source_inventory_sha256": "1f5f580afe95bb33d25dcd7dd6dd160bc3aaf70ef395bc2ca3fa8609988cc6b0",
+  "execution_approved": true,
+  "export_artifact_sha256": "dd63a9a47cd17f0f710c12a4bc5a3f0080bdd6e53a7f3ec9982e7ead24bf9c10",
+  "export_manifest_sha256": "3d77964188386e0571612b3d4446cdf1c1c894b7ebbb0ce1b6149bfbc1e8d714",
+  "files_sha256": {
+    "index.apple-touch-icon.png": "9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a",
+    "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
+    "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
+    "index.html": "5c33daec8a2ef862586442c6c0523290814beeb419c976b408b931d78d69779d",
+    "index.icon.png": "08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5",
+    "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
+    "index.pck": "0c31740ba7b20449e60fb77589b0585f23cf6a4f4c52d03fd2ea9124e7fd3b81",
+    "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
+    "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6"
+  },
+  "game_source_sha256": "0596a611029fc7c8867ab4f18e73709aa0f982f6e47909649ee3e96e9dd51d0f",
+  "game_tree": "4737f48a1db643d8310b678323d3f601f79a0633",
+  "import_manifest_sha256": "eccb5637c908e7a79f96603d2da6851a1d3eef7622fa58f48d0febdea1f693cb",
+  "overlay_sha256": "a09462f7654cdd9faf58d263130f56d9c0ce44b1dddfb708ca1052bf4daa2f30",
+  "profile": "portrait",
+  "qa_inventory_sha256": "3b02593592ffea44dda62c6502461267d712b1ea166b9124c66f718b1a8febe3",
+  "release_artifact_identity_claim": false,
+  "reviewed": true,
+  "scenario": "visibility-paused-startup",
+  "schema": "vc-paused-diagnostic-binding-v1",
+  "side": "baseline",
+  "source_archive_sha256": "352d3b5bcf1fa5bdc50451c5da9f9435fa817403d5162c57e7f8f354928c0c04",
+  "source_chain_verification_sha256": "eb95b017c8f09bf88780bc78bc98edba8f05ae4efaae852a3a93dbdff631027b",
+  "source_commit": "6ecf0763e00b6b24464e27a54f8073b7c8069623",
+  "viewport": [
+    390,
+    844
+  ]
+}

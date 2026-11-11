@@ -1,0 +1,14 @@
+{
+  "automatic_promotion": false,
+  "branch": "refs/heads/ci/visibility-paused-browser-pair-79eb-1cb7",
+  "execution_approved": true,
+  "order": [
+    "baseline",
+    "candidate"
+  ],
+  "repository": "penny323mo/valley-crown",
+  "reviewed": true,
+  "run_attempt": "1",
+  "same_fresh_hosted_job": true,
+  "schema": "vc-paused-pair-admission-v1"
+}

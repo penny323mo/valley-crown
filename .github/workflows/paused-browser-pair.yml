@@ -1,0 +1,97 @@
+name: Compare paused visibility presentation
+on:
+  push:
+    branches: [ci/visibility-paused-browser-pair-79eb-1cb7]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: visibility-paused-browser-pair-79eb-1cb7
+  cancel-in-progress: false
+jobs:
+  pair:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact source and pair admission
+        run: |
+          python3 -B -m unittest test_final_pair.py -v
+          python3 -B preflight_pair.py --admit
+      - name: Select short disjoint original scopes
+        run: |
+          echo "RTS_B=$RUNNER_TEMP/p-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-b" >> "$GITHUB_ENV"
+          echo "RTS_C=$RUNNER_TEMP/p-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-c" >> "$GITHUB_ENV"
+          echo "RTS_DB=$RUNNER_TEMP/d-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-b" >> "$GITHUB_ENV"
+          echo "RTS_DC=$RUNNER_TEMP/d-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-c" >> "$GITHUB_ENV"
+      - name: Verify baseline full ZIP and exact unpacked map
+        timeout-minutes: 3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 -B fetch_export.py --side baseline --work "$RTS_DB"
+      - name: Verify candidate full ZIP and exact unpacked map
+        timeout-minutes: 3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 -B fetch_export.py --side candidate --work "$RTS_DC"
+      - name: Prepare fresh independent baseline and candidate inputs
+        run: |
+          python3 -B baseline/qa/prepare_browser_qa.py --candidate "$RTS_DB/candidate" --work "$RTS_B" --profile portrait
+          python3 -B candidate/qa/prepare_browser_qa.py --candidate "$RTS_DC/candidate" --work "$RTS_C" --profile portrait
+          python3 -B preflight_pair.py --side baseline --host-lock "$RTS_B/browser-lock.json"
+          python3 -B preflight_pair.py --side candidate --host-lock "$RTS_C/browser-lock.json"
+      - name: Run baseline original bounded host scope
+        id: baseline_scope
+        continue-on-error: true
+        run: python3 -B baseline/qa/run_host_browser.py --lock "$RTS_B/browser-lock.json" --export "$RTS_B/export" --bundle "$GITHUB_WORKSPACE/baseline/qa" --deps "$RTS_B/deps" --output "$RTS_B/evidence" --receipt "$RTS_B/host-guard.json"
+      - name: Verify baseline exact cleanup before candidate
+        if: ${{ always() && steps.baseline_scope.outcome != 'skipped' }}
+        run: |
+          test -f "$RTS_B/host-guard.json"
+          python3 -B baseline/qa/run_host_browser.py --cleanup "$RTS_B/host-guard.json"
+          python3 -B preflight_pair.py --previous-guard "$RTS_B/host-guard.json"
+      - name: Run candidate separate original bounded host scope
+        id: candidate_scope
+        continue-on-error: true
+        run: python3 -B candidate/qa/run_host_browser.py --lock "$RTS_C/browser-lock.json" --export "$RTS_C/export" --bundle "$GITHUB_WORKSPACE/candidate/qa" --deps "$RTS_C/deps" --output "$RTS_C/evidence" --receipt "$RTS_C/host-guard.json"
+      - name: Verify candidate exact cleanup independently
+        if: ${{ always() && steps.candidate_scope.outcome != 'skipped' }}
+        run: |
+          test -f "$RTS_C/host-guard.json"
+          python3 -B candidate/qa/run_host_browser.py --cleanup "$RTS_C/host-guard.json"
+      - name: Retain descriptive or inconclusive pair result
+        if: always()
+        run: python3 -B report/pair_report.py --baseline "$RTS_B" --candidate "$RTS_C" --baseline-download "$RTS_DB" --candidate-download "$RTS_DC" --output pair-result.json
+      - name: Retain actual evidence without promotion
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: paused-visibility-pair-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            pair-result.json
+            baseline/qa/scenario-manifest.json
+            candidate/qa/scenario-manifest.json
+            ${{ env.RTS_B }}/evidence/*.png
+            ${{ env.RTS_B }}/evidence/*.json
+            ${{ env.RTS_B }}/evidence/*.log
+            ${{ env.RTS_B }}/host-guard.json
+            ${{ env.RTS_B }}/browser-lock.json
+            ${{ env.RTS_B }}/preparation.json
+            ${{ env.RTS_C }}/evidence/*.png
+            ${{ env.RTS_C }}/evidence/*.json
+            ${{ env.RTS_C }}/evidence/*.log
+            ${{ env.RTS_C }}/host-guard.json
+            ${{ env.RTS_C }}/browser-lock.json
+            ${{ env.RTS_C }}/preparation.json
+            ${{ env.RTS_DB }}/artifact-download.json
+            ${{ env.RTS_DC }}/artifact-download.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# One hosted VM, sequential independent 70/90/100/105-second browser scopes.
+# No deployment, process reuse, sandbox bypass, performance threshold or promotion.

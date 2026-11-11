@@ -1,0 +1,42 @@
+{
+  "guard_contract.py": {
+    "sha256": "d6cc87024d45f10e79991328c9da51a93c26a0850c5484f1e0c79ba2bfab2438",
+    "source_origin": "military390-producer/qa/guard_contract.py"
+  },
+  "host_main.mjs": {
+    "sha256": "2d796194187e618dac91244a0ea3793cde0af035c16e28c75198cbc97eec283a",
+    "source_origin": "military390-producer/qa/host_main.mjs"
+  },
+  "network_diagnostics.mjs": {
+    "sha256": "edc2bb4381120cc61f544f46d6ef56bea1a99adc76dc99d488fcce0181742cd9",
+    "source_origin": "military390-producer/qa/network_diagnostics.mjs"
+  },
+  "package-lock.json": {
+    "sha256": "4fac3bb18edbe6c375d620a6f931646a8a6a336c6abcef4a96732f65d7b645f7",
+    "source_origin": "military390-producer/qa/package-lock.json"
+  },
+  "package.json": {
+    "sha256": "9f8d8c20cd8f62273266b14ca0353f0de05590a81398036c8e571ffbec335357",
+    "source_origin": "military390-producer/qa/package.json"
+  },
+  "prepare_browser_qa.py": {
+    "sha256": "bf0a2e41b8ad4c13750f63b5a811707cfd819c14705f6170d684cd164af55c18",
+    "source_origin": "military390-producer/qa/prepare_browser_qa.py"
+  },
+  "public_stream_cache_policy.mjs": {
+    "sha256": "5d1c02ff454dd9e837808ea432f0e287b1bd5c65ec6d9f439ca2240ed7008041",
+    "source_origin": "military390-producer/qa/public_stream_cache_policy.mjs"
+  },
+  "run_browser.py": {
+    "sha256": "c5b4dca0e3839d21b2dbb3f5d26b5dbba0fc5c0979f8b1336bb80125dc7ec006",
+    "source_origin": "military390-producer/qa/run_browser.py"
+  },
+  "run_host_browser.py": {
+    "sha256": "d2946269abe266608f5ef7c17aaa8d771d68589726f661799f2e7f650b8709ea",
+    "source_origin": "military390-producer/qa/run_host_browser.py"
+  },
+  "server_diagnostics.mjs": {
+    "sha256": "b15611b8e9e91cd9455927f823e220d57405d47c4bc1d844197daa4df5ad89bc",
+    "source_origin": "military390-producer/qa/server_diagnostics.mjs"
+  }
+}
