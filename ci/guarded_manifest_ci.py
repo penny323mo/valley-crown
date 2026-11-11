@@ -283,9 +283,9 @@ def main():
                      'engine': engine, 'archive': archive, 'suite-manifest': manifest}
         expected = {'adapter': sha(__file__), 'monitor': MONITOR_SHA, 'engine': ENGINE_SHA,
                     'archive': args.archive_sha256, 'suite-manifest': args.manifest_sha256}
-        for name, path in diagnostic_policy.binding_inputs(package['diagnostic_binding']['side']).items():
-            key = 'diagnostic:' + name; digest = package['diagnostic_binding']['bound_files_sha256'][name]
-            artifacts[key] = checked(path, digest); expected[key] = digest
+        for binding_name, binding_path in diagnostic_policy.binding_inputs(package['diagnostic_binding']['side']).items():
+            key = 'diagnostic:' + binding_name; digest = package['diagnostic_binding']['bound_files_sha256'][binding_name]
+            artifacts[key] = checked(binding_path, digest); expected[key] = digest
         for path, digest in {**(extra or {}), **previous_outputs}.items():
             key = 'bound:' + str(path); artifacts[key] = checked(path, digest); expected[key] = digest
         for name_in, digest in entries.items():

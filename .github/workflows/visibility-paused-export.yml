@@ -1,7 +1,7 @@
 name: Export paused visibility diagnostic candidate
 on:
   push:
-    branches: [ci/visibility-paused-export-candidate-1cb7]
+    branches: [ci/visibility-paused-export-candidate-1cb7-receipt]
 permissions:
   contents: read
 concurrency:
@@ -23,7 +23,7 @@ jobs:
       - name: Verify unchanged product tree and fixed branch
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = 'refs/heads/ci/visibility-paused-export-candidate-1cb7'
+          test "$GITHUB_REF" = 'refs/heads/ci/visibility-paused-export-candidate-1cb7-receipt'
           test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(git rev-parse HEAD:game)" = 'f866d43a7f9eb8402c445f8bb2c9a5a0aa13559d'
@@ -34,6 +34,8 @@ jobs:
         run: python3 -B ci/prepare_diagnostic_export.py --side candidate --work "$RTS_WORK"
       - name: Fail-closed source and admission preflight without engine
         run: python3 -B ci/preflight_diagnostic.py candidate "$RTS_WORK"
+      - name: Inert whole-import receipt naming regression
+        run: python3 -B ci/test_import_receipt_name.py
       - name: Acquire pinned official engine and Web template without launch
         run: |
           set -euo pipefail
@@ -64,6 +66,9 @@ jobs:
             ${{ env.RTS_WORK }}/import-evidence/import.json
             ${{ env.RTS_WORK }}/import-evidence/import.invocation.json
             ${{ env.RTS_WORK }}/import-evidence/import.log
+            ${{ env.RTS_WORK }}/import-evidence/approval.json
+            ${{ env.RTS_WORK }}/import-evidence/approval.invocation.json
+            ${{ env.RTS_WORK }}/import-evidence/approval.log
             ${{ env.RTS_WORK }}/import-evidence/phase-summary.json
             ${{ env.RTS_WORK }}/import-manifest.json
             ${{ env.RTS_WORK }}/export-lock.json
