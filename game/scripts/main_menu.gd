@@ -47,10 +47,15 @@ func _ready():
 	style.content_margin_top = 18
 	style.content_margin_bottom = 18
 	card.add_theme_stylebox_override("panel", style)
+	# Navigation remains visible while long help text scrolls independently.
+	var card_column = VBoxContainer.new()
+	card_column.add_theme_constant_override("separation", 14)
+	card.add_child(card_column)
 	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	card.add_child(scroll)
+	card_column.add_child(scroll)
 	var box = VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 14)
@@ -65,7 +70,7 @@ func _ready():
 	box.add_child(description)
 	buttons = VBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
-	box.add_child(buttons)
+	card_column.add_child(buttons)
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	_show_page("home")
