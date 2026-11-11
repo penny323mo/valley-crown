@@ -3481,7 +3481,6 @@ func _track_action_scroll(event,viewport):
 			action_touch_scroll.erase(event.index)
 			if not scroll.is_empty() and scroll.active:
 				gui_touch_press.erase(event.index)
-				viewport.set_input_as_handled()
 	elif event is InputEventScreenDrag and action_touch_scroll.has(event.index):
 		var scroll=action_touch_scroll[event.index]
 		if all_touch_ids.size()!=1 or touch_gesture:
