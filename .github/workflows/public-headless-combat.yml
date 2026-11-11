@@ -1,0 +1,48 @@
+name: Validate public headless combat logic
+on:
+  push:
+    branches: [ci/public-headless-combat-vc-dd795d96905c]
+permissions:
+  contents: read
+concurrency:
+  group: public-headless-combat-vc-dd795d96905c
+  cancel-in-progress: false
+jobs:
+  logic:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/public-headless-combat-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify and copy exact public game tree
+        run: python3 -B ci/prepare_logic.py prepare --work "$RTS_WORK"
+      - name: Prepare pinned official Godot without launch
+        run: python3 -B ci/prepare_logic.py engine --work "$RTS_WORK"
+      - name: Fresh guarded import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: One guarded headless scouting combat and retreat scenario
+        run: python3 -B ci/run_logic.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --harness ci/combat_logic.gd --validator ci/validate_logic.py --lock "$RTS_WORK/logic-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/evidence" --private "$RTS_WORK/private/logic"
+      - name: Retain truthful logic outcome and guard evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-headless-combat-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/evidence/combat-report.json
+            ${{ env.RTS_WORK }}/evidence/combat-logic-receipt.json
+            ${{ env.RTS_WORK }}/evidence/receipt.json
+            ${{ env.RTS_WORK }}/evidence/godot.log
+            ${{ env.RTS_WORK }}/logic-lock.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# One headless logic attempt only. No rendering, retries, Pages or deployment.
