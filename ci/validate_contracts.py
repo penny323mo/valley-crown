@@ -12,9 +12,9 @@ FIXTURES = {
  'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '0eb10211bc5577f54923f6edc0c86f3ae700020d0ef373d1fe04b09d0e597c24'),
  'contextual_touch_phone': ('tests/contextual_touch_phone.gd', '9da858aa0801cc881bf10dc9b91d03822e16fc4cb70d9a46080f33ea6c4e01d1'),
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', 'be9f81844a2c6aa66bc02a318afeafa9c943c6b620e132b7601c93bdfe4aef47')}
-MENU_SHA = '4c42f11ab84ae5c150199e1f21f5f6a4f360439db8bd318f0651653d10bb2003'
+MENU_SHA = '035ea0714dd86cd132df6fe12c40f72b439a4d1075be8cfcc777489989889bae'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-a0f7fd3365f7'
+BUILD = 'vc-21ae974acec8'
 ARRAY_COUNTS = {'contextual_touch_contract':23, 'contextual_touch_phone':10}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}
