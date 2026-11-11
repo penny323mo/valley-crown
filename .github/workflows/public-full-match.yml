@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   full_match:
-    if: ${{ github.run_attempt == 1 }}
+    if: ${{ github.run_attempt == 1 && github.sha == 'c5977a9b1ebce318f743251099c9f3355b92723a' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:

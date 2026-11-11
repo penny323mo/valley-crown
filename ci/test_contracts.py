@@ -88,7 +88,7 @@ class Tests(unittest.TestCase):
             with self.assertRaises(ValueError):v.read_log(path,'construction_status',LOCK,C)
     def test_fixture_pins(self):
         # Verify the frozen reviewed fixture, not the source worker's in-progress telemetry edit.
-        game=Path(__import__('os').environ.get('CONSTRUCTION_TEST_GAME', str(HERE.parents[1]/'repository/game')))
+        game=Path(__import__('os').environ.get('CONSTRUCTION_TEST_GAME', str(HERE.parent/'game')))
         for name,sha in v.FIXTURES.values():self.assertEqual(hashlib.sha256((game/name).read_bytes()).hexdigest(),sha)
     def test_approved_hud_execution_order(self):
         self.assertEqual(len(C['hud_names']),34)
@@ -245,7 +245,7 @@ class StopTests(unittest.TestCase):
             with self.assertRaises(ValueError):v.read_file_report(stage,v.FILE_SUITE,LOCK,C)
 
     def test_source_and_supervisor_are_exact(self):
-        game=Path(__import__('os').environ.get('CONSTRUCTION_TEST_GAME', str(HERE.parents[1]/'repository/game')))
+        game=Path(__import__('os').environ.get('CONSTRUCTION_TEST_GAME', str(HERE.parent/'game')))
         self.assertEqual(hashlib.sha256((game/'scripts/game.gd').read_bytes()).hexdigest(),v.GAME_SHA)
         code=Path(r.logic.__file__).read_text()
         for fragment in ("'timeout_seconds': 120", "time.monotonic() - start <= 120", "'OOM count changed'", "'Unexpected descendant; no retry'", "'cleanup_complete'"):
