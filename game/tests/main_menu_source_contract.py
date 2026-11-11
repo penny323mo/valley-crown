@@ -46,7 +46,7 @@ class MenuSourceContract(unittest.TestCase):
         self.assertIn('scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO',menu)
         self.assertIn('TextServer.AUTOWRAP_WORD_SMART',menu)
         self.assertIn('var short_landscape = available.x > available.y and available.y < 500.0',menu)
-        self.assertIn('identity.visible = home and (not short_landscape or card.position.y >= 70.0)',menu)
+        self.assertIn('identity.visible = home and (not short_landscape or identity.get_global_rect().end.y + 12.0 <= card.position.y)',menu)
         self.assertIn('maxf(bar.min_value, bar.max_value - bar.page)',menu)
         self.assertIn('if _help_touch(event): get_viewport().set_input_as_handled()',menu)
         self.assertIn('prose_touch = -1',menu)

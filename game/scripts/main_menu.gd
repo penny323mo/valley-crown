@@ -155,9 +155,11 @@ func _layout():
 	backdrop_material.set_shader_parameter("landscape", wide)
 	backdrop_material.set_shader_parameter("view_size", available)
 	backdrop_material.set_shader_parameter("inner_page", not home)
+	# Update the font minimum before resetting the container size. Otherwise
+	# a previous larger font can leave empty identity bounds over the prose.
+	wordmark.add_theme_font_size_override("font_size", 32 if short_landscape else (40 if wide else (46 if width >= 330.0 else 38)))
 	identity.position = Vector2(x, 18.0 if short_landscape else clampf(available.y * 0.065, 24.0, 60.0))
 	identity.size = Vector2(width, 0)
-	wordmark.add_theme_font_size_override("font_size", 32 if short_landscape else (40 if wide else (46 if width >= 330.0 else 38)))
 	var height: float
 	if home:
 		card_style.bg_color = Color(0, 0, 0, 0)
@@ -179,7 +181,7 @@ func _layout():
 	card.size = Vector2(width, height)
 	# A paused match needs three full-size actions. In a 320px-tall viewport
 	# its pause message takes priority over a repeated decorative wordmark.
-	identity.visible = home and (not short_landscape or card.position.y >= 70.0)
+	identity.visible = home and (not short_landscape or identity.get_global_rect().end.y + 12.0 <= card.position.y)
 	# Layout authority belongs to the viewport, not deferred content minima.
 	var inset = 0.0 if home else 20.0
 	var content_width = maxf(1.0, width - inset * 2.0)

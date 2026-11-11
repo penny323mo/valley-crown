@@ -22,7 +22,10 @@ func check_visible_controls(shell, phase: String):
 	if shell.footer.visible:
 		check(viewport.encloses(shell.footer.get_global_rect()), phase + ": footer visible")
 		check(not shell.identity.visible or viewport.encloses(shell.identity.get_global_rect()), phase + ": visible identity inside viewport")
-		check(not shell.identity.visible or (not shell.identity.get_global_rect().intersects(shell.scroll.get_global_rect()) and not shell.identity.get_global_rect().intersects(shell.buttons.get_global_rect())), phase + ": identity cannot overlap prose or actions")
+		var identity_clear = not shell.identity.visible or (not shell.identity.get_global_rect().intersects(shell.scroll.get_global_rect()) and not shell.identity.get_global_rect().intersects(shell.buttons.get_global_rect()))
+		if not identity_clear:
+			push_error("MENU_IDENTITY_LAYOUT " + JSON.stringify({"phase": phase, "identity": str(shell.identity.get_global_rect()), "identity_minimum": str(shell.identity.get_combined_minimum_size()), "wordmark": str(shell.wordmark.get_global_rect()), "wordmark_minimum": str(shell.wordmark.get_combined_minimum_size()), "font_size": shell.wordmark.get_theme_font_size("font_size"), "card": str(card_rect), "scroll": str(shell.scroll.get_global_rect()), "actions": str(shell.buttons.get_global_rect())}))
+		check(identity_clear, phase + ": identity cannot overlap prose or actions")
 
 func check_layout_matrix(shell, phase: String):
 	var previous = root.size
