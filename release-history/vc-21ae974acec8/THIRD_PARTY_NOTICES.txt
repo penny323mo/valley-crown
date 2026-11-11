@@ -1,0 +1,33 @@
+Godot Engine
+https://godotengine.org/license/
+
+Copyright (c) 2014-present Godot Engine contributors.
+Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+Godot includes additional third-party libraries. Full notices are available
+at https://github.com/godotengine/godot/blob/4.6.3-stable/COPYRIGHT.txt
+and in the Godot editor's About/Third-party licenses dialog.
+
+Noto Sans CJK subset: see assets/fonts/NOTO-LICENSE.txt (SIL OFL 1.1).
+DejaVu Sans/Serif: see assets/fonts/DEJAVU-LICENSE.txt.
+Original game code and procedural environment assets are bundled alongside character assets derived from Quaternius free Standard-tier models and Universal Animation Library 1/2, plus KayKit Character Animations. The five original CC0 notices are preserved in art/action_characters/licenses/. No new license is granted for original game code or original artwork.
+
+Original audio: assets/audio/*.wav were generated from sine harmonics. No external samples, music or voice recordings are used. No new public license is granted.
