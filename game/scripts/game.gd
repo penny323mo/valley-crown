@@ -14,7 +14,10 @@ const Rules = preload("res://scripts/rules.gd")
 const EndRules = preload("res://scripts/end_rules.gd")
 const Economy = preload("res://scripts/economy_ledger.gd")
 const AttackLedger = preload("res://scripts/attack_ledger.gd")
-const INITIAL_STOCKS = [{"food":150,"wood":200},{"food":150,"wood":200}]
+const INITIAL_STOCKS = [{"food":150,"wood":200,"stone":100,"iron":0},{"food":150,"wood":200,"stone":100,"iron":0}]
+const ProgressionVisuals = preload("res://scripts/progression_visuals.gd")
+var age_completed_tick=[-1,-1]
+var large_route_cache=[{},{}]
 const BoundedPath = preload("res://scripts/bounded_grid_pathfinder.gd")
 const WorkPath = preload("res://scripts/bounded_work_routes.gd")
 const FactionView = preload("res://scripts/faction_view.gd")
@@ -57,7 +60,7 @@ var stocks:
 		var display=[]
 		for team in 2:
 			var bank=economy.bank_milli(team)
-			display.append({"food":bank.get("food",0)/1000.0,"wood":bank.get("wood",0)/1000.0})
+			display.append({"food":bank.get("food",0)/1000.0,"wood":bank.get("wood",0)/1000.0,"stone":bank.get("stone",0)/1000.0,"iron":bank.get("iron",0)/1000.0})
 		return display
 var camera: Camera3D
 var camera_focus=MapRoutes.PLAYER_HOME # Frame the opening keep and workers on portrait phones.
@@ -190,7 +193,7 @@ var delivered_total:
 		for team in 2:
 			var stats=economy.stats_view(team)
 			var delivered=stats.get("delivered",{"food":0,"wood":0})
-			display.append((delivered.food+delivered.wood)/1000.0)
+			display.append((delivered.food+delivered.wood+delivered.get("stone",0)+delivered.get("iron",0))/1000.0)
 		return display
 var completed_builds=[0,0]
 var trained_total=[0,0]
@@ -368,6 +371,12 @@ func _seed_match():
 				var p=c+Vector3((i%3)*1.5,0,floor(i/3.0)*1.5)
 				_spawn("pine" if i%3 else "oak",-1,p*sign_team+MapRoutes.home_offset(team))
 		for i in 6: _spawn("berry",-1,Vector3(-17+(i%2)*1.5,0,11+floor(i/2.0)*1.5)*sign_team+MapRoutes.home_offset(team))
+	# Candidate mineral layout: antipodal cell-centered pairs, available in Age I.
+	# Four near-base deposits and two forward deposits of each mineral per side.
+	for team in 2:
+		var sign_team=1.0 if team==0 else -1.0
+		for kind in ["stone","iron"]:
+			for point in Rules.MINERAL_POINTS[kind]: _spawn(kind,-1,Vector3(point[0],0,point[1])*sign_team)
 	# Mirrored forward expansion groves: modest extra supply, not a 2.78x
 	# multiplication of expensive tree nodes. Starting travel/economy is intact.
 	for team in 2:
@@ -381,17 +390,20 @@ func _seed_match():
 		_spawn("berry",-1,p); _spawn("berry",-1,-p)
 
 func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacity_milli=-1):
-	var category="unit" if kind in ["villager","scout","spearman","archer"] else ("resource" if kind in ["pine","oak","berry"] else "building")
+	var category="unit" if kind in Rules.UNIT_KINDS else ("resource" if kind in Rules.RESOURCE_KINDS else "building")
 	if category=="building": p=_snap_build_position(kind,p)
 	var n=Node3D.new(); add_child(n); n.position=p
-	var e={"path":PackedVector3Array(),"path_version":-1,"last_damage_tick":-1000,"mode":"DEFEND","anchor":p,"auto_target":false,"stuck":0.0,"last_known":p,"id":next_id,"kind":kind,"team":team,"pos":p,"node":n,"category":category,"alive":true,"hp":MAX_HP.get(kind,200) if complete else ceili(MAX_HP.get(kind,200)*0.1),"max_hp":MAX_HP.get(kind,200),"state":"idle","target":-1,"dest":p,"cooldown_ticks":0,"carry":0.0,"carry_type":"","resource_target":-1,"queue":[],"next_spawn_check_tick":0,"build_ticks":0,"construction_hcap":MAX_HP.get(kind,200) if complete else ceili(MAX_HP.get(kind,200)*0.1),"progress":1.0 if complete else 0.0,"built":complete,"ring":null,"body":null,"bar":null,"bar_fill":null,"anim":rng.randf()*TAU,"radius":Rules.UNIT_RADIUS}
+	var e={"path":PackedVector3Array(),"path_version":-1,"last_damage_tick":-1000,"mode":"DEFEND","anchor":p,"auto_target":false,"stuck":0.0,"last_known":p,"id":next_id,"kind":kind,"team":team,"pos":p,"node":n,"category":category,"alive":true,"hp":MAX_HP.get(kind,200) if complete else ceili(MAX_HP.get(kind,200)*0.1),"max_hp":MAX_HP.get(kind,200),"state":"idle","target":-1,"dest":p,"cooldown_ticks":0,"carry":0.0,"carry_type":"","resource_target":-1,"queue":[],"next_spawn_check_tick":0,"build_ticks":0,"construction_hcap":MAX_HP.get(kind,200) if complete else ceili(MAX_HP.get(kind,200)*0.1),"progress":1.0 if complete else 0.0,"built":complete,"ring":null,"body":null,"bar":null,"bar_fill":null,"anim":rng.randf()*TAU,"radius":Rules.UNIT_RADII.get(kind,Rules.UNIT_RADIUS)}
 	next_id+=1; entities.append(e)
 	e.death_observed_by=[false,false]
 	e.cost_receipt_id=""; e.work_ticks=0; e.last_repair_tick=-1
-	e.gather_type=""
+	e.gather_type=""; e.farm_id=-1
 	e.dropoff_failures={}; e.dropoff_failure_revision=work_memory[team].revision if team>=0 else -1
 	if kind=="villager":
 		var registered=economy.register_worker(e.id,team)
+		assert(registered.ok)
+	elif kind=="farm" and complete:
+		var registered=economy.register_farm(e.id,team)
 		assert(registered.ok)
 	elif category=="resource":
 		var capacity=resource_capacity_milli if resource_capacity_milli>=0 else int(MAX_HP[kind])*Economy.SCALE
@@ -406,6 +418,8 @@ func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacit
 		if kind in ["pine","oak"]:
 			_tree_visual(body,Vector3.ZERO,kind,0.85+rng.randf()*0.2)
 		elif models.has(kind): body.add_child(models[kind].instantiate())
+		elif kind in ["stone","iron"]:
+			ProgressionVisuals.build(body,kind,BLUE)
 		elif kind=="gold":
 			for i in 3:
 				var rock=_box(body,Vector3((i-1)*0.25,0.3+i*0.15,0),Vector3(0.7,0.6,0.65),Color("c4ab61")); rock.rotation=Vector3(0.2,i*0.8,0.2)
@@ -415,7 +429,7 @@ func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacit
 		e.radius=0.7 if kind in ["pine","oak"] else 0.55
 	else:
 		_building_visual(body,kind,team)
-		e.radius=2.0 if kind=="town_center" else (1.5 if kind in ["barracks","range"] else 1.0)
+		e.radius=Rules.FOOTPRINT.get(kind,2)/2.0
 		if not complete: ConstructionVisual.apply(body,kind,false,0.0)
 	var ring_root=Node3D.new(); n.add_child(ring_root)
 	var ring=TorusMesh.new(); ring.inner_radius=e.radius+0.16; ring.outer_radius=e.radius+0.23; ring.rings=32; ring.ring_segments=5
@@ -444,6 +458,8 @@ func _unit_visual(_parent, _kind, _team):
 	pass
 
 func _building_visual(parent,kind,team):
+	if kind in ["farm","stable","tower","workshop"]:
+		ProgressionVisuals.build(parent,kind,RED if team==1 else BLUE); return
 	if kind in MatureVisuals.BUILDING_KINDS:
 		# Native candidate bounds already fit Rules footprints. No legacy mesh scaling.
 		parent.add_child(MatureVisuals.instantiate_asset(kind,0,RED if team==1 else BLUE))
@@ -536,6 +552,8 @@ func _tick(dt):
 	for ent in entities:
 		if ent.alive and ent.category=="building": _update_production(ent,dt,false)
 	_process_ready_production()
+	for ent in entities:
+		if ent.alive and ent.built and ent.kind=="tower": _update_tower(ent)
 	# Settle issued attack IDs once, after all work, then resolve deaths together.
 	pending_damage=attack_ledger.settle()
 	# Every attack on this tick observes the same live set. Resolve deaths together.
@@ -637,6 +655,7 @@ func _execute(command):
 			if not applied: return _reject_command(team,"請選取自己的存活單位。")
 		"rally": _set_ground_rally(command.get("building",-1),command.get("position",Vector3.INF),team,command.get("clear",false))
 		"train": _enqueue_train(command.building,command.kind,team)
+		"research": _enqueue_research(command.get("building",-1),team)
 		"cancel_train": _cancel_train(command.building,team)
 		"build": _place_building(command.kind,command.position,command.builder,team)
 		"cancel_build":
@@ -680,7 +699,9 @@ func _population(team, include_reserved=true):
 	for ent in entities:
 		if not ent.alive or ent.team!=team: continue
 		if ent.category=="unit": result+=1
-		elif include_reserved: result+=ent.queue.size()
+		elif include_reserved:
+			for item in ent.queue:
+				if not item.get("research",false): result+=1
 	return result
 
 func _capacity(team):
@@ -692,7 +713,7 @@ func _capacity(team):
 	return mini(total,Rules.POP_LIMIT)
 
 func _reset_economy(initial_stocks_units):
-	economy=Economy.new(); economy_sequence=0
+	economy=Economy.new(Economy.FOUR_RESOURCE_TYPES); economy_sequence=0; age_completed_tick=[-1,-1]; large_route_cache=[{},{}]
 	var initialized=economy.initialize(initial_stocks_units)
 	assert(initialized.ok)
 
@@ -757,10 +778,11 @@ func _enqueue_train(id,kind,team):
 	var building=_get_entity(id)
 	if building.is_empty() or not building.alive or building.team!=team or not building.built:
 		return _reject_command(team,"請選取自己的已完成生產建築。")
-	if Rules.PRODUCES.get(building.kind,"")!=kind: return _reject_command(team,"這座建築不能訓練該兵種。")
+	if kind not in Rules.products_for(building.kind): return _reject_command(team,"這座建築不能訓練該兵種。")
+	if not _kind_unlocked(kind,team): return _reject_command(team,"需要先在主堡研究城防時代。")
 	if building.queue.size()>=5: return _reject_command(team,"生產隊列已滿。")
 	if _population(team)>=_capacity(team):
-		if team==0: _message("人口已滿，先建民居。每方最多 20 人。")
+		if team==0: _message("人口已滿，先建民居。每方最多 50 人。")
 		return false
 	var payment=_pay(COSTS[kind],team)
 	if not payment.applied:
@@ -775,13 +797,19 @@ func _spawn_exit(building,order):
 	# Fixed (x,z) coordinate order; bounded occupancy checks only, never A*.
 	# Placement preserves a locally open exit, not exclusive birth cells.
 	var candidates=_perimeter_cells(building)
+	if Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS)>0.5:
+		var expanded={}
+		for first in candidates:
+			for dx in [-1,0,1]:
+				for dy in [-1,0,1]: expanded[first+Vector2i(dx,dy)]=true
+		candidates=expanded.keys(); candidates.sort_custom(func(a,b): return a.x<b.x or (a.x==b.x and a.y<b.y))
 	for cell in candidates:
 		spawn_candidate_checks+=1
 		if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or navigation.is_point_solid(cell): continue
 		var point=_point(cell); var blocked=false
 		for unit in entities:
-			if unit.alive and unit.category=="unit" and unit.pos.distance_to(point)<0.7: blocked=true; break
-		if not blocked: return point
+			if unit.alive and unit.category=="unit" and unit.pos.distance_to(point)<unit.radius+Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS): blocked=true; break
+		if not blocked and _static_unit_step_is_free({"pos":point,"radius":Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS)},point): return point
 	return Vector3.INF
 
 func _cancel_train(id,team):
@@ -790,15 +818,17 @@ func _cancel_train(id,team):
 		return _reject_command(team,"沒有可取消的己方生產項目。")
 	var order=building.queue.back()
 	var receipt_id=order.get("receipt_id","")
-	var refund=economy.cancel_cost("cancel:"+receipt_id,receipt_id,team)
+	economy_sequence+=1
+	var refund=economy.cancel_cost("cancel:%s:%d" % [receipt_id,economy_sequence],receipt_id,team)
 	if not refund.applied: return false
 	building.queue.pop_back()
 	return true
 
 func _update_production(ent,dt,commit_ready=true):
-	if not ent.built or ent.queue.is_empty(): return
+	if not ent.built or ent.queue.is_empty() or ent.get("production_tick",-1)==tick_count: return
+	ent.production_tick=tick_count
 	var order=ent.queue[0]
-	if order.remaining_ticks>0 and _population(ent.team)>_capacity(ent.team): return
+	if not order.get("research",false) and order.remaining_ticks>0 and _population(ent.team)>_capacity(ent.team): return
 	if not economy.mark_started(order.get("receipt_id",""),ent.team).ok: return
 	order.started=true; order.remaining_ticks=maxi(0,order.remaining_ticks-1)
 	if order.remaining_ticks<=0 and commit_ready: _try_ready_production(ent)
@@ -823,6 +853,12 @@ func _try_ready_production(ent):
 	if not ent.alive or ent.queue.is_empty(): return
 	var order=ent.queue[0]
 	if order.remaining_ticks>0 or tick_count<order.next_retry_tick: return
+	if order.get("research",false):
+		var receipt_id=order.get("receipt_id","")
+		if not economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,ent.team).applied: return
+		ent.queue.pop_front(); age_completed_tick[ent.team]=tick_count; progress_serial+=1
+		if ent.team==0: _message("城防時代研究完成。下一步可建馬廄與工坊。",6)
+		return
 	order.next_retry_tick=tick_count+20
 	spawn_availability_polls+=1
 	if _population(ent.team,false)>=_capacity(ent.team): return
@@ -831,7 +867,7 @@ func _try_ready_production(ent):
 	# This is the commit point. Prior commits are already in entities/population.
 	if _population(ent.team,false)>=_capacity(ent.team) or navigation.is_point_solid(_cell(spawn_point)): return
 	for unit in entities:
-		if unit.alive and unit.category=="unit" and unit.pos.distance_to(spawn_point)<0.7: return
+		if unit.alive and unit.category=="unit" and unit.pos.distance_to(spawn_point)<unit.radius+Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS): return
 	var receipt_id=order.get("receipt_id","")
 	var fulfilled=economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,ent.team)
 	if not fulfilled.applied: return
@@ -894,7 +930,7 @@ func _navigation_rebuild():
 	_refresh_work_memory()
 
 func _nearest_free(p,max_ring=8,team=-1,mover={},reserved={},ignore_orders=[]):
-	var grid=navigation if team<0 else work_memory[team].grid
+	var grid=navigation if team<0 else (_route_grid(mover) if not mover.is_empty() else work_memory[team].grid)
 	var c=_cell(p)
 	for ring in range(max_ring+1):
 		var best=Vector3.INF; var best_dist=INF
@@ -911,6 +947,7 @@ func _nearest_free(p,max_ring=8,team=-1,mover={},reserved={},ignore_orders=[]):
 # Long-range destination/slot checks use current owned state and detached
 # observed enemy records only. Hidden units and enemy orders are never queried.
 func _known_destination_clear(ent,point,reserved={},ignore_orders=[]):
+	if ent.radius>0.5 and _route_grid(ent).is_point_solid(_cell(point)): return false
 	if reserved.has(_cell(point)): return false
 	for other in entities:
 		if other.team!=ent.team or other.category!="unit" or not other.alive or other.id==ent.id: continue
@@ -927,7 +964,7 @@ func _known_destination_clear(ent,point,reserved={},ignore_orders=[]):
 	return true
 
 func _free_adjacent(target,from,avoid_units=false,team=-1,mover={}):
-	var grid=navigation if team<0 else work_memory[team].grid
+	var grid=navigation if team<0 else (_route_grid(mover) if not mover.is_empty() else work_memory[team].grid)
 	var best=Vector3.INF; var best_dist=INF
 	for cell in _perimeter_cells(target):
 		if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or grid.is_point_solid(cell): continue
@@ -995,24 +1032,26 @@ func _work_navigation_changed(ent,change):
 	ent.work_route_revision=memory.revision
 
 func _known_work_target(ent):
-	var records=work_memory[ent.team].resources if ent.state=="gather" else work_memory[ent.team].structures
+	var records=_gather_records(ent.team) if ent.state=="gather" else work_memory[ent.team].structures
 	return records.get(ent.target,{})
 
 func _nearest_known_resource(p,kind,team):
 	var best={}; var distance=INF
-	for known in work_memory[team].resources.values():
+	for known in _gather_records(team).values():
 		if not known.alive or (_resource_type(known)!=kind and known.kind!=kind): continue
+		if known.kind=="farm" and economy.farm_view(known.id).get("worker_id",-1)>=0: continue
 		var d=known.pos.distance_squared_to(p)
 		if d<distance or (d==distance and (best.is_empty() or known.id<best.id)):
 			distance=d; best=known
 	return best
 
 func _work_candidates(ent):
-	var records=work_memory[ent.team].resources if ent.state=="gather" else work_memory[ent.team].structures
+	var records=_gather_records(ent.team) if ent.state=="gather" else work_memory[ent.team].structures
 	var ranked=[]
 	for known in records.values():
 		if not known.alive: continue
 		if ent.state=="gather" and _resource_type(known)!=_gather_intent(ent): continue
+		if ent.state=="gather" and (known.kind=="farm" or ent.get("farm_id",-1)>=0) and known.id!=ent.get("farm_id",-1): continue
 		if ent.state=="deliver" and (not known.built or known.kind not in ["town_center","storehouse"]): continue
 		ranked.append(known)
 	var preferred=-1 if ent.work_any_target else ent.target
@@ -1075,8 +1114,9 @@ func _move_work(ent,dt):
 		ent.path.remove_at(0); ent.traffic_progress_tick=tick_count
 
 func _resume_gather(ent):
-	var known=work_memory[ent.team].resources.get(ent.resource_target,{})
+	var known=_gather_records(ent.team).get(ent.resource_target,{})
 	var original=not known.is_empty() and known.alive and _resource_type(known)==_gather_intent(ent)
+	if original and known.kind=="farm" and economy.farm_view(known.id).get("worker_id",-1) not in [-1,ent.id]: original=false
 	if not original: known=_nearest_known_resource(ent.pos,_gather_intent(ent),ent.team)
 	if known.is_empty(): _path_cancel_pending(ent); ent.state="idle"; ent.target=-1; return
 	if ent.path_status==BoundedPath.NO_PATH: ent.path_status="IDLE"; ent.path_reason=""
@@ -1107,13 +1147,13 @@ func _update_work(ent):
 	var target=_get_entity(known.id)
 	if ent.state=="gather":
 		if target.is_empty() or not target.alive: _refresh_work_memory(); return
-		var gathered=economy.gather_tick(ent.id,target.id,tick_count)
+		var gathered=economy.farm_tick(ent.id,target.id,tick_count) if target.kind=="farm" else economy.gather_tick(ent.id,target.id,tick_count)
 		if gathered.applied:
 			if ent.team==0: demo_tutorial.record("gather")
 			_note_unit_action(ent,"gather_wood" if _resource_type(target)=="wood" else "gather_food",target.pos)
 			ent.path=PackedVector3Array(); progress_serial+=1
 			_project_economy_entity(ent); _project_economy_entity(target)
-		if economy.node_view(target.id).remaining_milli<=0: _kill(target)
+		if target.category=="resource" and economy.node_view(target.id).remaining_milli<=0: _kill(target)
 	else:
 		if not _valid_dropoff(ent,target): _route_to_dropoff(ent); return
 		if _cargo_amount(ent)>0 and not _deposit_cargo(ent,target).applied: return
@@ -1217,7 +1257,7 @@ func _process_path_requests():
 			if ent.traffic_route: _traffic_stop(ent,"retry_rate_limit")
 			else: _path_stop(ent,BoundedPath.LIMIT_REACHED,"retry_rate_limit")
 			continue
-		var route_grid=work_memory[ent.team].grid
+		var route_grid=_route_grid(ent)
 		var candidates=_work_candidates(ent) if work else []
 		if work and candidates.is_empty():
 			# A busy slot is not NO_PATH. Poll at most once per second, without
@@ -1229,7 +1269,7 @@ func _process_path_requests():
 				ent.path_pending=false; ent.path_status="WAIT_SLOT"; ent.path_reason="known_slots_reserved"
 				ent.path_next_attempt_tick=tick_count+20
 			continue
-		var goal=Vector3.INF if work else _nearest_free(ent.path_request_goal,8,ent.team)
+		var goal=Vector3.INF if work else _nearest_free(ent.path_request_goal,8,ent.team,ent)
 		if not work and goal==Vector3.INF:
 			_path_stop(ent,BoundedPath.LIMIT_REACHED,"no_free_destination"); continue
 		var start=_cell(ent.pos)
@@ -1526,7 +1566,7 @@ func _move(ent,destination,dt):
 
 # Public geometry only: union of building-center bounds and the unit-radius
 # ring. Never derive the envelope from live/hidden entities or their state.
-func _placement_visibility_cells(footprint,catalog=Rules.FOOTPRINT,public_max_unit_radius=Rules.UNIT_RADIUS):
+func _placement_visibility_cells(footprint,catalog=Rules.FOOTPRINT,public_max_unit_radius=Rules.MAX_UNIT_RADIUS):
 	var unit_pad=ceili(public_max_unit_radius)
 	var max_low=unit_pad; var max_high=unit_pad
 	for width in catalog.values():
@@ -1540,6 +1580,8 @@ func _placement_visibility_cells(footprint,catalog=Rules.FOOTPRINT,public_max_un
 
 func _placement_reason(kind,p,team,builder_id):
 	if not Rules.BUILD_TIME.has(kind): return "未知建築"
+	if not _kind_unlocked(kind,team): return "需要城防時代"
+	if kind=="tower" and _count(team,"tower")>=2: return "每方最多兩座守望塔"
 	var mock={"pos":p,"kind":kind,"category":"building"}
 	var footprint=_occupied_cells(mock)
 	for c in footprint:
@@ -1619,12 +1661,14 @@ func _target_order_intent(ent,target,team):
 		if not target.built: return "build"
 		if target.kind in ["town_center","storehouse"] and _cargo_amount(ent)>0: return "deliver"
 		if target.category=="building" and target.hp<target.max_hp: return "repair"
+		if target.kind=="farm": return "gather"
 	return "move"
 
 func _repair_order_allowed(ent,target):
 	return not target.is_empty() and target.alive and ent.kind=="villager" and target.team==ent.team and target.category=="building" and target.built and target.hp<target.max_hp and tick_count-target.last_damage_tick>=100
 
 func _order(ent,state,target_id,automatic=false):
+	if ent.is_empty() or not ent.alive: return false
 	# Internal callers obey the same preflight, before any unit mutation.
 	if state=="repair" and not _repair_order_allowed(ent,_get_entity(target_id)): return false
 	if state=="build":
@@ -1638,6 +1682,17 @@ func _order(ent,state,target_id,automatic=false):
 				_path_new_command(other)
 				_set_stance(other,"STOP")
 				other.dest=other.pos; other.stuck=0; other.work_ticks=0; other.last_repair_tick=-1
+	if ent.kind=="villager":
+		var requested=_get_entity(target_id)
+		if state=="gather" and not requested.is_empty() and requested.kind=="farm":
+			if not requested.alive or not requested.built or requested.team!=ent.team: return false
+			var occupant=economy.farm_view(target_id).get("worker_id",-1)
+			if occupant>=0 and occupant!=ent.id: return _reject_command(ent.team,"這片農田已有村民耕作。")
+		if state!="deliver" and (state!="gather" or target_id!=ent.get("farm_id",-1)): _release_farm(ent)
+		if state=="gather" and not requested.is_empty() and requested.kind=="farm" and ent.get("farm_id",-1)<0 and (_cargo_amount(ent)==0 or _cargo_type(ent)=="food"):
+			economy_sequence+=1
+			if not economy.assign_farm("farm_assign:%d" % economy_sequence,ent.id,target_id).applied: return false
+			ent.farm_id=target_id
 	_path_cancel_pending(ent)
 	ent.auto_target=automatic
 	if not automatic: ent.mode="ATTACK" if state=="attack" else "WORK"
@@ -1647,7 +1702,7 @@ func _order(ent,state,target_id,automatic=false):
 	var target=_get_entity(target_id)
 	if state=="gather":
 		_refresh_work_memory()
-		var known=work_memory[ent.team].resources.get(target_id,{})
+		var known=_gather_records(ent.team).get(target_id,{})
 		ent.resource_target=target_id
 		ent.gather_type=_resource_type(known) if not known.is_empty() else ""
 		if not known.is_empty(): ent.last_known=known.pos
@@ -1655,12 +1710,14 @@ func _order(ent,state,target_id,automatic=false):
 	elif not target.is_empty(): ent.last_known=target.pos
 
 func _order_move(ent,p,reserved={},ignore_orders=[]):
+	_release_farm(ent)
 	_path_cancel_pending(ent)
 	ent.mode="MOVE"; ent.auto_target=false; ent.path_request_kind="point"
 	ent.state="move"; ent.target=-1; ent.dest=_nearest_free(p,8,ent.team,ent,reserved,ignore_orders); ent.path=PackedVector3Array(); ent.path_version=-1; ent.stuck=0
 	if ent.dest==Vector3.INF: ent.dest=ent.pos; _set_stance(ent,"STOP")
 
 func _set_stance(ent,mode):
+	_release_farm(ent)
 	_path_cancel_pending(ent)
 	ent.path_request_kind="point"
 	ent.mode=mode; ent.state="idle"; ent.anchor=ent.pos; ent.auto_target=false
@@ -1714,7 +1771,7 @@ func _move_unit_phase(ent,dt):
 		var remembered={"category":target.category,"kind":target.kind,"pos":ent.last_known,"radius":target.radius}
 		if observed and _attack_distance(ent.pos,remembered)<=Rules.RANGE[ent.kind]: return
 		if not observed and _attack_distance(ent.pos,remembered)<0.6: return
-		var goal=_free_adjacent(remembered,ent.pos,false,ent.team) if target.category!="unit" else ent.last_known
+		var goal=_attack_approach(ent,remembered) if target.category!="unit" else ent.last_known
 		if goal==Vector3.INF: return
 		var before=ent.pos
 		_move(ent,goal,dt)
@@ -1726,7 +1783,8 @@ func _move_unit_phase(ent,dt):
 		if adjacent!=Vector3.INF and ent.pos.distance_to(adjacent)>0.3: _move(ent,adjacent,dt)
 
 func _resource_type(ent):
-	if ent.kind=="berry": return "food"
+	if ent.kind in ["berry","farm"]: return "food"
+	if ent.kind in ["stone","iron"]: return ent.kind
 	return "wood" if ent.kind in ["pine","oak"] else ""
 
 func _gather_intent(ent):
@@ -1820,14 +1878,15 @@ func _release_attack(ent: Dictionary,target: Dictionary) -> Dictionary:
 	# not touch cooldown, resources, pending damage, presentation or audio.
 	if paused or game_over or ent.is_empty() or target.is_empty():
 		return {"ok":false,"applied":false,"reason":"INVALID_RELEASE"}
-	if not ent.alive or ent.category!="unit" or not Rules.DAMAGE.has(ent.kind) or ent.team not in [0,1]:
+	if not ent.alive or (ent.category!="unit" and (ent.kind!="tower" or not ent.built)) or not Rules.DAMAGE.has(ent.kind) or ent.team not in [0,1]:
 		return {"ok":false,"applied":false,"reason":"INVALID_ATTACKER"}
 	if not target.alive or target.team!=1-ent.team or not _visible_to(target,ent.team):
 		return {"ok":false,"applied":false,"reason":"INVALID_TARGET"}
 	if ent.cooldown_ticks>0 or _attack_distance(ent.pos,target)>Rules.RANGE[ent.kind]:
 		return {"ok":false,"applied":false,"reason":"NOT_READY"}
-	var bonus=3 if ent.kind=="archer" and target.kind=="spearman" else 0
-	var damage=maxi(1,Rules.DAMAGE[ent.kind]+bonus-Rules.ARMOR.get(target.kind,0))
+	var resolved=Rules.CONTENT.resolve_damage(ent.kind,target.kind)
+	if not resolved.ok: return {"ok":false,"applied":false,"reason":"INVALID_PROFILE"}
+	var damage=resolved.damage
 	var result=attack_ledger.issue(tick_count,ent.id,target.id,damage,ent.pos,target.pos)
 	if result.applied:
 		ent.cooldown_ticks=Rules.ATTACK_TICKS[ent.kind]
@@ -1928,16 +1987,20 @@ func _update_unit(ent,dt):
 						var fulfilled=economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,target.team)
 						if not fulfilled.applied: return
 					target.built=true; completed_builds[ent.team]+=1; ent.state="idle"
+					if target.kind=="farm":
+						var registered=economy.register_farm(target.id,target.team)
+						assert(registered.ok)
 					if target.team==0 and not receipt_id.is_empty() and target.kind in ["house","barracks"]: demo_tutorial.record(target.kind)
 					if ent.team==0: _message(Rules.NAMES[target.kind]+"建造完成。",3)
 
 func _kill(ent):
 	if not ent.alive: return
 	ent.death_observed_by=[_visible_to(ent,0),_visible_to(ent,1)]
-	if ent.category=="unit" and ent.death_observed_by[0]:
+	if ent.category=="unit" and ent.kind in MatureVisuals.UNIT_KINDS and ent.death_observed_by[0]:
 		# Detached final observed pose only. This adds no corpse entity/blocker.
 		pending_visual_deaths.append({"id":ent.id,"kind":ent.kind,"team":ent.team,"pos":ent.pos,"yaw":ent.body.rotation.y,"witnessed":true})
 		if pending_visual_deaths.size()>CharacterPresenter.MAX_DEATH_VISUALS: pending_visual_deaths.pop_front()
+	if ent.kind=="farm" and ent.built: economy.destroy_farm("farm_death:%d" % ent.id,ent.id)
 	if ent.kind=="villager":
 		economy.destroy_worker("death:%d" % ent.id,ent.id); _project_economy_entity(ent)
 	for order in ent.queue:
@@ -1964,7 +2027,12 @@ func _recovery_view(team):
 		if ent.category=="unit": view.living_units+=1
 		elif ent.category=="building":
 			if Rules.DAMAGE.get(ent.kind,0)>0 or ent.get("attack_damage",0)>0: view.attack_buildings+=1
-			view.training_items+=ent.queue.size()
+			for item in ent.queue:
+				if not item.get("research",false): view.training_items+=1
+				else:
+					var refund=economy.quote_refund(item.get("receipt_id",""),team)
+					view.refundable_food+=int(refund.get("food",0)/Economy.SCALE)
+					for resource in refund: recoverable_stocks[resource]+=refund[resource]
 			var site_receipt=ent.get("cost_receipt_id","")
 			if not ent.built and not site_receipt.is_empty() and not seen_site_receipts.has(site_receipt):
 				seen_site_receipts[site_receipt]=true
@@ -2085,7 +2153,9 @@ func _assign_worker(ent,desired=""):
 	if desired.is_empty(): desired="food"
 	var resource={}; var distance=INF
 	for known in faction_views[ent.team].records().values():
-		if known.category!="resource" or _resource_type(known)!=desired: continue
+		if _resource_type(known)!=desired: continue
+		if known.category!="resource" and not (known.owned and known.built and known.kind=="farm"): continue
+		if known.kind=="farm" and economy.farm_view(known.id).get("worker_id",-1) not in [-1,ent.id]: continue
 		var d=known.pos.distance_squared_to(ent.pos)
 		if d<distance or (d==distance and (resource.is_empty() or known.id<resource.id)): resource=known; distance=d
 	if resource.is_empty():
@@ -2102,7 +2172,7 @@ func _ai_build(kind):
 	var builder=_ai_builder(_ai_records())
 	if builder.is_empty(): ai_status.build="no_spare_builder"; return false
 	var reasons=[]
-	for p in MapRoutes.build_plots(1,Rules.FOOTPRINT[kind]):
+	for p in _ai_progression_plots(kind):
 		var reason=_placement_reason(kind,p,1,builder.id)
 		if reason.is_empty():
 			_submit("build",{"kind":kind,"position":p,"builder":builder.id},1)
@@ -2113,23 +2183,13 @@ func _ai_build(kind):
 	return false
 
 func _ai_resource_gap(records,workers,capacity,committed):
-	# No invented stockpile target: deficit of the next outstanding paid action.
-	var desired="villager"
-	var house_underway=false
-	for ent in records:
-		if ent.owned and ent.kind=="house" and not ent.built: house_underway=true
-	if capacity-committed<=2 and capacity<Rules.POP_LIMIT and not house_underway: desired="house"
-	elif _ai_owned(records,"barracks").is_empty(): desired="barracks"
-	elif _ai_owned(records,"range").is_empty(): desired="range"
-	elif workers<8: desired="villager"
-	else:
-		for ent in records:
-			if ent.owned and ent.built and ent.kind in ["barracks","range"] and ent.queue.size()<2:
-				desired=Rules.PRODUCES[ent.kind]; break
-	var food=maxi(0,COSTS[desired].get("food",0)*Economy.SCALE-ai_budget.get("food",0))
-	var wood=maxi(0,COSTS[desired].get("wood",0)*Economy.SCALE-ai_budget.get("wood",0))
+	var desired=_ai_progression_goal(records,workers,capacity,committed)
 	ai_status.resource_goal=desired
-	return "wood" if wood>food else "food"
+	var chosen="food"; var gap=-1
+	for resource in ["food","wood","iron","stone"]:
+		var deficit=maxi(0,COSTS[desired].get(resource,0)*Economy.SCALE-ai_budget.get(resource,0))
+		if deficit>gap: gap=deficit; chosen=resource
+	return chosen
 
 func _ai_scout(ent):
 	if ent.state!="idle": return
@@ -2298,8 +2358,8 @@ func _ai_update():
 		if not ent.owned: continue
 		if ent.category=="unit": living+=1
 		else:
-			reserved+=ent.queue.size()
 			for item in ent.queue:
+				if not item.get("research",false): reserved+=1
 				if item.kind=="villager": queued_workers+=1
 			if ent.built: capacity+=10 if ent.kind=="town_center" else (5 if ent.kind=="house" else 0)
 			else: sites.append(ent)
@@ -2334,20 +2394,36 @@ func _ai_update():
 	if workers.size()<2: ai_status.food_floor="fewer_than_two_workers"
 	elif _ai_food_count(records)<2: ai_status.food_floor="no_feasible_spare_worker_or_known_food"
 	else: ai_status.food_floor="two_or_more_assigned"
-	# Historical first-build time gates retained; no difficulty/content expansion.
-	if not ai_build_submitted:
-		if _ai_owned(records,"barracks").is_empty() and tick_count>400: _ai_build("barracks")
-		elif _ai_owned(records,"range").is_empty() and tick_count>1800: _ai_build("range")
-	var free_capacity=capacity-living-reserved
-	if workers.size()+queued_workers<8 and castle.queue.is_empty() and free_capacity>0 and _ai_can_budget("villager"):
-		_submit("train",{"building":castle.id,"kind":"villager"},1); _ai_reserve_budget("villager"); free_capacity-=1
-	for building in records:
-		if building.owned and building.built and building.kind in ["barracks","range"] and building.queue.size()<2 and free_capacity>0:
-			var kind=Rules.PRODUCES[building.kind]
-			if _ai_can_budget(kind): _submit("train",{"building":building.id,"kind":kind},1); _ai_reserve_budget(kind); free_capacity-=1
-	for ent in workers:
-		if ent.state=="idle" and not ai_claimed_workers.has(ent.id):
-			_assign_worker(ent,_ai_resource_gap(records,workers.size()+queued_workers,capacity,living+reserved))
+	var goal=_ai_progression_goal(records,workers.size()+queued_workers,capacity,living+reserved)
+	ai_status.progression_goal=goal; ai_status.age=2 if _age2(1) else 1
+	if Rules.BUILD_TIME.has(goal):
+		if not ai_build_submitted: _ai_build(goal)
+	elif goal=="age2":
+		if not _research_pending(1) and castle.queue.size()<5 and _ai_can_budget(goal):
+			_submit("research",{"building":castle.id},1); _ai_reserve_budget(goal)
+	else:
+		for building in records:
+			if not building.owned or not building.built or goal not in Rules.products_for(building.kind): continue
+			if building.queue.size()<2 and capacity-living-reserved>0 and _ai_can_budget(goal):
+				_submit("train",{"building":building.id,"kind":goal},1); _ai_reserve_budget(goal)
+				break
+	var desired=_ai_resource_gap(records,workers.size()+queued_workers,capacity,living+reserved)
+	# Keep two food gatherers; balance the rest toward the next real paid goal.
+	# Reassign one compatible worker per turn, not every worker on every tick.
+	var assigned={"food":0,"wood":0,"stone":0,"iron":0}
+	for worker in workers:
+		var resource=ai_claimed_workers.get(worker.id,worker.get("gather_type",""))
+		if worker.state in ["gather","deliver"] or ai_claimed_workers.has(worker.id):
+			if assigned.has(resource): assigned[resource]+=1
+	for worker in workers:
+		if worker.state=="idle" and not ai_claimed_workers.has(worker.id):
+			_assign_worker(worker,desired)
+	var wanted=mini(3,maxi(1,workers.size()-2)) if desired in ["iron","stone"] else maxi(2,int(workers.size()/2))
+	if assigned[desired]<wanted:
+		for worker in workers:
+			if ai_claimed_workers.has(worker.id) or worker.state not in ["idle","gather"] or worker.get("gather_type","")==desired: continue
+			if _ai_food_worker(worker) and _ai_food_count(records)<=2: continue
+			if _assign_worker(worker,desired): break
 
 # --- Per-team visibility and ground fog ---
 func _create_fog():
@@ -2498,7 +2574,8 @@ func _update_visuals(delta):
 			if record.category=="building": ConstructionVisual.apply(proxy.body,record.kind,record.built,record.progress)
 			proxy.body.rotation.y=record.visual_yaw
 			if record.category=="unit":
-				character_presenter.present(record,proxy.body,RED if record.team==1 else BLUE,delta,running)
+				if record.kind in MatureVisuals.UNIT_KINDS: character_presenter.present(record,proxy.body,RED if record.team==1 else BLUE,delta,running)
+				else: ProgressionVisuals.present(record,proxy.body,RED if record.team==1 else BLUE,delta,running)
 			if proxy.remembered!=record.remembered:
 				_gray_proxy(proxy.body,record.remembered); proxy.remembered=record.remembered
 			if is_instance_valid(proxy.bar):
@@ -2509,7 +2586,8 @@ func _update_visuals(delta):
 		ent.ring.visible=record.id in selected
 		if record.category=="building": ConstructionVisual.apply(ent.body,record.kind,record.built,record.progress)
 		if record.category=="unit":
-			character_presenter.present(record,ent.body,BLUE if record.team==0 else RED,delta,running)
+			if record.kind in MatureVisuals.UNIT_KINDS: character_presenter.present(record,ent.body,BLUE if record.team==0 else RED,delta,running)
+			else: ProgressionVisuals.present(record,ent.body,BLUE if record.team==0 else RED,delta,running)
 		if is_instance_valid(ent.bar):
 			ent.bar.visible=record.id in selected or record.hp<record.max_hp
 			ent.bar_fill.scale.x=_health_bar_fill_scale(record,ent.bar)
@@ -2519,7 +2597,7 @@ func visual_evidence_snapshot() -> Dictionary:
 	return character_presenter.visual_evidence_snapshot()
 
 func _attack_effect(ent,target):
-	if ent.kind!="archer": return
+	if ent.kind not in ["archer","tower"]: return
 	if not _visible_to(ent,0) or not _visible_to(target,0): return
 	if game_over: return
 	if attack_effects.size()>=MAX_ATTACK_EFFECTS:
@@ -2759,10 +2837,12 @@ func _update_hud():
 	if game_over:
 		compact_menu.hide(); compact_menu_dismiss.hide()
 	var display_bank=economy.bank_units_floor(0)
-	top_resources.text="食糧 %d   木材 %d   人口 %d/%d" % [display_bank.food,display_bank.wood,_population(0),_capacity(0)]
+	top_resources.text="食 %d  木 %d  石 %d  鐵 %d  人口 %d/%d" % [display_bank.food,display_bank.wood,display_bank.stone,display_bank.iron,_population(0),_capacity(0)]
+	if compact_ui and get_viewport().get_visible_rect().size.x<480:
+		top_resources.text="食 %d  木 %d  人口 %d/%d\n石 %d  鐵 %d  %s" % [display_bank.food,display_bank.wood,_population(0),_capacity(0),display_bank.stone,display_bank.iron,"城防時代" if _age2(0) else "聚落時代"]
 	time_label.text="%02d:%02d" % [floori(game_time/60),int(game_time)%60]
 	pause_button.text="繼續" if paused else "暫停"
-	mission_label.text="摧毀敵方主堡 • 探索黑霧尋找敵軍 • Demo "+Rules.VERSION
+	mission_label.text=("城防時代：建馬廄出騎兵，建工坊出攻城車，摧毀敵方主堡。" if _age2(0) else "聚落時代：採鐵，於主堡研究城防時代，解鎖騎兵與攻城車。")
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
@@ -2794,14 +2874,15 @@ func _update_hud():
 		var route_failure=WorkerIdleStatus.route_failure(ent,own_command_pending)
 		if not route_failure.is_empty(): status=route_failure
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
+		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
 		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / 10" % floori(ent.cargo_milli/1000.0)
 		if ent.built and Rules.PRODUCES.has(ent.kind): selection_detail.text+=" · 集合點已設定，新單位自動移動" if ent.get("rally_point",Vector3.INF)!=Vector3.INF else " · 可設定新單位集合點"
 		if not ent.built: selection_detail.text=ConstructionStatus.detail(ent,faction_views[0].records(),own_command_pending,paused)
 		if not ent.queue.is_empty():
-			queue_label.text="訓練 %ds · 隊列 %d" % [ceili(ent.queue[0].remaining_ticks/20.0),ent.queue.size()]
+			queue_label.text="%s %ds · 隊列 %d" % [Rules.NAMES[ent.queue[0].kind],ceili(ent.queue[0].remaining_ticks/20.0),ent.queue.size()]
 			if ent.queue[0].remaining_ticks<=0:
 				queue_label.text="訓練完成，等待人口空位" if _population(0,false)>=_capacity(0) else "訓練完成，出口受阻；選取出口單位，再點空地移開"
-			elif _population(0)>_capacity(0): queue_label.text="缺少住房，訓練暫停"
+			elif not ent.queue[0].get("research",false) and _population(0)>_capacity(0): queue_label.text="缺少住房，訓練暫停"
 	else:
 		selection_title.text="已選取 %d 個單位" % selection.size()
 		selection_detail.text=("%d 村民無已知採集點" % missing_workers) if missing_workers>0 else "向資源、空地或可見敵軍落指令。"
@@ -2809,7 +2890,7 @@ func _update_hud():
 			selection_detail.text=(selection_detail.text+" · " if missing_workers>0 else "")+("%d 村民工作路線停止" % route_failed_workers)
 	var stance_summary=_selection_stance_summary(selection)
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
-	var key=str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
+	var key=str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].queue.size())+":"+str(selection[0].get("rally_point",Vector3.INF))
 	if key!=action_key: action_key=key; _rebuild_actions(selection)
 	_refresh_return_cargo_button()
@@ -2829,7 +2910,7 @@ func _update_hud():
 			if worker.get("state","")=="idle": idle_return_available=true; break
 	if build_mode.is_empty() and not box_select_mode and rally_building<0:
 		if touch_command:
-			if has_unit and compact_ui: selection_detail.text="點樹木或漿果採集，點空地移動；取消可返回選取。"
+			if has_unit and compact_ui: selection_detail.text="點資源採集或點農田耕作，點空地移動；取消可返回選取。"
 		elif idle_return_available:
 			selection_detail.text+=" · 滑動底列，按交付資源"
 		elif missing_workers>0:
@@ -2848,7 +2929,7 @@ func _update_hud():
 		if is_instance_valid(build_confirm): build_confirm.disabled=not reason.is_empty() or paused or not build_preview_held
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		selection_detail.text=help_label.text
-		queue_label.text="木材 "+str(COSTS[build_mode].wood); queue_label.show()
+		queue_label.text=Rules.cost_label(build_mode); queue_label.show()
 	if rally_building>=0:
 		selection_detail.text="點可見空地設定集合點；新單位自動移動。"
 		help_label.text=selection_detail.text
@@ -2881,9 +2962,10 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("選取村民",func(): _select_group("villagers"),120))
 		actions.add_child(_button("探索霧谷",func(): _select_group("scout"),120)); return
 	if _selected_builder()>=0:
-		for kind in ["house","barracks","range","storehouse"]:
+		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
-			actions.add_child(_button(Rules.NAMES[kind]+"\n木材 "+str(COSTS[kind].wood),func(): _start_build(choice),90))
+			var button=_button(Rules.NAMES[kind]+"\n"+Rules.cost_label(kind)+( "\n需城防時代" if not _kind_unlocked(kind,0) else ""),func(): _start_build(choice),100)
+			button.disabled=not _kind_unlocked(kind,0); actions.add_child(button)
 	elif selection.size()==1:
 		var ent=selection[0]
 		if not ent.built:
@@ -2892,10 +2974,12 @@ func _rebuild_actions(selection):
 			actions.add_child(_button("集合點",func(): _start_ground_rally(ent.id),100))
 			if ent.get("rally_point",Vector3.INF)!=Vector3.INF:
 				actions.add_child(_button("取消集合點設定",func(): _submit("rally",{"building":ent.id,"clear":true}),120))
-			var kind=Rules.PRODUCES[ent.kind]
-			var price=""
-			for resource in COSTS[kind]: price+=("食 " if resource=="food" else "木 ")+str(COSTS[kind][resource])+" "
-			actions.add_child(_button("訓練"+Rules.NAMES[kind]+"\n"+price,func(): _submit("train",{"building":ent.id,"kind":kind}),120))
+			for kind in Rules.products_for(ent.kind):
+				var choice=kind
+				actions.add_child(_button("訓練"+Rules.NAMES[kind]+"\n"+Rules.cost_label(kind),func(): _submit("train",{"building":ent.id,"kind":choice}),120))
+			if ent.kind=="town_center" and not _age2(0):
+				var research=_button("城防時代\n"+Rules.cost_label("age2"),func(): _submit("research",{"building":ent.id}),160)
+				research.disabled=_research_pending(0); actions.add_child(research)
 			if not ent.queue.is_empty(): actions.add_child(_button("取消最後一項",func(): _submit("cancel_train",{"building":ent.id}),130))
 		if ent.owned and ent.category=="building" and ent.built and ent.kind!="town_center":
 			actions.add_child(_button("拆除建築\n不退資源",func(): _confirm_demolish(ent.id),120))
@@ -2960,7 +3044,7 @@ func _start_unit_command():
 		_message("請選取自己的存活單位。",5); return
 	_cancel_mode()
 	touch_command=true; _update_hud()
-	_message("點樹木或漿果採集，點空地移動；取消可返回選取。",5)
+	_message("點資源採集或點農田耕作，點空地移動；取消可返回選取。",5)
 
 func _toggle_unit_command():
 	if touch_command:
@@ -3274,7 +3358,8 @@ func _send_world_order(screen,contextual=false):
 	var p=_world_at(screen)
 	var target_id=_pick(screen)
 	var ids=selected.duplicate()
-	if contextual and faction_views[0].get_record(target_id).get("category","")=="resource":
+	var tapped=faction_views[0].get_record(target_id)
+	if contextual and (tapped.get("category","")=="resource" or tapped.get("kind","")=="farm"):
 		# Resource taps task capable workers only; escorts keep their orders.
 		ids=ids.filter(func(id):
 			var record=faction_views[0].get_record(id)
@@ -3294,6 +3379,9 @@ func _tap(screen,is_touch):
 	if not paused and touch_command:
 		_send_world_order(screen); return
 	var id=_pick(screen,is_touch)
+	var tapped=faction_views[0].get_record(id)
+	if is_touch and not paused and tapped.get("owned",false) and tapped.get("kind","")=="farm" and tapped.get("built",false) and _selected_builder()>=0:
+		_send_world_order(screen,true); _update_hud(); return
 	if id>=0 and faction_views[0].get_record(id).team==0:
 		if Input.is_physical_key_pressed(KEY_SHIFT) and not is_touch:
 			var ids=selected.duplicate()
@@ -3648,7 +3736,7 @@ func _snapshot():
 	var own_pending_commands=0
 	for command in commands:
 		if command.team==0: own_pending_commands+=1
-	return {"build":Rules.BUILD_ID,"version":Rules.VERSION,"tick":tick_count,"time":game_time,"paused":paused,"game_over":game_over,"outcome":outcome,"selected":selected,"food":stocks[0].food,"wood":stocks[0].wood,"bank_milli":economy.bank_milli(0),"economy_scale":Economy.SCALE,"population":_population(0),"capacity":_capacity(0),"delivered":delivered_total[0],"built":completed_builds[0],"trained":trained_total[0],"own_pending_commands":own_pending_commands,"touch_mode":touch_command,"build_mode":build_mode}
+	return {"build":Rules.BUILD_ID,"version":Rules.VERSION,"tick":tick_count,"time":game_time,"paused":paused,"game_over":game_over,"outcome":outcome,"selected":selected,"food":stocks[0].food,"wood":stocks[0].wood,"stone":stocks[0].stone,"iron":stocks[0].iron,"age":2 if _age2(0) else 1,"bank_milli":economy.bank_milli(0),"economy_scale":Economy.SCALE,"population":_population(0),"capacity":_capacity(0),"delivered":delivered_total[0],"built":completed_builds[0],"trained":trained_total[0],"own_pending_commands":own_pending_commands,"touch_mode":touch_command,"build_mode":build_mode}
 
 # --- Deterministic headless rule/regression suite ---
 var test_results=[]
@@ -4033,3 +4121,132 @@ func _request_main_menu():
 func _request_restart():
 	if restart_requested.has_connections(): restart_requested.emit()
 	else: get_tree().reload_current_scene()
+
+# --- Integrated economy, age and military progression ---
+func _age2(team: int) -> bool:
+	return age_completed_tick[team]>=0 and tick_count>age_completed_tick[team]
+
+func _kind_unlocked(kind: String,team: int) -> bool:
+	return kind not in Rules.AGE2_KINDS or _age2(team)
+
+func _research_pending(team: int) -> bool:
+	if age_completed_tick[team]>=0: return true
+	for ent in entities:
+		if ent.alive and ent.team==team:
+			for item in ent.queue:
+				if item.get("research",false): return true
+	return false
+
+func _enqueue_research(id: int,team: int):
+	var building=_get_entity(id)
+	if building.is_empty() or not building.alive or not building.built or building.team!=team or building.kind!="town_center": return _reject_command(team,"請選取自己的已完成主堡。")
+	if _research_pending(team): return _reject_command(team,"城防時代已在研究或已完成。")
+	if building.queue.size()>=5: return _reject_command(team,"生產隊列已滿。")
+	var payment=_pay(COSTS.age2,team)
+	if not payment.applied: return _reject_command(team,"研究需要食糧 350、木材 150、鐵礦 50。")
+	building.queue.append({"receipt_id":payment.receipt_id,"queue_id":next_queue_id,"kind":"age2","research":true,"remaining_ticks":Rules.TRAIN_TICKS.age2,"started":false,"next_retry_tick":0,"candidate_cursor":0})
+	next_queue_id+=1
+	return true
+
+func _gather_records(team: int) -> Dictionary:
+	var result=work_memory[team].resources.duplicate()
+	for record in work_memory[team].structures.values():
+		if record.team==team and record.alive and record.built and record.kind=="farm": result[record.id]=record
+	return result
+
+func _release_farm(ent: Dictionary) -> void:
+	var farm_id=ent.get("farm_id",-1)
+	if farm_id<0: return
+	economy_sequence+=1
+	economy.release_farm("farm_release:%d" % economy_sequence,ent.id,farm_id)
+	ent.farm_id=-1
+
+func _update_tower(ent: Dictionary) -> void:
+	ent.cooldown_ticks=maxi(0,ent.cooldown_ticks-1)
+	if ent.cooldown_ticks>0: return
+	# Candidate policy: visible hostile units before buildings; distance then ID.
+	var chosen={}; var best=Vector3(INF,INF,INF)
+	for target in entities:
+		if not target.alive or target.team!=1-ent.team or not _visible_to(target,ent.team): continue
+		var distance=_attack_distance(ent.pos,target)
+		if distance>Rules.RANGE.tower: continue
+		var rank=0 if target.category=="unit" else 1
+		if chosen.is_empty() or rank<best.x or (rank==best.x and (distance<best.y or (is_equal_approx(distance,best.y) and target.id<best.z))):
+			chosen=target; best=Vector3(rank,distance,target.id)
+	if not chosen.is_empty(): _release_attack(ent,chosen)
+
+func _ai_progression_plots(kind: String) -> Array:
+	var result: Array=MapRoutes.build_plots(1,Rules.FOOTPRINT[kind])
+	var home=MapRoutes.home(1)
+	# Fixed finite local ring hints. Actual placement rechecks all occupied cells.
+	for radius in [7,11,15]:
+		for direction in [Vector3.LEFT,Vector3.RIGHT,Vector3.FORWARD,Vector3.BACK,Vector3(-1,0,-1),Vector3(1,0,-1),Vector3(-1,0,1),Vector3(1,0,1)]:
+			result.append(_snap_build_position(kind,home+direction*radius))
+	return result
+
+func _ai_progression_goal(records: Array,workers: int,capacity: int,committed: int) -> String:
+	var counts={}; var known_food=0
+	for record in records:
+		if record.category=="resource" and record.kind=="berry": known_food+=1
+		if not record.owned: continue
+		counts[record.kind]=counts.get(record.kind,0)+1
+		for item in record.get("queue",[]): counts[item.kind]=counts.get(item.kind,0)+1
+	if capacity-committed<=2 and capacity<Rules.POP_LIMIT:
+		var unfinished=false
+		for record in records:
+			if record.owned and record.kind=="house" and not record.built: unfinished=true
+		if not unfinished: return "house"
+	if known_food<=3 and counts.get("farm",0)<4: return "farm"
+	if workers<8: return "villager"
+	if counts.get("barracks",0)==0: return "barracks"
+	if counts.get("range",0)==0: return "range"
+	if counts.get("spearman",0)+counts.get("archer",0)<4:
+		return "spearman" if counts.get("spearman",0)<=counts.get("archer",0) else "archer"
+	if not _age2(1): return "age2"
+	if counts.get("stable",0)==0: return "stable"
+	if counts.get("workshop",0)==0: return "workshop"
+	if counts.get("tower",0)<2: return "tower"
+	if workers<12: return "villager"
+	if counts.get("siege",0)<2: return "siege"
+	if counts.get("cavalry",0)<4: return "cavalry"
+	if counts.get("scout",0)==0: return "scout"
+	var chosen="spearman"; var lowest=INF
+	for kind in ["spearman","archer","cavalry","siege"]:
+		var target=2.0 if kind=="siege" else 5.0
+		var ratio=counts.get(kind,0)/target
+		if ratio<lowest: lowest=ratio; chosen=kind
+	return chosen
+
+func _route_grid(ent: Dictionary) -> AStarGrid2D:
+	var memory=work_memory[ent.team]
+	if ent.get("radius",Rules.UNIT_RADIUS)<=0.5: return memory.grid
+	var cached=large_route_cache[ent.team]
+	if cached.get("revision",-1)==memory.revision: return cached.grid
+	var grid=AStarGrid2D.new(); grid.region=memory.grid.region; grid.cell_size=Vector2.ONE
+	grid.diagonal_mode=AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.default_compute_heuristic=AStarGrid2D.HEURISTIC_OCTILE
+	grid.default_estimate_heuristic=AStarGrid2D.HEURISTIC_OCTILE
+	grid.update()
+	for y in Rules.MAP_SIZE:
+		for x in Rules.MAP_SIZE:
+			var cell=Vector2i(x,y)
+			if not memory.grid.is_point_solid(cell): continue
+			for offset in [Vector2i.ZERO,Vector2i.LEFT,Vector2i.RIGHT,Vector2i.UP,Vector2i.DOWN]:
+				if grid.region.has_point(cell+offset): grid.set_point_solid(cell+offset)
+	large_route_cache[ent.team]={"revision":memory.revision,"grid":grid}
+	return grid
+
+func _attack_approach(ent: Dictionary,target: Dictionary) -> Vector3:
+	if ent.radius<=0.5: return _free_adjacent(target,ent.pos,false,ent.team,ent)
+	var best=Vector3.INF; var distance=INF
+	# Siege uses a two-cell outer ring to leave its larger swept disk clear.
+	var center=_cell(target.pos); var extent=int(Rules.FOOTPRINT.get(target.kind,3)/2)+3
+	for y in range(center.y-extent,center.y+extent+1):
+		for x in range(center.x-extent,center.x+extent+1):
+			var cell=Vector2i(x,y)
+			if not _route_grid(ent).region.has_point(cell) or _route_grid(ent).is_point_solid(cell): continue
+			var point=_point(cell)
+			if _attack_distance(point,target)>Rules.RANGE[ent.kind] or not _known_destination_clear(ent,point): continue
+			var d=point.distance_squared_to(ent.pos)
+			if d<distance: distance=d; best=point
+	return best

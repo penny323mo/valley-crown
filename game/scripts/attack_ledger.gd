@@ -5,7 +5,7 @@ extends RefCounted
 const Rules = preload("res://scripts/rules.gd")
 const RECORD_BYTES = 80 # Four int64 values and six float64 coordinates; ID is its slot + 1.
 const MATCH_TICKS = int(Rules.TIME_LIMIT / Rules.TICK)
-const MAX_ATTACKS = 2 * Rules.POP_LIMIT * (ceili(float(MATCH_TICKS) / 30) + 1 + ceili(float(MATCH_TICKS) / 300))
+const MAX_ATTACKS = (2 * Rules.POP_LIMIT + 4) * (ceili(float(MATCH_TICKS) / 30) + 1 + ceili(float(MATCH_TICKS) / 300))
 var _records = PackedByteArray()
 var _settled_through = 0
 

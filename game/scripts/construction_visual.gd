@@ -2,6 +2,10 @@ extends RefCounted
 ## Temporary construction presentation only. No authority or visibility inputs.
 ## Uses the existing building's stone/oak materials, with two batched surfaces.
 const DIMENSIONS = {
+	"farm": Vector3(2.5,0.5,2.5),
+	"stable": Vector3(2.5,2.2,2.5),
+	"tower": Vector3(1.6,3.4,1.6),
+	"workshop": Vector3(2.5,2.2,2.5),
 	"town_center": Vector3(2.65,3.05,2.45),
 	"house": Vector3(1.60,1.90,1.35),
 	"storehouse": Vector3(1.65,1.85,1.38),

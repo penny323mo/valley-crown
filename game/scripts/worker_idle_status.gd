@@ -8,15 +8,17 @@ static func missing_resource(worker: Dictionary, records: Dictionary, pending: b
 	if worker.get("cargo_milli",0)!=0 or worker.get("path_pending",false): return ""
 	if worker.get("path_status","") in ["NO_PATH","LIMIT_REACHED","NO_WORK","QUEUED"]: return ""
 	var intent: String=worker.get("gather_type","")
-	if intent not in ["food","wood"]: return ""
+	if intent not in ["food","wood","stone","iron"]: return ""
 	for known in records.values():
+		if known.get("kind","")==intent and intent in ["stone","iron"]: return ""
+		if intent=="food" and known.get("kind","")=="farm" and known.get("owned",false) and known.get("built",false): return ""
 		if known.get("category","")!="resource" or not known.get("alive",false): continue
 		if intent=="food" and known.get("kind","")=="berry": return ""
 		if intent=="wood" and known.get("kind","") in ["pine","oak"]: return ""
 	return intent
 
 static func label(intent: String) -> String:
-	return "無已知糧源" if intent=="food" else ("無已知木源" if intent=="wood" else "")
+	return {"food":"無已知糧源","wood":"無已知木源","stone":"無已知石材","iron":"無已知鐵礦"}.get(intent,"")
 
 ## Terminal work routes only, from current owned player records. Idle STOP is
 ## allowed because traffic refusal sets it without erasing the work failure.

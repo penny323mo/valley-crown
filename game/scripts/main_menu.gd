@@ -5,7 +5,7 @@ const MATCH_SCENE = preload("res://main.tscn")
 var match_node
 var menu_layer: CanvasLayer
 var menu_root: Control
-var card: Panel
+var card: PanelContainer
 var heading: Label
 var description: Label
 var buttons: VBoxContainer
@@ -78,18 +78,20 @@ func _ready():
 	latin_name.add_theme_color_override("font_color", Color("c7ae7b"))
 	latin_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	identity.add_child(latin_name)
-	card = Panel.new()
+	card = PanelContainer.new()
 	menu_root.add_child(card)
 	card_style = StyleBoxFlat.new()
 	card_style.set_corner_radius_all(2)
 	card.add_theme_stylebox_override("panel", card_style)
-	# The fixed panel does not inherit wrapped prose minimum sizes. Keep every
-	# action in a separately bounded area, including the first layout frame.
+	# Keep navigation outside scrolling prose, including the shortest phone view.
+	var card_column = VBoxContainer.new()
+	card_column.add_theme_constant_override("separation", 14)
+	card.add_child(card_column)
 	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	card.add_child(scroll)
+	card_column.add_child(scroll)
 	var box = VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 16)
@@ -106,13 +108,14 @@ func _ready():
 	box.add_child(description)
 	buttons = VBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
-	card.add_child(buttons)
+	card_column.add_child(buttons)
 	footer = Label.new()
 	footer.text = "關閉遊戲不會保留戰役。"
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.add_theme_font_size_override("font_size", 13)
 	footer.add_theme_color_override("font_color", Color("b8b8ae"))
-	card.add_child(footer)
+	footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card_column.add_child(footer)
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	_show_page("home")
@@ -165,17 +168,6 @@ func _layout():
 	var y = available.y - height - 28.0 if home else (available.y - height) * 0.5
 	card.position = Vector2(x, maxf(16.0, y))
 	card.size = Vector2(width, height)
-	# Layout authority belongs to the viewport, not deferred content minima.
-	var inset = 0.0 if home else 20.0
-	var content_width = maxf(1.0, width - inset * 2.0)
-	var actions_height = 54.0 * buttons.get_child_count() + 10.0 * max(0, buttons.get_child_count() - 1)
-	var actions_y = height - inset - actions_height - (34.0 if home else 0.0)
-	buttons.position = Vector2(inset, actions_y)
-	buttons.size = Vector2(content_width, actions_height)
-	scroll.position = Vector2(inset, inset)
-	scroll.size = Vector2(content_width, maxf(1.0, actions_y - inset - 14.0))
-	footer.position = Vector2(inset, height - 20.0)
-	footer.size = Vector2(content_width, 20.0)
 
 func _button_style(fill: Color, border: Color) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()

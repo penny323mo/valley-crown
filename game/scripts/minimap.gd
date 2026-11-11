@@ -10,7 +10,7 @@ func _draw():
 		var p = Vector2((e.pos.x+Rules.MAP_HALF)/float(Rules.MAP_SIZE), (e.pos.z+Rules.MAP_HALF)/float(Rules.MAP_SIZE))*area.size+area.position
 		var col = Color("d8c067") if e.team==0 else Color("e07762")
 		if e.team==-1:
-			col=Color("b7ac64") if e.kind=="gold" else Color("90aa64")
+			col={"stone":Color("b8b8b2"),"iron":Color("bb9375")}.get(e.kind,Color("90aa64"))
 		if e.remembered: col=Color("777b79")
 		var r=3.3 if e.category=="building" else 1.7
 		draw_circle(p,r,col)
