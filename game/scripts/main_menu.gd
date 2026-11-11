@@ -9,6 +9,14 @@ var card: PanelContainer
 var heading: Label
 var description: Label
 var buttons: VBoxContainer
+var crest: TextureRect
+var identity: VBoxContainer
+var wordmark: Label
+var latin_name: Label
+var footer: Label
+var scroll: ScrollContainer
+var card_style: StyleBoxFlat
+var backdrop_material: ShaderMaterial
 var page = "home"
 var transition_busy = false
 var touch_presses = {}
@@ -31,46 +39,83 @@ func _ready():
 	theme.default_font = load("res://assets/fonts/ui_tc.otf")
 	theme.default_font_size = 17
 	menu_root.theme = theme
-	var background = ColorRect.new()
-	background.color = Color("18231f")
+	# One static original illustration. No world, camera, particles, or simulation.
+	var background = TextureRect.new()
+	background.texture = load("res://assets/mature/menu/valley_keep.png")
+	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	background.stretch_mode = TextureRect.STRETCH_SCALE
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop_material = ShaderMaterial.new()
+	backdrop_material.shader = load("res://assets/mature/menu/menu_backdrop.gdshader")
+	background.material = backdrop_material
 	menu_root.add_child(background)
+	identity = VBoxContainer.new()
+	identity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	identity.add_theme_constant_override("separation", 6)
+	menu_root.add_child(identity)
+	crest = TextureRect.new()
+	crest.texture = load("res://assets/mature/menu/valley_crown_mark.svg")
+	crest.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	crest.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	crest.custom_minimum_size.y = 44
+	crest.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	identity.add_child(crest)
+	wordmark = Label.new()
+	wordmark.text = "霧谷王旗"
+	wordmark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wordmark.add_theme_font_override("font", load("res://assets/fonts/menu_title_tc.otf"))
+	wordmark.add_theme_color_override("font_color", Color("eee5d2"))
+	wordmark.add_theme_color_override("font_shadow_color", Color(0.02, 0.025, 0.03, 0.7))
+	wordmark.add_theme_constant_override("shadow_offset_y", 2)
+	wordmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	identity.add_child(wordmark)
+	latin_name = Label.new()
+	latin_name.text = "V A L L E Y   &   C R O W N"
+	latin_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	latin_name.add_theme_font_override("font", load("res://assets/fonts/title.ttf"))
+	latin_name.add_theme_font_size_override("font_size", 13)
+	latin_name.add_theme_color_override("font_color", Color("c7ae7b"))
+	latin_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	identity.add_child(latin_name)
 	card = PanelContainer.new()
 	menu_root.add_child(card)
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color("25352d")
-	style.border_color = Color("ad9c70")
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(12)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 18
-	style.content_margin_bottom = 18
-	card.add_theme_stylebox_override("panel", style)
-	# Navigation remains visible while long help text scrolls independently.
+	card_style = StyleBoxFlat.new()
+	card_style.set_corner_radius_all(2)
+	card.add_theme_stylebox_override("panel", card_style)
+	# Keep navigation outside scrolling prose, including the shortest phone view.
 	var card_column = VBoxContainer.new()
 	card_column.add_theme_constant_override("separation", 14)
 	card.add_child(card_column)
-	var scroll = ScrollContainer.new()
+	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	card_column.add_child(scroll)
 	var box = VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 14)
+	box.add_theme_constant_override("separation", 16)
 	scroll.add_child(box)
 	heading = Label.new()
-	heading.add_theme_font_size_override("font_size", 26)
-	heading.add_theme_color_override("font_color", Color("e1d3a8"))
+	heading.add_theme_font_size_override("font_size", 28)
+	heading.add_theme_color_override("font_color", Color("eee5d2"))
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(heading)
 	description = Label.new()
+	description.add_theme_color_override("font_color", Color("ded9ce"))
+	description.add_theme_constant_override("line_spacing", 5)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(description)
 	buttons = VBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
 	card_column.add_child(buttons)
+	footer = Label.new()
+	footer.text = "關閉遊戲不會保留戰役。"
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	footer.add_theme_font_size_override("font_size", 13)
+	footer.add_theme_color_override("font_color", Color("b8b8ae"))
+	footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card_column.add_child(footer)
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	_show_page("home")
@@ -87,20 +132,83 @@ func _layout():
 	_cancel_menu_touches()
 	if not is_instance_valid(card): return
 	var available = get_viewport().get_visible_rect().size
-	var width = minf(520.0, maxf(1.0, available.x - 24.0))
-	var height = minf(680.0, maxf(1.0, available.y - 24.0))
-	card.position = Vector2((available.x - width) / 2.0, (available.y - height) / 2.0)
+	var wide = available.x >= 640.0 and available.x > available.y * 1.15
+	var margin = 28.0 if available.x >= 360.0 else 20.0
+	var width = minf(390.0 if wide else 440.0, maxf(1.0, available.x - margin * 2.0))
+	var x = maxf(32.0, available.x * 0.075) if wide else (available.x - width) * 0.5
+	var home = page == "home"
+	identity.visible = home
+	crest.visible = not wide
+	latin_name.visible = not wide
+	heading.visible = not home
+	footer.visible = home
+	description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if home else HORIZONTAL_ALIGNMENT_LEFT
+	backdrop_material.set_shader_parameter("landscape", wide)
+	backdrop_material.set_shader_parameter("view_size", available)
+	backdrop_material.set_shader_parameter("inner_page", not home)
+	identity.position = Vector2(x, 18.0 if wide and available.y < 500.0 else clampf(available.y * 0.065, 24.0, 60.0))
+	identity.size = Vector2(width, 0)
+	wordmark.add_theme_font_size_override("font_size", (32 if available.y < 500.0 else 40) if wide else (46 if width >= 330.0 else 38))
+	var height: float
+	if home:
+		card_style.bg_color = Color(0, 0, 0, 0)
+		card_style.set_border_width_all(0)
+		card_style.set_content_margin_all(0)
+		scroll.custom_minimum_size.y = 56
+		height = 54.0 * buttons.get_child_count() + 10.0 * max(0, buttons.get_child_count() - 1) + 104.0
+	else:
+		card_style.bg_color = Color(0.055, 0.075, 0.083, 0.96)
+		card_style.border_color = Color("76674d")
+		card_style.set_border_width_all(1)
+		card_style.set_content_margin_all(20)
+		scroll.custom_minimum_size.y = 0
+		height = minf(640.0, maxf(1.0, available.y - 48.0))
+		width = minf(560.0, maxf(1.0, available.x - margin * 2.0))
+		x = (available.x - width) * 0.5
+	var y = available.y - height - 28.0 if home else (available.y - height) * 0.5
+	card.position = Vector2(x, maxf(16.0, y))
 	card.size = Vector2(width, height)
+
+func _button_style(fill: Color, border: Color) -> StyleBoxFlat:
+	var style = StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(2)
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	return style
 
 func _add_button(label: String, id: String, action: Callable):
 	var button = Button.new()
 	button.name = id
 	button.text = label
-	button.custom_minimum_size.y = 48
+	button.custom_minimum_size.y = 54
 	button.add_theme_font_size_override("font_size", 18)
+	var primary = buttons.get_child_count() == 0 and id != "BackButton" and id != "HelpButton"
+	if primary:
+		button.add_theme_stylebox_override("normal", _button_style(Color("c4aa78"), Color("ddc593")))
+		button.add_theme_stylebox_override("hover", _button_style(Color("d7bd8b"), Color("f0ddae")))
+		button.add_theme_stylebox_override("pressed", _button_style(Color("aa8d59"), Color("dec18a")))
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			button.add_theme_color_override(state, Color("141c20"))
+	else:
+		button.add_theme_stylebox_override("normal", _button_style(Color("151e22"), Color("756b57")))
+		button.add_theme_stylebox_override("hover", _button_style(Color("263136"), Color("c4aa78")))
+		button.add_theme_stylebox_override("pressed", _button_style(Color("0d1519"), Color("c4aa78")))
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			button.add_theme_color_override(state, Color("eae3d5"))
+	var focus = StyleBoxFlat.new()
+	focus.bg_color = Color(0, 0, 0, 0)
+	focus.border_color = Color("f4e6bf")
+	focus.set_border_width_all(2)
+	focus.set_expand_margin_all(3)
+	focus.set_corner_radius_all(2)
+	button.add_theme_stylebox_override("focus", focus)
 	button.pressed.connect(action)
-	# Mouse emulation is intentionally disabled by the project. Own touch
-	# releases explicitly and never turn a canceled/dragged press into a click.
+	# Keep tested cancellation, drag, resize and multi-touch handling unchanged.
 	button.gui_input.connect(func(event): _button_touch(button, event))
 	buttons.add_child(button)
 
@@ -135,10 +243,10 @@ func _show_page(next_page: String):
 		_add_button("保留目前戰役", "CancelNewMatchButton", func(): _show_page("home"))
 	else:
 		heading.text = "霧谷王旗"
-		description.text = "採集、建造、出兵。\n建立聚落，探索霧谷。\n\n準備好再開始戰役。"
+		description.text = "建立聚落，探索霧谷。"
 		if is_instance_valid(match_node):
 			if not match_node.game_over:
-				description.text = "目前戰役已暫停。\n按繼續返回戰場。\n\n關閉遊戲不會保留戰役。"
+				description.text = "目前戰役已暫停。\n按繼續返回戰場。"
 				_add_button("繼續戰役", "ResumeMatchButton", _resume_match)
 			else:
 				description.text = "戰役已結束。\n再開一局，建立新的聚落。"
@@ -146,6 +254,7 @@ func _show_page(next_page: String):
 		else:
 			_add_button("開始戰役", "StartMatchButton", _start_match)
 		_add_button("教學", "HelpButton", func(): _show_page("help"))
+	_layout()
 	call_deferred("_focus_first_button")
 
 func _focus_first_button():

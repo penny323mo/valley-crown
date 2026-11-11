@@ -21,12 +21,22 @@ class MenuSourceContract(unittest.TestCase):
             self.assertIn(token, game)
     def test_small_viewport_geometry_and_scroll(self):
         menu = (ROOT / 'scripts/main_menu.gd').read_text()
-        for w, h in [(320,568),(390,844),(844,390),(568,320)]:
-            card_w, card_h = min(520,w-24), min(680,h-24)
-            self.assertGreaterEqual((w-card_w)/2,12)
-            self.assertGreaterEqual((h-card_h)/2,12)
-            self.assertGreater(card_w-36, 240)
-        self.assertIn('button.custom_minimum_size.y = 48',menu)
+        # Source arithmetic only; actual rendered geometry is a separate gate.
+        for w, h in [(320,568),(390,844),(844,390),(568,320),(1440,900)]:
+            wide = w >= 640 and w > h * 1.15
+            margin = 28 if w >= 360 else 20
+            card_w = min(390 if wide else 440, max(1,w-2*margin))
+            x = max(32,w*.075) if wide else (w-card_w)*.5
+            for count in (2,3):
+                card_h = 54*count + 10*max(0,count-1) + 104
+                y = max(16,h-card_h-28)
+                self.assertGreaterEqual(x,16)
+                self.assertGreaterEqual(y,16)
+                self.assertLessEqual(x+card_w,w-16)
+                self.assertLessEqual(y+card_h,h-16)
+        self.assertIn('button.custom_minimum_size.y = 54',menu)
+        self.assertIn('card_column.add_child(buttons)',menu)
+        self.assertNotIn('box.add_child(buttons)',menu)
         self.assertIn('scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO',menu)
         self.assertIn('TextServer.AUTOWRAP_WORD_SMART',menu)
     def test_cancel_and_drag_are_not_clicks(self):

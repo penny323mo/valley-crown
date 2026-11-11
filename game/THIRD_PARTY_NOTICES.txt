@@ -31,3 +31,15 @@ DejaVu Sans/Serif: see assets/fonts/DEJAVU-LICENSE.txt.
 Original game code and procedural environment assets are bundled alongside character assets derived from Quaternius free Standard-tier models and Universal Animation Library 1/2, plus KayKit Character Animations. The five original CC0 notices are preserved in art/action_characters/licenses/. No new license is granted for original game code or original artwork.
 
 Original audio: assets/audio/*.wav were generated from sine harmonics. No external samples, music or voice recordings are used. No new public license is granted.
+
+Main-menu presentation
+The valley keep illustration in assets/mature/menu/valley_keep.png is original
+AI-generated menu artwork created for this project. It is an illustration,
+not a gameplay screenshot. The heraldic mark and menu shader are original.
+No Age of Empires or Company of Heroes artwork is included. No new public
+license is granted for original game artwork.
+
+assets/fonts/menu_title_tc.otf is a renamed subset of Noto Serif CJK TC
+Regular, licensed under SIL OFL 1.1. Its full upstream copyright and license
+are retained in assets/fonts/MENU-TITLE-LICENSE.txt. The subset family name
+is Valley Crown Display. Existing Noto and DejaVu notices remain unchanged.
