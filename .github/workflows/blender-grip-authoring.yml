@@ -1,6 +1,7 @@
 name: Author fixed public unit grips
 on:
-  workflow_dispatch:
+  push:
+    branches: ['ci/grip-authoring-1887746-20261111']
 permissions:
   contents: read
 concurrency:
@@ -8,6 +9,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   author:
+    if: github.ref == 'refs/heads/ci/grip-authoring-1887746-20261111'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -16,7 +18,7 @@ jobs:
       - name: Checkout exact reviewed dispatched revision
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: ${{ github.sha }}
+          ref: 1887746368a6208d1ad6ef58d9798a3fbd7ec973
           persist-credentials: false
           fetch-depth: 1
       - name: Admit exact helpers and stage fixed public inputs
