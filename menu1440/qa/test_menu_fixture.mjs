@@ -5,7 +5,7 @@ import {readFile,mkdtemp,writeFile,copyFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {validateManifest,mapPoint,validateCanvasGeometry,assertMenuControls,helpSwipePoints,assertResumedMatch,menuGeometryReady,menuGeometryIssue,waitForMenuTransition,shortcutMenuReady,assertHelpScroll,
+import {validateManifest,mapPoint,validateCanvasGeometry,assertMenuControls,helpSwipePoints,assertResumedMatch,assertFreshMatchDefault,assertConfirmedNewMatch,menuGeometryReady,menuGeometryIssue,waitForMenuTransition,shortcutMenuReady,assertHelpScroll,
   PREPARED_SCENARIO,PREPARED_VIEWPORT,RESIZED_VIEWPORT,PREPARED_PROFILE,TOUCH,HELP_SCROLL_GESTURES,HELP_FINAL_PARAGRAPH,runQA} from './browser_qa.mjs';
 const manifest={reviewed:true,build:'vc-123456789abc',source_commit:'a'.repeat(40),profile:PREPARED_PROFILE,hud_schema:2,
   scenario:PREPARED_SCENARIO,viewport:[...PREPARED_VIEWPORT],resized_viewport:[...RESIZED_VIEWPORT],
@@ -23,7 +23,7 @@ function menu(page='home',match=false,visible=true,v=PREPARED_VIEWPORT){
 function state(tick=40,paused=false,selected=[7],v=PREPARED_VIEWPORT){return {
   build:manifest.build,tick,paused,game_over:false,selected,touch_mode:false,build_mode:'',own_pending_commands:0,
   bank_milli:{food:150000,wood:200000},economy_scale:1000,population:6,capacity:10,delivered:0,built:0,trained:0,
-  hud:{schema:2,viewport:[...v],camera:{focus:[-15,0,20],zoom:25},own_targets:[{id:7,kind:'villager',screen:[100,250]}],
+  hud:{schema:2,viewport:[...v],selected_own:selected.map(id=>id===0?{built:true,category:'building',id,kind:'town_center',progress:1}:{id,kind:'villager',category:'unit'}),camera:{focus:[-15,0,20],zoom:25},own_targets:[{id:7,kind:'villager',screen:[100,250]}],
     buttons:[{text:'選單',rect:[210,10,60,46],disabled:false}]}};}
 const obs=(m,s=null,v=PREPARED_VIEWPORT)=>({menu:m,state:s,geometry:geometry(v)});
 function frames(){
@@ -35,9 +35,9 @@ function frames(){
   const result=[home(),...Array.from({length:TOUCH?3:1},home),initialHelp];
   for(let i=0;i<HELP_SCROLL_GESTURES;i++)result.push(help(PREPARED_VIEWPORT));
   result.push(help(RESIZED_VIEWPORT));for(let i=0;i<HELP_SCROLL_GESTURES;i++)result.push(help(RESIZED_VIEWPORT));
-  result.push(help(PREPARED_VIEWPORT),home(),obs(menu('home',true,false),state(1,false,[])),active(),shortcut(42),paused());
+  result.push(help(PREPARED_VIEWPORT),home(),obs(menu('home',true,false),state(1,false,[0])),active(),shortcut(42),paused());
   result.push(paused(RESIZED_VIEWPORT));if(TOUCH)result.push(paused(RESIZED_VIEWPORT));
-  result.push(paused(),paused(PREPARED_VIEWPORT,45,'confirm'),paused(),active(65),shortcut(68),paused(PREPARED_VIEWPORT,70),paused(PREPARED_VIEWPORT,70,'confirm'),obs(menu('home',true,false),state(1,false,[])));
+  result.push(paused(),paused(PREPARED_VIEWPORT,45,'confirm'),paused(),active(65),shortcut(68),paused(PREPARED_VIEWPORT,70),paused(PREPARED_VIEWPORT,70,'confirm'),obs(menu('home',true,false),state(1,false,[0])));
   return result;
 }
 test('review gate binds exact profile, both viewports, identity and safe export files',()=>{
@@ -193,8 +193,8 @@ test('no optional active-gameplay PNG replaces any state or required menu eviden
   const s=await readFile(new URL('./browser_qa.mjs',import.meta.url),'utf8');
   for(const label of ['live-before-menu','resumed','confirmed-new-match'])assert.ok(!s.includes("await shot('"+label+"')"));
   for(const label of ['home','keyboard-focus','help-before-scroll','help-after-scroll','help-resized-before-extra-scroll','help-resized-after-scroll','help-restored','paused-home','paused-home-resized','paused-home-restored','new-match-confirmation','new-match-canceled'])assert.ok(s.includes("await shot('"+label+"')"));
-  for(const marker of ['o.state.tick>=40','o.state.tick>=paused.tick+20','o.state.tick<beforeRestart.tick','assertResumedMatch(paused,current.state)','assertFrozenMatch(paused,current.state)','assert.deepEqual(current.state.selected,[])',"checkpoint('resumed-same-observed-match'", "checkpoint('confirmed-new-match-observed-reset'"]){
-    if(marker==='assert.deepEqual(current.state.selected,[])')assert.ok(s.includes("assert.deepEqual(current.state.selected,[],"));else assert.ok(s.includes(marker),marker);
+  for(const marker of ['o.state.tick>=40','o.state.tick>=paused.tick+20','o.state.tick<beforeRestart.tick','assertResumedMatch(paused,current.state)','assertFrozenMatch(paused,current.state)','assertConfirmedNewMatch(freshStart,beforeRestart,current.state)',"checkpoint('resumed-same-observed-match'", "checkpoint('confirmed-new-match-observed-reset'"]){
+    assert.ok(s.includes(marker),marker);
   }
 });
 
@@ -226,4 +226,22 @@ test('fake six completed Help gestures fail if final paragraph remains clipped',
   assert.equal(r.evidence.basicSmokePassed,false);
   assert.equal(r.evidence.input_timings.filter(x=>x.label.startsWith('help-scroll')).length,6);
   assert.ok(!r.shots.includes(`${PREPARED_SCENARIO}-help-after-scroll.png`));
+});
+
+test('observed fresh default requires completed owned town center, not an empty or worker selection',()=>{
+  assertFreshMatchDefault(state(1,false,[0]));
+  for(const mutate of [s=>s.selected=[],s=>s.hud.selected_own[0].kind='villager',s=>s.hud.selected_own[0].built=false,s=>s.hud.selected_own[0].id=7]) {
+    const s=state(1,false,[0]);mutate(s);assert.throws(()=>assertFreshMatchDefault(s));
+  }
+});
+test('confirmed restart rejects retained worker, stale ticks, charges, counters, queued orders and camera',()=>{
+  const fresh=state(1,false,[0]),old=state(70,true,[7]),restart=state(0,false,[0]);assertConfirmedNewMatch(fresh,old,restart);
+  for(const mutate of [s=>{s.selected=[7];s.hud.selected_own=[{id:7,kind:'villager',category:'unit'}];},s=>s.tick=70,s=>s.bank_milli.wood--,s=>s.trained=1,s=>s.own_pending_commands=1,s=>s.hud.camera.zoom++,s=>s.paused=true,s=>s.game_over=true]) {
+    const s=structuredClone(restart);mutate(s);assert.throws(()=>assertConfirmedNewMatch(fresh,old,s));
+  }
+  assert.throws(()=>assertConfirmedNewMatch(fresh,state(70,true,[0]),restart),/Distinct retained worker/);
+});
+test('fake final new match cannot retain the old worker despite a reset tick',async()=>{
+  const r=await fakeRun(fs=>{fs[fs.length-1].state=state(0,false,[7]);});
+  assert.ok(r.error);assert.match(String(r.error),/Fresh default selection|owned town center/);assert.equal(r.evidence.basicSmokePassed,false);
 });

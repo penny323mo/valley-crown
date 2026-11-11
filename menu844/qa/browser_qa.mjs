@@ -138,6 +138,24 @@ export function assertResumedMatch(paused,resumed) {
   assertCamera(resumed.hud.camera);assert.deepEqual(resumed.hud.camera,paused.hud.camera);
 }
 
+export function assertFreshMatchDefault(state) {
+  assert.equal(state.paused,false);assert.equal(state.game_over,false);
+  assert.equal(state.selected.length,1,'Fresh match must select one owned town center');
+  assert.deepEqual(state.hud.selected_own,[{built:true,category:'building',id:state.selected[0],kind:'town_center',progress:1}],
+    'Fresh default selection is not the owned completed town center');
+  assertCamera(state.hud.camera);
+}
+export function assertConfirmedNewMatch(fresh,previous,restarted) {
+  assertFreshMatchDefault(fresh);assertFreshMatchDefault(restarted);
+  assert.notDeepEqual(previous.selected,fresh.selected,'Distinct retained worker witness missing');
+  assert.notDeepEqual(restarted.selected,previous.selected,'New match retained old worker selection');
+  assert.deepEqual(restarted.selected,fresh.selected,'New match default differs from ordinary Start');
+  assert.ok(Number.isInteger(restarted.tick)&&restarted.tick>=0&&restarted.tick<previous.tick,'New match did not reset observed tick');
+  for(const key of ['bank_milli','economy_scale','population','capacity','delivered','built','trained','own_pending_commands','touch_mode','build_mode'])
+    assert.deepEqual(restarted[key],fresh[key],'New match did not restore startup '+key);
+  assert.deepEqual(restarted.hud.camera,fresh.hud.camera,'New match did not restore startup camera');
+}
+
 export async function runQA(browser,outputDirectory,origin,profile) {
   assert.equal(profile,PREPARED_PROFILE,'Wrong fixed menu profile');
   assert.match(origin,/^http:\/\/127\.0\.0\.1:\d+$/);
@@ -293,6 +311,8 @@ export async function runQA(browser,outputDirectory,origin,profile) {
     await page.waitForFunction(()=>typeof window.valleySnapshot==='function',null,{timeout:20000});
     current=await waitFor(o=>!o.menu.visible&&o.state&&!o.state.paused,'ordinary Start created active match');
     assertMenu(current.menu,{visible:false,match_exists:true,game_bridge:true});assertCamera(current.state.hud.camera);
+    const freshStart=structuredClone(current.state);assertFreshMatchDefault(freshStart);
+    await checkpoint('ordinary-start-default-observed',current);
     const worker=current.state.hud.own_targets.find(t=>t.kind==='villager');assert.ok(worker,'Natural visible villager absent');
     await activate(worker.screen,'select-natural-worker');
     current=await waitFor(o=>o.state.selected.length===1&&o.state.selected[0]===worker.id&&o.state.tick>=40,'distinct retained selection and natural elapsed ticks',5000);
@@ -326,8 +346,8 @@ export async function runQA(browser,outputDirectory,origin,profile) {
     current=await openMainMenu(current);const beforeRestart=current.state;
     await activateMenu(current.menu,'NewMatchButton');current=await waitMenu({page:'confirm',match:true,frozen:beforeRestart},'second explicit new match confirmation');assertFrozenMatch(beforeRestart,current.state);
     await activateMenu(current.menu,'ConfirmNewMatchButton');current=await waitFor(o=>!o.menu.visible&&o.state&&!o.state.paused&&o.state.tick<beforeRestart.tick,'confirmed new match reset observed tick',5000);
-    assert.deepEqual(current.state.selected,[],'New match retained old selection');assert.equal(current.state.game_over,false);
-    await checkpoint('confirmed-new-match-observed-reset',{before:beforeRestart,after:current});
+    assertConfirmedNewMatch(freshStart,beforeRestart,current.state);
+    await checkpoint('confirmed-new-match-observed-reset',{fresh_start:freshStart,before:beforeRestart,after:current});
     assert.equal(evidence.error_count,0,'Browser errors recorded');
     if(session){await session.detach();session=null;}
     await checkpoint('closing-context');await context.close(); context = null;
