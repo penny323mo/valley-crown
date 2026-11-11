@@ -21,15 +21,100 @@ func check_visible_controls(shell, phase: String):
 	check(shell.scroll.get_global_rect().end.y <= shell.buttons.get_global_rect().position.y, phase + ": prose cannot push or overlap actions")
 	if shell.footer.visible:
 		check(viewport.encloses(shell.footer.get_global_rect()), phase + ": footer visible")
+		check(not shell.identity.visible or viewport.encloses(shell.identity.get_global_rect()), phase + ": visible identity inside viewport")
+		check(not shell.identity.visible or (not shell.identity.get_global_rect().intersects(shell.scroll.get_global_rect()) and not shell.identity.get_global_rect().intersects(shell.buttons.get_global_rect())), phase + ": identity cannot overlap prose or actions")
 
 func check_layout_matrix(shell, phase: String):
 	var previous = root.size
-	for size in [Vector2i(320,568), Vector2i(390,844), Vector2i(844,390), Vector2i(1440,900)]:
+	for size in [Vector2i(320,568), Vector2i(390,844), Vector2i(844,390), Vector2i(1440,900), Vector2i(568,320)]:
 		root.size = size
 		shell._layout()
 		await process_frame
 		await process_frame
 		check_visible_controls(shell, phase + " %dx%d" % [size.x, size.y])
+	root.size = previous
+	shell._layout()
+	await process_frame
+	await process_frame
+
+func help_touch(shell, position: Vector2, pressed: bool, index: int = 0, canceled: bool = false):
+	var event = InputEventScreenTouch.new()
+	event.position = position; event.pressed = pressed; event.index = index; event.canceled = canceled
+	shell._input(event)
+
+func help_drag(shell, position: Vector2):
+	var event = InputEventScreenDrag.new()
+	event.position = position; event.index = 0
+	shell._input(event)
+
+func check_help_touch(shell):
+	# Direct synthetic handler probes only. Real browser swipes and pixels
+	# independently establish that the final Help paragraph can be reached.
+	var previous = root.size
+	root.size = Vector2i(320,568)
+	shell._layout()
+	await process_frame
+	await process_frame
+	var prose: Rect2 = shell.scroll.get_global_rect()
+	var start = Vector2(prose.get_center().x, prose.end.y - 12.0)
+	var bar = shell.scroll.get_v_scroll_bar()
+	check(bar.max_value > bar.page, "help touch: short viewport genuinely overflows")
+	shell.scroll.scroll_vertical = 0
+	help_touch(shell, start, true)
+	help_drag(shell, start - Vector2(0,4))
+	check(shell.scroll.scroll_vertical == 0, "help touch: small movement stays within deadzone")
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.scroll.scroll_vertical > 0, "help touch: single prose drag moves content")
+	help_drag(shell, start - Vector2(0,10000))
+	check(absf(shell.scroll.scroll_vertical - (bar.max_value - bar.page)) <= 1.0, "help touch: drag clamps at final content")
+	await process_frame
+	await process_frame
+	check(shell.scroll.get_global_rect().encloses(shell.help_tail.get_global_rect()), "help touch: final paragraph fits within reading viewport")
+	help_touch(shell, start, false)
+	check(shell.prose_touch == -1 and shell.active_touches.is_empty(), "help touch: release clears capture")
+	help_touch(shell, start, true)
+	help_drag(shell, start + Vector2(0,10000))
+	check(shell.scroll.scroll_vertical == 0, "help touch: reverse drag clamps at top")
+	help_touch(shell, start, false, 0, true)
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.scroll.scroll_vertical == 0 and shell.prose_touch == -1, "help touch: canceled stream cannot continue")
+	help_touch(shell, start, true)
+	shell._layout()
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.scroll.scroll_vertical == 0 and shell.prose_touch == -1, "help touch: resize quarantines held drag")
+	help_touch(shell, start, false)
+	help_touch(shell, start, true)
+	help_touch(shell, start + Vector2(10,0), true, 1)
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.scroll.scroll_vertical == 0 and shell.prose_touch == -1, "help touch: multitouch cancels drag")
+	help_touch(shell, start, false, 1)
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.scroll.scroll_vertical == 0, "help touch: remaining finger cannot inherit canceled drag")
+	help_touch(shell, start, false)
+	var back = shell.buttons.get_node("BackButton").get_global_rect().get_center()
+	help_touch(shell, start, true)
+	help_drag(shell, back)
+	help_touch(shell, back, false)
+	check(shell.page == "help" and not shell.transition_busy, "help touch: prose drag onto Back cannot activate it")
+	help_touch(shell, back, true)
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.prose_touch == -1 and shell.scroll.scroll_vertical == 0, "help touch: button-origin drag cannot capture prose")
+	help_touch(shell, back, false)
+	help_touch(shell, Vector2(1,1), true)
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.prose_touch == -1 and shell.scroll.scroll_vertical == 0, "help touch: outside-origin drag cannot capture prose")
+	help_touch(shell, Vector2(1,1), false)
+	help_touch(shell, start, true)
+	shell._show_page("home"); shell._show_page("help")
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.prose_touch == -1 and shell.scroll.scroll_vertical == 0, "help touch: page replacement cancels drag")
+	help_touch(shell, start, false)
+	help_touch(shell, start, true)
+	shell._notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	help_drag(shell, start - Vector2(0,100))
+	check(shell.prose_touch == -1 and shell.scroll.scroll_vertical == 0, "help touch: focus loss cancels drag")
+	help_touch(shell, start, false)
+	check(shell.page == "help" and not shell.transition_busy and not is_instance_valid(shell.match_node), "help touch: scrolling never starts or leaves a match")
 	root.size = previous
 	shell._layout()
 	await process_frame
@@ -47,6 +132,7 @@ func run():
 	shell.buttons.get_node("HelpButton").pressed.emit()
 	check(shell.page == "help" and not is_instance_valid(shell.match_node), "help never starts simulation")
 	await check_layout_matrix(shell, "help")
+	await check_help_touch(shell)
 	shell.buttons.get_node("BackButton").pressed.emit()
 	# Synthetic event-handler checks, not physical-device acceptance.
 	var start = shell.buttons.get_node("StartMatchButton")

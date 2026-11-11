@@ -8,6 +8,7 @@ var menu_root: Control
 var card: Panel
 var heading: Label
 var description: Label
+var help_tail: Label
 var buttons: VBoxContainer
 var crest: TextureRect
 var identity: VBoxContainer
@@ -22,6 +23,9 @@ var transition_busy = false
 var touch_presses = {}
 var active_touches = {}
 var touch_blocked = false
+var prose_touch = -1
+var prose_origin = Vector2.ZERO
+var prose_scroll_origin = 0.0
 var web_cancel_callback
 var qa_callback
 var qa_mode = false
@@ -104,6 +108,12 @@ func _ready():
 	description.add_theme_constant_override("line_spacing", 5)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(description)
+	help_tail = Label.new()
+	help_tail.text = "開始戰役後，教學：採集、建造與出兵。"
+	help_tail.add_theme_color_override("font_color", Color("ded9ce"))
+	help_tail.add_theme_constant_override("line_spacing", 5)
+	help_tail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(help_tail)
 	buttons = VBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
 	card.add_child(buttons)
@@ -130,22 +140,24 @@ func _layout():
 	if not is_instance_valid(card): return
 	var available = get_viewport().get_visible_rect().size
 	var wide = available.x >= 640.0 and available.x > available.y * 1.15
+	var short_landscape = available.x > available.y and available.y < 500.0
 	var margin = 28.0 if available.x >= 360.0 else 20.0
 	var width = minf(390.0 if wide else 440.0, maxf(1.0, available.x - margin * 2.0))
 	var x = maxf(32.0, available.x * 0.075) if wide else (available.x - width) * 0.5
 	var home = page == "home"
 	identity.visible = home
-	crest.visible = not wide
-	latin_name.visible = not wide
+	crest.visible = not wide and not short_landscape
+	latin_name.visible = not wide and not short_landscape
 	heading.visible = not home
+	help_tail.visible = page == "help"
 	footer.visible = home
 	description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if home else HORIZONTAL_ALIGNMENT_LEFT
 	backdrop_material.set_shader_parameter("landscape", wide)
 	backdrop_material.set_shader_parameter("view_size", available)
 	backdrop_material.set_shader_parameter("inner_page", not home)
-	identity.position = Vector2(x, 18.0 if wide and available.y < 500.0 else clampf(available.y * 0.065, 24.0, 60.0))
+	identity.position = Vector2(x, 18.0 if short_landscape else clampf(available.y * 0.065, 24.0, 60.0))
 	identity.size = Vector2(width, 0)
-	wordmark.add_theme_font_size_override("font_size", (32 if available.y < 500.0 else 40) if wide else (46 if width >= 330.0 else 38))
+	wordmark.add_theme_font_size_override("font_size", 32 if short_landscape else (40 if wide else (46 if width >= 330.0 else 38)))
 	var height: float
 	if home:
 		card_style.bg_color = Color(0, 0, 0, 0)
@@ -165,6 +177,9 @@ func _layout():
 	var y = available.y - height - 28.0 if home else (available.y - height) * 0.5
 	card.position = Vector2(x, maxf(16.0, y))
 	card.size = Vector2(width, height)
+	# A paused match needs three full-size actions. In a 320px-tall viewport
+	# its pause message takes priority over a repeated decorative wordmark.
+	identity.visible = home and (not short_landscape or card.position.y >= 70.0)
 	# Layout authority belongs to the viewport, not deferred content minima.
 	var inset = 0.0 if home else 20.0
 	var content_width = maxf(1.0, width - inset * 2.0)
@@ -237,12 +252,13 @@ func _button_touch(button: Button, event: InputEvent):
 func _show_page(next_page: String):
 	page = next_page
 	_cancel_menu_touches()
+	scroll.scroll_vertical = 0
 	for child in buttons.get_children():
 		buttons.remove_child(child)
 		child.queue_free()
 	if page == "help":
 		heading.text = "教學"
-		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指平移；雙指縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取、右擊指令。WASD／方向鍵平移；滾輪縮放。P 暫停。\n\n開始戰役後，教學：採集、建造與出兵。"
+		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指平移；雙指縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取、右擊指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
 		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "confirm":
 		heading.text = "開始新戰役？"
@@ -332,6 +348,7 @@ func _notification(what):
 		_cancel_menu_touches()
 
 func _release_menu_focus():
+	prose_touch = -1
 	var focused = get_viewport().gui_get_focus_owner()
 	if is_instance_valid(focused) and menu_root.is_ancestor_of(focused): focused.release_focus()
 
@@ -354,11 +371,45 @@ func _web_menu_snapshot(_args):
 				parent = parent.get_parent()
 			visible_buttons.append({"id": button.name, "text": button.text, "rect": [rect.position.x, rect.position.y, rect.size.x, rect.size.y]})
 	var snapshot = {"visible": menu_layer.visible, "page": page, "match_exists": is_instance_valid(match_node), "buttons": visible_buttons}
+	if menu_layer.visible and page == "help":
+		var bar = scroll.get_v_scroll_bar()
+		var tail = help_tail.get_global_rect()
+		var clipped = tail.intersection(scroll.get_global_rect()).intersection(get_viewport().get_visible_rect())
+		snapshot["help_scroll"] = {"value": bar.value, "maximum": bar.max_value, "page": bar.page, "final_rect": [tail.position.x, tail.position.y, tail.size.x, tail.size.y], "final_visible_rect": [clipped.position.x, clipped.position.y, clipped.size.x, clipped.size.y], "final_text": help_tail.text}
 	JavaScriptBridge.eval("window.valleyMenuState=" + JSON.stringify(snapshot) + ";")
 
 func _cancel_menu_touches():
 	touch_presses.clear()
+	prose_touch = -1
 	touch_blocked = not active_touches.is_empty()
+
+func _help_touch(event: InputEvent) -> bool:
+	# Native ScrollContainer dragging uses mouse events. Keep the game's
+	# mouse-from-touch emulation disabled and own only this reading area.
+	if page != "help": return false
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if event.canceled or touch_blocked or active_touches.size() != 1: return false
+			var prose_rect = scroll.get_global_rect()
+			var bar = scroll.get_v_scroll_bar()
+			if not prose_rect.has_point(event.position) or (bar.visible and bar.get_global_rect().has_point(event.position)): return false
+			prose_touch = event.index
+			prose_origin = event.position
+			prose_scroll_origin = scroll.scroll_vertical
+			return true
+		elif event.index == prose_touch:
+			prose_touch = -1
+			return true
+	elif event is InputEventScreenDrag and event.index == prose_touch:
+		if touch_blocked or active_touches.size() != 1:
+			prose_touch = -1
+			return false
+		var distance = prose_origin.y - event.position.y
+		if absf(distance) >= 8.0:
+			var bar = scroll.get_v_scroll_bar()
+			scroll.scroll_vertical = roundi(clampf(prose_scroll_origin + distance, bar.min_value, maxf(bar.min_value, bar.max_value - bar.page)))
+		return true
+	return false
 
 func _input(event):
 	if not menu_layer or not menu_layer.visible: return
@@ -371,3 +422,4 @@ func _input(event):
 			active_touches.erase(event.index)
 			if event.canceled: touch_presses.erase(event.index)
 			if active_touches.is_empty(): touch_blocked = false
+	if _help_touch(event): get_viewport().set_input_as_handled()
