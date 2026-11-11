@@ -1,0 +1,135 @@
+# Reviewed scoped construction contracts and exact Web export on a fresh hosted VM.
+name: Validate visibility candidate under original guards
+on:
+  push:
+    branches: [ci/visibility-candidate-vc-1cb7c74ee588]
+permissions:
+  contents: read
+concurrency:
+  group: visibility-candidate-vc-1cb7c74ee588
+  cancel-in-progress: false
+jobs:
+  export:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      CONSTRUCTION_SOURCE_COMMIT: bd9b4b1119ce4520083cfefe0e3d7fbf3ec1ed71
+      CONSTRUCTION_GAME_TREE: e03a641e878c4315ed0559e4ad0e54088f86cff5
+      CONSTRUCTION_BUILD: vc-1cb7c74ee588
+      VISIBILITY_EXECUTION_APPROVED: 'true'
+      CONSTRUCTION_EXECUTION_APPROVED: 'true'
+      MILITARY_EXECUTION_APPROVED: 'true'
+      FACTION_EXECUTION_APPROVED: 'true'
+    steps:
+      - name: Reject pending or unapproved source pins
+        run: |
+          set -euo pipefail
+          test "$VISIBILITY_EXECUTION_APPROVED" = true
+          test "$CONSTRUCTION_EXECUTION_APPROVED" = true
+          test "$MILITARY_EXECUTION_APPROVED" = true
+          test "$FACTION_EXECUTION_APPROVED" = true
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_REF" = refs/heads/ci/visibility-candidate-vc-1cb7c74ee588
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          [[ "$CONSTRUCTION_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CONSTRUCTION_GAME_TREE" =~ ^[0-9a-f]{40}$ ]]
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/public-web-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact tested public game tree
+        run: python3 -B ci/prepare_web_release.py prepare --work "$RTS_WORK"
+      - name: Inert construction adapter preflight
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s ci -p test_visibility.py -v
+          python3 -B -m unittest discover -s ci -p test_contracts.py -v
+          python3 -B -m unittest discover -s ci -p test_military.py -v
+          python3 -B -m unittest discover -s ci -p test_faction.py -v
+          python3 -B ci/preflight_visibility_lock.py "$RTS_WORK/export-lock.json"
+          python3 -B ci/preflight_combined_lock.py "$RTS_WORK/export-lock.json"
+      - name: Prepare pinned official engine and Web template without launch
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_web_release.py engine --work "$RTS_WORK"
+          python3 -B ci/prepare_web_templates.py --work "$RTS_WORK"
+      - name: Fresh bounded import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: Exact actual-node visibility lifecycle under unchanged120-second supervisor
+        run: python3 -B ci/run_visibility.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/visibility-contracts" --private "$RTS_WORK/private/visibility-contracts"
+      - name: Eight exact menu, contextual, construction and Stop suites under unchanged 120-second logic supervisor
+        run: python3 -B ci/run_contracts.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/construction-contracts" --private "$RTS_WORK/private/construction-contracts"
+      - name: Two bounded actual-game military suites
+        run: python3 -B ci/run_military.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/military-contracts" --private "$RTS_WORK/private/military-contracts"
+      - name: Forty exact faction publication semantics and component measurement checks
+        run: python3 -B ci/run_faction.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/faction-contracts" --private "$RTS_WORK/private/faction-contracts"
+      - name: Two guarded exports with exact source and template binding
+        run: python3 -B ci/run_export.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/template/web_nothreads_release.zip" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/exports" --private "$RTS_WORK/private/export"
+      - name: Package exact repeatable Web candidate and notices
+        run: python3 -B ci/package_web_release.py --work "$RTS_WORK"
+      - name: Upload verified candidate
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tested-public-web-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ env.RTS_WORK }}/candidate/
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 30
+      - name: Upload export evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-web-export-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/import-evidence/phase-summary.json
+            ${{ env.RTS_WORK }}/import-evidence/import.json
+            ${{ env.RTS_WORK }}/import-evidence/import.invocation.json
+            ${{ env.RTS_WORK }}/import-evidence/import.log
+            ${{ env.RTS_WORK }}/construction-contracts/construction-contracts-receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/construction_status/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/construction_status/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/construction_status_hud/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/construction_status_hud/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_contract/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_contract/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_phone/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_phone/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/stance-target-cancel-phone.json
+            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_contract/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_contract/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_phone/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_phone/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/main_menu_flow_contract/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/main_menu_flow_contract/godot.log
+            ${{ env.RTS_WORK }}/military-contracts/**/receipt.json
+            ${{ env.RTS_WORK }}/military-contracts/**/godot.log
+            ${{ env.RTS_WORK }}/military-contracts/military-contracts-receipt.json
+            ${{ env.RTS_WORK }}/faction-contracts/faction-publication-receipt.json
+            ${{ env.RTS_WORK }}/faction-contracts/faction-publication/receipt.json
+            ${{ env.RTS_WORK }}/faction-contracts/faction-publication/godot.log
+            ${{ env.RTS_WORK }}/faction-contracts/faction-publication/faction-publication-report.json
+            ${{ env.RTS_WORK }}/exports/web-export-receipt.json
+            ${{ env.RTS_WORK }}/exports/export-1/receipt.json
+            ${{ env.RTS_WORK }}/exports/export-1/godot.log
+            ${{ env.RTS_WORK }}/exports/export-2/receipt.json
+            ${{ env.RTS_WORK }}/exports/export-2/godot.log
+            ${{ env.RTS_WORK }}/visibility-contracts/visibility-contract-receipt.json
+            ${{ env.RTS_WORK }}/visibility-contracts/visibility-lifecycle/receipt.json
+            ${{ env.RTS_WORK }}/visibility-contracts/visibility-lifecycle/godot.log
+            ${{ env.RTS_WORK }}/export-lock.json
+            ${{ env.RTS_WORK }}/template-provenance.json
+            ${{ env.RTS_WORK }}/web-manifest.json
+            ${{ env.RTS_WORK }}/release-summary.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# Export candidate only. Existing Pages workflow, permissions and live site unchanged.
