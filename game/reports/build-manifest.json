@@ -1,5 +1,5 @@
 {
-  "build": "vc-65e548819ad3",
+  "build": "vc-f3d75a2138cc",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -121,7 +121,7 @@
     "scripts/economy_ledger.gd.uid": "5c00fd1940b699d4be1d6d3af93df3255e86485c24b0980faad7ea7145c61e3d",
     "scripts/end_rules.gd": "0d1364421a26f4385c2d64bf94155930622395791b15de5b61c69947d75e1d7a",
     "scripts/end_rules.gd.uid": "d9ffa1fa42576a3c519ec2224f8733add04684a4e2aa876c634292d68d1d7b25",
-    "scripts/faction_view.gd": "5862071a65d1d3a0bf513c8ff48258664013a84ef19f63936c2a891e576a5ab5",
+    "scripts/faction_view.gd": "cf2f462e2d20b91a699775d5b290c8ccf3d604fe7a07a8165c4e215add836931",
     "scripts/faction_view.gd.uid": "adb9a1738643106ae9a9aee52e124cea5e0ac6aa180fd2af1c9fc5a57d9e5247",
     "scripts/faction_work_memory.gd": "a223ca640285a950e0a1524fb00b100e3c9b022aec5ec8d65fc9a20e99a51100",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
@@ -140,7 +140,7 @@
     "scripts/observed_occlusion.gd.uid": "0d078dece8aed1c6b4ccabf959f90900303650f9057a52d7394c76e553c46470",
     "scripts/progression_visuals.gd": "9727e75c84646f9e7daa2691cbb2e2a2405d73e46d4cc5180deee99ff189e675",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "0c12b8bcf2c2c21fea0d662fd0489fc67e8acbca061b8b3cd2fb0c62465e8bfc",
+    "scripts/rules.gd": "e768f05b207ee1ee8b7278c804ace376f2c25abd51a7b188c458c6595a3aebf1",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/worker_idle_status.gd": "d99bf87d3d86c48df14813a47f0ad9d1cc2baf473d0fbf36c53d5b0554b4d236"
   }
