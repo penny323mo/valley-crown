@@ -3740,11 +3740,35 @@ func _run_smoke_test():
 
 func _capture_screenshot():
 	await RenderingServer.frame_post_draw
-	var path="res://screenshots/gameplay-"+str(Time.get_unix_time_from_system()).replace(".","-")+".png"
+	var directory="user://screenshots"
+	var path=directory+"/gameplay-"+str(Time.get_unix_time_from_system()).replace(".","-")+".png"
+	var directory_error=DirAccess.make_dir_recursive_absolute(directory)
+	if directory_error!=OK:
+		print("GAMEPLAY_SCREENSHOT "+path+" result="+str(directory_error)+" stage=directory metadata=not_written")
+		return
 	var error=get_viewport().get_texture().get_image().save_png(path)
+	if error!=OK:
+		print("GAMEPLAY_SCREENSHOT "+path+" result="+str(error)+" stage=png metadata=not_written")
+		return
 	var meta=FileAccess.open(path+".json",FileAccess.WRITE)
-	if meta: meta.store_string(JSON.stringify({"build":Rules.BUILD_ID,"version":Rules.VERSION,"source_sha256":FileAccess.get_sha256("res://scripts/game.gd"),"build_manifest_sha256":FileAccess.get_sha256("res://reports/build-manifest.json"),"capture_kind":"genuine_native_gameplay_viewport","capture_error":error,"viewport":str(get_viewport().get_visible_rect().size),"top_size":str(hud_top.size),"bottom_size":str(hud_bottom.size),"snapshot":_snapshot()},"  "))
-	print("GAMEPLAY_SCREENSHOT "+path+" result="+str(error))
+	if meta==null:
+		print("GAMEPLAY_SCREENSHOT "+path+" result="+str(error)+" metadata=open_failed metadata_error="+str(FileAccess.get_open_error()))
+		return
+	var manifest_path="res://reports/build-manifest.json"
+	var manifest_sha256=""
+	var manifest_status="missing"
+	if FileAccess.file_exists(manifest_path):
+		manifest_sha256=FileAccess.get_sha256(manifest_path)
+		manifest_status="available" if not manifest_sha256.is_empty() else "unreadable"
+	meta.store_string(JSON.stringify({"build":Rules.BUILD_ID,"version":Rules.VERSION,"source_sha256":FileAccess.get_sha256("res://scripts/game.gd"),"build_manifest_sha256":manifest_sha256,"build_manifest_status":manifest_status,"capture_kind":"genuine_native_gameplay_viewport","capture_error":error,"viewport":str(get_viewport().get_visible_rect().size),"top_size":str(hud_top.size),"bottom_size":str(hud_bottom.size),"snapshot":_snapshot()},"  "))
+	var metadata_error=meta.get_error()
+	meta.flush()
+	if metadata_error==OK: metadata_error=meta.get_error()
+	meta.close()
+	if metadata_error!=OK:
+		print("GAMEPLAY_SCREENSHOT "+path+" result="+str(error)+" metadata=write_failed metadata_error="+str(metadata_error))
+		return
+	print("GAMEPLAY_SCREENSHOT "+path+" result="+str(error)+" metadata=written")
 
 func _confirm_demolish(building_id):
 	if paused or game_over:

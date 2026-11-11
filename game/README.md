@@ -1,8 +1,10 @@
 # Valley & Crown game source
 
-This is the integrated main source, build `vc-2fe28116be93`, for the Godot 4.6.3 project. Open `project.godot` in Godot.
+This is the integrated main source, build `vc-dd795d96905c`, for the Godot 4.6.3 project. Open `project.godot` in Godot.
 
 Includes the current gameplay, animated characters, materials, fog/occlusion, construction presentation, cargo return, tutorial, mobile controls and worker feedback. Two additional recovery fixes cancel targeting when the final selected unit dies and keep the final finger of a camera gesture from changing a construction preview.
+
+F12 gameplay screenshots are written to the writable `user://screenshots/` directory. Storage failures are reported, and missing optional build manifests are labelled explicitly.
 
 ## Verification status
 

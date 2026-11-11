@@ -1,6 +1,6 @@
 # Valley & Crown / 霧谷王旗
 
-The integrated game source is in [`game/`](game/). Main is the development source of truth. Current source build: `vc-2fe28116be93`.
+The integrated game source is in [`game/`](game/). Main is the development source of truth. Current source build: `vc-dd795d96905c`.
 
 The existing [playable website](https://penny323mo.github.io/valley-crown/) still serves `vc-8fcc302051f0`. Integrating source does not certify or deploy a new playable build. The old Web release and rollback archive remain intact.
 
