@@ -28,12 +28,12 @@ func run():
 	check("normal house purchase assigns builder",not site.is_empty() and worker.state=="build" and worker.target==site.get("id",-1))
 	if site.is_empty(): finish(); return
 	game.selected=[site.id]; publish()
-	check("selected unfinished site shows assigned not active",game.selection_detail.text.contains("等候施工") and not game.selection_detail.text.contains("正在建造"))
+	check("selected unfinished site shows assigned not active",game.selection_detail.text.contains("等候施工") and not game.selection_detail.text.contains("建造中"))
 	# A controlled published route isolates wording from pathfinding acceptance.
 	worker.path=PackedVector3Array([worker.pos+Vector3.ONE]); publish()
-	check("portrait HUD shows walking to the selected site",game.compact_ui and game.selection_detail.text.contains("村民前往工地"))
+	check("portrait HUD shows walking to the selected site",game.compact_ui and game.selection_detail.text.contains("村民移動到工地"))
 	worker.path=PackedVector3Array(); worker.path_pending=true; publish()
-	check("pending route is reported without claiming arrival",game.selection_detail.text.contains("正在尋路"))
+	check("pending route is reported without claiming arrival",game.selection_detail.text.contains("尋路中"))
 	worker.path_pending=false
 	game._path_stop(worker,game.BoundedPath.NO_PATH,"controlled_test"); publish()
 	check("terminal route has manual resume directions",game.selection_detail.text.contains("尋路停止") and game.selection_detail.text.contains("選村民→指令→點工地"))
@@ -46,16 +46,16 @@ func run():
 	worker.pos=approach; worker.path=PackedVector3Array()
 	var before_ticks=site.build_ticks
 	game._update_unit(worker,game.Rules.TICK); publish()
-	check("successful work tick alone shows active construction",site.build_ticks==before_ticks+1 and game.selection_detail.text.contains("正在建造"))
+	check("successful work tick alone shows active construction",site.build_ticks==before_ticks+1 and game.selection_detail.text.contains("建造中"))
 	game.paused=true; game._update_hud()
-	check("pause overrides frozen successful work cue",game.selection_detail.text.contains("已暫停") and not game.selection_detail.text.contains("正在建造"))
+	check("pause overrides frozen successful work cue",game.selection_detail.text.contains("已暫停") and not game.selection_detail.text.contains("建造中"))
 	game.paused=false
 	game._submit("stop",{"ids":[worker.id]}); game._update_hud()
-	check("pending stop is not displayed as continuing work",game.selection_detail.text.contains("指令待處理") and not game.selection_detail.text.contains("正在建造"))
+	check("pending stop is not displayed as continuing work",game.selection_detail.text.contains("指令等待中") and not game.selection_detail.text.contains("建造中"))
 	game._execute(game.commands.pop_front()); publish()
 	check("actual stop explains missing builder despite old work cue",game.selection_detail.text.contains("無施工村民") and game.selection_detail.text.contains("選村民→指令→點工地"))
 	game._order(worker,"build",site.id); game._update_unit(worker,game.Rules.TICK); publish()
-	check("explicit reassignment resumes actual work feedback",game.selection_detail.text.contains("正在建造"))
+	check("explicit reassignment resumes actual work feedback",game.selection_detail.text.contains("建造中"))
 	game._order_move(worker,worker.pos+Vector3(3,0,0)); publish()
 	check("actual move reassignment leaves site visibly without builder",game.selection_detail.text.contains("無施工村民"))
 	game._order(worker,"build",site.id)
