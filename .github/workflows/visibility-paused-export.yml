@@ -1,7 +1,7 @@
 name: Export paused visibility diagnostic baseline
 on:
   push:
-    branches: [ci/visibility-paused-export-baseline-79eb-receipt]
+    branches: [ci/visibility-paused-export-baseline-79eb-receipt-download]
 permissions:
   contents: read
 concurrency:
@@ -23,7 +23,7 @@ jobs:
       - name: Verify unchanged product tree and fixed branch
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = 'refs/heads/ci/visibility-paused-export-baseline-79eb-receipt'
+          test "$GITHUB_REF" = 'refs/heads/ci/visibility-paused-export-baseline-79eb-receipt-download'
           test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(git rev-parse HEAD:game)" = '4737f48a1db643d8310b678323d3f601f79a0633'
