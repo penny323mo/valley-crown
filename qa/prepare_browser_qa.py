@@ -95,7 +95,7 @@ def main():
     # These read package metadata only; do not launch Chrome during preparation.
     chrome = Path('/opt/google/chrome/chrome')
     need(chrome.is_file() and not chrome.is_symlink(), 'Stock Google Chrome binary unavailable')
-    owner = subprocess.check_output(['/usr/bin/dpkg-query', '-S', str(chrome)], text=True, timeout=5).strip()
+    owner = subprocess.check_output(['/usr/bin/dpkg-query', '-S', str(chrome)], text=True, timeout=15).strip()
     need(owner == 'google-chrome-stable: /opt/google/chrome/chrome', 'Chrome is not owned by expected stock package')
     version = subprocess.check_output(['/usr/bin/dpkg-query', '-W', '-f=${Version}', 'google-chrome-stable'], text=True, timeout=5).strip()
     node = Path(shutil.which('node') or '').resolve()
