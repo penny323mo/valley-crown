@@ -3,10 +3,17 @@
 Caller obtains archive from fixed HTTPS URL. No arbitrary URL or executable.
 Official in-archive library links are materialized as regular bytes, never links.
 """
-import argparse, json, tarfile, posixpath, shutil
+import argparse, json, tarfile, posixpath
 from pathlib import Path
 from run_authoring import ARCHIVE_SHA, ARCHIVE_URL, checked, safe_path, p
 PREFIX='blender-4.3.2-linux-x64'
+def copy_exact(source,sink,size):
+    remaining=size
+    while remaining:
+        chunk=source.read(min(1<<20,remaining))
+        p.require(chunk and len(chunk)<=remaining,'Incomplete or oversized payload')
+        sink.write(chunk);remaining-=len(chunk)
+    p.require(source.read(1)==b'','Payload exceeded declared size')
 def prepare(archive,destination):
     archive=checked(archive,ARCHIVE_SHA,512<<20);destination=safe_path(destination)
     p.require(not destination.exists(),'Fresh tool destination required')
@@ -18,7 +25,7 @@ def prepare(archive,destination):
             p.require(name==PREFIX or name.startswith(PREFIX+'/'),'Unexpected archive root')
             p.require(all(x not in ('','.','..') for x in name.split('/')) and '\\' not in name,'Unsafe archive path')
             p.require(m.isdir() or m.isfile() or m.issym() or m.islnk(),'Special archive member')
-            p.require(m.size<=512<<20,'Archive member bound')
+            p.require(0<=m.size<=512<<20,'Archive member bound')
         def resolve(name,seen=None):
             seen=set() if seen is None else seen
             p.require(name in entries and name not in seen,'Broken/cyclic archive link');seen.add(name);m=entries[name]
@@ -29,11 +36,26 @@ def prepare(archive,destination):
             return resolve(target,seen)
         resolved={name:resolve(name) for name,m in entries.items() if not m.isdir()}
         p.require(sum(m.size for m in resolved.values())<=3<<30,'Expanded archive bound')
-        # Complete validation before writing; symlink entries are copied from verified target.
+        # Complete validation before writing. Read every regular payload exactly
+        # once in ascending archive offset, so XZ never seeks backward per link.
         destination.mkdir(mode=0o700)
-        for name,m in resolved.items():
+        regulars=sorted(((name,m) for name,m in entries.items() if m.isfile()),key=lambda pair:pair[1].offset_data)
+        for name,m in regulars:
             out=destination/name.removeprefix(PREFIX+'/');out.parent.mkdir(parents=True,exist_ok=True)
-            with tar.extractfile(m) as source,out.open('xb') as sink:shutil.copyfileobj(source,sink,1<<20)
+            with tar.extractfile(m) as source,out.open('xb') as sink:copy_exact(source,sink,m.size)
+            p.require(out.stat().st_size==m.size,'Incomplete regular archive payload')
+            out.chmod(0o755 if m.mode&0o111 else 0o644)
+        # Forward/backward/chained links resolve only to already-materialized,
+        # verified regular archive members. Never seek the compressed stream
+        # for links and never create filesystem symlinks or hardlinks.
+        for name,m in resolved.items():
+            if entries[name].isfile():continue
+            source_path=safe_path(destination/m.name.removeprefix(PREFIX+'/'));p.regular(source_path)
+            p.require(source_path.stat().st_size==m.size,'Link target size changed')
+            target_hash=p.digest(source_path)
+            out=safe_path(destination/name.removeprefix(PREFIX+'/'));out.parent.mkdir(parents=True,exist_ok=True)
+            with source_path.open('rb') as source,out.open('xb') as sink:copy_exact(source,sink,m.size)
+            p.require(out.stat().st_size==m.size and p.digest(out)==target_hash,'Link materialization mismatch')
             out.chmod(0o755 if m.mode&0o111 else 0o644)
     files=p.tree(destination)
     p.require('blender' in files,'Missing official executable')
