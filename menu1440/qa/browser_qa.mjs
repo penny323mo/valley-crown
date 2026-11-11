@@ -1,0 +1,262 @@
+// Inert on import. Exact fixed menu scenario, ordinary input, read-only bridge.
+import assert from 'node:assert/strict';
+import {readFile,writeFile,rename} from 'node:fs/promises';
+import {createNetworkDiagnostics} from './network_diagnostics.mjs';
+import {menuButton,assertMenu,assertCamera,assertPausedMatch,assertFrozenMatch,menuSwipePoints} from './public_observation_assertions.mjs';
+import {assertPublicStreamCompletions} from './public_stream_cache_policy.mjs';
+export const PREPARED_SCENARIO = 'menu1440';
+export const PREPARED_VIEWPORT = Object.freeze([1440, 900]);
+export const RESIZED_VIEWPORT = Object.freeze([900, 1440]);
+export const PREPARED_PROFILE = 'desktop';
+export const TOUCH = false;
+export const HELP_SCROLL_GESTURES = 6;
+export const HELP_FINAL_PARAGRAPH = '開始戰役後，教學：採集、建造與出兵。';
+
+export function validateManifest(manifest) {
+  assert.equal(manifest.reviewed,true,'Menu export pins not reviewed');
+  assert.match(manifest.build,/^vc-[0-9a-f]{12}$/);
+  assert.match(manifest.source_commit,/^[0-9a-f]{40}$/);
+  assert.equal(manifest.profile,PREPARED_PROFILE);
+  assert.equal(manifest.scenario,PREPARED_SCENARIO);
+  assert.deepEqual(manifest.viewport,PREPARED_VIEWPORT);
+  assert.deepEqual(manifest.resized_viewport,RESIZED_VIEWPORT);
+  assert.equal(manifest.hud_schema,2);
+  assert.ok(manifest.files_sha256 && Object.keys(manifest.files_sha256).length>=3);
+  for(const name of ['index.html','index.pck','index.wasm'])assert.match(manifest.files_sha256[name],/^[0-9a-f]{64}$/);
+  for(const [name,digest] of Object.entries(manifest.files_sha256)) {
+    assert.ok(!name.startsWith('/') && !name.includes('\\') && name.split('/').every(p=>p&&p!=='.'&&p!=='..'));
+    assert.match(digest,/^[0-9a-f]{64}$/);
+  }
+  return manifest;
+}
+export function mapPoint(point,viewport,box) {
+  assert.ok(Array.isArray(point)&&point.length===2&&point.every(Number.isFinite));
+  assert.ok(Array.isArray(viewport)&&viewport.length===2&&viewport.every(v=>Number.isFinite(v)&&v>0));
+  assert.ok(box&&box.width>0&&box.height>0);
+  assert.ok(point[0]>=0&&point[0]<viewport[0]&&point[1]>=0&&point[1]<viewport[1],'Telemetry point outside viewport');
+  return [box.x+point[0]*box.width/viewport[0],box.y+point[1]*box.height/viewport[1]];
+}
+export function validateCanvasGeometry(geometry,viewport,expectedBox=null) {
+  assert.ok([PREPARED_VIEWPORT,RESIZED_VIEWPORT].some(v=>JSON.stringify(v)===JSON.stringify(viewport)),'Unapproved viewport');
+  assert.ok(geometry,'Canvas DOM geometry missing');
+  const {box,display,visibility,opacity}=geometry;
+  assert.deepEqual(geometry.viewport,viewport,'CSS viewport differs from approved context');
+  assert.ok(box&&['x','y','width','height'].every(k=>Number.isFinite(box[k])));
+  assert.ok(box.width>0&&box.height>0&&box.x>=0&&box.y>=0&&box.x+box.width<=viewport[0]+0.5&&box.y+box.height<=viewport[1]+0.5,'Canvas not fully onscreen');
+  assert.ok(display!=='none'&&visibility==='visible'&&Number.isFinite(opacity)&&opacity>0,'Canvas not visible');
+  if(expectedBox)assert.deepEqual(box,expectedBox,'Unexpected canvas change; stale mapping forbidden');
+  return box;
+}
+export function assertMenuControls(menu,viewport,expectedIds) {
+  assert.deepEqual(menu.buttons.map(b=>b.id),expectedIds,'Wrong public menu button order/count');
+  const rects=expectedIds.map(id=>menuButton(menu,id,viewport).rect);
+  for(const r of rects)assert.ok(r[3]>=54,'54px menu target clipped');
+  for(let i=1;i<rects.length;i++)assert.ok(rects[i][1]>=rects[i-1][1]+rects[i-1][3]+9.5,'Menu targets overlap or gap collapsed');
+}
+export function helpSwipePoints(menu,viewport) {
+  const r=menuButton(menu,'BackButton',viewport).rect;
+  // Source-derived inner panel top (height min(640,h-48), 20px padding),
+  // bounded by actual public Back geometry. This is input geometry only, not
+  // an assertion that prose scrolled or its last paragraph became visible.
+  const top=(viewport[1]-Math.min(640,viewport[1]-48))/2+32;
+  const bottom=r[1]-24;
+  assert.ok(bottom-top>=70,'No safe prose-only swipe span');
+  return {start:[r[0]+r[2]/2,bottom],end:[r[0]+r[2]/2,top]};
+}
+export function hudButton(state,matcher) {
+  assert.equal(state.hud?.schema,2);
+  const matches=state.hud.buttons.filter(b=>!b.disabled&&matcher.test(b.text)&&Array.isArray(b.rect)&&b.rect.length===4&&b.rect.every(Number.isFinite)&&b.rect[2]>=48&&b.rect[3]>=46);
+  assert.ok(matches.length<=1,'Ambiguous public HUD button');
+  return matches[0]??null;
+}
+export function assertResumedMatch(paused,resumed) {
+  assert.equal(paused.paused,true);assert.equal(resumed.paused,false);assert.equal(resumed.game_over,false);
+  assert.ok(Number.isInteger(resumed.tick)&&resumed.tick>=paused.tick);
+  for(const key of ['selected','bank_milli','economy_scale','population','capacity','delivered','built','trained','own_pending_commands','touch_mode','build_mode'])assert.deepEqual(resumed[key],paused[key],'Resume changed '+key);
+  assertCamera(resumed.hud.camera);assert.deepEqual(resumed.hud.camera,paused.hud.camera);
+}
+
+export async function runQA(browser,outputDirectory,origin,profile) {
+  assert.equal(profile,PREPARED_PROFILE,'Wrong fixed menu profile');
+  assert.match(origin,/^http:\/\/127\.0\.0\.1:\d+$/);
+  const manifest=validateManifest(JSON.parse(await readFile(new URL('./scenario-manifest.json',import.meta.url),'utf8')));
+  const started=Date.now();
+  const evidence={build:manifest.build,source_commit:manifest.source_commit,files_sha256:manifest.files_sha256,
+    profile,scenario:PREPARED_SCENARIO,viewport:[...PREPARED_VIEWPORT],resized_viewport:[...RESIZED_VIEWPORT],
+    basicSmokePassed:false,releaseQAPassed:false,visualAcceptancePassed:false,phase:'starting',checkpoints:[],
+    errors:[],error_count:0,error_limit: 64,screenshots:[],input_timings:[],read_timings:[],
+    input:TOUCH?'Chrome emulated touchscreen, including real CDP touch streams; not a physical phone':'Chrome desktop mouse and keyboard',
+    observation:'Only valleyMenuSnapshot/valleySnapshot and canvas DOM geometry; no setters or game authority',
+    required_visual_review:{status:'pending-human-pixel-review',help_final_paragraph:HELP_FINAL_PARAGRAPH,
+      checks:['all required genuine PNGs','illustration crop and title hierarchy','glyphs, contrast, visible focus','no clipping or micro-scrollbars','Help final paragraph visible after bounded scrolling and resize','new-match destructive/keep hierarchy']},
+    not_run:['physical iOS Safari/Android Chrome','OS background interruption','audible audio','combat or terminal victory/defeat navigation','complete command ledger or hidden instance identity','automated Help scroll offset/content visibility: bridge does not expose it']};
+  const addError=error=>{evidence.error_count++;if(evidence.errors.length<evidence.error_limit)evidence.errors.push(error);};
+  const network=createNetworkDiagnostics(()=>evidence.phase,addError);evidence.network=network.data;
+  const persist=async()=>{await writeFile(`${outputDirectory}/browser-evidence.json.tmp`,JSON.stringify(evidence,null,2));await rename(`${outputDirectory}/browser-evidence.json.tmp`,`${outputDirectory}/browser-evidence.json`);};
+  const checkpoint=async(phase,state=null)=>{evidence.phase=phase;evidence.checkpoints.push({phase,elapsed_ms:Date.now()-started,state});await persist();};
+  const withinBudget=()=>assert.ok(Date.now()-started<70000,'Scenario 70-second inner budget exhausted; external guard unchanged');
+  const delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
+  let context,page,session,canvasBox=null,viewport=[...PREPARED_VIEWPORT];
+  try {
+    await checkpoint('starting');
+    context=await browser.newContext({viewport:{width:viewport[0],height:viewport[1]},deviceScaleFactor:1,hasTouch:TOUCH,serviceWorkers:'block'});
+    page=await context.newPage();page.setDefaultTimeout(5000);
+    page.on('pageerror',error=>addError({kind:'pageerror',text:String(error).slice(0,2000)}));
+    page.on('console',message=>{if(message.type()==='error')addError({kind:'console',text:message.text().slice(0,2000)});});
+    context.on('request',network.request);context.on('response',network.response);
+    context.on('requestfinished',network.finished);context.on('requestfailed',network.failed);
+    await page.route('**/*',route=>new URL(route.request().url()).origin === origin?route.continue():route.abort());
+    await page.goto(`${origin}/index.html?qa`,{waitUntil:'load',timeout:25000});
+    await page.waitForFunction(()=>typeof window.valleyMenuSnapshot==='function',null,{timeout:20000});
+    const recordInput=record=>{evidence.last_input=record;if(evidence.input_timings.length<96)evidence.input_timings.push(record);};
+    const observe=async()=>{
+      withinBudget();const readStarted=Date.now();
+      const pending=page.evaluate(()=>{
+        window.valleyMenuSnapshot();
+        const game_bridge=typeof window.valleySnapshot==='function';
+        if(game_bridge)window.valleySnapshot();
+        const canvas=document.querySelector('canvas');let geometry=null;
+        if(canvas){const rect=canvas.getBoundingClientRect(),style=getComputedStyle(canvas);geometry={box:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},viewport:[innerWidth,innerHeight],display:style.display,visibility:style.visibility,opacity:Number(style.opacity)};}
+        return {state:game_bridge?window.valleyState:null,menu:{...window.valleyMenuState,game_bridge},geometry};
+      });
+      let observation,readTimer;
+      try {observation=await Promise.race([pending,new Promise((_,reject)=>{readTimer=setTimeout(()=>reject(new Error('Canvas geometry/snapshot read exceeded5000ms')),5000);})]);}
+      finally {clearTimeout(readTimer);}
+      canvasBox=validateCanvasGeometry(observation.geometry,viewport,canvasBox);
+      if(observation.state){assert.equal(observation.state.build,manifest.build);assert.equal(observation.state.hud?.schema,2);assert.deepEqual(observation.state.hud.viewport,viewport);}
+      const duration=Date.now()-readStarted;
+      if(evidence.read_timings.length<96)evidence.read_timings.push({elapsed_ms:Date.now()-started,duration_ms:duration,phase:evidence.phase});
+      evidence.last_observation=observation;await persist();withinBudget();return observation;
+    };
+    const waitFor=async(predicate,label,milliseconds=3000)=>{
+      const until=Date.now()+milliseconds;
+      do {const o=await observe();if(predicate(o))return o;await delay(120);}while(Date.now()<until);
+      throw new Error('Timed out: '+label);
+    };
+    const shot=async(label)=>{
+      withinBudget();const name=`${PREPARED_SCENARIO}-${label}.png`;
+      await page.screenshot({path:`${outputDirectory}/${name}`,timeout:5000});
+      evidence.screenshots.push({name,phase:evidence.phase,viewport:[...viewport],genuine_browser_capture:true});await persist();
+    };
+    const inputPoint=p=>mapPoint(p,viewport,canvasBox);
+    const activate=async(point,label)=>{
+      withinBudget();const inputStarted=Date.now(),xy=inputPoint(point);
+      if(TOUCH)await page.touchscreen.tap(...xy);else await page.mouse.click(...xy);
+      recordInput({kind:TOUCH?'touch-tap':'mouse-click',label,elapsed_ms:Date.now()-started,duration_ms:Date.now()-inputStarted});
+    };
+    const center=r=>[r[0]+r[2]/2,r[1]+r[3]/2];
+    const activateMenu=async(menu,id)=>activate(center(menuButton(menu,id,viewport).rect),id);
+    const activateHud=async(state,pattern)=>{const b=hudButton(state,pattern);assert.ok(b,'Missing actionable HUD control '+pattern);await activate(center(b.rect),b.text);};
+    const touch=async(type,points)=>{
+      withinBudget();if(!session)session=await context.newCDPSession(page);
+      await session.send('Input.dispatchTouchEvent',{type,touchPoints:points.map((p,i)=>{const [x,y]=inputPoint(p);return {x,y,id:i};})});
+    };
+    const gesture=async(points,label)=>{
+      withinBudget();const inputStarted=Date.now();
+      if(TOUCH){
+        await touch('touchStart',[points.start]);
+        for(let step=1;step<=6;step++){await delay(20);await touch('touchMove',[[points.start[0]+(points.end[0]-points.start[0])*step/6,points.start[1]+(points.end[1]-points.start[1])*step/6]]);}
+        await touch('touchEnd',[]);
+      }else{await page.mouse.move(...inputPoint(points.start));await page.mouse.wheel(0,Math.max(200,points.start[1]-points.end[1]));}
+      recordInput({kind:TOUCH?'touch-swipe':'mouse-wheel',label,elapsed_ms:Date.now()-started,duration_ms:Date.now()-inputStarted});
+      await delay(100);
+    };
+    const resize=async(next,label)=>{
+      assert.ok([PREPARED_VIEWPORT,RESIZED_VIEWPORT].some(v=>JSON.stringify(v)===JSON.stringify(next)));
+      withinBudget();await page.setViewportSize({width:next[0],height:next[1]});
+      viewport=[...next];canvasBox=null; // Only explicit approved resize invalidates input mapping.
+      await delay(180);const o=await observe();await checkpoint(label,o);return o;
+    };
+    const requireHome=(o,match=false)=>{
+      assertMenu(o.menu,{match_exists:match,game_bridge:match});
+      assertMenuControls(o.menu,viewport,match?['ResumeMatchButton','NewMatchButton','HelpButton']:['StartMatchButton','HelpButton']);
+    };
+    let current=await observe();requireHome(current);
+    await checkpoint('fresh-home',current);await shot('home');
+    if(!TOUCH){await page.keyboard.press('Tab');await checkpoint('desktop-keyboard-focus');await shot('keyboard-focus');}
+    // Interrupted-pointer probes do not invoke handlers/dispatchEvent/game APIs.
+    // Touch release is genuinely canceled, dragged or multi-touch interrupted.
+    const start=center(menuButton(current.menu,'StartMatchButton',viewport).rect);
+    if(TOUCH){
+      await touch('touchStart',[start]);await touch('touchCancel',[]);await delay(120);
+      current=await observe();requireHome(current);await checkpoint('touchcancel-did-not-start',current);
+      await touch('touchStart',[start]);await touch('touchMove',[[start[0]+24,start[1]]]);await touch('touchEnd',[]);await delay(120);
+      current=await observe();requireHome(current);await checkpoint('drag-did-not-start',current);
+      const help=center(menuButton(current.menu,'HelpButton',viewport).rect);
+      await touch('touchStart',[start]);await touch('touchStart',[start,help]);await touch('touchEnd',[]);await delay(120);
+      current=await observe();requireHome(current);await checkpoint('multitouch-did-not-start',current);
+    }else{
+      await page.mouse.move(...inputPoint(start));await page.mouse.down();await page.mouse.move(...inputPoint([2,2]));await page.mouse.up();
+      current=await observe();requireHome(current);await checkpoint('mouse-drag-out-did-not-start',current);
+    }
+    await activateMenu(current.menu,'HelpButton');
+    current=await waitFor(o=>o.menu.page==='help','Help opened');assertMenu(current.menu,{page:'help'});
+    assertMenuControls(current.menu,viewport,['BackButton']);await checkpoint('help-open',current);await shot('help-before-scroll');
+    const scrollHelp=async()=>{
+      for(let i=0;i<HELP_SCROLL_GESTURES;i++){
+        await gesture(helpSwipePoints(current.menu,viewport),'help-scroll-'+(i+1));
+        current=await observe();assertMenu(current.menu,{page:'help'});assertMenuControls(current.menu,viewport,['BackButton']);
+      }
+    };
+    await scrollHelp();await checkpoint('help-after-bounded-scroll-pixels-required',current);await shot('help-after-scroll');
+    current=await resize(RESIZED_VIEWPORT,'help-scrolled-resized');assertMenu(current.menu,{page:'help'});assertMenuControls(current.menu,viewport,['BackButton']);await shot('help-resized-before-extra-scroll');
+    await scrollHelp();await checkpoint('help-resized-after-bounded-scroll-pixels-required',current);await shot('help-resized-after-scroll');
+    current=await resize(PREPARED_VIEWPORT,'help-scrolled-restored');assertMenuControls(current.menu,viewport,['BackButton']);await shot('help-restored');
+    await activateMenu(current.menu,'BackButton');current=await waitFor(o=>o.menu.page==='home','Back actionable after scrolling and resize');requireHome(current);
+    await checkpoint('help-back-actionable',current);
+    await activateMenu(current.menu,'StartMatchButton');
+    await page.waitForFunction(()=>typeof window.valleySnapshot==='function',null,{timeout:20000});
+    current=await waitFor(o=>!o.menu.visible&&o.state&&!o.state.paused,'ordinary Start created active match');
+    assertMenu(current.menu,{visible:false,match_exists:true,game_bridge:true});assertCamera(current.state.hud.camera);
+    const worker=current.state.hud.own_targets.find(t=>t.kind==='villager');assert.ok(worker,'Natural visible villager absent');
+    await activate(worker.screen,'select-natural-worker');
+    current=await waitFor(o=>o.state.selected.length===1&&o.state.selected[0]===worker.id&&o.state.tick>=40,'distinct retained selection and natural elapsed ticks',5000);
+    const before=current.state;await checkpoint('live-match-before-pause',current);await shot('live-before-menu');
+    const openMainMenu=async(o)=>{
+      await activateHud(o.state,/^選單$/);
+      o=await waitFor(x=>hudButton(x.state,/^關閉$/),'shortcut menu opened');
+      for(let i=0;i<2&&!hudButton(o.state,/^主選單$/);i++){
+        await gesture(menuSwipePoints(o.state),'shortcut-menu-scroll-'+(i+1));
+        o=await observe();
+      }
+      assert.ok(hudButton(o.state,/^主選單$/),'Main menu not exposed by two bounded shortcut gestures');
+      await activateHud(o.state,/^主選單$/);
+      o=await waitFor(x=>x.menu.visible&&x.menu.page==='home'&&x.state.paused,'paused home opened');requireHome(o,true);return o;
+    };
+    current=await openMainMenu(current);const paused=current.state;assertPausedMatch(before,paused);
+    await checkpoint('paused-three-button-home',current);await shot('paused-home');
+    // Resize while a real Resume touch is held. Release cannot resume the match.
+    if(TOUCH)await touch('touchStart',[center(menuButton(current.menu,'ResumeMatchButton',viewport).rect)]);
+    current=await resize(RESIZED_VIEWPORT,'paused-home-resized');requireHome(current,true);assertFrozenMatch(paused,current.state);await shot('paused-home-resized');
+    if(TOUCH){await touch('touchEnd',[]);await delay(120);current=await observe();requireHome(current,true);assertFrozenMatch(paused,current.state);await checkpoint('resize-canceled-held-resume',current);}
+    current=await resize(PREPARED_VIEWPORT,'paused-home-restored');requireHome(current,true);assertFrozenMatch(paused,current.state);await shot('paused-home-restored');
+    await activateMenu(current.menu,'NewMatchButton');current=await waitFor(o=>o.menu.page==='confirm','new match confirmation visible');
+    assertMenu(current.menu,{page:'confirm',match_exists:true,game_bridge:true});assertMenuControls(current.menu,viewport,['ConfirmNewMatchButton','CancelNewMatchButton']);assertFrozenMatch(paused,current.state);
+    await checkpoint('new-match-confirmation',current);await shot('new-match-confirmation');
+    await activateMenu(current.menu,'CancelNewMatchButton');current=await waitFor(o=>o.menu.page==='home','Cancel keeps current match');requireHome(current,true);assertFrozenMatch(paused,current.state);
+    await checkpoint('new-match-cancel-preserved-match',current);await shot('new-match-canceled');
+    await activateMenu(current.menu,'ResumeMatchButton');current=await waitFor(o=>!o.menu.visible&&!o.state.paused&&o.state.tick>=paused.tick+20,'resume advances natural ticks',5000);
+    assertMenu(current.menu,{visible:false,match_exists:true,game_bridge:true});assertResumedMatch(paused,current.state);
+    await checkpoint('resumed-same-observed-match',current);await shot('resumed');
+    current=await openMainMenu(current);const beforeRestart=current.state;
+    await activateMenu(current.menu,'NewMatchButton');current=await waitFor(o=>o.menu.page==='confirm','second explicit new match confirmation');assertFrozenMatch(beforeRestart,current.state);
+    await activateMenu(current.menu,'ConfirmNewMatchButton');current=await waitFor(o=>!o.menu.visible&&o.state&&!o.state.paused&&o.state.tick<beforeRestart.tick,'confirmed new match reset observed tick',5000);
+    assert.deepEqual(current.state.selected,[],'New match retained old selection');assert.equal(current.state.game_over,false);
+    await checkpoint('confirmed-new-match-observed-reset',{before:beforeRestart,after:current});await shot('confirmed-new-match');
+    assert.equal(evidence.error_count,0,'Browser errors recorded');
+    if(session){await session.detach();session=null;}
+    await checkpoint('closing-context');await context.close(); context = null;
+    assert.equal(evidence.error_count,0,'Browser errors during context close');assertPublicStreamCompletions(evidence.network.records,origin);
+    evidence.basicSmokePassed=true;await checkpoint('completed-functional-only-visual-review-required');
+  }catch(error){
+    evidence.basicSmokePassed=false;evidence.failure=String(error);evidence.failedDuringPhase=evidence.phase;evidence.phase='failed';await persist();
+    if(page&&!page.isClosed()&&Date.now()-started<68000){try{await page.screenshot({path:`${outputDirectory}/${PREPARED_SCENARIO}-failure.png`,timeout:1500});evidence.failure_screenshot='written';}catch(captureError){evidence.failure_screenshot=String(captureError).slice(0,500);}}
+    else evidence.failure_screenshot='skipped: no remaining inner budget or page closed';
+    throw error;
+  }finally{
+    if(session){try{await session.detach();}catch(error){addError({kind:'cdp-detach',text:String(error).slice(0,1000)});}}
+    if(context){try{await context.close();}catch(error){addError({kind:'context-close',text:String(error).slice(0,1000)});}}
+    if(evidence.error_count)evidence.basicSmokePassed=false;await persist();
+  }
+  return evidence;
+}
