@@ -1,0 +1,85 @@
+# Exact current public combined source; existing reviewed guarded commands only.
+name: Validate combined menu, military and faction publication
+on:
+  push:
+    branches: [ci/military-menu-logic-vc-79ebcaef19e3]
+permissions:
+  contents: read
+concurrency:
+  group: military-menu-logic-vc-79ebcaef19e3
+  cancel-in-progress: false
+jobs:
+  logic:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      CONSTRUCTION_SOURCE_COMMIT: 4ca09e9b716446a5b6fa1073695f47dd1ed368d0
+      CONSTRUCTION_EXECUTION_APPROVED: 'true'
+      MILITARY_EXECUTION_APPROVED: 'true'
+      FACTION_EXECUTION_APPROVED: 'true'
+    steps:
+      - name: Reject pending or unapproved source binding
+        run: |
+          set -euo pipefail
+          test "$CONSTRUCTION_EXECUTION_APPROVED" = true
+          test "$MILITARY_EXECUTION_APPROVED" = true
+          test "$FACTION_EXECUTION_APPROVED" = true
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_REF" = refs/heads/ci/military-menu-logic-vc-79ebcaef19e3
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          [[ "$CONSTRUCTION_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/military-logic-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify frozen source tree and prepare exact import descriptor
+        run: python3 -B ci/prepare_web_release.py prepare --work "$RTS_WORK"
+      - name: Inert exact adapter preflight
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s ci -p test_contracts.py -v
+          python3 -B -m unittest discover -s ci -p test_military.py -v
+          python3 -B -m unittest discover -s ci -p test_faction.py -v
+          python3 -B ci/preflight_combined_lock.py "$RTS_WORK/export-lock.json"
+      - name: Prepare pinned official engine without launch
+        run: python3 -B ci/prepare_web_release.py engine --work "$RTS_WORK"
+      - name: Fresh guarded import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: Eight inherited suites under unchanged guarded supervisor
+        run: python3 -B ci/run_contracts.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/inherited-contracts" --private "$RTS_WORK/private/inherited-contracts"
+      - name: Two bounded actual-game military suites
+        run: python3 -B ci/run_military.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/military-contracts" --private "$RTS_WORK/private/military-contracts"
+      - name: Forty exact faction publication semantics and component measurement checks
+        run: python3 -B ci/run_faction.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/faction-contracts" --private "$RTS_WORK/private/faction-contracts"
+      - name: Upload bounded test evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: combined-military-menu-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/import-evidence/phase-summary.json
+            ${{ env.RTS_WORK }}/import-evidence/import.json
+            ${{ env.RTS_WORK }}/import-evidence/import.invocation.json
+            ${{ env.RTS_WORK }}/import-evidence/import.log
+            ${{ env.RTS_WORK }}/inherited-contracts/**/receipt.json
+            ${{ env.RTS_WORK }}/inherited-contracts/**/godot.log
+            ${{ env.RTS_WORK }}/inherited-contracts/construction-contracts-receipt.json
+            ${{ env.RTS_WORK }}/military-contracts/**/receipt.json
+            ${{ env.RTS_WORK }}/military-contracts/**/godot.log
+            ${{ env.RTS_WORK }}/military-contracts/military-contracts-receipt.json
+            ${{ env.RTS_WORK }}/inherited-contracts/stance_target_cancel_phone/stance-target-cancel-phone.json
+            ${{ env.RTS_WORK }}/faction-contracts/faction-publication-receipt.json
+            ${{ env.RTS_WORK }}/faction-contracts/faction-publication/receipt.json
+            ${{ env.RTS_WORK }}/faction-contracts/faction-publication/godot.log
+            ${{ env.RTS_WORK }}/faction-contracts/faction-publication/faction-publication-report.json
+            ${{ env.RTS_WORK }}/export-lock.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# No Web export, artifact-preservation retry, Xvfb, Pages or deployment route.
