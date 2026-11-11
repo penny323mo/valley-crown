@@ -1,0 +1,6 @@
+game/.godot/
+game/dist/
+**/__pycache__/
+*.pyc
+game/reports/*
+!game/reports/.gitkeep
