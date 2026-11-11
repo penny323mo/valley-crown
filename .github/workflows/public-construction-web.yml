@@ -1,0 +1,102 @@
+# Reviewed scoped construction contracts and exact Web export on a fresh hosted VM.
+name: Validate menu and contextual touch, export Web
+on:
+  push:
+    branches: [ci/mature-menu-web-vc-893b58f24e69]
+permissions:
+  contents: read
+concurrency:
+  group: consolidated-web-vc-893b58f24e69
+  cancel-in-progress: false
+jobs:
+  export:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      CONSTRUCTION_SOURCE_COMMIT: 8ec8624f68bfea6385dba44d8e6fbe8dc279adcd
+      CONSTRUCTION_GAME_TREE: 09f6b2bdee3fcf1cb2ca5443c9f1a98c12e3b265
+      CONSTRUCTION_BUILD: vc-893b58f24e69
+      CONSTRUCTION_EXECUTION_APPROVED: 'true'
+    steps:
+      - name: Reject pending or unapproved source pins
+        run: |
+          set -euo pipefail
+          test "$CONSTRUCTION_EXECUTION_APPROVED" = true
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_REF" = refs/heads/ci/mature-menu-web-vc-893b58f24e69
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          [[ "$CONSTRUCTION_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CONSTRUCTION_GAME_TREE" =~ ^[0-9a-f]{40}$ ]]
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/public-web-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact tested public game tree
+        run: python3 -B ci/prepare_web_release.py prepare --work "$RTS_WORK"
+      - name: Inert construction adapter preflight
+        run: python3 -B -m unittest discover -s ci -p test_contracts.py -v
+      - name: Prepare pinned official engine and Web template without launch
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_web_release.py engine --work "$RTS_WORK"
+          python3 -B ci/prepare_web_templates.py --work "$RTS_WORK"
+      - name: Fresh bounded import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: Eight exact menu, contextual, construction and Stop suites under unchanged 120-second logic supervisor
+        run: python3 -B ci/run_contracts.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/construction-contracts" --private "$RTS_WORK/private/construction-contracts"
+      - name: Two guarded exports with exact source and template binding
+        run: python3 -B ci/run_export.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/template/web_nothreads_release.zip" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/exports" --private "$RTS_WORK/private/export"
+      - name: Package exact repeatable Web candidate and notices
+        run: python3 -B ci/package_web_release.py --work "$RTS_WORK"
+      - name: Upload verified candidate
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tested-public-web-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ env.RTS_WORK }}/candidate/
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 30
+      - name: Upload export evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-web-export-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/construction-contracts/construction-contracts-receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/construction_status/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/construction_status/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/construction_status_hud/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/construction_status_hud/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_contract/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_contract/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_phone/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/mobile_stop_control_phone/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/stance_target_cancel_phone/stance-target-cancel-phone.json
+            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_contract/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_contract/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_phone/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/contextual_touch_phone/godot.log
+            ${{ env.RTS_WORK }}/construction-contracts/main_menu_flow_contract/receipt.json
+            ${{ env.RTS_WORK }}/construction-contracts/main_menu_flow_contract/godot.log
+            ${{ env.RTS_WORK }}/exports/web-export-receipt.json
+            ${{ env.RTS_WORK }}/exports/export-1/receipt.json
+            ${{ env.RTS_WORK }}/exports/export-1/godot.log
+            ${{ env.RTS_WORK }}/exports/export-2/receipt.json
+            ${{ env.RTS_WORK }}/exports/export-2/godot.log
+            ${{ env.RTS_WORK }}/export-lock.json
+            ${{ env.RTS_WORK }}/template-provenance.json
+            ${{ env.RTS_WORK }}/web-manifest.json
+            ${{ env.RTS_WORK }}/release-summary.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# Export candidate only. Existing Pages workflow, permissions and live site unchanged.
