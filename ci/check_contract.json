@@ -1,0 +1,98 @@
+{
+  "hud_names": [
+    "valid opening house plot",
+    "normal house purchase assigns builder",
+    "selected unfinished site shows assigned not active",
+    "portrait HUD shows walking to the selected site",
+    "pending route is reported without claiming arrival",
+    "terminal route has manual resume directions",
+    "site has a legal construction approach",
+    "successful work tick alone shows active construction",
+    "pause overrides frozen successful work cue",
+    "pending stop is not displayed as continuing work",
+    "actual stop explains missing builder despite old work cue",
+    "explicit reassignment resumes actual work feedback",
+    "actual move reassignment leaves site visibly without builder",
+    "builder on another site cannot satisfy selected site",
+    "actual builder death requires manual recovery",
+    "live replacement clears missing builder warning",
+    "HUD refresh cannot build charge or change randomness",
+    "landscape retains construction assignment feedback",
+    "completion removes unfinished-site recovery directions",
+    "QA HUD is absent without opt in",
+    "QA schema reports logical viewport and visible detail",
+    "QA selected site includes completion from public projection",
+    "QA targets are only current own tappable public projections",
+    "QA button rectangles are clipped visible viewport observations",
+    "QA preview is absent when no ghost is displayed",
+    "QA observation cannot advance or change game state",
+    "QA clips button to its actual clipping ancestor",
+    "QA excludes hidden button",
+    "QA excludes fully clipped button",
+    "restart clears construction recovery directions"
+  ],
+  "value_static_names": [
+    "unassigned site explains manual recovery",
+    "assignment alone does not claim work or arrival",
+    "only successful construction cue claims work",
+    "existing route explains approach",
+    "pending path is not claimed to be walking",
+    "pause does not claim building from frozen work cue",
+    "queued own command does not claim old assignment",
+    "queued reassignment does not claim new builder",
+    "progress uses the supplied observation",
+    "repeated presentation never mutates inputs"
+  ],
+  "invalid_builder_patches": [
+    {
+      "owned": false
+    },
+    {
+      "alive": false
+    },
+    {
+      "remembered": true
+    },
+    {
+      "team": 1
+    },
+    {
+      "category": "building"
+    },
+    {
+      "kind": "spearman"
+    },
+    {
+      "state": "idle"
+    },
+    {
+      "state": "gather"
+    },
+    {
+      "state": "move"
+    },
+    {
+      "target": 21
+    }
+  ],
+  "invalid_site_patches": [
+    {
+      "owned": false
+    },
+    {
+      "alive": false
+    },
+    {
+      "remembered": true
+    },
+    {
+      "team": 1
+    },
+    {
+      "category": "unit"
+    },
+    {
+      "built": true
+    }
+  ]
+}
