@@ -17,10 +17,13 @@ func touch(p,pressed):
 func tap(p):
 	touch(p,true); await process_frame; touch(p,false); await settle()
 func action(label):
+	if label=="停止": return game.stop_button
 	for child in game.actions.get_children():
 		if child is Button and child.text==label: return child
 	return null
 func reveal(button):
+	if button.get_parent()==game.compact_unit_tools:
+		return button.is_visible_in_tree() and root.get_visible_rect().encloses(button.get_global_rect())
 	for attempt in 6:
 		if game.action_scroll.get_global_rect().encloses(button.get_global_rect()): return true
 		var rect=game.action_scroll.get_global_rect()

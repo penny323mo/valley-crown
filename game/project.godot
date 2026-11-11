@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Valley & Crown"
 config/description="Gather, build, and command a small kingdom in an original medieval RTS."
-run/main_scene="res://main.tscn"
+run/main_scene="res://main_menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 
 [display]

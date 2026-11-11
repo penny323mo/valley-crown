@@ -12,7 +12,7 @@ def regular(root: Path, p: Path) -> bool:
     return p.is_file() and p.resolve().is_relative_to(root.resolve())
 
 def runtime_paths(root: Path) -> list[Path]:
-    paths = [root / n for n in ('project.godot', 'main.tscn', 'export_presets.cfg')]
+    paths = [root / n for n in ('project.godot', 'main.tscn', 'main_menu.tscn', 'export_presets.cfg')]
     for folder, suffixes in [('scripts', {'.gd', '.uid'}), ('assets/audio', {'.wav', '.import'}), ('assets/models', {'.glb', '.import'}), ('assets/fonts', {'.otf', '.ttf', '.import'}), ('assets/mature', MATURE_SUFFIXES)]:
         base = root / folder
         if base.exists():

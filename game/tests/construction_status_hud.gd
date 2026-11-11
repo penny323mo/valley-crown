@@ -93,7 +93,21 @@ func telemetry_contract(site: Dictionary):
 	var rng_state=game.rng.state
 	var hud=game._qa_hud_snapshot()
 	var size=root.get_visible_rect().size
-	check("QA schema reports logical viewport and visible detail",hud.schema==1 and hud.viewport==[size.x,size.y] and hud.selection_detail==game.selection_detail.text)
+	check("QA schema reports logical viewport and visible detail",hud.schema==2 and hud.viewport==[size.x,size.y] and hud.selection_detail==game.selection_detail.text)
+	var keys=hud.keys(); keys.sort()
+	check("QA exact public schema",keys==["action_scroll","buttons","camera","context_targets","ground_points","own_targets","preview","schema","selected_own","selection_detail","viewport"])
+	check("QA visible camera values only",hud.camera.size()==2 and hud.camera.focus==[game.camera_focus.x,game.camera_focus.y,game.camera_focus.z] and hud.camera.zoom==game.camera.size)
+	var safe_context=true
+	for target in hud.context_targets:
+		var record=game.faction_views[0].get_record(target.id)
+		var point=Vector2(target.screen[0],target.screen[1])
+		safe_context=safe_context and target.size()==5 and record.alive and not record.remembered and (record.team==1 or record.category=="resource") and game._box_point_in_world(point) and game._pick(point)==record.id
+	check("QA context targets contain only currently visible tappable records",safe_context)
+	var safe_ground=hud.ground_points.size()<=9
+	for values in hud.ground_points:
+		var point=Vector2(values[0],values[1]); var world=game._world_at(point)
+		safe_ground=safe_ground and values.size()==2 and game._box_point_in_world(point) and game.visible_cells[0][game._cell_index(world)]!=0 and game._pick(point)<0
+	check("QA ground samples are bounded visible empty screen points",safe_ground)
 	check("QA selected site includes completion from public projection",hud.selected_own.size()==1 and hud.selected_own[0].id==site.id and hud.selected_own[0].built and hud.selected_own[0].progress==1.0 and hud.selected_own[0].size()==5)
 	var safe_targets=true
 	for target in hud.own_targets:

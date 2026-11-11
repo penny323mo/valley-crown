@@ -1,6 +1,7 @@
 extends RefCounted
 ## Pure presentation. It receives existing public map metadata, never entity state.
 const Rules=preload("res://scripts/rules.gd")
+const Routes=preload("res://scripts/map_routes.gd")
 const GROUND_SHADER=preload("res://assets/mature/terrain/ground.gdshader")
 static func create_ground(parent:Node3D,corridors:Dictionary) -> MeshInstance3D:
 	var image:=Image.create(Rules.MAP_SIZE,Rules.MAP_SIZE,false,Image.FORMAT_R8)
@@ -10,6 +11,10 @@ static func create_ground(parent:Node3D,corridors:Dictionary) -> MeshInstance3D:
 		image.set_pixel(cell.x,cell.y,Color.WHITE)
 	var mat:=ShaderMaterial.new();mat.shader=GROUND_SHADER
 	mat.set_shader_parameter("map_size",Rules.MAP_SIZE)
+	# Public settlement coordinates only. Never derive visual terrain from entities.
+	var home_a:=Routes.home(0); var home_b:=Routes.home(1)
+	mat.set_shader_parameter("public_home_a",Vector2(home_a.x,home_a.z))
+	mat.set_shader_parameter("public_home_b",Vector2(home_b.x,home_b.z))
 	mat.set_shader_parameter("grass_map",load("res://assets/mature/terrain/grass.png"))
 	mat.set_shader_parameter("earth_map",load("res://assets/mature/terrain/earth.png"))
 	mat.set_shader_parameter("public_corridor_mask",ImageTexture.create_from_image(image))

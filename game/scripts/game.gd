@@ -1,4 +1,6 @@
 extends Node3D
+signal main_menu_requested
+signal restart_requested
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
 const WorkerIdleStatus = preload("res://scripts/worker_idle_status.gd")
 const ConstructionStatus = preload("res://scripts/construction_status.gd")
@@ -163,6 +165,7 @@ var hud_top: PanelContainer
 var action_scroll: ScrollContainer
 var action_key=""
 var return_cargo_button: Button
+var stop_button: Button
 var build_confirm: Button
 var compact_ui=false
 var short_ui=false
@@ -2632,6 +2635,7 @@ func _create_ui():
 	nav3.add_child(_button("移動／攻擊",func(): _compact_menu_action(_start_unit_command),110))
 	nav3.add_child(_button("投降",func(): _compact_menu_action(_confirm_surrender),78))
 	help_label=_label("",13,Color("c6cbbd")); help_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(help_label)
+	menu_box.add_child(_button("主選單", _request_main_menu, 110))
 	compact_menu.hide()
 	toast_label=_label("",15,GOLD); ui.add_child(toast_label); toast_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	toast_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -2643,7 +2647,8 @@ func _create_ui():
 	var end_box=VBoxContainer.new(); end_box.add_theme_constant_override("separation",14); end_panel.add_child(end_box)
 	end_title=_label("王旗再起",32,GOLD); end_title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; end_box.add_child(end_title)
 	end_body=_label("",16); end_body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; end_box.add_child(end_body)
-	end_box.add_child(_button("再開一局",func(): get_tree().reload_current_scene()))
+	end_box.add_child(_button("再開一局", _request_restart))
+	end_box.add_child(_button("主選單", _request_main_menu))
 	end_panel.hide()
 	# Child controls may bubble wheel events to their ScrollContainer, but the
 	# owning UI boundary must consume leftovers (including at scroll limits).
@@ -2795,7 +2800,7 @@ func _update_hud():
 		if not ent.queue.is_empty():
 			queue_label.text="訓練 %ds · 隊列 %d" % [ceili(ent.queue[0].remaining_ticks/20.0),ent.queue.size()]
 			if ent.queue[0].remaining_ticks<=0:
-				queue_label.text="訓練完成，等待人口空位" if _population(0,false)>=_capacity(0) else "訓練完成，出口受阻；選取出口單位，再按指令移開"
+				queue_label.text="訓練完成，等待人口空位" if _population(0,false)>=_capacity(0) else "訓練完成，出口受阻；選取出口單位，再點空地移開"
 			elif _population(0)>_capacity(0): queue_label.text="缺少住房，訓練暫停"
 	else:
 		selection_title.text="已選取 %d 個單位" % selection.size()
@@ -2814,6 +2819,7 @@ func _update_hud():
 		if ent.category=="unit": has_unit=true
 	compact_unit_tools.visible=has_unit and build_mode.is_empty() and not box_select_mode
 	compact_cancel_button.visible=touch_command
+	_refresh_stop_button()
 	# One guidance suffix. Eligibility belongs to each worker, not merely to
 	# another selected worker making the delivery button available.
 	var idle_return_available=false
@@ -2831,9 +2837,9 @@ func _update_hud():
 		elif route_failed_workers>0:
 			selection_detail.text+=" · 請重新落指令"
 		elif has_unit and compact_ui:
-			selection_detail.text+=" · 按指令再點目標"
+			selection_detail.text+=" · 點空地移動／敵軍攻擊／資源採集"
 	if build_mode.is_empty():
-		help_label.text="點選單位 → 指令 → 點目標。雙指平移／縮放。窄畫面可左右滑動底列，查看全部行動。" if compact_ui else "左鍵選取／框選 · 右鍵落指令 · WASD／方向鍵平移 · 滾輪縮放 · 空白鍵返回主堡"
+		help_label.text="點選單位，再點空地移動、敵軍攻擊或資源採集。單指滑動平移，雙指縮放。窄畫面可左右滑動底列，查看全部行動。" if compact_ui else "左鍵選取／框選 · 右鍵落指令 · WASD／方向鍵平移 · 滾輪縮放 · 空白鍵返回主堡"
 		if touch_command: help_label.text="指令模式：點擊地面、資源或可見敵軍。取消可返回選取。"
 	else:
 		var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
@@ -2854,6 +2860,11 @@ func _update_hud():
 	call_deferred("_layout_ui")
 
 func _rebuild_actions(selection):
+	# Stop may occupy the auxiliary slot outside the action strip. Recreate it
+	# with the selection so a held press cannot act on a replacement selection.
+	if is_instance_valid(stop_button):
+		stop_button.get_parent().remove_child(stop_button); stop_button.queue_free()
+	stop_button=null
 	for child in actions.get_children(): actions.remove_child(child); child.queue_free()
 	build_confirm=null
 	return_cargo_button=null
@@ -2890,15 +2901,30 @@ func _rebuild_actions(selection):
 			actions.add_child(_button("拆除建築\n不退資源",func(): _confirm_demolish(ent.id),120))
 	# Preserve the first build targets on narrow phones. Cargo delivery is
 	# reachable through the existing horizontal action strip.
+	actions.add_child(_button("取消選取",func(): _select([]),100))
 	return_cargo_button=_button("交付資源",_return_selected_cargo,100)
 	actions.add_child(return_cargo_button)
-	# Only targeting and Cancel are pinned. Secondary commands share the
-	# scrollable action strip so even 320 CSS px leaves a whole build target.
+	# Stop shares Cancel's unused compact slot; never add a third pinned target.
+	# During targeting it stays in the strip, preserving the ordinary Cancel.
 	for ent in selection:
 		if ent.category=="unit":
-			actions.add_child(_button("停止",func(): _submit_selected_stance("stop"),54))
+			stop_button=_button("停止",func(): _submit_selected_stance("stop"),54)
+			actions.add_child(stop_button)
 			actions.add_child(_button("守備",func(): _submit_selected_stance("defend"),54))
 			break
+
+func _refresh_stop_button():
+	if not is_instance_valid(stop_button): return
+	var parent=compact_unit_tools if compact_ui and not touch_command else actions
+	if stop_button.get_parent()!=parent:
+		# A moving control cannot inherit a press from its old coordinates.
+		for index in gui_touch_press.keys():
+			if gui_touch_press[index].button.get_ref()==stop_button: gui_touch_press.erase(index)
+		if stop_button.button_pressed: stop_button.disabled=true; stop_button.disabled=false
+		stop_button.reparent(parent)
+		# Keep desktop/targeting action order unchanged: Cargo, Stop, Defend.
+		if parent==actions: actions.move_child(stop_button,actions.get_child_count()-2)
+	stop_button.disabled=paused or game_over
 
 func _refresh_return_cargo_button():
 	if not is_instance_valid(return_cargo_button): return
@@ -2946,7 +2972,7 @@ func _toggle_unit_command():
 func _submit_selected_stance(type: String):
 	# A deliberate Stop/Defend replaces the unfinished targeting interaction.
 	# Retire held pointers too, so their late release cannot issue a new order.
-	if not paused and not game_over and touch_command and build_mode.is_empty() and not box_select_mode and rally_building<0:
+	if not paused and not game_over and build_mode.is_empty() and not box_select_mode and rally_building<0:
 		_cancel_mode()
 	_submit(type,{"ids":selected.duplicate()})
 
@@ -2961,7 +2987,9 @@ func _select(ids):
 	# Menu selection is also available while a held build preview is active.
 	if not build_mode.is_empty(): _cancel_mode()
 	box_cancel_repeat.clear()
-	if box_select_mode and (touch_box_index>=0 or dragging): _cancel_pointer_streams()
+	# A selection replacement retires any held world/UI press. Its release
+	# must never order the newly selected group.
+	_cancel_pointer_streams()
 	_clear_box_select()
 	selected=[]
 	for id in ids:
@@ -3233,14 +3261,22 @@ func _start_ground_rally(id):
 	_cancel_mode()
 	rally_building=id; touch_command=true; action_key=""; _update_hud()
 
-func _send_world_order(screen):
+func _send_world_order(screen,contextual=false):
 	if rally_building>=0:
 		_submit("rally",{"building":rally_building,"position":_world_at(screen)})
 		_cancel_mode(); return
 
 	if selected.is_empty(): return
 	var p=_world_at(screen)
-	_submit("order",{"ids":selected.duplicate(),"target":_pick(screen),"position":p})
+	var target_id=_pick(screen)
+	var ids=selected.duplicate()
+	if contextual and faction_views[0].get_record(target_id).get("category","")=="resource":
+		# Resource taps task capable workers only; escorts keep their orders.
+		ids=ids.filter(func(id):
+			var record=faction_views[0].get_record(id)
+			return record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and record.get("kind","")=="villager" and not record.get("remembered",false))
+		if ids.is_empty(): return
+	_submit("order",{"ids":ids,"target":target_id,"position":p})
 	order_marker.position=p; marker_time=0.8; touch_command=false; rally_building=-1
 
 func _tap(screen,is_touch):
@@ -3253,7 +3289,7 @@ func _tap(screen,is_touch):
 		return
 	if not paused and touch_command:
 		_send_world_order(screen); return
-	var id=_pick(screen,false)
+	var id=_pick(screen,is_touch)
 	if id>=0 and faction_views[0].get_record(id).team==0:
 		if Input.is_physical_key_pressed(KEY_SHIFT) and not is_touch:
 			var ids=selected.duplicate()
@@ -3262,15 +3298,19 @@ func _tap(screen,is_touch):
 			_select(ids)
 		else: _select([id])
 	elif is_touch and not selected.is_empty():
-		# A novice target tap is not an implicit order and must not erase the
-		# selection needed to follow the visible explicit-command instruction.
-		var has_selected_unit=false
-		for selected_id in selected:
-			var record=faction_views[0].get_record(selected_id)
-			if not record.is_empty() and record.owned and record.category=="unit": has_selected_unit=true
-		_message("先按下方指令，再點樹木、漿果或空地。" if has_selected_unit else "已選取建築。先點選自己的單位，再按指令移動。",5)
+		# Normal touch is contextual. Friendly taps above select; explicit
+		# targeting remains available for repair/delivery to friendly buildings.
+		# Use the ordinary order path: authority resolves each unit's capability.
+		if not paused and build_mode.is_empty() and _has_selected_unit():
+			_send_world_order(screen,true)
 		_update_hud()
 	else: _select([])
+
+func _has_selected_unit():
+	for id in selected:
+		var record=faction_views[0].get_record(id)
+		if record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and not record.get("remembered",false): return true
+	return false
 
 func _input(event):
 	_track_pointer_input(event,get_viewport())
@@ -3439,7 +3479,7 @@ func _unhandled_input(event):
 				touch_box_index=-1; touch_box_active=false; drag_rect.hide(); touch_points.erase(event.index)
 				if complete: _select(_box_selection_ids(Rect2(touch_box_origin,event.position-touch_box_origin).abs()))
 				return
-			var should_tap=touch_points.has(event.index) and touch_points.size()==1 and not touch_gesture and event.position.distance_to(touch_origin)<14
+			var should_tap=not event.canceled and touch_points.has(event.index) and touch_points.size()==1 and not touch_gesture and event.position.distance_to(touch_origin)<14
 			touch_points.erase(event.index)
 			if should_tap: _tap(event.position,true)
 			if touch_points.is_empty(): touch_gesture=false
@@ -3554,7 +3594,27 @@ func _qa_hud_snapshot() -> Dictionary:
 	# commands, placement search, clock control or generic callable bridge.
 	if not qa_mode or not is_instance_valid(ui) or not is_instance_valid(camera): return {}
 	var viewport=get_viewport().get_visible_rect().size
-	var result={"schema":1,"viewport":[viewport.x,viewport.y],"selection_detail":"","selected_own":[],"own_targets":[],"preview":null,"buttons":[],"action_scroll":{"rect":[0,0,0,0],"scroll_horizontal":0}}
+	var result={"schema":2,"viewport":[viewport.x,viewport.y],"camera":{"focus":[camera_focus.x,camera_focus.y,camera_focus.z],"zoom":camera.size},"context_targets":[],"ground_points":[],"selection_detail":"","selected_own":[],"own_targets":[],"preview":null,"buttons":[],"action_scroll":{"rect":[0,0,0,0],"scroll_horizontal":0}}
+	# Public tappable projections only. No authority lookup, fog memory, path
+	# feasibility, resource search, order mutation or test-only command API.
+	for record in faction_views[0].records().values():
+		if not record.get("alive",false) or record.get("remembered",false): continue
+		if record.get("team",-1)!=1 and record.get("category","")!="resource": continue
+		var position=record.pos+Vector3(0,0.6 if record.category=="unit" else 1.0,0)
+		if camera.is_position_behind(position): continue
+		var screen=camera.unproject_position(position)
+		if not screen.is_finite() or not _box_point_in_world(screen) or _pick(screen)!=record.id: continue
+		result.context_targets.append({"id":record.id,"kind":record.kind,"category":record.category,"team":record.team,"screen":[screen.x,screen.y]})
+	# Nine fixed screen probes describe visible empty ground, not a navigation
+	# or placement search. A point carries no promise of reachability.
+	for y in [0.3,0.45,0.6]:
+		for x in [0.25,0.5,0.75]:
+			var screen=Vector2(viewport.x*x,viewport.y*y)
+			if not _box_point_in_world(screen): continue
+			var world=_world_at(screen)
+			if not world.is_finite() or absf(world.x)>=Rules.MAP_HALF or absf(world.z)>=Rules.MAP_HALF: continue
+			if visible_cells[0].is_empty() or visible_cells[0][_cell_index(world)]==0 or _pick(screen)>=0: continue
+			result.ground_points.append([screen.x,screen.y])
 	if _qa_visible_rect(selection_detail).has_area(): result.selection_detail=selection_detail.text
 	for record in faction_views[0].records().values():
 		if not record.get("owned",false) or not record.get("alive",false) or record.get("remembered",false) or record.get("team",-1)!=0: continue
@@ -3959,3 +4019,13 @@ func _layout_tutorial():
 	# Container wrapping settles on the following layout pass; no world reads.
 	if tutorial_panel.visible:
 		toast_label.position.y=tutorial_panel.position.y+tutorial_panel.size.y+4
+
+# Standalone battlefield fixtures retain deliberate startup; the product shell
+# owns navigation when connected. No game save or tutorial skip is implied.
+func _request_main_menu():
+	if main_menu_requested.has_connections(): main_menu_requested.emit()
+	else: get_tree().change_scene_to_file("res://main_menu.tscn")
+
+func _request_restart():
+	if restart_requested.has_connections(): restart_requested.emit()
+	else: get_tree().reload_current_scene()
