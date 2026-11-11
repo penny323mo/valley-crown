@@ -66,6 +66,7 @@ def source_inventory(project, lock, expected_generated=None):
     allowed = lock['allowed_generated_uid_files']
     expected = sorted(name + '.uid' for name in original if name.endswith('.gd') and name + '.uid' not in original)
     if 'assets/mature/shaders/building_damage_soot.gdshader' in original and 'assets/mature/shaders/building_damage_soot.gdshader.uid' not in original: expected = sorted(expected + ['assets/mature/shaders/building_damage_soot.gdshader.uid'])
+    if 'assets/mature/menu/menu_backdrop.gdshader' in original and 'assets/mature/menu/menu_backdrop.gdshader.uid' not in original: expected = sorted(expected + ['assets/mature/menu/menu_backdrop.gdshader.uid'])
     require(type(allowed) is list and allowed == expected, 'Generated UID allowlist differs from exact frozen script set')
     actual = tree(project, exclude_cache=True)
     differences = inventory_differences(actual, original, allowed)
