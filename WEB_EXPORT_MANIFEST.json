@@ -1,18 +1,98 @@
 {
-  "build": "vc-8fcc302051f0",
-  "source_zip_sha256": "92e660f43172fb731574a5b9f40ff9059cfd036b27845d226b3bd804849c564e",
-  "validation_commit": "88f9f1f5b4920d131a81d417d6b188271b934f97",
-  "validation_run": "https://github.com/penny323mo/valley-crown/actions/runs/42333575309",
-  "scope": "Experimental phone-controls candidate. Native synthetic suites, two reproducible Web exports and native packed checks passed. Browser and physical iPhone acceptance remain unverified.",
+  "build": "vc-dd795d96905c",
+  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/42962521219",
+  "export_scope": "Two byte-identical repeat Web exports from one clean guarded import. Browser validation is a separate required release gate.",
   "files_sha256": {
     "index.apple-touch-icon.png": "9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a",
     "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
     "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
-    "index.html": "f5f6f11449850a467044ea67a8cde6c831b53184d82ff9fc44cb349f5c131ab3",
+    "index.html": "5c3741c84ecc3eab4e74b9223252b3616577fff784270c3f542313eb376736ea",
     "index.icon.png": "08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5",
     "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
-    "index.pck": "18da7e0921b0b177e33ca4a62d82e57676498541d6c7ea5a0bf9cb4f3baddc17",
+    "index.pck": "dbc85abf289b1ec40a63a5a30628a2a708db536038a39e23455e3828e5c8574f",
     "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
-    "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6"
-  }
+    "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6",
+    "GODOT-LICENSES.txt": "f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f",
+    "THIRD_PARTY_NOTICES.txt": "8833bc5c11f9c130e545fe94650e05687383c37fdf45ab79ebe584bbc4ae63bb",
+    "art/action_characters/licenses/kaykit-animations.txt": "373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9",
+    "art/action_characters/licenses/quaternius-base.txt": "0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e",
+    "art/action_characters/licenses/quaternius-outfits.txt": "2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb",
+    "art/action_characters/licenses/quaternius-ual.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+    "art/action_characters/licenses/quaternius-ual2.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+    "assets/fonts/DEJAVU-LICENSE.txt": "f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9",
+    "assets/fonts/NOTO-LICENSE.txt": "849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b"
+  },
+  "game_tree": "c133ed816d338bfabab2ae617bee917f4080799b",
+  "source_commit": "c5b78df4dab1e1f58f83bc2d8678512ddc628045",
+  "scope": "Incremental tested beta. Native portrait interfaces and house construction passed. Two byte-identical repeat Web exports passed. Desktop and emulated portrait browser smoke passed. Not full-game or physical-phone acceptance.",
+  "browser_validation": [
+    {
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "browser": "156.0.8078.79",
+      "input": "desktop mouse clicks",
+      "run": "https://github.com/penny323mo/valley-crown/actions/runs/42966442322",
+      "job_id": 130344645147,
+      "test_tools_commit": "a95094492aa512be2500f052b7340e0916fd24ad",
+      "basic_smoke_passed": true,
+      "browser_errors": 0,
+      "elapsed_seconds": 83.008900741,
+      "evidence_sha256": "c0dbab6275502adf3f5d308b91cb3f932aeedb131f7068629da8f0ea1ed1254b",
+      "passed_cases": [
+        "runtime build and loading",
+        "pause and resume",
+        "menu open and close",
+        "villager selection",
+        "command and repeated cancellation",
+        "two house-preview cancellations without spending wood",
+        "final live state",
+        "training debit, population reservation, cancellation and 37-food refund"
+      ]
+    },
+    {
+      "profile": "portrait",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "browser": "156.0.8078.79",
+      "input": "Chrome emulated touchscreen taps; not a physical phone",
+      "run": "https://github.com/penny323mo/valley-crown/actions/runs/42966100270",
+      "job_id": 130343595451,
+      "test_tools_commit": "94b1d55d3a7341251aa4b26017d415b154e55575",
+      "basic_smoke_passed": true,
+      "browser_errors": 0,
+      "elapsed_seconds": 40.86471211,
+      "evidence_sha256": "7e8c49c922f36be89abfb27f8b278bdbacae2078f6212c83724f047a00f73be5",
+      "passed_cases": [
+        "runtime build and loading",
+        "pause and resume",
+        "menu open and close",
+        "villager selection",
+        "command and repeated cancellation",
+        "two house-preview cancellations without spending wood",
+        "final live state"
+      ]
+    }
+  ],
+  "native_validation": {
+    "house_construction": {
+      "run": "https://github.com/penny323mo/valley-crown/actions/runs/42960701121",
+      "passed_assertions": 18,
+      "scope": "No-spend preview cancel, 50-wood debit, natural construction completion, 250 HP and capacity increase from 10 to 15."
+    },
+    "portrait_interfaces": {
+      "run": "https://github.com/penny323mo/valley-crown/actions/runs/42959356251",
+      "captured_frames": 10
+    }
+  },
+  "validation_limits": [
+    "Browser checks used the exact export on a fresh hosted VM through a loopback server; public served bytes are verified separately after deployment.",
+    "Portrait pointer controls and pause/resume used Chrome emulated touchscreen taps. Some checks used keyboard Escape and ArrowRight; repeated touchcancel was synthetic.",
+    "Physical iPhone and Android devices, audible audio, gather/deposit, training completion, combat and long-match acceptance remain unverified."
+  ],
+  "full_game_acceptance": false
 }
