@@ -6,7 +6,7 @@ import json
 import os
 import prepare_public_capture as source
 
-BRANCH = 'refs/heads/ci/natural-match-vc-542ddb524e45'
+BRANCH = 'refs/heads/ci/natural-match-270-vc-542ddb524e45'
 OUTPUT_FILES = sorted(['index.html', 'index.js', 'index.wasm', 'index.pck', 'index.png', 'index.icon.png', 'index.apple-touch-icon.png', 'index.audio.worklet.js', 'index.audio.position.worklet.js'])
 
 def admitted():
@@ -24,7 +24,12 @@ def main():
     if args.phase == 'prepare':
         result = source.prepare(root / 'game', work, source.entries_from_git(root))
         capture = json.loads((work / 'capture-lock.json').read_text())
-        lock = dict(schema='vc-web-export-v1', reviewed_for_execution=os.environ.get('CONSTRUCTION_EXECUTION_APPROVED')=='true',
+        lock = dict(full_match_270_reviewed_for_execution=os.environ.get('FULL_MATCH_270_EXECUTION_APPROVED')=='true',
+            full_match_270_runner_sha256=source.sha(root / 'ci/run_full_match_270.py'),
+            full_match_270_supervisor_sha256=source.sha(root / 'ci/run_logic_300.py'),
+            full_match_270_harness_sha256=source.sha(root / 'ci/full_match_270.gd'),
+            full_match_270_validator_sha256=source.sha(root / 'ci/validate_full_match_270.py'),
+            schema='vc-web-export-v1', reviewed_for_execution=os.environ.get('CONSTRUCTION_EXECUTION_APPROVED')=='true',
             contracts_reviewed_for_execution=os.environ.get('CONSTRUCTION_EXECUTION_APPROVED')=='true',
             contracts_stop_reviewed_for_execution=os.environ.get('CONSTRUCTION_EXECUTION_APPROVED')=='true',
             contracts_consolidated_reviewed_for_execution=os.environ.get('CONSTRUCTION_EXECUTION_APPROVED')=='true',
