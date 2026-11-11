@@ -28,6 +28,18 @@ export function mapPoint(point, viewport, box) {
   return [box.x + point[0] * box.width / viewport[0], box.y + point[1] * box.height / viewport[1]];
 }
 
+export function validateCanvasGeometry(geometry, expectedBox=null) {
+  assert.ok(geometry, 'Canvas DOM geometry missing');
+  const {box,viewport,display,visibility,opacity}=geometry;
+  assert.deepEqual(viewport,[390,844], 'CSS viewport differs from fixed portrait context');
+  assert.ok(box && ['x','y','width','height'].every(key => Number.isFinite(box[key])), 'Nonfinite canvas bounds');
+  assert.ok(box.width>0 && box.height>0 && box.x>=0 && box.y>=0 &&
+    box.x+box.width<=viewport[0]+0.5 && box.y+box.height<=viewport[1]+0.5, 'Canvas not positive and fully onscreen');
+  assert.ok(display!=='none' && visibility==='visible' && Number.isFinite(opacity) && opacity>0, 'Canvas CSS is not visible');
+  if (expectedBox) assert.deepEqual(box,expectedBox,'Canvas DOM geometry changed; cached input mapping invalid');
+  return box;
+}
+
 export function buttonByText(state, matcher) {
   assert.equal(state.hud?.schema, 1, 'Read-only public HUD telemetry missing');
   const matches = state.hud.buttons.filter(button => !button.disabled && matcher.test(button.text) &&
@@ -112,10 +124,8 @@ export async function runQA(browser, outputDirectory, origin, profile) {
     const delay = milliseconds => new Promise(resolve => setTimeout(resolve,milliseconds));
     // Fixed context viewport, no navigation or resize after load. Read the real
     // canvas box once and fail if observed game viewport changes thereafter.
-    const canvasBox = await page.locator('canvas').boundingBox();
-    assert.ok(canvasBox?.width > 0 && canvasBox?.height > 0);
+    let canvasBox = null;
     let logicalViewport;
-    evidence.canvas_box = canvasBox;
     evidence.snapshot_count = 0;
     evidence.snapshot_total_ms = 0;
     evidence.read_timings = [];
@@ -124,7 +134,32 @@ export async function runQA(browser, outputDirectory, origin, profile) {
     const snapshot = async () => {
       withinBudget();
       const readStarted = Date.now();
-      const state = await page.evaluate(() => {window.valleySnapshot(); return window.valleyState;});
+      const pending = page.evaluate(() => {
+        window.valleySnapshot();
+        let geometry=null;
+        const canvas=document.querySelector('canvas');
+        if (canvas) {
+          const rect=canvas.getBoundingClientRect(),style=getComputedStyle(canvas);
+          geometry={box:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},viewport:[innerWidth,innerHeight],
+            display:style.display,visibility:style.visibility,opacity:Number(style.opacity),position:style.position};
+        }
+        return {state:window.valleyState,geometry};
+      });
+      let observation;
+      if (canvasBox===null) {
+        let readTimer;
+        try {
+          observation=await Promise.race([pending,new Promise((_,reject) => {
+            readTimer=setTimeout(() => reject(new Error('Canvas geometry/snapshot read exceeded5000ms')),5000);
+          })]);
+        } finally {clearTimeout(readTimer);}
+        canvasBox=validateCanvasGeometry(observation.geometry);
+        evidence.canvas_box=canvasBox; evidence.canvas_geometry=observation.geometry;
+      } else {
+        observation=await pending;
+        validateCanvasGeometry(observation.geometry,canvasBox);
+      }
+      const state=observation.state;
       assert.equal(state.build, manifest.build); assert.equal(state.hud?.schema, manifest.hud_schema);
       if (logicalViewport) assert.deepEqual(state.hud.viewport,logicalViewport,'Viewport changed; cached input geometry invalid');
       else logicalViewport = [...state.hud.viewport];

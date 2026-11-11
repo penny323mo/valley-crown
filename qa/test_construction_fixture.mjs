@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {validateManifest,mapPoint,buttonByText,selectedSite,assertStoppedProgress,assertResumedProgress,swipeActionStrip,runQA} from './browser_qa.mjs';
+import {validateManifest,mapPoint,validateCanvasGeometry,buttonByText,selectedSite,assertStoppedProgress,assertResumedProgress,swipeActionStrip,runQA} from './browser_qa.mjs';
 
 const manifest = {reviewed:true,build:'vc-123456789abc',source_commit:'a'.repeat(40),profile:'portrait',hud_schema:1,
   files_sha256:Object.fromEntries(['index.html','index.pck','index.wasm'].map(name => [name,'b'.repeat(64)]))};
@@ -50,7 +50,8 @@ test('resumed proof requires same site plus active text and increased progress',
 test('fixture contains no arbitrary game state bridge or authority setter', async () => {
   const source=await readFile(new URL('./browser_qa.mjs',import.meta.url),'utf8');
   assert.equal((source.match(/page\.evaluate\(/g)||[]).length,1);
-  assert.ok(source.includes('window.valleySnapshot(); return window.valleyState;'));
+  assert.ok(source.includes('window.valleySnapshot();'));
+  assert.ok(source.includes('return {state:window.valleyState,geometry};'));
   for (const forbidden of ['_test_reset','_submit(','.valleyState =','scrollLeft =','scroll_horizontal =']) assert.ok(!source.includes(forbidden));
   assert.ok(source.includes("'Input.dispatchTouchEvent'"));
   assert.ok(source.includes('page.touchscreen.tap'));
@@ -67,11 +68,24 @@ test('ordinary action swipe uses two moves and preserves visible path/duration',
 });
 test('fixed geometry and fresh-state inputs avoid hidden extra snapshots', async () => {
   const source=await readFile(new URL('./browser_qa.mjs',import.meta.url),'utf8');
-  assert.equal((source.match(/\.boundingBox\(\)/g)||[]).length,1);
+  assert.equal((source.match(/\.boundingBox\(\)/g)||[]).length,0);
+  assert.equal((source.match(/\.getBoundingClientRect\(\)/g)||[]).length,1);
+  assert.ok(source.includes("'Canvas geometry/snapshot read exceeded5000ms'"));
   const helpers=source.slice(source.indexOf('const screenPoint ='),source.indexOf('const initial ='));
   assert.ok(!helpers.includes('await snapshot()'));
   assert.ok(source.includes('evidence.last_read ='));
   assert.ok(source.includes('duration_ms:duration'));
   assert.ok(source.includes('scroll_before:'));
   assert.ok(source.includes('timeout:1500'));
+});
+test('read-only DOM geometry rejects invisible, nonfinite or offscreen canvas', () => {
+  const good={box:{x:0,y:0,width:390,height:844},viewport:[390,844],display:'block',visibility:'visible',opacity:1};
+  assert.deepEqual(validateCanvasGeometry(good),good.box);
+  assert.deepEqual(validateCanvasGeometry(good,good.box),good.box);
+  assert.throws(() => validateCanvasGeometry({...good,box:{...good.box,width:389}},good.box), /Canvas DOM geometry changed/);
+  for (const bad of [null,{...good,visibility:'hidden'},{...good,display:'none'},{...good,opacity:0},
+    {...good,box:{...good.box,width:NaN}},{...good,box:{...good.box,width:0}},
+    {...good,box:{...good.box,x:-1}},{...good,box:{...good.box,x:2}},{...good,viewport:[844,390]}]) {
+    assert.throws(() => validateCanvasGeometry(bad));
+  }
 });
