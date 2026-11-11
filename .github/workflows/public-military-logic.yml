@@ -2,7 +2,7 @@
 name: Validate controlled military progression
 on:
   push:
-    branches: [ci/military-logic-vc-65e548819ad3]
+    branches: [ci/military-edges-v2-vc-65e548819ad3]
 permissions:
   contents: read
 concurrency:
@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 25
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-      CONSTRUCTION_SOURCE_COMMIT: 9f6d0d6b70f44762c1c2b913de2eda9519794268
+      CONSTRUCTION_SOURCE_COMMIT: bd04f892cd559573d9cce9ae9539d2627d43a9ab
       CONSTRUCTION_EXECUTION_APPROVED: 'true'
       MILITARY_EXECUTION_APPROVED: 'true'
     steps:
@@ -25,7 +25,7 @@ jobs:
           test "$CONSTRUCTION_EXECUTION_APPROVED" = true
           test "$MILITARY_EXECUTION_APPROVED" = true
           test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
-          test "$GITHUB_REF" = refs/heads/ci/military-logic-vc-65e548819ad3
+          test "$GITHUB_REF" = refs/heads/ci/military-edges-v2-vc-65e548819ad3
           test "$GITHUB_RUN_ATTEMPT" = 1
           [[ "$CONSTRUCTION_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
       - name: Select isolated runner workspace

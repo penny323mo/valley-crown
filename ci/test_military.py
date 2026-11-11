@@ -12,7 +12,10 @@ def example(suite):
     rows=[{'name':n,'passed':True} for n in C['names'][suite]]
     report={'build':v.BUILD,'scope':v.SCOPES[suite],'total':len(rows),'failed':0,'elapsed_ms':100,key:rows}
     if key=='results':report['engine']={'major':4,'minor':6,'patch':3,'status':'stable'}
-    else:report.update(suite=suite,max_path_queries=4,max_path_expansions=16384)
+    else:
+        report.update(suite=suite,max_path_queries=4,max_path_expansions=16384)
+        observation={'tick':0,'position':[0,0,0],'radius':0.65,'state':'idle','path_status':'IDLE','path_reason':'','path_goal':[0,0,0],'destination':[0,0,0],'work_approach':None,'target_position':[4,0,0],'target_authority_visible':True,'target_projection_visible':True,'attack_distance':3,'attack_range':1.3,'target_alive':True,'target_hp':250,'target_built':True,'target_build_ticks':0}
+        report['observations']={'farm_setup':{'position':[0,0,0],'site':[4,0,0],'approach':[2,0,0],'distance':2},**{key:dict(observation) for key in ('farm_final','siege_initial','siege_final','cavalry_initial','cavalry_final')}}
     return report
 class Tests(unittest.TestCase):
     def test_reports(self):
@@ -31,6 +34,14 @@ class Tests(unittest.TestCase):
                 elif key=='build':q['build']='wrong'
                 else:q['extra']=True
                 with self.subTest(suite=suite,key=key),self.assertRaises(ValueError):v.validate(q,suite,LOCK)
+    def test_observation_negative_controls(self):
+        suite='military_runtime_edges'
+        for mutation in ('missing','hidden','near'):
+            report=example(suite)
+            if mutation=='missing':report['observations'].pop('siege_final')
+            elif mutation=='hidden':report['observations']['siege_initial']['target_authority_visible']=False
+            else:report['observations']['farm_setup']['distance']=0
+            with self.subTest(mutation=mutation),self.assertRaises(ValueError):v.validate(report,suite,LOCK)
     def test_disabled_before_metrics(self):
         with tempfile.TemporaryDirectory() as t:
             p=Path(t)/'lock.json';p.write_text('{"military_reviewed_for_execution":false}')
@@ -79,7 +90,7 @@ class Tests(unittest.TestCase):
             code=r.run(types.SimpleNamespace(lock=path,project=project,output=root/'out',private=root/'private',godot=root/'godot',import_marker=root/'marker'))
             return code,json.loads((root/'out/military-contracts-receipt.json').read_text()),state
     def test_success_counts(self):
-        code,report,state=self.exercise();self.assertEqual(code,0);self.assertEqual(report['assertions_executed'],95);self.assertEqual(state['calls'],2)
+        code,report,state=self.exercise();self.assertEqual(code,0);self.assertEqual(report['assertions_executed'],97);self.assertEqual(state['calls'],2)
     def test_failure_no_next_process_final_binding(self):
         code,report,state=self.exercise(fail=True);self.assertEqual(code,1);self.assertEqual(state['calls'],1);self.assertTrue(report['post_run_binding_matches']);self.assertEqual(state['inventories'],3)
     def test_final_report_drift_rejected(self):

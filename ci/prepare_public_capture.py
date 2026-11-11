@@ -4,8 +4,8 @@ from pathlib import Path
 import argparse,hashlib,importlib.util,json,os,re,shutil,subprocess,sys,zipfile
 sys.dont_write_bytecode=True
 HERE=Path(__file__).resolve().parent
-SOURCE_COMMIT='9f6d0d6b70f44762c1c2b913de2eda9519794268'
-GAME_TREE='49169c1025848389cf36459ed3e03379a4300427'
+SOURCE_COMMIT='bd04f892cd559573d9cce9ae9539d2627d43a9ab'
+GAME_TREE='f0db2450c82106bb957d50a2e1ee05a2e3e95d0f'
 BUILD='vc-65e548819ad3'
 ENGINE='4.6.3.stable.official.7d41c59c4'
 ENGINE_SHA='f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
@@ -84,7 +84,7 @@ def prepare(project,work,public_blobs):
 def main():
     p=argparse.ArgumentParser();p.add_argument('phase',choices=['prepare','engine']);p.add_argument('--work',type=Path,required=True);a=p.parse_args()
     need(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('RUNNER_ENVIRONMENT')=='github-hosted','Hosted runner required')
-    need(os.environ.get('GITHUB_REPOSITORY')=='penny323mo/valley-crown' and os.environ.get('GITHUB_REF')=='refs/heads/ci/military-logic-vc-65e548819ad3' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','Wrong repository/branch/attempt')
+    need(os.environ.get('GITHUB_REPOSITORY')=='penny323mo/valley-crown' and os.environ.get('GITHUB_REF')=='refs/heads/ci/military-edges-v2-vc-65e548819ad3' and os.environ.get('GITHUB_RUN_ATTEMPT')=='1','Wrong repository/branch/attempt')
     root=HERE.parent;work=a.work.resolve()
     if a.phase=='prepare':print(json.dumps(prepare(root/'game',work,entries_from_git(root))))
     else:

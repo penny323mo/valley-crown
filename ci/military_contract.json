@@ -8,7 +8,7 @@
     ],
     "military_runtime_edges": [
       "tests/military_runtime_edges.gd",
-      "d4049dceed74951d9e672ce50991c26f1249aff129af7792d4f068c69478ee74"
+      "b6ab49c28ee19849ad1984c845382618716fb0b90d83f3839ef4011be71c02ce"
     ]
   },
   "names": {
@@ -82,6 +82,7 @@
     ],
     "military_runtime_edges": [
       "farm has ordinary visible paid plot",
+      "farm setup requires more than one cell of real travel",
       "queued farm purchase creates unfinished paid site",
       "worker reaches and completes farm without teleport",
       "completed farm is registered in actual ledger",
@@ -93,6 +94,7 @@
       "incompatible wood first routes to ordinary delivery",
       "postdelivery reassignment acquires farm and resumes food",
       "farm routed lifecycle conserves all four resources",
+      "siege attack target is authority visible before command",
       "large siege fixture begins outside attack range",
       "siege moves through ordinary routing and hits building",
       "siege attack approach keeps swept disk outside structure",

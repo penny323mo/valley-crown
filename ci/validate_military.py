@@ -15,7 +15,7 @@ def validate(report,suite,lock,contract=C):
     need(lock.get('build')==BUILD and lock.get('project_files',{}).get('scripts/game.gd')==GAME_SHA,'Unreviewed source')
     name,sha=FIXTURES[suite];need(lock['project_files'].get(name)==sha,'Unreviewed fixture')
     common={'build','scope','total','failed','elapsed_ms'}
-    extra={'results','engine'} if suite=='military_progression_contract' else {'suite','checks','max_path_queries','max_path_expansions'}
+    extra={'results','engine'} if suite=='military_progression_contract' else {'suite','checks','max_path_queries','max_path_expansions','observations'}
     need(type(report) is dict and set(report)==common|extra,'Wrong military report fields')
     need(report['build']==BUILD and report['scope']==SCOPES[suite],'Wrong military identity/scope')
     checks=report['results' if suite=='military_progression_contract' else 'checks']
@@ -28,6 +28,14 @@ def validate(report,suite,lock,contract=C):
         engine=report['engine'];need(type(engine) is dict and (engine.get('major'),engine.get('minor'),engine.get('patch'),engine.get('status'))==(4,6,3,'stable'),'Wrong engine report')
     else:
         need(report['suite']==suite,'Wrong suite')
+        observations=report['observations']
+        need(type(observations) is dict and set(observations)=={'farm_setup','farm_final','siege_initial','siege_final','cavalry_initial','cavalry_final'},'Missing route observations')
+        need(type(observations['farm_setup']) is dict and set(observations['farm_setup'])=={'position','site','approach','distance'},'Wrong farm setup observation')
+        need(type(observations['farm_setup']['distance']) in (int,float) and observations['farm_setup']['distance']>1.0,'Farm setup did not require travel')
+        fields={'tick','position','radius','state','path_status','path_reason','path_goal','destination','work_approach','target_position','target_authority_visible','target_projection_visible','attack_distance','attack_range','target_alive','target_hp','target_built','target_build_ticks'}
+        for key in ('farm_final','siege_initial','siege_final','cavalry_initial','cavalry_final'):
+            need(type(observations[key]) is dict and set(observations[key])==fields,'Wrong actor observation')
+        need(observations['siege_initial']['target_authority_visible'] is True,'Initial siege target was hidden')
         for key,ceiling in [('max_path_queries',4),('max_path_expansions',16384)]:
             need(type(report[key]) is int and 0<=report[key]<=ceiling,'Path limit breached')
     return {'checks':checks,'report':report}
