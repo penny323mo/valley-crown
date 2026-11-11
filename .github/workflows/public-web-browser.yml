@@ -1,7 +1,7 @@
 name: Validate military gameplay controls at phone width
 on:
   push:
-    branches: [ci/military-gameplay-web-vc-79ebcaef19e3]
+    branches: [ci/military-gameplay-web-vc-79ebcaef19e3-pins]
 permissions:
   contents: read
   actions: read
@@ -37,7 +37,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Test exact observed Node preflight without launching a browser
-        run: python3 -B -m unittest discover -s qa -p 'test_*preflight.py' -v
+        run: |
+          python3 -B -m unittest discover -s qa -p 'test_*preflight.py' -v
+          python3 -B -m unittest discover -s qa -p test_source_pins.py -v
       - name: Test fixed menu fixture and passive diagnostics without launching a browser
         run: |
           node --test qa/test_military_fixture.mjs qa/test_public_observation_assertions.mjs qa/test_passive_diagnostics.mjs qa/test_public_stream_cache_policy.mjs

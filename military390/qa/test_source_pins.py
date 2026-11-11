@@ -25,6 +25,21 @@ class SourcePins(unittest.TestCase):
             content=data.get('export_manifest',data)
             self.assertEqual(content['source_commit'],source_pins.SOURCE_COMMIT)
             self.assertEqual(content['game_tree'],source_pins.GAME_TREE)
+    def test_actual_stream_literals_match_verified_export(self):
+        expected=json.loads((HERE/'expected-export.json').read_text())
+        for name in ['public_stream_cache_policy.mjs','test_public_stream_cache_policy.mjs']:
+            text=(HERE/name).read_text()
+            self.assertIn(repr(expected['build']),text)
+            self.assertIn(repr(expected['export_manifest']['source_commit']),text)
+            for resource in ['index.wasm','index.pck']:
+                matches=re.findall(re.escape(repr(resource))+r"\s*:\s*'([0-9a-f]{64})'",text)
+                self.assertEqual(matches,[expected['export_manifest']['files_sha256'][resource]])
+    def test_all_executable_bundle_files_reject_previous_runtime_pins(self):
+        for path in HERE.iterdir():
+            if not path.is_file() or path.name.startswith('test_'):continue
+            text=path.read_text()
+            for stale in ['vc-542ddb524e45','422acc862d9fc56f1fe2c95440f411893ded5edf','f75ccbd9484f33676fc46c413d63711fd3144116c8c7dfbb56f2467b194b5fa5','13853296416','43016465017']:
+                self.assertNotIn(stale,text,path.name)
     def test_disabled_unbound_bundle_cannot_be_admitted(self):
         expected=json.loads((HERE/'expected-export.json').read_text())
         scenario=json.loads((HERE/'scenario-manifest.json').read_text())

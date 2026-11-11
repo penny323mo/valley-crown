@@ -5,9 +5,9 @@ import {readFile} from 'node:fs/promises';
 import {createPublicStreamCachePolicy,assertPublicStreamCompletions} from './public_stream_cache_policy.mjs';
 
 function manifest() {
-  return {reviewed:true,build:'vc-542ddb524e45',source_commit:'422acc862d9fc56f1fe2c95440f411893ded5edf',files_sha256:{
+  return {reviewed:true,build:'vc-79ebcaef19e3',source_commit:'ce2ea3d2513bd79cf62cf5c651abe3c47aad8513',files_sha256:{
     'index.wasm':'26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6',
-    'index.pck':'f75ccbd9484f33676fc46c413d63711fd3144116c8c7dfbb56f2467b194b5fa5'}};
+    'index.pck':'131f56c7aec6c50812842bd658a662b19d6abadc7a4a6c999f86802808efcb95'}};
 }
 test('only exact reviewed public paths receive no-cache', () => {
   const policy=createPublicStreamCachePolicy(manifest());

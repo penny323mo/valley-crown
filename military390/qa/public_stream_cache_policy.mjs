@@ -5,13 +5,13 @@ import assert from 'node:assert/strict';
 
 const PUBLIC_PINS = Object.freeze({
   'index.wasm':'26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6',
-  'index.pck':'f75ccbd9484f33676fc46c413d63711fd3144116c8c7dfbb56f2467b194b5fa5',
+  'index.pck':'131f56c7aec6c50812842bd658a662b19d6abadc7a4a6c999f86802808efcb95',
 });
 
 export function createPublicStreamCachePolicy(manifest) {
   assert.equal(manifest.reviewed,true,'Public stream cache policy requires reviewed manifest');
-  assert.equal(manifest.build,'vc-542ddb524e45');
-  assert.equal(manifest.source_commit,'422acc862d9fc56f1fe2c95440f411893ded5edf');
+  assert.equal(manifest.build,'vc-79ebcaef19e3');
+  assert.equal(manifest.source_commit,'ce2ea3d2513bd79cf62cf5c651abe3c47aad8513');
   for (const [name,digest] of Object.entries(PUBLIC_PINS)) {
     assert.ok(Object.hasOwn(manifest.files_sha256 ?? {},name),'Missing exact public export file: '+name);
     assert.equal(manifest.files_sha256[name],digest,'Changed public export hash: '+name);
