@@ -40,8 +40,13 @@ def derive(args):
     # the exact verified official archive with the exact reviewed helper.
     extracted=module.prepare(archive,tool)
     lock={'schema':r.SCHEMA,'reviewed_for_execution':False,'source_commit':commit,'archive_url':r.ARCHIVE_URL,'archive_sha256':r.ARCHIVE_SHA,'runner_sha256':admission['files']['run_authoring.py'],'owned_process_sha256':admission['files']['owned_process.py'],'tool_files':extracted['tool_files'],'code_files':CODE,'source_files':r.SOURCE_FILES,'calibration_sha256':CALIBRATION,'extraction_receipt_sha256':None,'extraction_helper_sha256':admission['files']['prepare_official_tool.py']}
-    r.validate_extraction_receipt(extracted,lock);r.inventory(tool,lock['tool_files'],512<<20);recheck()
+    r.validate_extraction_receipt(extracted,lock)
+    # Preserve false/unaccepted extraction evidence if subsequent admission fails.
     with receipt.open('x') as stream:stream.write(json.dumps(extracted,indent=2)+'\n')
+    empty_sha=r.hashlib.sha256(b'').hexdigest()
+    empty_names=sorted(name for name,h in extracted['tool_files'].items() if h==empty_sha)
+    print('OFFICIAL_TOOL_EMPTY_MEMBERS '+json.dumps({'count':len(empty_names),'paths':empty_names[:128],'truncated':len(empty_names)>128}),flush=True)
+    r.tool_inventory(tool,lock['tool_files']);recheck()
     lock['extraction_receipt_sha256']=p.digest(receipt)
     # This transition is permitted only by the already-reviewed exact derivation
     # admission after extraction and every resulting binding has been verified.

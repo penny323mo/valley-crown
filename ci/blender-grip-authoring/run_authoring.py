@@ -136,6 +136,30 @@ def inventory(root, expected, maximum):
     p.require(actual==expected,'Missing inventory file')
     return actual
 
+def tool_inventory(root,expected):
+    """Only exact-archive-derived tool inventory may contain empty data files.
+    Executable remains nonempty. All generic product inputs use inventory().
+    """
+    root=safe_path(root);p.require(root.is_dir(),'Missing official tool root')
+    empty_sha=hashlib.sha256(b'').hexdigest();actual={}
+    for f in root.rglob('*'):
+        p.require(not f.is_symlink(),'Symlink tool inventory')
+        name=f.relative_to(root).as_posix()
+        if f.is_dir():
+            p.require(any(n.startswith(name+'/') for n in expected),'Unexpected tool directory')
+            continue
+        p.require(name in expected,'Unexpected tool file');safe_path(f);p.regular(f)
+        size=f.stat().st_size
+        if size==0:
+            p.require(name!='blender' and expected[name]==empty_sha,'Invalid empty official tool entry')
+            # Confirm the exact empty content, rather than trusting metadata alone.
+            p.require(p.digest(f)==empty_sha,'Empty official tool entry changed')
+        else:checked(f,expected[name],512<<20)
+        actual[name]=expected[name]
+    p.require(actual==expected,'Missing official tool file')
+    return actual
+
+
 def validate_lock(lock):
     keys={'schema','reviewed_for_execution','source_commit','archive_url','archive_sha256','runner_sha256','owned_process_sha256','tool_files','code_files','source_files','calibration_sha256','extraction_receipt_sha256','extraction_helper_sha256'}
     p.require(type(lock) is dict and set(lock)==keys,'Wrong lock keys')
@@ -194,7 +218,7 @@ def run(args):
     validate_extraction_receipt(json.loads(extraction_receipt.read_text()),lock)
     bindings={str(safe_path(x)):p.digest(p.regular(safe_path(x))) for x in (lockpath,__file__,p.__file__,calibration,args.archive,extraction_receipt,extraction_helper)}
     def recheck():
-        inventory(tool,lock['tool_files'],512<<20)
+        tool_inventory(tool,lock['tool_files'])
         inventory(code,lock['code_files'],1<<20)
         inventory(source,lock['source_files'],16<<20)
         checked(calibration,lock['calibration_sha256'],16<<20)

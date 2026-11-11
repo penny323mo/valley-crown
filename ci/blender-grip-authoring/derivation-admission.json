@@ -2,11 +2,11 @@
   "schema": "vc-fixed-blender-derivation-v1",
   "reviewed_for_derivation": true,
   "files": {
-    "derive_authoring_lock.py": "001d90656b5826723d1ec6b3de8f99a26f174f0157f4edb0f0d700a45aba5f26",
+    "derive_authoring_lock.py": "b9601dd4ad26e51d4fcfda8e6f8725f1564ef4085299af8896a8dc6ee9466b8d",
     "download_official_archive.py": "68d1b4c322274992017aa79feccd23f66ea7f2b6150ebeda366fea911772ec6d",
     "owned_process.py": "e25db8799c62725ee6af547484c7414a6f2685dcbd5ad97d78ea9b059657f320",
     "prepare_official_tool.py": "ae6161286c39497617b30525603ce480c3ad26fc89cdc6f6274fec6d1970188d",
-    "run_authoring.py": "fd7f97c31c8963cd5551eadf0abfe51e151a489408fa36090687752ff5b3a0d3"
+    "run_authoring.py": "c4897cf835f1f8fb4caf70bb8da5a7800e44566ba2c33a3f9293946e20ce1415"
   },
   "code_files": {
     "correct_public_grips.py": "3dfd3babe8fbe2f7ed183b87df1844cffc8e22832a82ed5eaf13c4e0e197d1cb",

@@ -59,11 +59,32 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/blender-grip-authoring/run_authoring.py --lock "$RUNNER_TEMP/grip-authoring/authoring-lock.json" --archive "$RUNNER_TEMP/grip-authoring/download/blender-4.3.2-linux-x64.tar.xz" --extraction-receipt "$RUNNER_TEMP/grip-authoring/extraction-receipt.json" --tool-root "$RUNNER_TEMP/grip-authoring/tool" --code-root "$RUNNER_TEMP/grip-authoring/code" --input-root "$RUNNER_TEMP/grip-authoring/source" --calibration "$RUNNER_TEMP/grip-authoring/calibration/product-grip-calibration.json" --output-root "$RUNNER_TEMP/grip-authoring/output" --evidence-root "$RUNNER_TEMP/grip-authoring/evidence"
-      - name: Upload only successful candidate products
+      - name: Upload successful villager candidate only
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: public-grip-candidates-${{ github.run_id }}
-          path: ${{ runner.temp }}/grip-authoring/output/
+          name: public-grip-villager-${{ github.run_id }}
+          path: ${{ runner.temp }}/grip-authoring/output/villager/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload successful spearman candidate only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-grip-spearman-${{ github.run_id }}
+          path: ${{ runner.temp }}/grip-authoring/output/spearman/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload successful archer candidate only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-grip-archer-${{ github.run_id }}
+          path: ${{ runner.temp }}/grip-authoring/output/archer/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload successful scout candidate only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-grip-scout-${{ github.run_id }}
+          path: ${{ runner.temp }}/grip-authoring/output/scout/
           if-no-files-found: error
           retention-days: 7
       - name: Upload identity and guard evidence
