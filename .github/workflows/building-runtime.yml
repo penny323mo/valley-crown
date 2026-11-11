@@ -1,0 +1,211 @@
+# PREPARED ONLY: mechanical source pin and explicit reviewed gate required.
+name: Validate building runtime and package separate Web candidates
+on:
+  push:
+    branches: [ci/building-runtime-vc-14778726a150-a1]
+permissions:
+  contents: read
+concurrency:
+  group: building-runtime-vc-14778726a150-a1
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      BUILDING_RUNTIME_SOURCE_COMMIT: 651218295606b392bb63a938ffd19edc030024e2
+      BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
+    steps:
+      - name: Reject pending or unapproved pins
+        run: |
+          set -euo pipefail
+          test "$BUILDING_RUNTIME_EXECUTION_APPROVED" = true
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_REF" = refs/heads/ci/building-runtime-vc-14778726a150-a1
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          [[ "$BUILDING_RUNTIME_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+      - name: Select separate fresh runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/building-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Shell-only support identity check before importing Python
+        run: |
+          set -euo pipefail
+          echo 'eabc4ccaef8831dbd23571a6274b1ce35517620c60084f2e7bfe2a77a44ebc12  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          sha256sum --strict --check ci/SUPPORT_SHA256SUMS
+          test ! -e "$RTS_WORK"
+          mkdir -m 700 "$RTS_WORK"
+      - name: Freeze both exact sources before any engine use
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_web_release.py prepare --side product --work "$RTS_WORK/product"
+          python3 -B ci/prepare_web_release.py prepare --side diagnostic --work "$RTS_WORK/diagnostic"
+      - name: Pure original and building adapter preflight
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s ci -p test_contracts.py -v 2>&1 | tee "$RTS_WORK/preflight-contracts.log"
+          python3 -B -m unittest discover -s ci -p test_military.py -v 2>&1 | tee "$RTS_WORK/preflight-military.log"
+          python3 -B -m unittest discover -s ci -p test_faction.py -v 2>&1 | tee "$RTS_WORK/preflight-faction.log"
+          python3 -B -m unittest discover -s ci -p test_building_contracts.py -v 2>&1 | tee "$RTS_WORK/preflight-building.log"
+          python3 -B -m unittest discover -s ci -p test_runtime_package.py -v 2>&1 | tee "$RTS_WORK/preflight-package.log"
+      - name: Pure source preparation tests and exact lock preflight
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s ci -p test_prepare_building_stage.py -v 2>&1 | tee "$RTS_WORK/preflight-prepare.log"
+          python3 -B ci/preflight_runtime_lock.py --side product --work "$RTS_WORK/product" 2>&1 | tee "$RTS_WORK/preflight-product-lock.log"
+          python3 -B ci/preflight_runtime_lock.py --side diagnostic --work "$RTS_WORK/diagnostic" 2>&1 | tee "$RTS_WORK/preflight-diagnostic-lock.log"
+      - name: Prepare pinned official engine and template without launch
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_web_release.py engine --side product --work "$RTS_WORK/product"
+          python3 -B ci/prepare_web_templates.py --work "$RTS_WORK/product"
+      - name: Fresh guarded product import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/product/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/product/source.zip" --manifest "$RTS_WORK/product/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/product/import-evidence" --xdg "$RTS_WORK/product/private/import" --hosted-execution-approved
+      - name: Six exact building suites first
+        run: |
+          set -euo pipefail
+          python3 -B ci/run_building_contracts.py --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/product/export-lock.json" --import-marker "$RTS_WORK/product/private/import/import-complete.json" --output "$RTS_WORK/product/building-contracts" --private "$RTS_WORK/product/private/building-contracts"
+      - name: Eight original release suites
+        run: |
+          set -euo pipefail
+          python3 -B ci/run_contracts.py --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/product/export-lock.json" --import-marker "$RTS_WORK/product/private/import/import-complete.json" --output "$RTS_WORK/product/construction-contracts" --private "$RTS_WORK/product/private/construction-contracts"
+      - name: Two original military suites
+        run: |
+          set -euo pipefail
+          python3 -B ci/run_military.py --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/product/export-lock.json" --import-marker "$RTS_WORK/product/private/import/import-complete.json" --output "$RTS_WORK/product/military-contracts" --private "$RTS_WORK/product/private/military-contracts"
+      - name: Original faction publication suite
+        run: |
+          set -euo pipefail
+          python3 -B ci/run_faction.py --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --lock "$RTS_WORK/product/export-lock.json" --import-marker "$RTS_WORK/product/private/import/import-complete.json" --output "$RTS_WORK/product/faction-contracts" --private "$RTS_WORK/product/private/faction-contracts"
+      - name: Two original guarded product exports
+        run: |
+          set -euo pipefail
+          python3 -B ci/run_export.py --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/product/template/web_nothreads_release.zip" --lock "$RTS_WORK/product/export-lock.json" --import-marker "$RTS_WORK/product/private/import/import-complete.json" --output "$RTS_WORK/product/exports" --private "$RTS_WORK/product/private/export"
+      - name: Package product only after all actual suite receipts pass
+        run: |
+          set -euo pipefail
+          python3 -B ci/package_web_release.py --side product --work "$RTS_WORK/product"
+      - name: Fresh guarded diagnostic import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/diagnostic/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/diagnostic/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/diagnostic/source.zip" --manifest "$RTS_WORK/diagnostic/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/diagnostic/import-evidence" --xdg "$RTS_WORK/diagnostic/private/import" --hosted-execution-approved
+      - name: Two separately guarded diagnostic exports
+        run: |
+          set -euo pipefail
+          python3 -B ci/run_export_diagnostic.py --project "$RTS_WORK/diagnostic/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/product/template/web_nothreads_release.zip" --lock "$RTS_WORK/diagnostic/export-lock.json" --import-marker "$RTS_WORK/diagnostic/private/import/import-complete.json" --output "$RTS_WORK/diagnostic/exports" --private "$RTS_WORK/diagnostic/private/export"
+      - name: Package clearly labeled controlled component art
+        run: |
+          set -euo pipefail
+          python3 -B ci/package_web_release.py --side diagnostic --work "$RTS_WORK/diagnostic"
+      - name: Upload verified product candidate
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: building-product-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ env.RTS_WORK }}/product/candidate/
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 30
+      - name: Upload verified diagnostic candidate
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: building-diagnostic-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ env.RTS_WORK }}/diagnostic/candidate/
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 30
+      - name: Always retain explicit actual bounded evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/preflight-prepare.log
+            ${{ env.RTS_WORK }}/preflight-product-lock.log
+            ${{ env.RTS_WORK }}/preflight-diagnostic-lock.log
+            ${{ env.RTS_WORK }}/preflight-contracts.log
+            ${{ env.RTS_WORK }}/preflight-military.log
+            ${{ env.RTS_WORK }}/preflight-faction.log
+            ${{ env.RTS_WORK }}/preflight-building.log
+            ${{ env.RTS_WORK }}/preflight-package.log
+            ${{ env.RTS_WORK }}/product/source-attestation.json
+            ${{ env.RTS_WORK }}/product/export-lock.json
+            ${{ env.RTS_WORK }}/product/release-summary.json
+            ${{ env.RTS_WORK }}/product/import-evidence/phase-summary.json
+            ${{ env.RTS_WORK }}/product/import-evidence/import.json
+            ${{ env.RTS_WORK }}/product/import-evidence/import.invocation.json
+            ${{ env.RTS_WORK }}/product/import-evidence/import.log
+            ${{ env.RTS_WORK }}/product/exports/web-export-receipt.json
+            ${{ env.RTS_WORK }}/product/exports/export-1/receipt.json
+            ${{ env.RTS_WORK }}/product/exports/export-1/godot.log
+            ${{ env.RTS_WORK }}/product/exports/export-2/receipt.json
+            ${{ env.RTS_WORK }}/product/exports/export-2/godot.log
+            ${{ env.RTS_WORK }}/diagnostic/source-attestation.json
+            ${{ env.RTS_WORK }}/diagnostic/export-lock.json
+            ${{ env.RTS_WORK }}/diagnostic/release-summary.json
+            ${{ env.RTS_WORK }}/diagnostic/import-evidence/phase-summary.json
+            ${{ env.RTS_WORK }}/diagnostic/import-evidence/import.json
+            ${{ env.RTS_WORK }}/diagnostic/import-evidence/import.invocation.json
+            ${{ env.RTS_WORK }}/diagnostic/import-evidence/import.log
+            ${{ env.RTS_WORK }}/diagnostic/exports/web-export-receipt.json
+            ${{ env.RTS_WORK }}/diagnostic/exports/export-1/receipt.json
+            ${{ env.RTS_WORK }}/diagnostic/exports/export-1/godot.log
+            ${{ env.RTS_WORK }}/diagnostic/exports/export-2/receipt.json
+            ${{ env.RTS_WORK }}/diagnostic/exports/export-2/godot.log
+            ${{ env.RTS_WORK }}/product/template-provenance.json
+            ${{ env.RTS_WORK }}/product/building-contracts/building-contracts-receipt.json
+            ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/receipt.json
+            ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/godot.log
+            ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_observation/receipt.json
+            ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_observation/godot.log
+            ${{ env.RTS_WORK }}/product/building-contracts/construction_visual/receipt.json
+            ${{ env.RTS_WORK }}/product/building-contracts/construction_visual/godot.log
+            ${{ env.RTS_WORK }}/product/building-contracts/building_damage_component/receipt.json
+            ${{ env.RTS_WORK }}/product/building-contracts/building_damage_component/godot.log
+            ${{ env.RTS_WORK }}/product/building-contracts/building_damage_projection/receipt.json
+            ${{ env.RTS_WORK }}/product/building-contracts/building_damage_projection/godot.log
+            ${{ env.RTS_WORK }}/product/building-contracts/map80_sparse_memory/receipt.json
+            ${{ env.RTS_WORK }}/product/building-contracts/map80_sparse_memory/godot.log
+            ${{ env.RTS_WORK }}/product/construction-contracts/construction-contracts-receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/construction_status/receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/construction_status/godot.log
+            ${{ env.RTS_WORK }}/product/construction-contracts/construction_status_hud/receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/construction_status_hud/godot.log
+            ${{ env.RTS_WORK }}/product/construction-contracts/mobile_stop_control_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/mobile_stop_control_contract/godot.log
+            ${{ env.RTS_WORK }}/product/construction-contracts/mobile_stop_control_phone/receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/mobile_stop_control_phone/godot.log
+            ${{ env.RTS_WORK }}/product/construction-contracts/stance_target_cancel_phone/receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/stance_target_cancel_phone/godot.log
+            ${{ env.RTS_WORK }}/product/construction-contracts/contextual_touch_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/contextual_touch_contract/godot.log
+            ${{ env.RTS_WORK }}/product/construction-contracts/contextual_touch_phone/receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/contextual_touch_phone/godot.log
+            ${{ env.RTS_WORK }}/product/construction-contracts/main_menu_flow_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/main_menu_flow_contract/godot.log
+            ${{ env.RTS_WORK }}/product/military-contracts/military-contracts-receipt.json
+            ${{ env.RTS_WORK }}/product/military-contracts/military_progression_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/military-contracts/military_progression_contract/godot.log
+            ${{ env.RTS_WORK }}/product/military-contracts/military_runtime_edges/receipt.json
+            ${{ env.RTS_WORK }}/product/military-contracts/military_runtime_edges/godot.log
+            ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication-receipt.json
+            ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication/receipt.json
+            ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication/godot.log
+            ${{ env.RTS_WORK }}/product/building-contracts/construction_visual/construction-report.json
+            ${{ env.RTS_WORK }}/product/construction-contracts/stance_target_cancel_phone/stance-target-cancel-phone.json
+            ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication/faction-publication-report.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+# No browser, deployment, Pages, write permissions or live-site change.

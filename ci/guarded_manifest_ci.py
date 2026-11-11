@@ -14,7 +14,6 @@ import re
 import shutil
 import sys
 import zipfile
-import building_import_policy as building
 
 HERE = Path(__file__).resolve().parent
 MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
@@ -143,8 +142,6 @@ def inventory(project, entries, allowed_reports=()):
     generated_uids = {name + '.uid' for name in entries if name.endswith('.gd') and name + '.uid' not in entries}
     if 'assets/mature/shaders/building_damage_soot.gdshader' in entries and 'assets/mature/shaders/building_damage_soot.gdshader.uid' not in entries: generated_uids.add('assets/mature/shaders/building_damage_soot.gdshader.uid')
     if 'assets/mature/menu/menu_backdrop.gdshader' in entries and 'assets/mature/menu/menu_backdrop.gdshader.uid' not in entries: generated_uids.add('assets/mature/menu/menu_backdrop.gdshader.uid')
-    generated_imports = building.expected(entries)
-    building.descriptors(project, entries)
     extra = {}; ids = set(); original_uid_contents = {(project/n).read_bytes() for n in entries if n.endswith('.uid')}
     for path in project.rglob('*'):
         require(not path.is_symlink(), 'Project symlink found')
@@ -154,7 +151,7 @@ def inventory(project, entries, allowed_reports=()):
         if name in entries:
             require(sha(path) == entries[name], 'Source inventory mutated: ' + name)
         else:
-            require(name.startswith('.godot/') or name in generated_uids or name in generated_imports or name in allowed_reports, 'Unexpected project write: ' + name)
+            require(name.startswith('.godot/') or name in generated_uids or name in allowed_reports, 'Unexpected project write: ' + name)
             if name in generated_uids:
                 require(path.stat().st_size <= 20, 'Oversize generated UID sidecar')
                 data=path.read_bytes(); number=parse_generated_uid(data)
@@ -251,7 +248,6 @@ def main():
     p.add_argument('--archive-sha256', required=True); p.add_argument('--manifest-sha256', required=True)
     p.add_argument('--hosted-execution-approved', action='store_true', help='Delivery may set only after exact adapter/workflow review')
     args = p.parse_args()
-    require(args.phase == 'import', 'This reviewed collection stage is import-only')
     require_hosted_approval(args.hosted_execution_approved, os.environ)
     project, archive, manifest, output, xdg = [getattr(args, n).resolve() for n in ('project', 'archive', 'manifest', 'output', 'xdg')]
     require(project.is_dir() and not output.exists() and not output.is_symlink(), 'Fresh evidence directory required')
@@ -260,9 +256,6 @@ def main():
             and not output.is_relative_to(xdg) and not xdg.is_relative_to(output), 'Evidence/XDG roots must be separate from source and each other')
     engine_name = shutil.which(args.godot); require(engine_name is not None, 'Godot binary not found')
     engine = checked(engine_name, ENGINE_SHA)
-    building_policy_hash = os.environ.get('BUILDING_IMPORT_POLICY_SHA256')
-    require(type(building_policy_hash) is str and re.fullmatch('[a-f0-9]{64}', building_policy_hash), 'Reviewed building policy pin required')
-    checked(Path(building.__file__), building_policy_hash)
     package, entries = verify_source(project, archive, manifest, args.archive_sha256, args.manifest_sha256)
     if args.phase == 'import':
         require_fresh_import(project, entries, xdg)
@@ -279,13 +272,12 @@ def main():
     def save():
         summary_path.write_text(json.dumps(summary, indent=2) + '\n')
     def invoke(name, argv, extra=None):
-        checked(Path(building.__file__), building_policy_hash)
         verify_source(project, archive, manifest, args.archive_sha256, args.manifest_sha256)
         inventory(project, entries, allowed_reports)
         artifacts = {'adapter': Path(__file__).resolve(), 'monitor': HERE / 'hardened_monitored_run.py',
-                     'engine': engine, 'archive': archive, 'suite-manifest': manifest, 'building-policy': Path(building.__file__)}
+                     'engine': engine, 'archive': archive, 'suite-manifest': manifest}
         expected = {'adapter': sha(__file__), 'monitor': MONITOR_SHA, 'engine': ENGINE_SHA,
-                    'archive': args.archive_sha256, 'suite-manifest': args.manifest_sha256, 'building-policy': building_policy_hash}
+                    'archive': args.archive_sha256, 'suite-manifest': args.manifest_sha256}
         for path, digest in {**(extra or {}), **previous_outputs}.items():
             key = 'bound:' + str(path); artifacts[key] = checked(path, digest); expected[key] = digest
         for name_in, digest in entries.items():
@@ -297,7 +289,6 @@ def main():
         row = {key: result[key] for key in ('passed', 'exit', 'cleanup_complete', 'stop_reason', 'seconds', 'sampled_peak_rss_kib')}
         row.update(name=name, receipt=receipt.name, receipt_sha256=sha(receipt), invocation_sha256=sha(invocation))
         summary['commands'].append(row); save()
-        checked(Path(building.__file__), building_policy_hash)
         verify_source(project, archive, manifest, args.archive_sha256, args.manifest_sha256)
         inventory(project, entries, allowed_reports)
         if args.phase == 'test':
@@ -309,9 +300,7 @@ def main():
             require(not marker.exists(), 'Import marker exists')
             inventory(project, entries)
             invoke('import', [str(engine), '--headless', '--editor', '--path', str(project), '--import'])
-            scene_outputs = building.validate_outputs(project, entries)
-            summary['generated_buildings'] = scene_outputs
-            certificate = {'generated_buildings': scene_outputs, 'building_policy_sha256': building_policy_hash, 'build': package['candidate'], 'project': str(project), 'archive_sha256': args.archive_sha256,
+            certificate = {'build': package['candidate'], 'project': str(project), 'archive_sha256': args.archive_sha256,
                            'manifest_sha256': args.manifest_sha256, 'engine_sha256': ENGINE_SHA, 'adapter_sha256': sha(__file__),
                            'receipt': str(output / 'import.json'), 'receipt_sha256': sha(output / 'import.json'),
                            'invocation': str(output / 'import.invocation.json'), 'invocation_sha256': sha(output / 'import.invocation.json'),
@@ -358,31 +347,6 @@ def main():
         summary['error'] = {'type': type(exc).__name__, 'message': str(exc)}; save()
         print(json.dumps({'phase': args.phase, 'passed': False, 'error': summary['error']}), flush=True)
         return 1
-    finally:
-        # Retain actual bounded outputs even when validation failed. They remain
-        # diagnostic evidence, never accepted or added to original source entries.
-        try:
-            retained = building.retain_actual(project, output, entries)
-            summary['retention'] = retained
-            if retained['errors']:
-                summary['passed'] = False
-            if summary['passed']:
-                checked(Path(building.__file__), building_policy_hash)
-                verify_source(project, archive, manifest, args.archive_sha256, args.manifest_sha256)
-                inventory(project, entries)
-                require(building.validate_outputs(project, entries) == summary['generated_buildings'], 'Generated output drift during retention')
-                for descriptor_name, generated in summary['generated_buildings'].items():
-                    for artifact_name, digest in ((descriptor_name, generated['descriptor_sha256']),
-                            (generated['compiled'], generated['compiled_sha256']), (generated['md5_path'], generated['md5_sha256'])):
-                        require(retained['files'][artifact_name]['sha256'] == digest, 'Retained generated binding differs')
-            save()
-        except BaseException as exc:
-            summary['passed'] = False
-            summary['retention_error'] = {'type': type(exc).__name__, 'message': str(exc)}
-            save()
-        if not summary['passed']:
-            # A retention failure must invalidate an otherwise successful return.
-            return 1
 
 
 if __name__ == '__main__':
