@@ -2973,7 +2973,11 @@ func _submit_selected_stance(type: String):
 	# A deliberate Stop/Defend replaces the unfinished targeting interaction.
 	# Retire held pointers too, so their late release cannot issue a new order.
 	if not paused and not game_over and build_mode.is_empty() and not box_select_mode and rally_building<0:
-		_cancel_mode()
+		if touch_command: _cancel_mode()
+		else:
+			# Ordinary contextual Stop still retires unfinished world/UI presses,
+			# but has no mode to cancel. Keep its live HUD control for repeat taps.
+			_cancel_pointer_streams()
 	_submit(type,{"ids":selected.duplicate()})
 
 func _message(text,duration=4.0,build_guidance=false):

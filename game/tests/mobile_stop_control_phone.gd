@@ -35,15 +35,19 @@ func run():
 		var worker=game._first(0,"villager")
 		game._select([worker.id]); await settle()
 		var label="%dx%d" % [size.x,size.y]
-		var stop=game.stop_button
+		var stop_id=game.stop_button.get_instance_id()
 		var house=action("民居\n")
-		check(label+" Stop visible without scrolling",visible(stop) and stop.get_parent()==game.compact_unit_tools and game.action_scroll.scroll_horizontal==0)
+		check(label+" Stop visible without scrolling",visible(game.stop_button) and game.stop_button.get_parent()==game.compact_unit_tools and game.action_scroll.scroll_horizontal==0)
 		check(label+" full first build target remains reachable",visible(house) and game.action_scroll.get_global_rect().encloses(house.get_global_rect()) and house.size.x>=90)
 		check(label+" only two pinned targets",game.compact_unit_tools.get_children().filter(func(child): return child.is_visible_in_tree()).size()==2 and not game.compact_cancel_button.visible)
 		var bank=game.economy.bank_milli(0).duplicate()
-		await tap(stop.get_global_rect().get_center())
+		await tap(game.stop_button.get_global_rect().get_center())
 		check(label+" one tap queues one ordinary Stop",game.commands.size()==1 and game.commands[0].type=="stop" and game.commands[0].ids==[worker.id])
-		await tap(stop.get_global_rect().get_center())
+		# Never dereference a cached Control across an awaited action. Check the
+		# production lifetime separately, then repeat through the current button.
+		check(label+" ordinary Stop preserves live repeat target",visible(game.stop_button) and game.stop_button.get_instance_id()==stop_id)
+		if not visible(game.stop_button): finish(); return
+		await tap(game.stop_button.get_global_rect().get_center())
 		check(label+" repeated tap cannot build or refund",game.commands.size()==2 and game.commands.all(func(command): return command.type=="stop"))
 		while not game.commands.is_empty(): game._execute(game.commands.pop_front())
 		game._publish_faction_views(); game._update_hud(); await settle()
