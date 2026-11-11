@@ -27,7 +27,7 @@ class MetadataPreflight(unittest.TestCase):
         self.assertIn("owner == 'google-chrome-stable: /opt/google/chrome/chrome'", source)
         self.assertIn('chrome_sha256=sha(chrome)', source)
 
-    def test_browser_limits_and_desktop_only_followup(self):
+    def test_browser_limits_and_portrait_only_followup(self):
         guard = (HERE / 'run_host_browser.py').read_text()
         for setting in ['--property=MemoryMax=3G', '--property=MemorySwapMax=0', '--property=TasksMax=256',
                         '--property=CPUQuota=200%', '--property=RuntimeMaxSec=100', '--property=TimeoutStopSec=5',
@@ -37,7 +37,7 @@ class MetadataPreflight(unittest.TestCase):
         self.assertIn('Math.min(90000,', host)
         self.assertIn('chromiumSandbox:true', host)
         workflow = (HERE.parent / '.github/workflows/public-web-browser.yml').read_text()
-        self.assertIn('profile: [desktop]', workflow)
+        self.assertIn('profile: [portrait]', workflow)
         self.assertNotIn('profile: [desktop, portrait]', workflow)
 
 

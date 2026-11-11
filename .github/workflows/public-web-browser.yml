@@ -1,21 +1,21 @@
-name: Validate current Web release in Chrome
+name: Validate resource and training loop in Chrome
 on:
   push:
-    branches: [ci/public-web-browser-vc-dd795d96905c]
+    branches: [ci/resource-training-vc-dd795d96905c]
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: public-web-browser-vc-dd795d96905c
+  group: resource-training-vc-dd795d96905c
   cancel-in-progress: false
 jobs:
   browser:
-    name: Browser smoke (${{ matrix.profile }})
+    name: Resource and training (${{ matrix.profile }})
     if: ${{ github.run_attempt == 1 }}
     strategy:
       fail-fast: false
       matrix:
-        profile: [desktop]
+        profile: [portrait]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -54,7 +54,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: current-web-browser-${{ matrix.profile }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: resource-training-${{ matrix.profile }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             ${{ env.RTS_WORK }}/evidence/*.png
             ${{ env.RTS_WORK }}/evidence/*.json
