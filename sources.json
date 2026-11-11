@@ -1,0 +1,50 @@
+{
+  "arms": {
+    "baseline": {
+      "final_fixture_source_sha256": "db63648a075e142d695e6c758b74389605e84eedbc2133945e14f83a1b0cb2fd",
+      "final_game_tree": "4737f48a1db643d8310b678323d3f601f79a0633",
+      "final_source_bound": true,
+      "final_source_commit": "6ecf0763e00b6b24464e27a54f8073b7c8069623",
+      "lifecycle_acceptance_sha256": "f25ea7354da3826ac78f40b19637c4f74a6813a3343332ac778b221c71a8f290",
+      "parent_reported_lifecycle_acceptance": {
+        "accepted": true,
+        "batches": 16,
+        "checks": 124,
+        "equal_projection_states": 44,
+        "run_id": "43034220790",
+        "scope": "Parent report; exact independently verified receipt hash remains to bind"
+      },
+      "snapshot": "inputs/baseline.json",
+      "snapshot_sha256": "87565c61ca64a5aba9105092de7cf15e35eef624724c73aefbe893d8913dadcb"
+    },
+    "candidate": {
+      "final_fixture_source_sha256": "db63648a075e142d695e6c758b74389605e84eedbc2133945e14f83a1b0cb2fd",
+      "final_game_tree": "f866d43a7f9eb8402c445f8bb2c9a5a0aa13559d",
+      "final_source_bound": true,
+      "final_source_commit": "be68294f36cb09e72a97162073a7f4292d281f79",
+      "lifecycle_acceptance_sha256": "6375c977ce698effe2f099a40b5350302922e38b8c1b1a79947d793b4a629c7e",
+      "parent_reported_lifecycle_acceptance": {
+        "accepted": true,
+        "batches": 16,
+        "checks": 124,
+        "equal_projection_states": 44,
+        "run_id": "43034229958",
+        "scope": "Parent report; exact independently verified receipt hash remains to bind"
+      },
+      "snapshot": "inputs/candidate.json",
+      "snapshot_sha256": "8df4d9cd26f52732d683ba8a1312ced39dc0b11fe86f8014f7f9af609be73994"
+    }
+  },
+  "execution_approved": true,
+  "expected_product_files": 233,
+  "expected_product_generated_uid_names": 31,
+  "expected_runtime_inputs": 140,
+  "final_source_reviewed": true,
+  "main_scene_from": "run/main_scene=\"res://main_menu.tscn\"",
+  "main_scene_to": "run/main_scene=\"res://diagnostic/visibility_paused.tscn\"",
+  "overlay_files_sha256": {
+    "diagnostic/visibility_paused.gd": "a09462f7654cdd9faf58d263130f56d9c0ce44b1dddfb708ca1052bf4daa2f30",
+    "diagnostic/visibility_paused.tscn": "04418f9e5d278b59a562de88613f784ced8334f031f55c33d7d51a254fbe4b7f"
+  },
+  "schema": "vc-paused-diagnostic-sources-v1"
+}

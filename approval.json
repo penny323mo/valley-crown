@@ -1,0 +1,9 @@
+{
+  "schema": "vc-paused-diagnostic-execution-v1",
+  "reviewed": true,
+  "execution_approved": true,
+  "repository": "penny323mo/valley-crown",
+  "run_attempt": "1",
+  "side": "candidate",
+  "branch": "refs/heads/ci/visibility-paused-export-candidate-1cb7"
+}

@@ -1,0 +1,81 @@
+name: Export paused visibility diagnostic candidate
+on:
+  push:
+    branches: [ci/visibility-paused-export-candidate-1cb7]
+permissions:
+  contents: read
+concurrency:
+  group: visibility-paused-export-candidate
+  cancel-in-progress: false
+jobs:
+  export:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      DIAGNOSTIC_EXECUTION_APPROVED: 'true'
+      DIAGNOSTIC_SIDE: 'candidate'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify unchanged product tree and fixed branch
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ci/visibility-paused-export-candidate-1cb7'
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git rev-parse HEAD:game)" = 'f866d43a7f9eb8402c445f8bb2c9a5a0aa13559d'
+          test ! -e "$GITHUB_WORKSPACE/prepared"
+          mkdir "$GITHUB_WORKSPACE/prepared"
+          echo "RTS_WORK=$GITHUB_WORKSPACE/prepared/candidate" >> "$GITHUB_ENV"
+      - name: Prepare exact diagnostic source and guard bindings
+        run: python3 -B ci/prepare_diagnostic_export.py --side candidate --work "$RTS_WORK"
+      - name: Fail-closed source and admission preflight without engine
+        run: python3 -B ci/preflight_diagnostic.py candidate "$RTS_WORK"
+      - name: Acquire pinned official engine and Web template without launch
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_official_engine.py "$RTS_WORK"
+          python3 -B ci/prepare_web_templates.py --work "$RTS_WORK"
+      - name: Original bounded fresh import with exact diagnostic source policy
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: Two original bounded diagnostic exports
+        run: python3 -B ci/run_export.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/template/web_nothreads_release.zip" --lock "$RTS_WORK/export-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/exports" --private "$RTS_WORK/private/export"
+      - name: Package repeat-identical diagnostic bytes with notices
+        run: python3 -B ci/package_diagnostic_export.py --work "$RTS_WORK"
+      - name: Retain exact diagnostic artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: visibility-paused-candidate-web-${{ github.sha }}
+          path: ${{ env.RTS_WORK }}/candidate/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Retain small actual import/export receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: visibility-paused-candidate-evidence-${{ github.sha }}
+          path: |
+            ${{ env.RTS_WORK }}/import-evidence/import.json
+            ${{ env.RTS_WORK }}/import-evidence/import.invocation.json
+            ${{ env.RTS_WORK }}/import-evidence/import.log
+            ${{ env.RTS_WORK }}/import-evidence/phase-summary.json
+            ${{ env.RTS_WORK }}/import-manifest.json
+            ${{ env.RTS_WORK }}/export-lock.json
+            ${{ env.RTS_WORK }}/source-policy-lock.json
+            ${{ env.RTS_WORK }}/template-provenance.json
+            ${{ env.RTS_WORK }}/exports/web-export-receipt.json
+            ${{ env.RTS_WORK }}/exports/export-1/receipt.json
+            ${{ env.RTS_WORK }}/exports/export-1/godot.log
+            ${{ env.RTS_WORK }}/exports/export-2/receipt.json
+            ${{ env.RTS_WORK }}/exports/export-2/godot.log
+            ${{ env.RTS_WORK }}/diagnostic-export-manifest.json
+            ${{ env.RTS_WORK }}/diagnostic-export-summary.json
+          retention-days: 14
+          if-no-files-found: warn
+# Diagnostic capture input only. No main/Pages deployment or gameplay-speed changes.
