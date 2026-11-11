@@ -1,17 +1,17 @@
 {
-  "build": "vc-10d6c6145978",
-  "source_commit": "3e84f07b5984135572c089a70fd90392810b8017",
-  "game_tree": "5047b4ffcd5b7fea49a668d7769f7fa80a909062",
-  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/43008259514",
+  "build": "vc-79ebcaef19e3",
+  "source_commit": "ce2ea3d2513bd79cf62cf5c651abe3c47aad8513",
+  "game_tree": "cadc77674b0b3184e7c3af9961f3e6ffdac507e9",
+  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/43022406764",
   "export_scope": "Two byte-identical repeat Web exports from one clean guarded import. Browser validation is a separate required release gate.",
   "files_sha256": {
     "index.apple-touch-icon.png": "9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a",
     "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
     "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
-    "index.html": "e0aa42997b5073968d8f4bf75ff82cbd428bb4be7cf5a266ab44929147f54c4c",
+    "index.html": "b2a87147f8e61da0d7aa3c8002d0a5ba68416b9a18e75c8b5befef694f1ccd51",
     "index.icon.png": "08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5",
     "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
-    "index.pck": "d0aeff364782b1442cee947b03f352f11ae78b531cb0016a63d15a78733becd6",
+    "index.pck": "131f56c7aec6c50812842bd658a662b19d6abadc7a4a6c999f86802808efcb95",
     "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
     "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6",
     "GODOT-LICENSES.txt": "f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f",
@@ -25,90 +25,115 @@
     "art/action_characters/licenses/quaternius-ual2.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
     "art/action_characters/licenses/kaykit-animations.txt": "373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9"
   },
-  "scope": "Tested illustrated main-menu and touch-navigation beta; not full-game acceptance.",
+  "scope": "Tested mobile input repair and military progression beta; provisional military presentation, not full-game acceptance.",
   "features": [
-    "Original illustrated castle-valley menu with Traditional Chinese serif title and responsive portrait/landscape composition. The illustration is menu artwork, not a gameplay screenshot.",
-    "Persistent large primary controls, explicit New Match confirmation/cancel and pause-preserving Resume.",
-    "Help supports ordinary single-finger scrolling; the final paragraph and Back remain reachable after resizing.",
-    "Existing contextual touch, visible compact Stop and terrain remain included; military/grip changes are not part of this menu release."
+    "Fix the first battlefield tap after swiping the action strip. Actual producer swipe followed by first worker selection is covered; cancelled and repeated swipes also have routed engine regressions.",
+    "Four resources and age progression, eight worker-buildable structures plus the starting town center, cavalry and siege gameplay, age-locked stable/workshop and expanded production/economy rules. New military models remain provisional.",
+    "Immediate villager build palette, contextual ground/resource orders, compact Stop and the existing illustrated responsive main menu.",
+    "Faction-view publication optimization with separate semantic/component checks; no claim of whole-game or mobile speedup."
   ],
   "native_validation": {
-    "run": "https://github.com/penny323mo/valley-crown/actions/runs/43008259514",
-    "passed_assertions": 487,
+    "status": "passed",
+    "run": "https://github.com/penny323mo/valley-crown/actions/runs/43022406764",
+    "passed_assertions": 642,
     "suites": {
       "construction_status": 34,
       "construction_status_hud": 34,
       "mobile_stop_control_contract": 21,
       "mobile_stop_control_phone": 64,
       "stance_target_cancel_phone": 58,
-      "contextual_touch_contract": 23,
-      "contextual_touch_phone": 10,
-      "main_menu_flow_contract": 243
+      "contextual_touch_contract": 25,
+      "contextual_touch_phone": 26,
+      "main_menu_flow_contract": 243,
+      "military_progression_contract": 66,
+      "military_runtime_edges": 31,
+      "faction_publication": 40
     },
-    "scope": "Headless controlled value, command and UI fixtures. Synthetic handlers and end states are not natural play, rendering, device or victory acceptance."
+    "scope": "Controlled headless engine fixtures including synthetic states and actual Viewport-routed input; not rendered combat or physical-device proof.",
+    "repeat_web_exports": 2,
+    "cleanup_verified": true,
+    "oom_unchanged": true
   },
   "browser_validation": {
     "status": "passed",
-    "run": "https://github.com/penny323mo/valley-crown/actions/runs/43011239931",
-    "input": "Chrome emulated touchscreen at320/390/844 profiles and desktop mouse/keyboard at1440; not physical phones",
+    "run": "https://github.com/penny323mo/valley-crown/actions/runs/43024327364",
+    "input": "Real hosted Chrome390x844 emulated touchscreen, not a physical phone",
     "scenarios": [
       {
-        "viewport": [
-          320,
-          568
-        ],
-        "resized_viewport": [
-          568,
-          320
-        ],
-        "passed": "Home, real Help scrolling to fully visible final paragraph, Back, ordinary Start, owned worker selection, natural ticks, retained paused match, resize interruption, New Match Cancel, Resume and confirmed reset to observed owned-town-center startup state."
-      },
-      {
+        "profile": "military390-producer",
+        "passed": true,
         "viewport": [
           390,
           844
         ],
-        "resized_viewport": [
-          844,
-          390
+        "elapsed_seconds": 25.102039512999998,
+        "scope": "producer-direct",
+        "screenshots": [
+          "military390-producer-producer-queue-age.png"
         ],
-        "passed": "Home, real Help scrolling to fully visible final paragraph, Back, ordinary Start, owned worker selection, natural ticks, retained paused match, resize interruption, New Match Cancel, Resume and confirmed reset to observed owned-town-center startup state."
+        "cleanup_verified": true,
+        "host_oom_unchanged": true,
+        "inputs_unchanged": true,
+        "network_errors": 0
       },
       {
+        "profile": "military390-palette-first",
+        "passed": true,
         "viewport": [
-          844,
-          390
-        ],
-        "resized_viewport": [
           390,
           844
         ],
-        "passed": "Home, real Help scrolling to fully visible final paragraph, Back, ordinary Start, owned worker selection, natural ticks, retained paused match, resize interruption, New Match Cancel, Resume and confirmed reset to observed owned-town-center startup state."
+        "elapsed_seconds": 28.657445938,
+        "scope": "palette-first",
+        "screenshots": [
+          "military390-palette-first-palette-pair-1.png",
+          "military390-palette-first-palette-pair-2.png"
+        ],
+        "cleanup_verified": true,
+        "host_oom_unchanged": true,
+        "inputs_unchanged": true,
+        "network_errors": 0
       },
       {
+        "profile": "military390-palette-last",
+        "passed": true,
         "viewport": [
-          1440,
-          900
+          390,
+          844
         ],
-        "resized_viewport": [
-          900,
-          1440
+        "elapsed_seconds": 47.512449880999995,
+        "scope": "palette-last",
+        "screenshots": [
+          "military390-palette-last-palette-pair-3.png",
+          "military390-palette-last-palette-pair-4.png"
         ],
-        "passed": "Home, real Help scrolling to fully visible final paragraph, Back, ordinary Start, owned worker selection, natural ticks, retained paused match, resize interruption, New Match Cancel, Resume and confirmed reset to observed owned-town-center startup state."
+        "cleanup_verified": true,
+        "host_oom_unchanged": true,
+        "inputs_unchanged": true,
+        "network_errors": 0
       }
     ],
-    "screenshots": "Actual final-build menu, Help tail, pause, confirmation and rotated views inspected. Compact568x320 deliberately prioritizes artwork and full controls over repeated title/crest. Artwork is original illustration, not in-game rendering.",
-    "network_gate": "Zero observed browser errors including context close. Exact pinned WASM/PCK GETs returned200 and finished.",
-    "fixture_cache_policy": "Only two manifest-pinned public streams use no-cache in fresh isolated fixture contexts; other responses retain no-store. Public Pages uses its own caching policy. Earlier failed runs remain failed.",
+    "screenshots": "Actual four-resource/age HUD, production queue and all eight building entries inspected; no overlap or clipped required labels accepted.",
+    "network_gate": "Zero observed browser errors, exact WASM/PCK GET200 finished; strict close and cleanup checks.",
+    "fixture_cache_policy": "Only exact manifest-pinned WASM/PCK use no-cache in fresh isolated fixture contexts; all failures remain fatal.",
     "cleanup_verified": true,
     "input_hashes_unchanged": true,
     "host_oom_unchanged": true
   },
   "validation_limits": [
-    "Physical iPhone/Android, audible audio, physical multi-touch ergonomics, OS background interruption and browser-history behavior remain unverified.",
-    "This release does not prove a complete rendered growth-to-victory match, current-build natural combat or terminal victory/defeat navigation.",
-    "Weapon/tool/shield grip corrections and expanded military progression are not included.",
-    "Browser tests used exact exported bytes on a hosted loopback server. Public served-byte verification follows deployment."
+    "Cavalry/siege presentation and existing weapon/tool/shield grip remain provisional; corrected final models are not in this release.",
+    "Complete rendered growth-war-victory sequence, normal-phone-camera projectile/HP readability and advanced-unit natural-play coverage remain unverified.",
+    "Physical phones, audible audio, OS background interruption and browser-history behavior remain unverified.",
+    "Current-build browser acceptance is390x844; prior-build four-profile menu evidence is labelled separately.",
+    "Earlier failed runs remain failed. Public served-byte verification is separate after deployment."
   ],
-  "full_game_acceptance": false
+  "full_game_acceptance": false,
+  "historical_validation": {
+    "prior_build": "vc-542ddb524e45",
+    "source_commit": "422acc862d9fc56f1fe2c95440f411893ded5edf",
+    "menu_profiles_run": "https://github.com/penny323mo/valley-crown/actions/runs/43017262730",
+    "menu_profiles": "320x568,390x844,844x390,1440x900 plus rotations on the prior build; menu source remains unchanged.",
+    "natural_match_run": "https://github.com/penny323mo/valley-crown/actions/runs/43017137336",
+    "natural_match": "13 ordinary-command phases through keep-destruction victory, headless only, game338.75s. This is prior-build evidence, not rendered or physical-touch proof for this release."
+  }
 }

@@ -1,19 +1,19 @@
 # Valley & Crown game source
 
-Current integrated development build: `vc-79ebcaef19e3`. Repairs the first battlefield tap after an action-strip swipe, with an added viewport-routed regression. It retains military progression, faction-publication optimization and the illustrated menu. Tests for this new input repair are pending; cavalry/siege presentation remains provisional, not final art.
+Current tested Web beta: `vc-79ebcaef19e3`. [Play](https://penny323mo.github.io/valley-crown/builds/vc-79ebcaef19e3/).
 
-The preceding military source `422acc862d9fc56f1fe2c95440f411893ded5edf` / `vc-542ddb524e45` passed 626 controlled engine assertions, two identical Web exports, four real-browser menu profiles and a separately bounded headless normal match through keep-destruction victory. Its direct swipe-to-world browser test failed and motivated this repair; those earlier successes do not automatically validate the new bytes.
+Tested source `ce2ea3d2513bd79cf62cf5c651abe3c47aad8513`, game tree `cadc77674b0b3184e7c3af9961f3e6ffdac507e9`. Later release documentation does not alter runtime bytes.
 
-The latest released and separately verified menu beta remains [vc-10d6c6145978](https://penny323mo.github.io/valley-crown/builds/vc-10d6c6145978/). The historical release evidence below applies to that release, not automatically to these development bytes.
+- Fixed the first battlefield tap after swiping the action strip. Ordinary producer swipe followed by first worker selection, direct ground/resource commands, and immediately available building actions are covered.
+- Four resources, age research, eight worker-buildable structures plus the starting town center, advanced stable/workshop gates, cavalry/siege gameplay and producer controls. Military models and weapon grips remain provisional, not final art.
+- Existing illustrated Traditional Chinese menu, compact Stop and terrain retained. The menu illustration is artwork, not a gameplay screenshot.
 
-Integrated Godot4.6.3 source, deterministic pre-import build `vc-10d6c6145978`. Open `project.godot` in Godot. The ordinary entry is the main menu; Start creates the match.
+642 controlled engine assertions and two byte-identical Web exports passed in [run43022406764](https://github.com/penny323mo/valley-crown/actions/runs/43022406764). Three separately bounded390x844 real-Chrome touch scenarios passed in [run43024327364](https://github.com/penny323mo/valley-crown/actions/runs/43024327364); actual resource/age, queue and building-palette screenshots were inspected. These are emulated touches, not physical-phone acceptance.
 
-Tested source `3e84f07b5984135572c089a70fd90392810b8017`, game tree `5047b4ffcd5b7fea49a668d7769f7fa80a909062`. This later README update does not change runtime bytes. The illustrated menu, single-touch Help scrolling and responsive actions are included alongside existing contextual touch, construction feedback and terrain.
+Prior build542 had a headless normal match through keep-destruction victory in [run43017137336](https://github.com/penny323mo/valley-crown/actions/runs/43017137336), and four menu viewport profiles in [run43017262730](https://github.com/penny323mo/valley-crown/actions/runs/43017262730). Those are labelled historical evidence rather than automatically transferred new-build acceptance.
 
-487 controlled headless assertions and two identical Web exports passed in [run43008259514](https://github.com/penny323mo/valley-crown/actions/runs/43008259514). Real Chrome320×568,390×844,844×390 and1440×900 menu flows plus rotated views passed in [run43011239931](https://github.com/penny323mo/valley-crown/actions/runs/43011239931), with genuine screenshot review and strict network/cleanup checks. These are not physical-phone, full combat or victory acceptance. Fixtures include synthetic handlers and controlled states.
+Not full-game acceptance. Final cavalry/siege/grip art, rendered full-match progression, normal-camera combat/projectile/HP readability, physical devices and audio remain outstanding. Earlier failed receipts remain failed.
 
-`python3 -B tools/stamp_build.py --dry-run` computes pre-import runtime identity. Import-generated UID sidecars are inventoried separately; do not restamp merely because import generated them. Keep existing UID files and import settings.
+Prior10d6,21ae,cf764 anddd795 routes preserve exact original bytes and metadata. Deployments still depend on Actions artifacts expiring2026-12-11; durable retention is not resolved by this update. See WEB_EXPORT_MANIFEST.json for exact hashes and scope.
 
-F12 gameplay screenshots write to `user://screenshots/`. Keep `art/.gdignore` and Web export exclusions. Existing native `.scn` assets must not be regenerated merely to run the project. Font, Godot, Quaternius and KayKit notices remain included; the original menu illustration and licensed title-font subset are documented in `THIRD_PARTY_NOTICES.txt`.
-
-The historical released menu beta above does not include weapon/tool/shield grip corrections or expanded military progression. Public served-byte verification is separate from browser behavior.
+Open project.godot in Godot4.6.3. Ordinary entry is the main menu. Preserve existing UID/import descriptors, art/.gdignore, Web exclusions and bundled licenses. Build identity is deterministic pre-import source; generated sidecars are inventoried separately.
