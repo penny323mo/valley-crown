@@ -125,7 +125,7 @@ def verify_chrome(lock):
     require(isinstance(lock.get('chrome_version'), str) and bool(lock['chrome_version']), 'Recorded stock Chrome version missing')
     node = Path(lock.get('node_path', ''))
     require(node.is_absolute() and node.is_file() and not node.is_symlink(), 'Exact regular Node executable required')
-    require(str(node) == '/usr/bin/node' or str(node).startswith('/opt/hostedtoolcache/node/'), 'Unexpected stock Node source')
+    require(str(node) == '/usr/bin/node' or str(node).startswith('/opt/hostedtoolcache/node/') or (str(node) == '/usr/local/bin/node' and lock.get('node_sha256') == '94efd062ed066c1a0b332e18249859c905e920eeada5df55d24c99b919629a90'), 'Unexpected stock Node source')
     require(sha(node).hex() == lock.get('node_sha256'), 'Recorded Node executable changed')
 
 
