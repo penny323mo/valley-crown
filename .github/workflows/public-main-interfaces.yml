@@ -1,0 +1,58 @@
+name: Validate current public house construction
+on:
+  push:
+    branches: [ci/public-main-house-vc-dd795d96905c]
+permissions:
+  contents: read
+concurrency:
+  group: public-main-house-vc-dd795d96905c
+  cancel-in-progress: false
+jobs:
+  capture:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Select isolated runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/public-house-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify and copy exact public game tree
+        run: python3 -B ci/prepare_public_capture.py prepare --work "$RTS_WORK"
+      - name: Prepare pinned official Godot without launch
+        run: python3 -B ci/prepare_public_capture.py engine --work "$RTS_WORK"
+      - name: Install official Ubuntu display dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends xvfb dash x11-xkb-utils libgl1-mesa-dri libglx-mesa0 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64
+      - name: Fresh guarded import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/source.zip" --manifest "$RTS_WORK/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/import-evidence" --xdg "$RTS_WORK/private/import" --hosted-execution-approved
+      - name: Bind public source provenance
+        run: |
+          mkdir -p "$RTS_WORK/evidence"
+          cp "$RTS_WORK/capture-lock.json" "$RTS_WORK/evidence/capture-lock.json"
+      - name: Validate paid house construction to completion
+        run: |
+          set -euo pipefail
+          python3 -B ci/run_native.py --project "$RTS_WORK/project" --godot "$RTS_WORK/engine/Godot_v4.6.3-stable_linux.x86_64" --harness ci/capture_native.gd --lock "$RTS_WORK/capture-lock.json" --import-marker "$RTS_WORK/private/import/import-complete.json" --output "$RTS_WORK/evidence/portrait" --private "$RTS_WORK/private/portrait" --width 390 --height 844
+          python3 -B ci/scan_evidence.py --directory "$RTS_WORK/evidence/portrait" --lock "$RTS_WORK/capture-lock.json" --report "$RTS_WORK/evidence/portrait-scan.json"
+      - name: Upload independently validated portrait evidence
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-house-portrait-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/evidence/portrait/
+            ${{ env.RTS_WORK }}/evidence/portrait-scan.json
+            ${{ env.RTS_WORK }}/evidence/capture-lock.json
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 14
+# Portrait only. No dispatch, rerun, source mutation, Pages or deployment.
