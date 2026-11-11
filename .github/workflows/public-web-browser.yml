@@ -1,7 +1,7 @@
 name: Validate illustrated mature menu across four viewports
 on:
   push:
-    branches: [ci/mature-menu-browser-vc-10d6c6145978]
+    branches: [ci/mature-menu-browser-vc-10d6c6145978-pins]
 permissions:
   contents: read
   actions: read

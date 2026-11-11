@@ -17,7 +17,7 @@ import subprocess
 import time
 from guard_contract import require, check_owner, create_args, abort_reason, GIB
 
-SOURCE_COMMIT = '0c114fdfc0280bc069974a384f7f4bf5c5f780d5'
+SOURCE_COMMIT = '3e84f07b5984135572c089a70fd90392810b8017'
 IMAGE_DIGESTS = {'3bed4b1a12f2338642f3d8cba28e291deef3c66bd4a964bbeb3e57bbff511dbd',
                  '8fb7af3bb488c51364d6554876a8eddf377736608327dbdf4177b4901faf7bc9'}
 NPM_INTEGRITY = 'sha512-ilYQj1s8sr2ppEJ2YVadYBN0Mb3mdo9J0wQ+UuDhzYqURwSoW4n1Xs5vs7ORwgDGmyEh33tRMeS8KhdkMoLXQw=='
