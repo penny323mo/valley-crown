@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {readFile, writeFile, rename} from 'node:fs/promises';
 import {createNetworkDiagnostics} from './network_diagnostics.mjs';
+import {assertPublicStreamCompletions} from './public_stream_cache_policy.mjs';
 
 export function validateManifest(manifest) {
   assert.equal(manifest.reviewed, true, 'Construction export pins not reviewed');
@@ -281,6 +282,7 @@ export async function runQA(browser, outputDirectory, origin, profile) {
     await checkpoint('closing-context');
     await context.close(); context = null;
     assert.equal(evidence.error_count, 0, 'Browser errors during context close');
+    assertPublicStreamCompletions(evidence.network.records,origin);
     evidence.basicSmokePassed = true;
     await checkpoint('completed');
   } catch (error) {

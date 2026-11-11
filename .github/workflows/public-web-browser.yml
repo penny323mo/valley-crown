@@ -32,7 +32,7 @@ jobs:
         run: python3 -B -m unittest discover -s qa -p 'test_*preflight.py' -v
       - name: Test construction fixture and passive diagnostics without launching a browser
         run: |
-          node --test qa/test_construction_fixture.mjs qa/test_passive_diagnostics.mjs
+          node --test qa/test_construction_fixture.mjs qa/test_passive_diagnostics.mjs qa/test_public_stream_cache_policy.mjs
           python3 -B -m unittest discover -s qa -p test_construction_binding.py -v
       - name: Require final reviewed export pins before retrieval
         id: pins
