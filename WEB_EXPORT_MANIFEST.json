@@ -1,18 +1,18 @@
 {
-  "build": "vc-a3e77de29039",
-  "source_commit": "740b3dd5f81130cbceaabd838cf7724013a1fec8",
-  "game_tree": "b6474eacdfcc812407e279e9299ae468e4402e8a",
-  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/43395162042",
-  "artifact_id": 14022635856,
-  "artifact_zip_sha256": "5064788d625f1b45d855f968d7c2a89fa6f24ccc348ff8850da0fde271febf3f",
+  "build": "vc-51872ab8fa5f",
+  "source_commit": "b152f2bfd5db69a85060444a12dc06f44b41b471",
+  "game_tree": "fc251dbed21aa1e2e7e2ecb8906778bf77c5e2e6",
+  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/43411301129",
+  "artifact_id": 14029163982,
+  "artifact_zip_sha256": "95a1206264e549b613a0b74f17a2d3c67b4bcc3b036e242ab1f0c2bc66beda65",
   "files_sha256": {
     "index.apple-touch-icon.png": "9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a",
     "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
     "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
-    "index.html": "f36b3188b0fa24ce83f302d3195d09450e59471577508a0f3f412f04153889ff",
+    "index.html": "c4ad2136869ec6df3e6561f790f71865e5efb4ec5f9f96d2b25da88a12095403",
     "index.icon.png": "08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5",
     "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
-    "index.pck": "b26c4c16f6ff73c94b2aa2d3907eb5aa587aeea00f73cee7012a7948a8a6e8af",
+    "index.pck": "0c765dff623cbf2cfb730b2f64429d65b19b0b6e139c32d8a01eb9a895d60619",
     "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
     "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6",
     "THIRD_PARTY_NOTICES.txt": "7afd20f756ae18339cbd42382b6c6d55b2297fb10749ad472230f703e3ad8193",
@@ -29,14 +29,16 @@
   },
   "verification": {
     "engine": "Godot 4.6.3",
-    "native_assertions": 1266,
+    "native_assertions": 1289,
     "faction_semantics": "PASS",
     "two_identical_web_exports": true,
-    "browser": "UNVERIFIED for this build; available cloud Chrome lacks WebGL2 and Mac UI is locked",
+    "browser": "UNVERIFIED for this build; native viewport events and simulation are not browser or physical iPhone acceptance",
     "physical_iphone": "UNVERIFIED",
     "weapon_grip": "original product assets; restoration experiment excluded",
     "resource_mesh_and_fog_assertions": 27,
-    "resource_visuals": "Native isolated mesh/fog contract and staged native screenshots; no browser/phone performance acceptance"
+    "resource_visuals": "Native isolated mesh/fog contract and staged native screenshots; no browser/phone performance acceptance",
+    "contextual_primary_click_assertions": 19,
+    "queued_movement_simulation_assertions": 4
   },
   "release_status": "development beta; native contracts and reproducible export passed; browser interaction and physical iPhone unverified"
 }
