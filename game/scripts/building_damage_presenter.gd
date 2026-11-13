@@ -93,6 +93,9 @@ static func make_mesh(kind: String, level: int) -> ArrayMesh:
 		var anchors := [Vector2(-1,-1),Vector2(1,1),Vector2(-1,1),Vector2(1,-1),Vector2(1,0.6),Vector2(-0.6,-1)]
 		var center := Vector3(anchors[i].x, 0, anchors[i].y) * (half - 0.15)
 		center.y = 0.024
+		# Only soot clears the raised farm soil; fragments keep their low profile.
+		var soot_center := center
+		if kind == "farm": soot_center.y = 0.085
 		for j in range(8):
 			var a := float(j) * TAU / 8.0
 			var b := float(j + 1) * TAU / 8.0
@@ -101,7 +104,7 @@ static func make_mesh(kind: String, level: int) -> ArrayMesh:
 			for vertex in [Vector3.ZERO, Vector3(cos(b)*radius_b, 0, sin(b)*radius_b*0.65), Vector3(cos(a)*radius_a, 0, sin(a)*radius_a*0.65)]:
 				soot.set_uv(Vector2(vertex.x / 0.14, vertex.z / 0.092))
 				soot.set_normal(Vector3.UP)
-				soot.add_vertex(center + vertex)
+				soot.add_vertex(soot_center + vertex)
 		var chip := BoxMesh.new()
 		chip.size = Vector3(0.07 + 0.012 * float(i % 3), 0.09, 0.10)
 		stone.append_from(chip, 0, Transform3D(Basis(Vector3.UP, angle), center + Vector3(0, 0.035, 0)))

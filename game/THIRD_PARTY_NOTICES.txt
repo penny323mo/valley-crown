@@ -43,3 +43,14 @@ assets/fonts/menu_title_tc.otf is a renamed subset of Noto Serif CJK TC
 Regular, licensed under SIL OFL 1.1. Its full upstream copyright and license
 are retained in assets/fonts/MENU-TITLE-LICENSE.txt. The subset family name
 is Valley Crown Display. Existing Noto and DejaVu notices remain unchanged.
+
+Advanced medieval building set
+The stable, workshop, watchtower and farm architecture is original project
+artwork, using the existing original stone/oak/plaster/slate/clay textures.
+The stable/workshop crate and workshop chimney incorporate geometry from
+Quaternius Medieval Village MegaKit Standard: Prop_Crate and Prop_Chimney2.
+Those donor meshes are CC0 1.0 Universal. The original included notice is
+preserved in art/advanced_buildings/upstream/QUATERNIUS-LICENSE.txt.
+Source: https://quaternius.itch.io/medieval-village-megakit
+License: https://creativecommons.org/publicdomain/zero/1.0/
+No new public license is granted for original project code or artwork.

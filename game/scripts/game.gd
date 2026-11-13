@@ -3,6 +3,11 @@ signal main_menu_requested
 signal restart_requested
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
 const WorkerIdleStatus = preload("res://scripts/worker_idle_status.gd")
+const IdleWorkerSelection = preload("res://scripts/idle_worker_selection.gd")
+const BattleAlerts = preload("res://scripts/battle_alerts.gd")
+const MatchReport = preload("res://scripts/match_report.gd")
+const SquadSelection = preload("res://scripts/squad_selection.gd")
+const RaidTactics = preload("res://scripts/raid_tactics.gd")
 const ConstructionStatus = preload("res://scripts/construction_status.gd")
 const MAP_LIMIT = Rules.MAP_WORLD_LIMIT
 const BLUE = Color("435d6c")
@@ -16,6 +21,7 @@ const Economy = preload("res://scripts/economy_ledger.gd")
 const AttackLedger = preload("res://scripts/attack_ledger.gd")
 const INITIAL_STOCKS = [{"food":150,"wood":200,"stone":100,"iron":0},{"food":150,"wood":200,"stone":100,"iron":0}]
 const ProgressionVisuals = preload("res://scripts/progression_visuals.gd")
+const AdvancedBuildingVisuals = preload("res://scripts/advanced_building_visuals.gd")
 var age_completed_tick=[-1,-1]
 var large_route_cache=[{},{}]
 const BoundedPath = preload("res://scripts/bounded_grid_pathfinder.gd")
@@ -51,6 +57,10 @@ var tutorial_skip: Button
 
 var entities: Array = []
 var selected: Array = []
+var squad_selection=SquadSelection.new()
+var squad_buttons=[]
+var idle_worker_cursor=-1
+var idle_worker_button: Button
 var next_id = 0
 var economy = Economy.new()
 var economy_sequence = 0
@@ -63,6 +73,7 @@ var stocks:
 			display.append({"food":bank.get("food",0)/1000.0,"wood":bank.get("wood",0)/1000.0,"stone":bank.get("stone",0)/1000.0,"iron":bank.get("iron",0)/1000.0})
 		return display
 var camera: Camera3D
+var camera_ground: MeshInstance3D
 var camera_focus=MapRoutes.PLAYER_HOME # Frame the opening keep and workers on portrait phones.
 const CAMERA_KEYS=[KEY_A,KEY_D,KEY_W,KEY_S,KEY_LEFT,KEY_RIGHT,KEY_UP,KEY_DOWN]
 # A UI-owned press cannot become a world press through focus transfer/dismissal.
@@ -86,7 +97,9 @@ var drag_start=Vector2.ZERO
 var dragging=false
 var drag_active=false
 var touch_command=false
+var unit_command_kind="order"
 var rally_building=-1
+var rally_mode="move"
 # UX01 selection intent only; no simulation command or world-state mutation.
 var box_select_mode=false
 var touch_box_index=-1
@@ -112,10 +125,18 @@ var selection_detail: Label
 var help_label: Label
 var mission_label: Label
 var queue_label: Label
+var queue_actions=[]
+var repeat_train_button: Button
+var repeat_train_cursor=[0,0]
 var actions: HBoxContainer
 var minimap: Control
 var drag_rect: ReferenceRect
-var end_panel: PanelContainer
+var end_panel: Panel
+var end_scroll: ScrollContainer
+var end_report_label: Label
+var end_tabs: HBoxContainer
+var end_actions: HBoxContainer
+var end_report_page="overview"
 var end_title: Label
 var end_body: Label
 var pause_button: Button
@@ -152,6 +173,8 @@ var explored_cells=[PackedByteArray(),PackedByteArray()]
 var fog: MultiMeshInstance3D
 var fog_render_state=PackedByteArray()
 var touch_points={}
+var touch_world_epochs={} # World-owned press lifetime, distinct from GUI reuse.
+var touch_camera_pair=[] # Two (index, epoch) identities; positions stay in touch_points.
 var all_touch_ids=[]
 var action_touch_scroll={} # Single-finger ownership for action-strip/menu scrolling.
 var canceled_touch_ids={}
@@ -186,6 +209,10 @@ var compact_map_choice=-1
 var selection_row: HBoxContainer
 var outcome=""
 var pending_damage={}
+var battle_alerts=BattleAlerts.new()
+var match_report=MatchReport.new()
+var last_match_report={}
+var attack_alert_button: Button
 var attack_ledger=AttackLedger.new()
 var delivered_total:
 	get:
@@ -320,7 +347,7 @@ func _create_world():
 		var _x=rng.randf_range(-Rules.MAP_HALF,Rules.MAP_HALF); var _z=rng.randf_range(-Rules.MAP_HALF,Rules.MAP_HALF)
 		var _radius=rng.randf_range(0.5,2.7)
 		var _rotation=rng.randf()*TAU
-	MatureWorld.create_ground(ground,ground_trails)
+	camera_ground=MatureWorld.create_ground(ground,ground_trails)
 	# No decorative water on otherwise buildable land. Low grass is not an obstacle.
 	for i in 150:
 		var p=Vector3(rng.randf_range(-MAP_LIMIT,MAP_LIMIT),0.05,rng.randf_range(-MAP_LIMIT,MAP_LIMIT))
@@ -436,7 +463,7 @@ func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacit
 	_mesh(ring_root,ring,Vector3(0,0.09,0),GOLD if team!=1 else RED)
 	ring_root.visible=false; e.ring=ring_root
 	if category!="resource":
-		var bar=Node3D.new(); n.add_child(bar); bar.position.y=1.95 if category=="unit" else 4.5
+		var bar=Node3D.new(); n.add_child(bar); bar.position.y=1.95 if category=="unit" else AdvancedBuildingVisuals.health_bar_height(kind)
 		_box(bar,Vector3.ZERO,Vector3(1.05,0.07,0.16),DARK)
 		var fill=_box(bar,Vector3(0,0.05,0),Vector3(1.0,0.07,0.15),Color("83bb83") if team==0 else Color("d97c65"))
 		# Horizontal unit bars retain the original projected box width, including depth.
@@ -458,8 +485,8 @@ func _unit_visual(_parent, _kind, _team):
 	pass
 
 func _building_visual(parent,kind,team):
-	if kind in ["farm","stable","tower","workshop"]:
-		ProgressionVisuals.build(parent,kind,RED if team==1 else BLUE); return
+	if kind in AdvancedBuildingVisuals.KINDS:
+		parent.add_child(AdvancedBuildingVisuals.instantiate_asset(kind,RED if team==1 else BLUE)); return
 	if kind in MatureVisuals.BUILDING_KINDS:
 		# Native candidate bounds already fit Rules footprints. No legacy mesh scaling.
 		parent.add_child(MatureVisuals.instantiate_asset(kind,0,RED if team==1 else BLUE))
@@ -561,6 +588,8 @@ func _tick(dt):
 		var target=_get_entity(id)
 		if not target.is_empty() and target.alive:
 			target.hp-=pending_damage[id]; target.last_damage_tick=tick_count
+			battle_alerts.record_hit(target,pending_damage[id],tick_count)
+			match_report.record_settled_loss(target,pending_damage[id])
 			if pending_damage[id]>0 and target.hp>0 and target.category=="unit": _note_unit_action(target,"hit")
 			if pending_damage[id]>0: progress_serial+=1
 	for ent in entities:
@@ -578,6 +607,7 @@ func _tick(dt):
 		_sync_audio()
 		_message("180 秒內沒有採集、建造或交戰進展，已暫停。按繼續可重設計時。",INF)
 	if ai_enabled and not game_over and not paused and tick_count%20==0: _ai_update()
+	_update_repeat_training()
 
 func _submit(type: String, data: Dictionary={}, team=0):
 	if paused or game_over:
@@ -608,6 +638,13 @@ func _execute(command):
 			# invalid before execution must leave prior orders/paths unchanged.
 			if target_id>=0 and (target.is_empty() or not _visible_to(target,team) or not target.alive):
 				return _reject_command(team,"目標已失效或不在視野內，請重新落指令。")
+			# Contextual farm work is explicit intent, never an implicit repair.
+			var farm_gather=command.has("farm_gather")
+			if farm_gather and (typeof(command.farm_gather)!=TYPE_BOOL or not command.farm_gather or target.is_empty() or not target.alive or target.team!=team or target.category!="building" or target.kind!="farm" or not target.built):
+				return _reject_command(team,"目標已失效或不在視野內，請重新落指令。")
+			var scout_policy=command.has("ai_scout_explore")
+			if scout_policy and (typeof(command.ai_scout_explore)!=TYPE_BOOL or not command.ai_scout_explore or team!=1 or not target.is_empty() or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT):
+				return _reject_command(team,"斥候探索指令已失效。")
 			var index=0
 			var order_ids=command.ids.duplicate()
 			# Only ground group MOVE uses ID allocation. Build takeover intentionally
@@ -622,19 +659,59 @@ func _execute(command):
 				if ent.is_empty() or not ent.alive or ent.team!=team or ent.category!="unit": continue
 				# Resolve each unit independently: cargo delivery and construction win
 				# over repair. Rejected repair must not clear pending paths/retries.
-				var intent=_target_order_intent(ent,target,team)
+				if farm_gather and ent.kind!="villager": continue
+				var intent="gather" if farm_gather else _target_order_intent(ent,target,team)
 				if intent=="repair" and not _repair_order_allowed(ent,target):
 					_reject_command(team,"受傷後五秒內無法開始修理。")
 					index+=1
 					continue
+				# Farm refusal must be atomic, before resetting a player route budget.
+				if intent=="gather" and target.kind=="farm" and economy.farm_view(target.id).get("worker_id",-1) not in [-1,ent.id]:
+					_reject_command(team,"這片農田已有村民耕作。")
+					index+=1
+					continue
+				# The intent marker survives cache retirement. Missing/stale policy
+				# provenance must reject, never fall through as an ordinary MOVE.
+				var scout_move=ai_scout_moves.get(ent.id,{})
+				var tracked_scout=scout_policy and team==1 and ent.kind=="scout" and target.is_empty() and command.get("sequence",-1)==scout_move.get("pending_sequence",-2) and command.get("position",Vector3.INF)==scout_move.get("requested_goal",Vector3.INF)
+				if scout_policy and not tracked_scout:
+					continue
+				var recover_scout=tracked_scout and scout_move.get("recover_static",false)
+				if recover_scout and not _ai_static_failed_scout(ent):
+					ai_scout_moves.erase(ent.id)
+					continue
+				if scout_policy:
+					# Same bounded known-clear destination resolver as ordinary MOVE,
+					# not a path search. Refuse aliases of earlier explored goals
+					# before retiring the actor's current task or retry budgets.
+					var resolved_scout=_nearest_free(command.position,8,ent.team,ent,reserved_destinations,order_ids)
+					var prior_goal=resolved_scout!=Vector3.INF and ai_scout_attempts.has(_cell_index(resolved_scout)) and _cell(resolved_scout)!=_cell(command.position)
+					if resolved_scout==Vector3.INF or prior_goal or (recover_scout and resolved_scout==scout_move.goal):
+						if recover_scout:
+							for key in ["pending_sequence","requested_goal","recover_static"]: scout_move.erase(key)
+							ai_scout_moves[ent.id]=scout_move
+						else: ai_scout_moves.erase(ent.id)
+						continue
 				if team==0: _path_new_command(ent)
+				elif intent=="attack": _retire_ai_attack_failure(ent,target)
 				if intent!="move": _order(ent,intent,target.id)
 				elif not target.is_empty(): _order_move(ent,command.position)
 				else:
 					_order_move(ent,command.position,reserved_destinations,order_ids)
 					reserved_destinations[_cell(ent.dest)]=true
+				if team==1 and ent.kind=="scout":
+					ai_scout_moves.erase(ent.id)
+					if tracked_scout and ent.state=="move" and (not recover_scout or ent.dest!=scout_move.get("goal",Vector3.INF)):
+						if recover_scout:
+							# New known goal, not a fresh player command. Preserve
+							# rolling retry timestamps, counters and next-attempt gate.
+							ent.path_status="IDLE"; ent.path_reason=""
+						ai_scout_moves[ent.id]={"work_epoch":ent.work_epoch,"goal":ent.dest}
+						ai_scout_attempts[_cell_index(ent.dest)]=true
 				index+=1
 			if index==0: return _reject_command(team,"請選取自己的存活單位。")
+		"advance": _order_advance(command.get("ids",[]),command.get("position",Vector3.INF),team)
+		"patrol": _order_patrol(command.get("ids",[]),command.get("position",Vector3.INF),team)
 		"stop":
 			var applied=false
 			for id in command.ids:
@@ -642,6 +719,7 @@ func _execute(command):
 				if not ent.is_empty() and ent.alive and ent.team==team and ent.category=="unit":
 					if team==0: _path_new_command(ent)
 					_set_stance(ent,"STOP")
+					if team==1 and ent.kind=="scout": ai_scout_moves.erase(ent.id)
 					applied=true
 			if not applied: return _reject_command(team,"請選取自己的存活單位。")
 		"defend":
@@ -651,12 +729,16 @@ func _execute(command):
 				if not ent.is_empty() and ent.alive and ent.team==team and ent.category=="unit":
 					if team==0: _path_new_command(ent)
 					_set_stance(ent,"DEFEND")
+					if team==1 and ent.kind=="scout": ai_scout_moves.erase(ent.id)
 					applied=true
 			if not applied: return _reject_command(team,"請選取自己的存活單位。")
-		"rally": _set_ground_rally(command.get("building",-1),command.get("position",Vector3.INF),team,command.get("clear",false))
-		"train": _enqueue_train(command.building,command.kind,team)
+		"rally": _set_ground_rally(command.get("building",-1),command.get("position",Vector3.INF),team,command.get("clear",false),command.get("target",-1),command.get("mode","move"))
+		"repeat_train": _set_repeat_training(command.get("building",-1),command.get("kind",null),team)
+		"train":
+			if not command.has("repeat_generation") or _repeat_train_current(command): _enqueue_train(command.building,command.kind,team)
 		"research": _enqueue_research(command.get("building",-1),team)
 		"cancel_train": _cancel_train(command.building,team)
+		"cancel_queue_item": _cancel_queue_item(command.get("building",-1),command.get("queue_id",-1),command.get("expected_refund",null),team)
 		"build": _place_building(command.kind,command.position,command.builder,team)
 		"cancel_build":
 			var ent=_get_entity(command.building)
@@ -675,6 +757,39 @@ func _execute(command):
 			if not castle.is_empty(): _surrender_intent[team]=true
 			else: return _reject_command(team,"目前沒有可投降的對局。")
 		_: return _reject_command(team,"未知指令。")
+
+func _retire_ai_attack_failure(ent,target):
+	# A newly accepted AI military target must not inherit another target's
+	# completed static frontier. This is not a fresh player-command budget.
+	if ent.team!=1 or ent.category!="unit" or ent.kind=="villager" or ent.state!="attack" or ent.mode!="ATTACK" or ent.auto_target: return false
+	if target.is_empty() or not target.alive or target.team!=0 or target.category not in ["unit","building"] or target.id==ent.target or not _visible_to(target,ent.team): return false
+	if ent.path_status!=BoundedPath.NO_PATH or ent.path_reason!="frontier_exhausted" or not ent.path_has_attempt or ent.path_pending or ent.traffic_route or not ent.path.is_empty(): return false
+	if ent.path_request_kind!="point" or ent.path_request_state!="attack" or ent.path_request_target!=ent.target or ent.path_request_epoch!=ent.work_epoch or ent.path_revision!=work_memory[ent.team].revision: return false
+	var failed=ent.get("path_resolved_goal",Vector3.INF)
+	if not failed.is_finite(): return false
+	if _attack_distance(ent.pos,target)>Rules.RANGE[ent.kind]:
+		var approach=_attack_approach(ent,target) if target.category=="building" else target.pos
+		if approach==Vector3.INF: return false
+		var resolved=_nearest_free(approach,8,ent.team,ent)
+		if resolved==Vector3.INF or _cell(resolved)==_cell(failed): return false
+	# In-range combat needs no movement resolver. The following ordinary
+	# _order invalidates the old proof/epoch exactly once in either case.
+	# Keep all search counters, failures, retry timestamps and next gate.
+	ent.path_status="IDLE"; ent.path_reason=""
+	return true
+
+func _retire_ai_attack_move_failure(ent,destination):
+	# A different resolved ground destination does not share the exhausted
+	# frontier of this exact previous explicit attack. Keep its search budget.
+	if ent.team!=1 or ent.category!="unit" or ent.kind=="villager" or ent.state!="attack" or ent.mode!="ATTACK" or ent.auto_target or ent.target<0: return false
+	if ent.path_status!=BoundedPath.NO_PATH or ent.path_reason!="frontier_exhausted" or not ent.path_has_attempt or ent.path_pending or ent.traffic_route or not ent.path.is_empty(): return false
+	if ent.path_request_kind!="point" or ent.path_request_state!="attack" or ent.path_request_target!=ent.target or ent.path_request_epoch!=ent.work_epoch or ent.path_revision!=work_memory[ent.team].revision: return false
+	var failed=ent.get("path_resolved_goal",Vector3.INF)
+	if not failed.is_finite() or not destination.is_finite() or _cell(destination)==_cell(failed): return false
+	# No old-target lookup, fresh command budget or extra path search.
+	# The normal MOVE below invalidates the old epoch exactly once.
+	ent.path_status="IDLE"; ent.path_reason=""
+	return true
 
 func _get_entity(id):
 	if id<0 or id>=entities.size(): return {}
@@ -752,15 +867,26 @@ func _cancel_construction(ent):
 	_kill(ent)
 	return true
 
-# Producer-owned ground destination only. No entity target, harvest order,
-# spawn override or route probe is stored. Validate faction-known cells only.
-func _set_ground_rally(id,p,team,clear=false):
+# Producer-owned ground or natural-resource plan. Validate current faction
+# knowledge; no spawn override, path probe or pre-authorized harvest is stored.
+func _set_ground_rally(id,p,team,clear=false,target_id=-1,mode="move"):
 	var building=_get_entity(id)
 	if building.is_empty() or not building.alive or building.team!=team or not building.built or not Rules.PRODUCES.has(building.kind):
 		return _reject_command(team,"請選取自己的已完成生產建築。")
+	if typeof(mode)!=TYPE_STRING or mode not in ["move","advance"]: return _reject_command(team,"集合點指令已失效。")
 	if clear:
-		building.erase("rally_point")
+		building.erase("rally_point"); building.erase("rally_target"); building.erase("rally_mode")
 		if team==0: _message("已取消集合點；新單位在出口待命。")
+		return true
+	if typeof(target_id)!=TYPE_INT or target_id < -1: return _reject_command(team,"集合目標已失效。")
+	if mode=="advance" and ("villager" in Rules.products_for(building.kind) or target_id>=0): return _reject_command(team,"警戒集合點需要軍事生產建築與可見空地。")
+	if target_id>=0:
+		var target=_get_entity(target_id)
+		if "villager" not in Rules.products_for(building.kind) or target.is_empty() or not _visible_to(target,team) or not target.alive or target.category!="resource" or _resource_type(target).is_empty():
+			return _reject_command(team,"主堡採集集合點需要可見的自然資源。")
+		# Store only this accepted observed resource, never the imprecise tap.
+		building.rally_point=target.pos; building.rally_target=target.id; building.rally_mode="move"
+		if team==0: _message("採集集合點已設定；新村民自動採集。",4)
 		return true
 	if not p is Vector3 or not p.is_finite(): return _reject_command(team,"請點可見空地。")
 	# Reject outside points before _cell's clamping. Height carries no intent.
@@ -770,9 +896,86 @@ func _set_ground_rally(id,p,team,clear=false):
 	if visible_cells[team][_cell_index(p)]==0: return _reject_command(team,"請點可見空地。")
 	_refresh_work_memory()
 	if work_memory[team].grid.is_point_solid(cell): return _reject_command(team,"集合點需要空地。")
-	building.rally_point=_point(cell)
-	if team==0: _message("集合點已設定；新單位自動移動。",4)
+	building.rally_point=_point(cell); building.erase("rally_target"); building.rally_mode=mode
+	if team==0: _message("警戒集合點已設定；新軍隊警戒前進。" if mode=="advance" else "集合點已設定；新單位自動移動。",4)
 	return true
+
+func _apply_newborn_rally(unit,building):
+	if not building.has("rally_point"): return
+	if building.get("rally_mode","move")=="advance" and unit.kind in Rules.UNIT_KINDS and unit.kind!="villager":
+		# Queue the ordinary military command only after the paid birth.
+		# A later player order has a later sequence and supersedes it normally.
+		_submit("advance",{"ids":[unit.id],"position":building.rally_point},unit.team)
+		return
+	if unit.kind=="villager" and building.get("rally_target",-1)>=0:
+		# Read only current faction knowledge. The ordinary queued command
+		# revalidates visibility/liveness next tick; never read hidden truth.
+		var known=faction_views[unit.team].get_record(building.rally_target)
+		if not known.is_empty() and known.alive and not known.remembered and known.category=="resource" and not _resource_type(known).is_empty():
+			_submit("order",{"ids":[unit.id],"target":known.id,"position":known.pos},unit.team)
+			return
+	# Scouts, other troops, and unobserved/depleted resources retain ordinary
+	# ground routing to the last accepted point. No automatic target search.
+	_order_move(unit,building.rally_point)
+
+# Opt-in production policy. No payment or population reservation is made here.
+func _set_repeat_training(id,kind,team):
+	if team not in [0,1] or typeof(id)!=TYPE_INT or typeof(kind)!=TYPE_STRING: return false
+	var building=_get_entity(id)
+	if building.is_empty() or not building.alive or building.team!=team or building.category!="building" or not building.built or not Rules.PRODUCES.has(building.kind) or "villager" in Rules.products_for(building.kind): return false
+	if not kind.is_empty() and (kind not in Rules.products_for(building.kind) or not _kind_unlocked(kind,team)): return false
+	if building.get("repeat_kind","")==kind: return true
+	building.repeat_generation=building.get("repeat_generation",0)+1
+	building.repeat_kind=kind
+	return true
+
+func _stop_repeat_training(building):
+	if not building.get("repeat_kind","").is_empty():
+		building.repeat_generation=building.get("repeat_generation",0)+1
+		building.repeat_kind=""
+
+func _repeat_training_pending(id,team):
+	for command in commands:
+		if command.get("team",-1)!=team: continue
+		if command.get("type","")=="surrender": return true
+		if command.get("building",-1)==id and command.get("type","") in ["train","research","repeat_train","cancel_train","cancel_queue_item","demolish"]: return true
+	return false
+
+func _repeat_train_current(command):
+	var building=_get_entity(command.get("building",-1))
+	if building.is_empty() or not building.alive or not building.built or building.team!=command.get("team",-1) or not building.queue.is_empty(): return false
+	var kind=building.get("repeat_kind","")
+	# Reject stale automatically queued intent after Stop/reconfiguration. A
+	# manual train has no generation and keeps the original authority path.
+	return not kind.is_empty() and kind==command.get("kind","") and typeof(command.get("repeat_generation",null))==TYPE_INT and command.repeat_generation==building.get("repeat_generation",0) and _kind_unlocked(kind,building.team) and _population(building.team)<_capacity(building.team) and _can_pay(COSTS[kind],building.team)
+
+func _update_repeat_training():
+	if paused or game_over or tick_count%20!=0: return
+	var budgets=[economy.bank_milli(0).duplicate(),economy.bank_milli(1).duplicate()]
+	var slots=[_capacity(0)-_population(0),_capacity(1)-_population(1)]
+	# Keep proposal priority after the last accepted producer for each team.
+	# Funds and population are still rechecked by ordinary train execution.
+	# A tick-derived rotation aliases with training durations; a successful
+	# proposal advances the cursor even when an earlier command later spends.
+	if entities.is_empty(): return
+	for team in [0,1]:
+		var start=repeat_train_cursor[team]%entities.size()
+		for offset in range(entities.size()):
+			var building=entities[(start+offset)%entities.size()]
+			var kind=building.get("repeat_kind","")
+			if kind.is_empty() or not building.alive or building.category!="building" or not building.built or building.team not in [0,1] or not building.queue.is_empty(): continue
+			if building.team!=team: continue
+			if "villager" in Rules.products_for(building.kind) or kind not in Rules.products_for(building.kind) or not _kind_unlocked(kind,team) or slots[team]<=0 or _repeat_training_pending(building.id,team): continue
+			var affordable=true
+			for resource in COSTS[kind]:
+				if budgets[team].get(resource,0)<COSTS[kind][resource]*Economy.SCALE: affordable=false
+			if not affordable: continue
+			var sequence=command_sequence
+			_submit("train",{"building":building.id,"kind":kind,"repeat_generation":building.get("repeat_generation",0)},team)
+			if command_sequence==sequence: continue
+			repeat_train_cursor[team]=(building.id+1)%entities.size()
+			slots[team]-=1
+			for resource in COSTS[kind]: budgets[team][resource]-=COSTS[kind][resource]*Economy.SCALE
 
 func _enqueue_train(id,kind,team):
 	var building=_get_entity(id)
@@ -822,7 +1025,30 @@ func _cancel_train(id,team):
 	var refund=economy.cancel_cost("cancel:%s:%d" % [receipt_id,economy_sequence],receipt_id,team)
 	if not refund.applied: return false
 	building.queue.pop_back()
+	_stop_repeat_training(building)
 	return true
+
+func _cancel_queue_item(id,queue_id,expected_refund,team):
+	# Exact identity and displayed refund are compared before any ledger mutation.
+	# A completed/started/replaced order must not inherit an old cancellation.
+	if team not in [0,1] or typeof(id)!=TYPE_INT or id<0 or typeof(queue_id)!=TYPE_INT or queue_id<0: return _reject_command(team,"生產項目已失效。")
+	if typeof(expected_refund)!=TYPE_DICTIONARY or expected_refund.size()!=Economy.FOUR_RESOURCE_TYPES.size(): return _reject_command(team,"請重新查看退款資源。")
+	for resource in Economy.FOUR_RESOURCE_TYPES:
+		if not expected_refund.has(resource) or typeof(expected_refund[resource])!=TYPE_INT or expected_refund[resource]<0: return _reject_command(team,"請重新查看退款資源。")
+	var building=_get_entity(id)
+	if building.is_empty() or not building.alive or building.team!=team or building.category!="building" or not building.built: return _reject_command(team,"沒有可取消的己方生產項目。")
+	for index in range(building.queue.size()):
+		var order=building.queue[index]
+		if order.queue_id!=queue_id: continue
+		var receipt_id=order.get("receipt_id","")
+		if economy.quote_refund(receipt_id,team)!=expected_refund: return _reject_command(team,"退款資源已改變，請重新點選。")
+		economy_sequence+=1
+		var refund=economy.cancel_cost("cancel:%s:%d" % [receipt_id,economy_sequence],receipt_id,team)
+		if not refund.applied: return false
+		building.queue.remove_at(index)
+		_stop_repeat_training(building)
+		return true
+	return _reject_command(team,"生產項目已完成或已取消。")
 
 func _update_production(ent,dt,commit_ready=true):
 	if not ent.built or ent.queue.is_empty() or ent.get("production_tick",-1)==tick_count: return
@@ -875,9 +1101,10 @@ func _try_ready_production(ent):
 	spawn_commit_order.append({"building":ent.id,"queue":order.queue_id,"tick":tick_count})
 	var unit=_spawn(order.kind,ent.team,spawn_point)
 	# Birth/receipt commit above is unchanged. Only the newborn inherits the
-	# current ground destination, once, through ordinary bounded MOVE routing.
-	if ent.has("rally_point"): _order_move(unit,ent.rally_point)
+	# current plan once, through a queued gather order or bounded ground MOVE.
+	if ent.has("rally_point"): _apply_newborn_rally(unit,ent)
 	trained_total[ent.team]+=1
+	match_report.record_training(unit)
 	if ent.team==0 and order.kind in ["spearman","archer"]: demo_tutorial.record("soldier")
 	if ent.team==0: _message(Rules.NAMES[order.kind]+"已準備好。",2.5)
 	if ent.team==1 and unit.kind=="villager" and not ent.has("rally_point"): _assign_worker(unit)
@@ -1118,7 +1345,7 @@ func _resume_gather(ent):
 	var original=not known.is_empty() and known.alive and _resource_type(known)==_gather_intent(ent)
 	if original and known.kind=="farm" and economy.farm_view(known.id).get("worker_id",-1) not in [-1,ent.id]: original=false
 	if not original: known=_nearest_known_resource(ent.pos,_gather_intent(ent),ent.team)
-	if known.is_empty(): _path_cancel_pending(ent); ent.state="idle"; ent.target=-1; return
+	if known.is_empty(): _release_farm(ent); _path_cancel_pending(ent); ent.state="idle"; ent.target=-1; return
 	if ent.path_status==BoundedPath.NO_PATH: ent.path_status="IDLE"; ent.path_reason=""
 	_order(ent,"gather",known.id); ent.work_any_target=not original
 
@@ -1139,7 +1366,7 @@ func _update_work(ent):
 			_route_to_dropoff(ent); return
 	if ent.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:
 		if ent.state=="deliver": _cargo_idle(ent)
-		else: _path_cancel_pending(ent); ent.state="idle"
+		else: _release_farm(ent); _path_cancel_pending(ent); ent.state="idle"
 		return
 	if not _at_work_approach(ent,known,true): return
 	# Resource authority is consulted only for a currently observed local action.
@@ -1162,7 +1389,7 @@ func _update_work(ent):
 func _path_state(ent):
 	if ent.has("path_status"): return
 	ent.path_status="IDLE"; ent.path_reason=""; ent.path_pending=false
-	ent.path_request_goal=ent.pos; ent.path_revision=work_memory[ent.team].revision
+	ent.path_request_goal=ent.pos; ent.path_resolved_goal=Vector3.INF; ent.path_revision=work_memory[ent.team].revision
 	ent.path_has_attempt=false; ent.path_retry_ticks=[]; ent.path_failures=0
 	ent.path_next_attempt_tick=0; ent.path_searches=0; ent.path_initial_searches=0; ent.path_retry_searches=0; ent.path_expanded=0
 	ent.path_request_kind="point"; ent.work_epoch=0; ent.path_request_epoch=0
@@ -1173,7 +1400,7 @@ func _path_state(ent):
 func _path_new_command(ent):
 	_path_state(ent)
 	path_requests.erase(ent.id)
-	ent.path_pending=false; ent.path_status="IDLE"; ent.path_reason=""
+	ent.path_pending=false; ent.path_status="IDLE"; ent.path_reason=""; ent.path_resolved_goal=Vector3.INF
 	ent.path_has_attempt=false; ent.path_retry_ticks.clear(); ent.path_failures=0
 	ent.path_next_attempt_tick=tick_count; ent.path_revision=work_memory[ent.team].revision
 	ent.path=PackedVector3Array(); ent.path_version=-1; ent.path_expanded=0
@@ -1269,7 +1496,7 @@ func _process_path_requests():
 				ent.path_pending=false; ent.path_status="WAIT_SLOT"; ent.path_reason="known_slots_reserved"
 				ent.path_next_attempt_tick=tick_count+20
 			continue
-		var goal=Vector3.INF if work else _nearest_free(ent.path_request_goal,8,ent.team,ent)
+		var goal=Vector3.INF if work else _point_route_goal(ent)
 		if not work and goal==Vector3.INF:
 			_path_stop(ent,BoundedPath.LIMIT_REACHED,"no_free_destination"); continue
 		var start=_cell(ent.pos)
@@ -1281,6 +1508,8 @@ func _process_path_requests():
 		ent.path_has_attempt=true; ent.path_searches+=1; last_path_queries+=1
 		var reanchor=ent.traffic_route and ent.pos.distance_to(_point(start))>=0.001 and _unit_step_is_free(ent,_point(start))
 		var traffic_edges=_local_traffic_edges(ent,start,_point(start) if reanchor else ent.pos) if ent.traffic_route else {}
+		# Exact resolved endpoint for this request identity, not a later re-snap.
+		ent.path_resolved_goal=Vector3.INF if work else goal
 		var result=WorkPath.search(route_grid,start,candidates,path_expansion_budget,traffic_edges) if work else BoundedPath.search(route_grid,start,_cell(goal),path_expansion_budget,traffic_edges,_known_opposing_flow_costs(ent,goal))
 		if ent.traffic_route and result.status==BoundedPath.FOUND and result.path.size()>ent.traffic_path_length+12:
 			# A local yield must not silently become a map-wide traffic detour.
@@ -1348,6 +1577,7 @@ func _reset_traffic(ent):
 	ent.traffic_replans=0; ent.traffic_last_replan=tick_count; ent.traffic_route=false; ent.work_slot_wait=-1; ent.traffic_path_length=0; ent.traffic_command_origin=ent.pos; ent.traffic_gate_since=-1
 
 func _traffic_stop(ent,reason):
+	_release_farm(ent)
 	_path_stop(ent,BoundedPath.LIMIT_REACHED,reason)
 	path_requests.erase(ent.id)
 	ent.work_approach=Vector3.INF; ent.work_target_id=-1; ent.work_route_revision=-1
@@ -1647,7 +1877,7 @@ func _place_building(kind,p,builder_id,team):
 # --- Economy and unit state machines ---
 func _path_cancel_pending(ent):
 	_path_state(ent)
-	path_requests.erase(ent.id); ent.path_pending=false
+	path_requests.erase(ent.id); ent.path_pending=false; ent.path_resolved_goal=Vector3.INF
 	ent.work_epoch+=1; ent.work_approach=Vector3.INF; ent.work_target_id=-1; ent.work_route_revision=-1
 	_reset_traffic(ent)
 	if ent.path_status=="QUEUED": ent.path_status="IDLE"
@@ -1694,6 +1924,8 @@ func _order(ent,state,target_id,automatic=false):
 			if not economy.assign_farm("farm_assign:%d" % economy_sequence,ent.id,target_id).applied: return false
 			ent.farm_id=target_id
 	_path_cancel_pending(ent)
+	ent.erase("patrol_points"); ent.erase("patrol_index")
+	ent.advance_engaged=false
 	ent.auto_target=automatic
 	if not automatic: ent.mode="ATTACK" if state=="attack" else "WORK"
 	ent.state=state; ent.target=target_id; ent.work_ticks=0; ent.last_repair_tick=-1; ent.path=PackedVector3Array(); ent.path_version=-1; ent.stuck=0
@@ -1709,34 +1941,145 @@ func _order(ent,state,target_id,automatic=false):
 		if _cargo_amount(ent)>0 and not known.is_empty() and _cargo_type(ent)!=_resource_type(known): _route_to_dropoff(ent)
 	elif not target.is_empty(): ent.last_known=target.pos
 
+func _order_advance(ids,position,team):
+	# Explicit military intent. Ordinary MOVE and workers keep their semantics.
+	if typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT or not position is Vector3 or not position.is_finite(): return _reject_command(team,"請選取軍隊並點選地圖目的地。")
+	if absf(position.x)>=Rules.MAP_WORLD_LIMIT or absf(position.z)>=Rules.MAP_WORLD_LIMIT: return _reject_command(team,"目的地超出地圖。")
+	var military=[]; var seen={}
+	for id in ids:
+		if typeof(id)!=TYPE_INT: return _reject_command(team,"部隊選取已失效。")
+		if seen.has(id): continue
+		seen[id]=true
+		var ent=_get_entity(id)
+		if not ent.is_empty() and ent.alive and ent.team==team and ent.category=="unit" and ent.kind in Rules.UNIT_KINDS and ent.kind!="villager": military.append(id)
+	if military.is_empty(): return _reject_command(team,"請選取自己的軍事單位。")
+	military.sort()
+	var reserved={}
+	for id in military:
+		var ent=_get_entity(id)
+		if team==0: _path_new_command(ent)
+		_order_move(ent,position,reserved,military)
+		if ent.state=="move":
+			ent.mode="ADVANCE"
+			reserved[_cell(ent.dest)]=true
+	return true
+
+func _order_patrol(ids,position,team):
+	# Patrol is explicit military intent, never inferred from a normal ground tap.
+	if team not in [0,1] or typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT or not position is Vector3 or not position.is_finite(): return _reject_command(team,"請選取軍隊並點選巡邏目的地。")
+	if absf(position.x)>=Rules.MAP_WORLD_LIMIT or absf(position.z)>=Rules.MAP_WORLD_LIMIT: return _reject_command(team,"目的地超出地圖。")
+	var military=[]; var seen={}
+	for id in ids:
+		if typeof(id)!=TYPE_INT: return _reject_command(team,"部隊選取已失效。")
+		if seen.has(id): continue
+		seen[id]=true
+		var ent=_get_entity(id)
+		if not ent.is_empty() and ent.alive and ent.team==team and ent.category=="unit" and ent.kind in Rules.UNIT_KINDS and ent.kind!="villager": military.append(id)
+	military.sort()
+	var reserved={}; var applied=false
+	for id in military:
+		var ent=_get_entity(id)
+		var origin=ent.pos
+		var goal=_nearest_free(position,8,team,ent,reserved,military)
+		# Refuse a zero/tiny circuit before disturbing the previous order.
+		if goal==Vector3.INF or origin.distance_to(goal)<2.0: continue
+		if team==0: _path_new_command(ent)
+		_order_move(ent,goal,reserved,military)
+		if ent.state!="move": continue
+		ent.patrol_points=[origin,ent.dest]; ent.patrol_index=1; ent.mode="PATROL"
+		reserved[_cell(ent.dest)]=true; applied=true
+	if not applied: return _reject_command(team,"請選取自己的軍隊，並選擇較遠的可用目的地。")
+	return true
+
+func _point_route_goal(ent):
+	if ent.mode!="PATROL": return _nearest_free(ent.path_request_goal,8,ent.team,ent)
+	var points=ent.get("patrol_points",[])
+	var index=ent.get("patrol_index",-1)
+	if points.size()!=2 or index not in [0,1]: return Vector3.INF
+	# Every search re-resolves around the ORIGINAL endpoint, not the previous
+	# fallback slot. Ordinary traffic/search gates still own the actual query.
+	return _nearest_free(points[index],2,ent.team,ent)
+
+func _patrol_next_leg(ent):
+	# Called only after ordinary arrival. A failed leg is not a new command.
+	if ent.mode!="PATROL" or ent.state!="move" or ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: return false
+	var points=ent.get("patrol_points",[])
+	var index=ent.get("patrol_index",-1)
+	if points.size()!=2 or index not in [0,1]:
+		_set_stance(ent,"STOP"); return false
+	if ent.pos.distance_to(ent.dest)>=0.001: return false
+	var next_index=1-index
+	# At a blocked endpoint only its immediate two-cell neighborhood is eligible.
+	# No remote reroute, polling loop, new search allowance or hidden occupancy.
+	var goal=_nearest_free(points[next_index],2,ent.team,ent)
+	if goal==Vector3.INF or ent.pos.distance_to(goal)<1.0:
+		_set_stance(ent,"STOP")
+		if ent.team==0: _message("巡邏端點受阻，已停止。請重新落指令。",3)
+		return false
+	_order_move(ent,goal)
+	if ent.state!="move": return false
+	ent.patrol_points=points; ent.patrol_index=next_index; ent.mode="PATROL"
+	return true
+
+func _advance_target(ent):
+	if ent.mode not in ["ADVANCE","PATROL"] or ent.state!="move" or ent.kind=="villager" or ent.kind not in Rules.UNIT_KINDS: return {}
+	if ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: return {}
+	var best={}; var distance=INF
+	# Detached faction observations only. Fire revalidates live visibility/range.
+	for record in faction_views[ent.team].records().values():
+		if record.get("team",-1)!=1-ent.team or not record.get("alive",false) or record.get("remembered",false) or record.get("category","") not in ["unit","building"]: continue
+		if not Rules.CONTENT.resolve_damage(ent.kind,record.kind).get("ok",false): continue
+		var d=_attack_distance(ent.pos,record)
+		if d>Rules.RANGE[ent.kind]: continue
+		if d<distance or (is_equal_approx(d,distance) and (best.is_empty() or record.id<best.id)):
+			best=record; distance=d
+	return best
+
+func _advance_combat(ent):
+	var observed=_advance_target(ent)
+	if observed.is_empty(): return
+	var target=_get_entity(observed.id)
+	if target.is_empty() or not _visible_to(target,ent.team): return
+	if not target.alive or target.team!=1-ent.team or target.category not in ["unit","building"] or _attack_distance(ent.pos,target)>Rules.RANGE[ent.kind]: return
+	ent.advance_engaged=true
+	_note_unit_action(ent,"attack_ready",target.pos)
+	if ent.cooldown_ticks<=0: _release_attack(ent,target)
+
 func _order_move(ent,p,reserved={},ignore_orders=[]):
+	# Resolve once with the ordinary owned/observed geometry and reservations.
+	var destination=_nearest_free(p,8,ent.team,ent,reserved,ignore_orders)
+	_retire_ai_attack_move_failure(ent,destination)
 	_release_farm(ent)
 	_path_cancel_pending(ent)
-	ent.mode="MOVE"; ent.auto_target=false; ent.path_request_kind="point"
-	ent.state="move"; ent.target=-1; ent.dest=_nearest_free(p,8,ent.team,ent,reserved,ignore_orders); ent.path=PackedVector3Array(); ent.path_version=-1; ent.stuck=0
+	ent.erase("patrol_points"); ent.erase("patrol_index")
+	ent.mode="MOVE"; ent.auto_target=false; ent.advance_engaged=false; ent.path_request_kind="point"
+	ent.state="move"; ent.target=-1; ent.dest=destination; ent.path=PackedVector3Array(); ent.path_version=-1; ent.stuck=0
 	if ent.dest==Vector3.INF: ent.dest=ent.pos; _set_stance(ent,"STOP")
 
 func _set_stance(ent,mode):
 	_release_farm(ent)
 	_path_cancel_pending(ent)
 	ent.path_request_kind="point"
-	ent.mode=mode; ent.state="idle"; ent.anchor=ent.pos; ent.auto_target=false
+	ent.erase("patrol_points"); ent.erase("patrol_index")
+	ent.mode=mode; ent.state="idle"; ent.anchor=ent.pos; ent.auto_target=false; ent.advance_engaged=false
 	ent.target=-1; ent.path=PackedVector3Array(); ent.path_version=-1
 
 func _finish_attack(ent):
 	if ent.auto_target and ent.mode=="DEFEND":
 		ent.target=-1; ent.auto_target=false
+		# Retire the completed pursuit even when already at the anchor.
+		# A different visible target must not inherit this goal's terminal
+		# result. Keep the rolling search/failure history and next-attempt gate.
+		_path_cancel_pending(ent)
+		ent.path_status="IDLE"; ent.path_reason=""
+		var recent_retries=[]
+		for retry_tick in ent.path_retry_ticks:
+			if tick_count-retry_tick<20: recent_retries.append(retry_tick)
+		if recent_retries.size()>=3:
+			ent.path_next_attempt_tick=maxi(ent.path_next_attempt_tick,recent_retries[recent_retries.size()-3]+20)
+		ent.path=PackedVector3Array(); ent.path_version=-1
 		if ent.pos.distance_to(ent.anchor)>0.2:
-			# Return is a new goal, not a new player command. Retire the old
-			# pursuit once without erasing its rolling search/failure budget.
-			_path_cancel_pending(ent)
-			ent.path_status="IDLE"; ent.path_reason=""
-			var recent_retries=[]
-			for retry_tick in ent.path_retry_ticks:
-				if tick_count-retry_tick<20: recent_retries.append(retry_tick)
-			if recent_retries.size()>=3:
-				ent.path_next_attempt_tick=maxi(ent.path_next_attempt_tick,recent_retries[recent_retries.size()-3]+20)
-			ent.state="return"; ent.path=PackedVector3Array(); ent.path_version=-1; ent.dest=ent.anchor
+			ent.state="return"; ent.dest=ent.anchor
 		else: ent.state="idle"
 	else: _set_stance(ent,"STOP")
 
@@ -1752,8 +2095,19 @@ func _stance_target(ent):
 	return best
 
 func _move_unit_phase(ent,dt):
+	ent.advance_engaged=false
 	if ent.state=="move":
-		if _move(ent,ent.dest,dt): _set_stance(ent,"STOP")
+		if ent.mode=="PATROL" and ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: return
+		if not _advance_target(ent).is_empty():
+			ent.advance_engaged=true
+			# Deliberate combat pause is not blocked navigation. Exclude only
+			# this held tick from elapsed traffic clocks, not retry/search gates.
+			ent.traffic_progress_tick=mini(tick_count,ent.traffic_progress_tick+1)
+			if ent.traffic_gate_since>=0: ent.traffic_gate_since=mini(tick_count,ent.traffic_gate_since+1)
+			return
+		if _move(ent,ent.dest,dt):
+			if ent.mode=="PATROL": _patrol_next_leg(ent)
+			else: _set_stance(ent,"STOP")
 		return
 	if ent.state=="return":
 		if _move(ent,ent.anchor,dt): ent.state="idle"; ent.mode="DEFEND"
@@ -1771,7 +2125,7 @@ func _move_unit_phase(ent,dt):
 		var remembered={"category":target.category,"kind":target.kind,"pos":ent.last_known,"radius":target.radius}
 		if observed and _attack_distance(ent.pos,remembered)<=Rules.RANGE[ent.kind]: return
 		if not observed and _attack_distance(ent.pos,remembered)<0.6: return
-		var goal=_attack_approach(ent,remembered) if target.category!="unit" else ent.last_known
+		var goal=_attack_approach(ent,remembered,not observed) if target.category!="unit" else ent.last_known
 		if goal==Vector3.INF: return
 		var before=ent.pos
 		_move(ent,goal,dt)
@@ -1824,6 +2178,7 @@ func _dropoff(ent):
 	return best
 
 func _cargo_idle(ent):
+	_release_farm(ent)
 	_path_cancel_pending(ent); ent.state="idle"; ent.target=-1; ent.path=PackedVector3Array()
 	if ent.team==0 and _cargo_amount(ent)>0: _message("沒有可交付路線，已保留負重。請建立交付點或重新落指令。",3)
 
@@ -1902,6 +2257,27 @@ func _replay_attack(event: Dictionary) -> Dictionary:
 func _combat_snapshot() -> Dictionary:
 	return attack_ledger.snapshot()
 
+func _recover_observed_attack_goal(ent,target):
+	# A completed static frontier belongs to one observed pursuit goal,
+	# not every future position of the same enemy. Never reset a search cap.
+	if ent.state!="attack" or (ent.auto_target and ent.mode!="DEFEND") or (not ent.auto_target and ent.mode!="ATTACK"): return false
+	if target.is_empty() or not target.alive or target.category!="unit" or target.id!=ent.target or target.team!=1-ent.team or not _visible_to(target,ent.team): return false
+	if _attack_distance(ent.pos,target)<=Rules.RANGE[ent.kind]: return false
+	if ent.auto_target and target.pos.distance_to(ent.anchor)>3.0: return false
+	if ent.path_status!=BoundedPath.NO_PATH or ent.path_reason!="frontier_exhausted" or ent.path_pending or ent.traffic_route or not ent.path.is_empty(): return false
+	if ent.path_request_kind!="point" or ent.path_request_state!="attack" or ent.path_request_target!=ent.target or ent.path_request_epoch!=ent.work_epoch or ent.path_revision!=work_memory[ent.team].revision: return false
+	var failed=ent.get("path_resolved_goal",Vector3.INF)
+	var requested=ent.get("path_request_goal",Vector3.INF)
+	if not failed.is_finite() or not requested.is_finite() or _cell(target.pos)==_cell(requested): return false
+	# The ordinary known-clear resolver can map different target cells to
+	# the same failed endpoint. Such aliases are not a new pursuit goal.
+	var goal=_nearest_free(target.pos,8,ent.team,ent)
+	if goal==Vector3.INF or _cell(goal)==_cell(failed): return false
+	_path_cancel_pending(ent)
+	ent.path_status="IDLE"; ent.path_reason=""
+	# Retry timestamps, failures, counters and next-attempt gate survive.
+	return true
+
 func _update_unit(ent,dt):
 	ent.cooldown_ticks=maxi(0,ent.cooldown_ticks-1)
 	if ent.state=="idle":
@@ -1909,7 +2285,10 @@ func _update_unit(ent,dt):
 			var enemy=_stance_target(ent)
 			if not enemy.is_empty(): _order(ent,"attack",enemy.id,true)
 		return
-	if ent.state in ["move","return"]: return
+	if ent.state=="move":
+		if ent.mode in ["ADVANCE","PATROL"]: _advance_combat(ent)
+		return
+	if ent.state=="return": return
 	if ent.state in ["gather","deliver"]:
 		_update_work(ent); return
 	var target=_get_entity(ent.target)
@@ -1934,10 +2313,16 @@ func _update_unit(ent,dt):
 			ent.last_known=target.pos
 			var distance=_attack_distance(ent.pos,target)
 			if distance<=Rules.RANGE[ent.kind]:
+				# Reaching an observed firing/melee position ends movement work.
+				# Otherwise an old deferred traffic search can later cancel this
+				# live attack. Retire it once, without resetting retry budgets.
+				if ent.path_pending or not ent.path.is_empty() or ent.traffic_route:
+					_path_cancel_pending(ent)
 				_note_unit_action(ent,"attack_ready",target.pos)
 				ent.path=PackedVector3Array()
 				if ent.cooldown_ticks<=0: _release_attack(ent,target)
 			elif ent.auto_target and ent.mode=="STOP": _finish_attack(ent)
+			else: _recover_observed_attack_goal(ent,target)
 		"repair":
 			# REP01: insufficient wood stops on this authoritative work update,
 			# even en route or during a later damage lockout, not at payment due.
@@ -1987,14 +2372,20 @@ func _update_unit(ent,dt):
 						var fulfilled=economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,target.team)
 						if not fulfilled.applied: return
 					target.built=true; completed_builds[ent.team]+=1; ent.state="idle"
+					match_report.record_completion(target)
 					if target.kind=="farm":
 						var registered=economy.register_farm(target.id,target.team)
 						assert(registered.ok)
+						# Finishing this field continues its builder into ordinary farm
+						# work. No harvest this tick, cargo conversion or retry reset.
+						# An earlier player command already replaced build before here.
+						if registered.ok: _order(ent,"gather",target.id)
 					if target.team==0 and not receipt_id.is_empty() and target.kind in ["house","barracks"]: demo_tutorial.record(target.kind)
 					if ent.team==0: _message(Rules.NAMES[target.kind]+"建造完成。",3)
 
 func _kill(ent):
 	if not ent.alive: return
+	ai_scout_moves.erase(ent.id)
 	ent.death_observed_by=[_visible_to(ent,0),_visible_to(ent,1)]
 	if ent.category=="unit" and ent.kind in MatureVisuals.UNIT_KINDS and ent.death_observed_by[0]:
 		# Detached final observed pose only. This adds no corpse entity/blocker.
@@ -2010,7 +2401,10 @@ func _kill(ent):
 	if not site_receipt.is_empty() and not ent.built:
 		economy.destroy_cost("destroyed:"+site_receipt,site_receipt,ent.team)
 	ent.alive=false; ent.queue.clear(); ent.node.visible=false; ent.path=PackedVector3Array()
-	selected.erase(ent.id); action_key=""
+	# Unrelated deaths must not replace a button beneath a held GUI press.
+	# Selected deaths still invalidate controls before any stale release.
+	if ent.id in selected:
+		selected.erase(ent.id); action_key=""
 	# Losing the final selected unit ends targeting before its Cancel control
 	# disappears. Retire held pointers so a late release cannot become selection.
 	if rally_building==ent.id or (touch_command and rally_building<0 and selected.is_empty()): _cancel_mode()
@@ -2076,6 +2470,7 @@ func _check_end():
 	game_over=true
 	outcome="draw" if player_lost==enemy_lost else ("defeat" if player_lost else "victory")
 	victory=outcome=="victory"
+	last_match_report=match_report.make_report(outcome,end_reason,tick_count,age_completed_tick[0],economy.stats_view(0),economy.bank_milli(0))
 	commands.clear(); _cancel_mode()
 	if is_instance_valid(end_panel):
 		end_title.text={"victory":"王旗再起","defeat":"聚落失守","draw":"戰事暫歇"}[outcome]
@@ -2085,7 +2480,25 @@ func _check_end():
 		elif end_reason=="irrecoverable":
 			end_body.text={"victory":"敵方持續 60 秒沒有單位或任何復原途徑，已自動投降。","defeat":"我方持續 60 秒沒有單位或任何復原途徑，已自動投降。","draw":"雙方持續 60 秒沒有單位或任何復原途徑。和局。"}[outcome]
 		else: end_body.text={"victory":"敵方主堡已倒下，霧谷由你守護。","defeat":"你的主堡已被摧毀。重新部署，再戰一局。","draw":"雙方同時失守，或已達 40 分鐘上限。和局。"}[outcome]
-		end_panel.show()
+		_show_match_report_page("overview"); end_panel.show(); _layout_ui()
+
+func _show_match_report_page(page: String):
+	if not game_over or last_match_report.is_empty() or page not in ["overview","economy","units","buildings"]: return
+	_cancel_pointer_streams()
+	end_report_page=page; end_scroll.scroll_vertical=0
+	end_report_label.text=MatchReport.page_text(last_match_report,page)
+	for button in end_tabs.get_children():
+		button.disabled=button.get_meta("report_page")==page
+
+func _layout_end_report(view_size: Vector2):
+	if not is_instance_valid(end_panel): return
+	var extent=Vector2(minf(540,view_size.x-24),minf(560,view_size.y-24))
+	end_panel.position=(view_size-extent)*0.5; end_panel.size=extent
+	var inner=extent.x-32
+	end_title.position=Vector2(16,12); end_title.size=Vector2(inner,36)
+	end_tabs.position=Vector2(16,56); end_tabs.size=Vector2(inner,46)
+	end_scroll.position=Vector2(16,112); end_scroll.size=Vector2(inner,maxf(1,extent.y-180))
+	end_actions.position=Vector2(16,extent.y-58); end_actions.size=Vector2(inner,46)
 
 # --- Fair, finite-frequency Demo AI01 ---
 # Defaults are documented in AI_POLICY.md. This layer submits ordinary commands;
@@ -2100,6 +2513,7 @@ var ai_raid_departure_count=0
 var ai_raid_keep={}
 var ai_raid_retreating=false
 var ai_scout_attempts={}
+var ai_scout_moves={}
 var ai_claimed_workers={}
 var ai_build_submitted=false
 var ai_budget={}
@@ -2136,6 +2550,7 @@ func _ai_builder(records):
 	for idle_only in [true,false]:
 		for ent in records:
 			if not ent.owned or ent.kind!="villager" or ent.state=="build" or ai_claimed_workers.has(ent.id): continue
+			if ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: continue
 			if idle_only and ent.state!="idle": continue
 			if _ai_food_worker(ent) and food_count<=2: continue
 			return ent
@@ -2160,7 +2575,16 @@ func _assign_worker(ent,desired=""):
 		if d<distance or (d==distance and (resource.is_empty() or known.id<resource.id)): resource=known; distance=d
 	if resource.is_empty():
 		ai_status.worker="no_known_"+desired; return false
-	_submit("order",{"ids":[ent.id],"target":-1 if resource.remembered else resource.id,"position":resource.pos},ent.team)
+	# Ordinary AI orders preserve terminal budgets. Only the existing visible
+	# full/foreign cargo handoff can leave NO_PATH for a deposit route.
+	var status=ent.get("path_status","")
+	var carried=ent.get("cargo_milli",0)
+	var delivery_handoff=not resource.remembered and (carried>=Economy.CARGO_CAP or (carried>0 and ent.get("carry_type","")!=_resource_type(resource)))
+	if status in [BoundedPath.LIMIT_REACHED,"NO_WORK"] or (status==BoundedPath.NO_PATH and not delivery_handoff):
+		ai_status.worker="terminal_work_route"; return false
+	var order={"ids":[ent.id],"target":-1 if resource.remembered else resource.id,"position":resource.pos}
+	if desired=="food" and resource.kind=="farm" and resource.owned and resource.built and not resource.remembered: order.farm_gather=true
+	_submit("order",order,ent.team)
 	ai_claimed_workers[ent.id]=desired
 	return true
 
@@ -2182,6 +2606,104 @@ func _ai_build(kind):
 	ai_status.build="no_legal_plot"; ai_status.placement_reasons=reasons
 	return false
 
+func _ai_keep_repair(records,castle):
+	# A policy choice only. HP, work, lockout, route and wood remain ordinary
+	# authority. Own damage timing is published only inside the owned view.
+	if castle.is_empty() or not castle.get("owned",false) or not castle.get("alive",false) or castle.get("team",-1)!=1 or castle.get("kind","")!="town_center" or not castle.get("built",false): return false
+	if castle.get("hp",0)<=0 or castle.get("hp",0)>=castle.get("max_hp",0): return false
+	var assigned=false; var working=false
+	for worker in records:
+		if not worker.get("owned",false) or not worker.get("alive",false) or worker.get("team",-1)!=1 or worker.get("kind","")!="villager" or worker.get("state","")!="repair" or worker.get("target",-1)!=castle.id: continue
+		# Do not let housing, site recovery or resource balancing steal the
+		# one-second repair interval before its paid work can commit.
+		ai_claimed_workers[worker.id]="repair"; assigned=true
+		if worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]:
+			_submit("stop",{"ids":[worker.id]},1)
+		else: working=true
+	if assigned:
+		if working and ai_budget.get("wood",0)>=Economy.SCALE: ai_budget.wood-=Economy.SCALE
+		ai_status.keep_repair="working" if working else "route_failed_stop_requested"
+		return true
+	if ai_budget.get("wood",0)<Economy.SCALE or tick_count-castle.get("last_damage_tick",tick_count)<100: return false
+	for observed in records:
+		if observed.get("team",-1)==0 and observed.get("alive",false) and not observed.get("remembered",false) and observed.get("category","")=="unit" and _attack_distance(observed.pos,castle)<=AI_HOME_THREAT_DISTANCE: return false
+	var food_count=_ai_food_count(records)
+	if food_count<2: return false
+	var chosen={}; var best_distance=INF
+	for idle_only in [true,false]:
+		for worker in records:
+			if not worker.get("owned",false) or not worker.get("alive",false) or worker.get("team",-1)!=1 or worker.get("category","")!="unit" or worker.get("kind","")!="villager" or worker.get("remembered",false): continue
+			if ai_claimed_workers.has(worker.id) or worker.get("state","") not in ["idle","gather"] or worker.get("cargo_milli",0)>0: continue
+			if worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]: continue
+			if idle_only and worker.state!="idle": continue
+			if _ai_food_worker(worker) and food_count<=2: continue
+			var distance=worker.pos.distance_squared_to(castle.pos)
+			if distance<best_distance or (distance==best_distance and (chosen.is_empty() or worker.id<chosen.id)):
+				chosen=worker; best_distance=distance
+		if not chosen.is_empty(): break
+	if chosen.is_empty(): return false
+	var sequence=command_sequence
+	_submit("order",{"ids":[chosen.id],"target":castle.id,"position":castle.pos},1)
+	if command_sequence==sequence: return false
+	ai_claimed_workers[chosen.id]="repair"
+	# Policy budget only: retain one wood for the next normal work payment.
+	# No reservation/debit is made in the ledger, no HP or repair tick is added.
+	ai_budget.wood-=Economy.SCALE; ai_status.keep_repair="requested"
+	return true
+
+func _ai_recover_worker_slot(records,castle,workers,queued_workers,capacity,committed):
+	# Losing the final worker can leave every birth slot occupied by paid
+	# military reservations. One exact cancellation may restore a worker,
+	# but never sacrifice a live unit or cancel a batch that cannot recover.
+	if workers!=0 or queued_workers!=0 or committed<capacity or committed-1>=capacity: return false
+	if castle.is_empty() or not castle.get("owned",false) or not castle.get("alive",false) or castle.get("team",-1)!=1 or castle.get("kind","")!="town_center" or not castle.get("built",false): return false
+	var funds=economy.bank_milli(1)
+	var chosen={}; var best_rank=2
+	for building in records:
+		if not building.get("owned",false) or not building.get("alive",false) or building.get("team",-1)!=1 or building.get("category","")!="building" or not building.get("built",false): continue
+		# A different producer's cancellation cannot open a full keep queue.
+		if castle.queue.size()>=5 and building.id!=castle.id: continue
+		for order in building.get("queue",[]):
+			if order.get("research",false) or order.get("kind","") not in Rules.UNIT_KINDS or order.kind=="villager" or order.get("queue_id",-1)<0: continue
+			var refund=economy.quote_refund(order.get("receipt_id",""),1)
+			# Closed/missing/foreign receipts quote zero. Every real military
+			# product has a positive ordinary refund, even after it has started.
+			if refund.get("food",0)+refund.get("wood",0)+refund.get("stone",0)+refund.get("iron",0)<=0: continue
+			var affordable=true
+			for resource in COSTS.villager:
+				if funds.get(resource,0)+refund.get(resource,0)<COSTS.villager[resource]*Economy.SCALE: affordable=false
+			if not affordable: continue
+			var rank=1 if order.get("started",false) else 0
+			if chosen.is_empty() or rank<best_rank or (rank==best_rank and (building.id<chosen.building or (building.id==chosen.building and order.queue_id<chosen.queue_id))):
+				chosen={"building":building.id,"queue_id":order.queue_id,"expected_refund":refund}; best_rank=rank
+	if chosen.is_empty(): return false
+	var previous_sequence=command_sequence
+	_submit("cancel_queue_item",chosen,1)
+	if command_sequence==previous_sequence: return false
+	# Exact queue identity/refund are revalidated by ordinary execution.
+	# Do not spend the quote or train in this policy turn. Observe committed
+	# cancellation and actual bank/population on the next regular AI update.
+	ai_status.worker_recovery="military_slot_refund_requested"
+	return true
+
+func _ai_recover_worker_funding(castle,workers,queued_workers,capacity,committed):
+	# With no worker left, paid research may hold the only viable recovery
+	# funds. Do not abandon research when a replacement is already possible.
+	if workers!=0 or queued_workers!=0 or committed>=capacity or _ai_can_budget("villager"): return false
+	if castle.is_empty() or not castle.owned or not castle.alive or castle.team!=1 or castle.kind!="town_center" or not castle.built or castle.queue.size()!=1: return false
+	var order=castle.queue[0]
+	if not order.get("research",false) or order.get("kind","")!="age2": return false
+	var refund=economy.quote_refund(order.get("receipt_id",""),1)
+	for resource in COSTS.villager:
+		if ai_budget.get(resource,0)+refund.get(resource,0)<COSTS.villager[resource]*Economy.SCALE: return false
+	var previous_sequence=command_sequence
+	_submit("cancel_train",{"building":castle.id},1)
+	if command_sequence==previous_sequence: return false
+	# Cancellation is still authoritative and may fail. Never pre-credit or
+	# spend this quote; the next AI turn reads the actual bank and queue.
+	ai_status.worker_recovery="research_refund_requested"
+	return true
+
 func _ai_resource_gap(records,workers,capacity,committed):
 	var desired=_ai_progression_goal(records,workers,capacity,committed)
 	ai_status.resource_goal=desired
@@ -2191,27 +2713,93 @@ func _ai_resource_gap(records,workers,capacity,committed):
 		if deficit>gap: gap=deficit; chosen=resource
 	return chosen
 
+func _ai_static_failed_scout(ent):
+	# Only a completed static frontier for our exact accepted exploration MOVE.
+	# A stale task, another order, traffic or a search limit grants no retry.
+	var tracked=ai_scout_moves.get(ent.get("id",-1),{})
+	return tracked.has("work_epoch") and tracked.has("goal") \
+		and ent.get("team",-1)==1 and ent.get("kind","")=="scout" and ent.get("alive",false) \
+		and ent.get("state","")=="move" and ent.get("mode","")=="MOVE" and ent.get("target",-2)==-1 \
+		and ent.get("path_status","")==BoundedPath.NO_PATH and ent.get("path_reason","")=="frontier_exhausted" \
+		and not ent.get("path_pending",true) and not ent.get("traffic_route",true) and ent.get("path",[Vector3.INF]).is_empty() \
+		and ent.get("path_request_kind","")=="point" and ent.get("path_request_state","")=="move" \
+		and ent.get("path_request_target",-2)==-1 and ent.get("work_epoch",-1)>=0 \
+		and ent.get("path_request_epoch",-2)==ent.get("work_epoch",-1) \
+		and tracked.work_epoch==ent.get("work_epoch",-1) and tracked.goal==ent.get("dest",Vector3.INF)
+
 func _ai_scout(ent):
-	if ent.state!="idle": return
+	if paused or game_over or not ent.get("owned",false) or ent.get("team",-1)!=1 or ent.get("kind","")!="scout": return
+	var recover_static=_ai_static_failed_scout(ent)
+	if ent.state!="idle" and not recover_static: return
+	if ent.state=="idle" and ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]: return
+	# Do not queue exploration across a pending explicit order or stance.
+	for queued in commands:
+		if queued.get("team",-1)==1 and ent.id in queued.get("ids",[]) and queued.get("type","") in ["order","stop","defend"]:
+			ai_status.scout="pending_order"; return
 	var point=Vector3.INF; var distance=INF; var chosen=-1
-	# Bounded playable-map scan, no hidden occupancy or enemy coordinates. Each unknown
-	# cell is attempted once per scout; ordinary path scheduling remains bounded.
+	# Finite shared attempted-cell set for the match. Inspect explored public
+	# cells only; no hidden occupancy, enemy coordinates or path probe.
 	for y in range(Rules.MAP_BORDER,Rules.MAP_LAST_PLAYABLE+1):
 		for x in range(Rules.MAP_BORDER,Rules.MAP_LAST_PLAYABLE+1):
 			var index=y*Rules.MAP_SIZE+x
 			if explored_cells[1][index]!=0 or ai_scout_attempts.has(index): continue
-			var candidate=_point(Vector2i(x,y)); var d=ent.pos.distance_squared_to(candidate)
+			var candidate=_point(Vector2i(x,y))
+			if recover_static and _cell(candidate)==_cell(ent.dest): continue
+			var d=ent.pos.distance_squared_to(candidate)
 			if d<distance: point=candidate; distance=d; chosen=index
 	if chosen<0: ai_status.scout="no_untried_unknown_cell"; return
+	var previous_sequence=command_sequence
+	_submit("order",{"ids":[ent.id],"target":-1,"position":point,"ai_scout_explore":true},1)
+	if command_sequence==previous_sequence: return
 	ai_scout_attempts[chosen]=true
-	_submit("order",{"ids":[ent.id],"target":-1,"position":point},1)
-	ai_status.scout="exploring_unknown"
+	var tracked=ai_scout_moves.get(ent.id,{}).duplicate(true)
+	tracked.pending_sequence=command_sequence; tracked.requested_goal=point; tracked.recover_static=recover_static
+	ai_scout_moves[ent.id]=tracked
+	ai_status.scout="recovering_static_frontier" if recover_static else "exploring_unknown"
 
 func _ai_move_home(members,castle):
 	var ids=[]
 	for ent in members:
 		if _attack_distance(ent.pos,castle)>3.0 and (ent.state!="move" or ent.dest.distance_to(castle.pos)>6.0): ids.append(ent.id)
 	if not ids.is_empty(): _submit("order",{"ids":ids,"target":-1,"position":castle.pos},1)
+
+func _ai_raid_order(ent,records,enemy_keep):
+	# Escort combat uses current faction observations, never hidden authority.
+	# Siege keeps its strategic objective; other military can clear defenders.
+	var defender=RaidTactics.choose(ent,records)
+	if not defender.is_empty():
+		if ent.state!="attack" or ent.target!=defender.id:
+			_submit("order",{"ids":[ent.id],"target":defender.id,"position":defender.pos},1)
+		return
+	if not enemy_keep.remembered:
+		if ent.state!="attack" or ent.target!=enemy_keep.id:
+			_submit("order",{"ids":[ent.id],"target":enemy_keep.id,"position":enemy_keep.pos},1)
+	elif ent.state=="idle" or (ent.state=="attack" and ent.target!=enemy_keep.id):
+		# An expired interception must not keep pursuing an unseen unit while
+		# the raid still has a legitimate remembered destination. Ground only.
+		if _attack_distance(ent.pos,enemy_keep)>1.1:
+			_submit("order",{"ids":[ent.id],"target":-1,"position":enemy_keep.pos},1)
+		elif ent.state=="attack": _submit("stop",{"ids":[ent.id]},1)
+
+func _ai_raid_static_blocked(survivors,records):
+	# Strategic cohort retirement, not permission to retry a route. Use only
+	# current owned request identities and observed attack ranges. New troops
+	# must still muster, meet the existing size/cooldown and issue normal orders.
+	if survivors.is_empty(): return false
+	for ent in survivors:
+		if not ent.get("owned",false) or not ent.get("alive",false) or ent.get("remembered",true) or ent.get("team",-1)!=1 or ent.get("category","")!="unit" or ent.get("kind","") not in Rules.UNIT_KINDS or ent.kind=="villager": return false
+		if ent.get("state","")!="attack" or ent.get("mode","")!="ATTACK" or ent.get("target",-1)<0: return false
+		if ent.get("path_status","")!=BoundedPath.NO_PATH or ent.get("path_reason","")!="frontier_exhausted" or ent.get("path_pending",true) or ent.get("traffic_route",true) or not ent.get("path",[Vector3.INF]).is_empty(): return false
+		if ent.get("path_request_kind","")!="point" or ent.get("path_request_state","")!="attack" or ent.get("path_request_target",-1)!=ent.target or ent.get("work_epoch",-1)<0 or ent.get("path_request_epoch",-2)!=ent.work_epoch: return false
+		# A newly selected defender/changed objective can legitimately supersede
+		# this proof. Do not discard that already-submitted ordinary action.
+		for command in commands:
+			if command.get("team",-1)==1 and command.get("type","") in ["order","stop","defend","advance","patrol"] and ent.id in command.get("ids",[]): return false
+		for target in records:
+			if target.get("id",-1)!=ent.target or not target.get("alive",false) or target.get("remembered",true) or target.get("team",-1)!=0 or target.get("category","") not in ["unit","building"]: continue
+			# A failed movement route does not prevent legitimate in-range fire.
+			if _attack_distance(ent.pos,target)<=Rules.RANGE[ent.kind]: return false
+	return true
 
 func _ai_army(records,castle):
 	var army=[]; var enemy_keep={}; var threat={}; var threat_distance=INF
@@ -2243,16 +2831,22 @@ func _ai_army(records,castle):
 			var all_home=true
 			for ent in survivors:
 				if _attack_distance(ent.pos,castle)>3.0: all_home=false
+				elif (ent.state=="attack" and ent.mode=="ATTACK") or (ent.state=="move" and _attack_distance(ent.dest,castle)>3.0):
+					# Arrival does not cancel an old outbound command by itself.
+					# Retire it through ordinary AI Stop before the next motion
+					# phase; preserve bounded automatic combat and homebound moves.
+					_submit("stop",{"ids":[ent.id]},1)
 			if all_home: ai_raid_members.clear(); ai_raid_retreating=false
 			ai_status.army="retreat"; return
 		# A remembered keep supports only a ground move, never a hidden target.
 		# If observation retires its memory, return instead of using stale truth.
 		if enemy_keep.is_empty(): ai_raid_retreating=true; _ai_move_home(survivors,castle); ai_status.army="keep_memory_retired"; return
-		for ent in survivors:
-			if not enemy_keep.remembered and (ent.state!="attack" or ent.target!=enemy_keep.id):
-				_submit("order",{"ids":[ent.id],"target":enemy_keep.id,"position":enemy_keep.pos},1)
-			elif enemy_keep.remembered and ent.state=="idle" and _attack_distance(ent.pos,enemy_keep)>1.1:
-				_submit("order",{"ids":[ent.id],"target":-1,"position":enemy_keep.pos},1)
+		for ent in survivors: _ai_raid_order(ent,records,enemy_keep)
+		if _ai_raid_static_blocked(survivors,records):
+			# Leave every survivor and its search history untouched. A later
+			# policy turn may send a fresh normally-mustered cohort instead.
+			ai_raid_members.clear(); ai_raid_retreating=false
+			ai_status.army="raid_static_frontier_retired"; return
 		ai_status.army="raid_active"; return
 	# Only a finished scouting unit physically returned to muster can count.
 	var mustered=[]
@@ -2368,9 +2962,12 @@ func _ai_update():
 	_ai_site_cache(sites,workers)
 	if castle.is_empty(): ai_status.blocked="no_own_keep"; return
 	_ai_army(records,castle)
+	if _ai_recover_worker_slot(records,castle,workers.size(),queued_workers,capacity,living+reserved): return
+	if _ai_recover_worker_funding(castle,workers.size(),queued_workers,capacity,living+reserved): return
 	if not ai_opening_assigned:
 		for i in workers.size(): _assign_worker(workers[i],"food" if i<3 else "wood")
 		ai_opening_assigned=true
+	_ai_keep_repair(records,castle)
 	# Preserve at least two food workers before borrowing workers for recovery.
 	for ent in workers:
 		if _ai_food_count(records)>=mini(2,workers.size()): break
@@ -2404,7 +3001,7 @@ func _ai_update():
 	else:
 		for building in records:
 			if not building.owned or not building.built or goal not in Rules.products_for(building.kind): continue
-			if building.queue.size()<2 and capacity-living-reserved>0 and _ai_can_budget(goal):
+			if (building.queue.size()<2 or (goal=="villager" and workers.is_empty() and queued_workers==0 and building.kind=="town_center" and building.queue.size()<5)) and capacity-living-reserved>0 and _ai_can_budget(goal):
 				_submit("train",{"building":building.id,"kind":goal},1); _ai_reserve_budget(goal)
 				break
 	var desired=_ai_resource_gap(records,workers.size()+queued_workers,capacity,living+reserved)
@@ -2498,7 +3095,7 @@ func _publish_faction_views():
 			record.visual_yaw=ent.body.rotation.y
 			if ent.category=="unit":
 				# Public visible pose cues, never enemy command targets/path coordinates.
-				record.visual_moving=not ent.path.is_empty()
+				record.visual_moving=not ent.path.is_empty() and not ent.get("advance_engaged",false)
 				record.visual_working=ent.state in ["gather","build","repair"] and ent.path.is_empty()
 				record.visual_fast=ent.state=="move" or not ent.path.is_empty()
 				var cue: Dictionary=unit_action_cues[team].get(ent.id,{})
@@ -2509,10 +3106,15 @@ func _publish_faction_views():
 				record.visual_action_yaw=cue.get("yaw",record.visual_yaw)
 				record.visual_carrying=record.owned and ent.kind=="villager" and _cargo_amount(ent)>0
 				var anticipate_ticks=6
-				record.visual_attack_ready=cue.get("ready_tick",-1)==tick_count and ent.state=="attack" and ent.path.is_empty() and ent.cooldown_ticks>0 and ent.cooldown_ticks<=anticipate_ticks and tick_count-record.visual_attack_tick<=Rules.ATTACK_TICKS[ent.kind]
+				record.visual_attack_ready=cue.get("ready_tick",-1)==tick_count and (ent.state=="attack" or (ent.mode in ["ADVANCE","PATROL"] and ent.get("advance_engaged",false))) and not record.visual_moving and ent.cooldown_ticks>0 and ent.cooldown_ticks<=anticipate_ticks and tick_count-record.visual_attack_tick<=Rules.ATTACK_TICKS[ent.kind]
 				record.visual_anticipation=1.0-float(ent.cooldown_ticks)/anticipate_ticks
 			if record.owned:
+				record.last_damage_tick=ent.last_damage_tick
 				record.rally_point=ent.get("rally_point",Vector3.INF)
+				record.rally_target=ent.get("rally_target",-1)
+				record.rally_mode=ent.get("rally_mode","move")
+				record.repeat_kind=ent.get("repeat_kind","")
+				record.repeat_generation=ent.get("repeat_generation",0)
 				for key in ["state","queue","carry","carry_type","path","target","dest","gather_type","mode"]: record[key]=ent[key].duplicate(true) if ent[key] is Array or ent[key] is Dictionary else ent[key]
 				if ent.category=="unit":
 					for key in ["path_status","path_reason","path_pending","path_request_kind","path_request_state","path_request_target","path_request_epoch","work_epoch","traffic_route"]:
@@ -2577,7 +3179,11 @@ func _update_visuals(delta):
 				if record.kind in MatureVisuals.UNIT_KINDS: character_presenter.present(record,proxy.body,RED if record.team==1 else BLUE,delta,running)
 				else: ProgressionVisuals.present(record,proxy.body,RED if record.team==1 else BLUE,delta,running)
 			if proxy.remembered!=record.remembered:
-				_gray_proxy(proxy.body,record.remembered); proxy.remembered=record.remembered
+				if record.category == "resource":
+					preload("res://scripts/remembered_material.gd").apply(proxy.body,record.remembered)
+				else:
+					_gray_proxy(proxy.body,record.remembered)
+				proxy.remembered=record.remembered
 			if is_instance_valid(proxy.bar):
 				proxy.bar.visible=not record.remembered and record.hp<record.max_hp
 				if not record.remembered: proxy.fill.scale.x=_health_bar_fill_scale(record,proxy.bar)
@@ -2696,19 +3302,33 @@ func _create_ui():
 	var menu_title=HBoxContainer.new(); menu_box.add_child(menu_title)
 	var menu_heading=_label("霧谷王旗 · 快捷選單",17,GOLD); menu_heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL; menu_title.add_child(menu_heading)
 	menu_title.add_child(_button("關閉",func(): _toggle_compact_menu(),60))
+	attack_alert_button=_button("前往受襲位置",_focus_attack_alert,110); attack_alert_button.name="AttackAlert"; menu_box.add_child(attack_alert_button); attack_alert_button.hide()
 	mission_label=_label("",14,Color("c8d4b3")); mission_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(mission_label)
-	var nav=HBoxContainer.new(); nav.add_theme_constant_override("separation",6); menu_box.add_child(nav)
+	idle_worker_button=_button("閒置村民 0 · 下一位",_focus_idle_worker,160); idle_worker_button.name="IdleWorkerCycle"; menu_box.add_child(idle_worker_button)
+	idle_worker_button.tooltip_text="選取一位閒置村民，不改動任何指令。"
+	var nav=HFlowContainer.new(); nav.add_theme_constant_override("h_separation",6); nav.add_theme_constant_override("v_separation",6); menu_box.add_child(nav)
 	nav.add_child(_button("主堡",func(): _compact_menu_action(_home),78))
-	nav.add_child(_button("閒置村民",func(): _compact_menu_action(func(): _select_group("idle")),96))
+	nav.add_child(_button("全選閒置",func(): _compact_menu_action(func(): _select_group("idle")),96))
 	nav.add_child(_button("全軍",func(): _compact_menu_action(func(): _select_group("army")),78))
-	var nav2=HBoxContainer.new(); nav2.add_theme_constant_override("separation",6); menu_box.add_child(nav2)
+	var nav2=HFlowContainer.new(); nav2.add_theme_constant_override("h_separation",6); nav2.add_theme_constant_override("v_separation",6); menu_box.add_child(nav2)
 	nav2.add_child(_button("所有村民",func(): _compact_menu_action(func(): _select_group("villagers")),96))
 	nav2.add_child(_button("斥候",func(): _compact_menu_action(func(): _select_group("scout")),78))
 	nav2.add_child(_button("小地圖",func(): compact_map_choice=0 if minimap.visible else 1; _layout_ui(),84))
 	menu_box.add_child(_button("框選單位",func(): _compact_menu_action(_start_box_select),110))
+	var squad_help=_label("軍隊編組：先選部隊再存入；重選不會落指令。",13)
+	squad_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(squad_help)
+	for slot in range(SquadSelection.SLOT_COUNT):
+		var group_slot=slot
+		var row=HBoxContainer.new(); row.add_theme_constant_override("separation",6); menu_box.add_child(row)
+		var recall=_button("",func(): _activate_squad(group_slot,false),150)
+		recall.size_flags_horizontal=Control.SIZE_EXPAND_FILL; recall.name="RecallSquad%d" % (slot+1); row.add_child(recall)
+		var save=_button("存入 %d 隊" % (slot+1),func(): _activate_squad(group_slot,true),100)
+		save.name="SaveSquad%d" % (slot+1); row.add_child(save)
+		save.tooltip_text="以目前選取的軍隊取代本隊；不含村民，關閉戰役後不保留。"
+		squad_buttons.append({"recall":recall,"save":save})
 	audio_button=_button("音效：關",_toggle_audio,110); audio_button.name="AudioToggle"; menu_box.add_child(audio_button)
 	audio_button.tooltip_text="點按開啟原創提示音；暫停及背景時靜音"
-	var nav3=HBoxContainer.new(); nav3.add_theme_constant_override("separation",6); menu_box.add_child(nav3)
+	var nav3=HFlowContainer.new(); nav3.add_theme_constant_override("h_separation",6); nav3.add_theme_constant_override("v_separation",6); menu_box.add_child(nav3)
 	nav3.add_child(_button("取消模式",func(): _compact_menu_action(_cancel_mode),100))
 	nav3.add_child(_button("移動／攻擊",func(): _compact_menu_action(_start_unit_command),110))
 	nav3.add_child(_button("投降",func(): _compact_menu_action(_confirm_surrender),78))
@@ -2721,12 +3341,22 @@ func _create_ui():
 	toast_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	minimap=load("res://scripts/minimap.gd").new(); minimap.game=self; ui.add_child(minimap)
 	drag_rect=ReferenceRect.new(); drag_rect.border_color=GOLD; drag_rect.border_width=1.5; drag_rect.editor_only=false; drag_rect.mouse_filter=Control.MOUSE_FILTER_IGNORE; drag_rect.hide(); ui.add_child(drag_rect)
-	end_panel=PanelContainer.new(); ui.add_child(end_panel); end_panel.add_theme_stylebox_override("panel",_style(Color("1d241ef5"),GOLD,14))
-	var end_box=VBoxContainer.new(); end_box.add_theme_constant_override("separation",14); end_panel.add_child(end_box)
-	end_title=_label("王旗再起",32,GOLD); end_title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; end_box.add_child(end_title)
-	end_body=_label("",16); end_body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; end_box.add_child(end_body)
-	end_box.add_child(_button("再開一局", _request_restart))
-	end_box.add_child(_button("主選單", _request_main_menu))
+	end_panel=Panel.new(); end_panel.name="MatchReport"; ui.add_child(end_panel); end_panel.add_theme_stylebox_override("panel",_style(Color("1d241ef5"),GOLD,5))
+	end_title=_label("王旗再起",28,GOLD); end_title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; end_panel.add_child(end_title)
+	end_tabs=HBoxContainer.new(); end_tabs.add_theme_constant_override("separation",6); end_panel.add_child(end_tabs)
+	var report_pages=["overview","economy","units","buildings"]
+	var report_names=["總覽","經濟","軍隊","建築"]
+	for index in report_pages.size():
+		var choice=report_pages[index]
+		var tab=_button(report_names[index],func(): _show_match_report_page(choice),54)
+		tab.set_meta("report_page",choice); tab.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_tabs.add_child(tab)
+	end_scroll=ScrollContainer.new(); end_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; end_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO; end_scroll.mouse_force_pass_scroll_events=false; end_panel.add_child(end_scroll)
+	var end_content=VBoxContainer.new(); end_content.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_content.add_theme_constant_override("separation",12); end_scroll.add_child(end_content)
+	end_body=_label("",15); end_body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; end_content.add_child(end_body)
+	end_report_label=_label("",15); end_report_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; end_report_label.add_theme_constant_override("line_spacing",4); end_content.add_child(end_report_label)
+	end_actions=HBoxContainer.new(); end_actions.add_theme_constant_override("separation",8); end_panel.add_child(end_actions)
+	var restart=_button("再開一局",_request_restart,110); restart.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(restart)
+	var menu=_button("主選單",_request_main_menu,110); menu.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(menu)
 	end_panel.hide()
 	# Child controls may bubble wheel events to their ScrollContainer, but the
 	# owning UI boundary must consume leftovers (including at scroll limits).
@@ -2768,7 +3398,8 @@ func _cancel_pointer_streams():
 			if button.button_pressed and not button.toggle_mode and not button.disabled:
 				button.disabled=true; button.disabled=false
 	dragging=false; drag_active=false; middle_drag=false
-	touch_points.clear(); all_touch_ids.clear(); gui_touch_press.clear(); action_touch_scroll.clear(); touch_gesture=false
+	touch_points.clear(); touch_world_epochs.clear(); touch_camera_pair.clear()
+	all_touch_ids.clear(); gui_touch_press.clear(); action_touch_scroll.clear(); touch_gesture=false
 	if is_instance_valid(drag_rect): drag_rect.hide()
 
 func _defer_layout():
@@ -2786,7 +3417,7 @@ func _layout_ui():
 		top_resources.reparent(compact_top_line); compact_top_line.move_child(top_resources,1)
 	compact_brand.visible=size.x>=620 or stack_resources
 	compact_brand.size_flags_horizontal=Control.SIZE_EXPAND_FILL if stack_resources else Control.SIZE_FILL
-	compact_menu_button.text="收起" if compact_menu.visible else "選單"
+	compact_menu_button.text=_shortcut_menu_caption()
 	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
 	var info_parent=compact_narrow_info if narrow else selection_row
 	for label in [selection_detail,queue_label]:
@@ -2809,8 +3440,7 @@ func _layout_ui():
 	compact_menu_dismiss.size=Vector2(size.x,size.y-compact_menu_dismiss.position.y)
 	if compact_menu.visible:
 		ui.move_child(compact_menu_dismiss,ui.get_child_count()-1); ui.move_child(compact_menu,ui.get_child_count()-1)
-	end_panel.position=Vector2(maxf(12,size.x/2-220),maxf(12,size.y/2-110))
-	end_panel.size=Vector2(minf(440,size.x-24),220)
+	_layout_end_report(size)
 	_layout_tutorial()
 
 func _selection_stance_summary(selection: Array) -> String:
@@ -2818,21 +3448,36 @@ func _selection_stance_summary(selection: Array) -> String:
 	# Count only applied stances. Queued commands must not look committed early.
 	var defending=0
 	var stopped=0
+	var advancing=0
+	var patrolling=0
 	var owned_units=0
 	for ent in selection:
 		if not ent.get("owned",false) or not ent.get("alive",false) or ent.get("category","")!="unit": continue
 		owned_units+=1
 		if ent.get("mode","")=="DEFEND": defending+=1
 		elif ent.get("mode","")=="STOP": stopped+=1
+		elif ent.get("mode","")=="ADVANCE": advancing+=1
+		elif ent.get("mode","")=="PATROL": patrolling+=1
 	if owned_units==1:
-		return "守備" if defending==1 else ("停止" if stopped==1 else "")
+		if patrolling==1: return "巡邏"
+		return "警戒前進" if advancing==1 else ("守備" if defending==1 else ("停止" if stopped==1 else ""))
 	var parts=PackedStringArray()
 	if defending>0: parts.append("守備 %d" % defending)
 	if stopped>0: parts.append("停止 %d" % stopped)
+	if advancing>0: parts.append("警戒前進 %d" % advancing)
+	if patrolling>0: parts.append("巡邏 %d" % patrolling)
 	return " · ".join(parts)
+
+func _rally_detail(record):
+	if record.get("rally_point",Vector3.INF)==Vector3.INF: return " · 可設定新單位集合點"
+	if record.get("rally_mode","move")=="advance": return " · 警戒集合點，新軍隊警戒前進"
+	return " · 採集集合點，新村民自動採集" if record.get("rally_target",-1)>=0 else " · 集合點已設定，新單位自動移動"
 
 func _update_hud():
 	if not is_instance_valid(top_resources): return
+	_refresh_idle_worker_button()
+	_refresh_attack_alert()
+	_refresh_squad_buttons()
 	_refresh_tutorial()
 	if game_over:
 		compact_menu.hide(); compact_menu_dismiss.hide()
@@ -2847,7 +3492,7 @@ func _update_hud():
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: time_label.text+=" · 和局 %ds" % ceili(Rules.TIME_LIMIT-game_time)
-	touch_button.text="指令中" if touch_command else "指令"
+	touch_button.text=("巡邏中" if unit_command_kind=="patrol" else ("前進中" if unit_command_kind=="advance" else "指令中")) if touch_command else "指令"
 	var selection=[]
 	for id in selected:
 		var ent=faction_views[0].get_record(id)
@@ -2876,7 +3521,9 @@ func _update_hud():
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
 		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / 10" % floori(ent.cargo_milli/1000.0)
-		if ent.built and Rules.PRODUCES.has(ent.kind): selection_detail.text+=" · 集合點已設定，新單位自動移動" if ent.get("rally_point",Vector3.INF)!=Vector3.INF else " · 可設定新單位集合點"
+		if ent.built and Rules.PRODUCES.has(ent.kind):
+			selection_detail.text+=_rally_detail(ent)
+			if not ent.get("repeat_kind","").is_empty(): selection_detail.text+=" · 自動訓練每次 "+Rules.cost_label(ent.repeat_kind)+"；資源或人口不足會等待。關閉保留隊列，取消訓練會關閉。"
 		if not ent.built: selection_detail.text=ConstructionStatus.detail(ent,faction_views[0].records(),own_command_pending,paused)
 		if not ent.queue.is_empty():
 			queue_label.text="%s %ds · 隊列 %d" % [Rules.NAMES[ent.queue[0].kind],ceili(ent.queue[0].remaining_ticks/20.0),ent.queue.size()]
@@ -2891,9 +3538,11 @@ func _update_hud():
 	var stance_summary=_selection_stance_summary(selection)
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
 	var key=str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
-	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].queue.size())+":"+str(selection[0].get("rally_point",Vector3.INF))
+	if selection.size()==1: key+=":"+str(selection[0].built)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
 	if key!=action_key: action_key=key; _rebuild_actions(selection)
 	_refresh_return_cargo_button()
+	_refresh_queue_actions()
+	_refresh_repeat_train_button()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -2931,7 +3580,13 @@ func _update_hud():
 		selection_detail.text=help_label.text
 		queue_label.text=Rules.cost_label(build_mode); queue_label.show()
 	if rally_building>=0:
-		selection_detail.text="點可見空地設定集合點；新單位自動移動。"
+		selection_detail.text="警戒集合點：點可見空地；新軍隊射程內迎擊，敵軍離開後繼續前進，不追擊。" if rally_mode=="advance" else "點可見空地設定集合點；主堡亦可點資源，讓新村民自動採集。"
+		help_label.text=selection_detail.text
+	if touch_command and unit_command_kind=="advance":
+		selection_detail.text="警戒前進：點目的地；射程內迎擊，敵軍離開後繼續，不追擊。"
+		help_label.text=selection_detail.text
+	if touch_command and unit_command_kind=="patrol":
+		selection_detail.text="巡邏：點另一端，在原位與目的地來回；射程內迎擊，不追擊。停止或新指令可結束。"
 		help_label.text=selection_detail.text
 	if box_select_mode:
 		selection_title.text="框選單位"
@@ -2949,6 +3604,8 @@ func _rebuild_actions(selection):
 	for child in actions.get_children(): actions.remove_child(child); child.queue_free()
 	build_confirm=null
 	return_cargo_button=null
+	queue_actions.clear()
+	repeat_train_button=null
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
 	if box_select_mode:
@@ -2964,7 +3621,7 @@ func _rebuild_actions(selection):
 	if _selected_builder()>=0:
 		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
-			var button=_button(Rules.NAMES[kind]+"\n"+Rules.cost_label(kind)+( "\n需城防時代" if not _kind_unlocked(kind,0) else ""),func(): _start_build(choice),100)
+			var button=_button(Rules.NAMES[kind]+"\n"+Rules.cost_label(kind)+( "\n建成後自動耕作" if kind=="farm" else "")+( "\n需城防時代" if not _kind_unlocked(kind,0) else ""),func(): _start_build(choice),100)
 			button.disabled=not _kind_unlocked(kind,0); actions.add_child(button)
 	elif selection.size()==1:
 		var ent=selection[0]
@@ -2972,15 +3629,28 @@ func _rebuild_actions(selection):
 			actions.add_child(_button("取消施工\n退回 75%",func(): _submit("cancel_build",{"building":ent.id}),130))
 		elif Rules.PRODUCES.has(ent.kind):
 			actions.add_child(_button("集合點",func(): _start_ground_rally(ent.id),100))
+			if "villager" not in Rules.products_for(ent.kind):
+				actions.add_child(_button("警戒集合點",func(): _start_ground_rally(ent.id,"advance"),120))
 			if ent.get("rally_point",Vector3.INF)!=Vector3.INF:
 				actions.add_child(_button("取消集合點設定",func(): _submit("rally",{"building":ent.id,"clear":true}),120))
 			for kind in Rules.products_for(ent.kind):
 				var choice=kind
 				actions.add_child(_button("訓練"+Rules.NAMES[kind]+"\n"+Rules.cost_label(kind),func(): _submit("train",{"building":ent.id,"kind":choice}),120))
+			if "villager" not in Rules.products_for(ent.kind):
+				var repeat_product=Rules.PRODUCES[ent.kind]
+				var repeat_generation=ent.get("repeat_generation",0)
+				var repeat_next=repeat_product if ent.get("repeat_kind","").is_empty() else ""
+				repeat_train_button=_button(("自動訓練"+Rules.NAMES[repeat_product]+"\n每次 "+Rules.cost_label(repeat_product)) if repeat_next!="" else "關閉自動訓練\n保留已付款隊列",func(): _repeat_train_request(ent.id,repeat_generation,repeat_next),160)
+				repeat_train_button.name="RepeatTraining"; repeat_train_button.set_meta("building",ent.id); repeat_train_button.set_meta("generation",repeat_generation)
+				actions.add_child(repeat_train_button)
 			if ent.kind=="town_center" and not _age2(0):
 				var research=_button("城防時代\n"+Rules.cost_label("age2"),func(): _submit("research",{"building":ent.id}),160)
 				research.disabled=_research_pending(0); actions.add_child(research)
-			if not ent.queue.is_empty(): actions.add_child(_button("取消最後一項",func(): _submit("cancel_train",{"building":ent.id}),130))
+			for item in ent.queue:
+				var queue_id=item.queue_id
+				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
+				cancel.name="CancelQueue%d" % queue_id
+				actions.add_child(cancel); queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
 		if ent.owned and ent.category=="building" and ent.built and ent.kind!="town_center":
 			actions.add_child(_button("拆除建築\n不退資源",func(): _confirm_demolish(ent.id),120))
 	# Preserve the first build targets on narrow phones. Cargo delivery is
@@ -2988,6 +3658,9 @@ func _rebuild_actions(selection):
 	actions.add_child(_button("取消選取",func(): _select([]),100))
 	return_cargo_button=_button("交付資源",_return_selected_cargo,100)
 	actions.add_child(return_cargo_button)
+	if _has_selected_military():
+		actions.add_child(_button("警戒前進",_start_advance_command,100))
+		actions.add_child(_button("巡邏",_start_patrol_command,100))
 	# Stop shares Cancel's unused compact slot; never add a third pinned target.
 	# During targeting it stays in the strip, preserving the ordinary Cancel.
 	for ent in selection:
@@ -2996,6 +3669,90 @@ func _rebuild_actions(selection):
 			actions.add_child(stop_button)
 			actions.add_child(_button("守備",func(): _submit_selected_stance("defend"),54))
 			break
+
+func _refresh_repeat_train_button():
+	if not is_instance_valid(repeat_train_button): return
+	var building=repeat_train_button.get_meta("building",-1)
+	var record=_queue_selected_record(building)
+	var blocked=paused or game_over or not application_focused or application_suspended or record.is_empty() or record.get("repeat_generation",0)!=repeat_train_button.get_meta("generation",-1) or _repeat_training_pending(building,0)
+	if repeat_train_button.get_meta("blocked",true)!=blocked:
+		for index in gui_touch_press.keys():
+			if gui_touch_press[index].button.get_ref()==repeat_train_button: gui_touch_press.erase(index)
+		if repeat_train_button.button_pressed: repeat_train_button.disabled=true; repeat_train_button.disabled=false
+		repeat_train_button.set_meta("blocked",blocked)
+	repeat_train_button.disabled=blocked
+
+func _repeat_train_request(building,generation,kind):
+	if paused or game_over or not application_focused or application_suspended: return
+	var record=_queue_selected_record(building)
+	if record.is_empty() or record.get("repeat_generation",0)!=generation or _repeat_training_pending(building,0): return
+	if not is_instance_valid(repeat_train_button) or repeat_train_button.disabled or repeat_train_button.get_meta("building",-1)!=building or repeat_train_button.get_meta("generation",-1)!=generation: return
+	_cancel_mode()
+	_submit("repeat_train",{"building":building,"kind":kind},0)
+	_refresh_repeat_train_button()
+
+func _queue_action_identity(record):
+	var ids=[]
+	for item in record.queue: ids.append(item.queue_id)
+	return str(ids)
+
+func _queue_selected_record(building):
+	if selected.size()!=1 or selected[0]!=building: return {}
+	var record=faction_views[0].get_record(building)
+	if not record.get("owned",false) or not record.get("alive",false) or record.get("remembered",false) or record.get("team",-1)!=0 or record.get("category","")!="building" or not record.get("built",false): return {}
+	return record
+
+func _queue_item(record,queue_id):
+	for item in record.get("queue",[]):
+		if item.queue_id==queue_id: return item
+	return {}
+
+func _queue_cancel_pending(building,queue_id):
+	for command in commands:
+		if command.get("team",-1)==0 and command.get("type","")=="cancel_queue_item" and command.get("building",-1)==building and command.get("queue_id",-1)==queue_id: return true
+	return false
+
+func _queue_refund_text(refund):
+	var parts=PackedStringArray()
+	for resource in Economy.FOUR_RESOURCE_TYPES:
+		if refund.get(resource,0)>0: parts.append(Rules.RESOURCE_NAMES[resource]+" "+str(floori(refund[resource]/float(Economy.SCALE))))
+	return "不退資源" if parts.is_empty() else "退回 "+"  ".join(parts)
+
+func _refresh_queue_actions():
+	for action in queue_actions:
+		var button=action.button
+		if not is_instance_valid(button): continue
+		var record=_queue_selected_record(action.building)
+		var order=_queue_item(record,action.queue_id)
+		var refund={} if order.is_empty() else economy.quote_refund(order.get("receipt_id",""),0)
+		var blocked=paused or game_over or not application_focused or application_suspended or order.is_empty() or _queue_cancel_pending(action.building,action.queue_id)
+		if button.get_meta("queue_refund",{})!=refund or button.get_meta("queue_blocked",true)!=blocked:
+			for index in gui_touch_press.keys():
+				if gui_touch_press[index].button.get_ref()==button: gui_touch_press.erase(index)
+			if button.button_pressed:
+				button.disabled=true; button.disabled=false
+			button.set_meta("queue_refund",refund.duplicate(true)); button.set_meta("queue_blocked",blocked)
+		button.disabled=blocked
+		if not order.is_empty():
+			var remaining=" · %ds" % ceili(order.remaining_ticks/20.0) if order.get("started",false) and order.remaining_ticks>0 else ""
+			button.text="取消"+Rules.NAMES.get(order.kind,order.kind)+remaining+"\n"+_queue_refund_text(refund)
+
+func _queue_cancel_request(building,queue_id):
+	if paused or game_over or not application_focused or application_suspended: return
+	var record=_queue_selected_record(building)
+	var order=_queue_item(record,queue_id)
+	if order.is_empty() or _queue_cancel_pending(building,queue_id): return
+	for action in queue_actions:
+		if action.building!=building or action.queue_id!=queue_id: continue
+		var button=action.button
+		if not is_instance_valid(button) or button.disabled: return
+		var refund=economy.quote_refund(order.get("receipt_id",""),0)
+		if button.get_meta("queue_refund",{})!=refund:
+			_refresh_queue_actions(); return
+		_cancel_mode()
+		_submit("cancel_queue_item",{"building":building,"queue_id":queue_id,"expected_refund":refund},0)
+		_refresh_queue_actions()
+		return
 
 func _refresh_stop_button():
 	if not is_instance_valid(stop_button): return
@@ -3027,6 +3784,26 @@ func _return_selected_cargo():
 	if not orders.is_empty(): _cancel_mode()
 	for order in orders: _submit("order",order)
 	_refresh_return_cargo_button()
+
+func _has_selected_military():
+	for id in selected:
+		var record=faction_views[0].get_record(id)
+		if record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and record.get("kind","") in Rules.UNIT_KINDS and record.kind!="villager" and not record.get("remembered",false): return true
+	return false
+
+func _start_patrol_command():
+	if paused or game_over or not application_focused or application_suspended or not _has_selected_military(): return
+	_cancel_mode()
+	unit_command_kind="patrol"; touch_command=true
+	_update_hud()
+	_message("巡邏：點另一端，在原位與目的地來回；射程內迎擊，不追擊。停止或新指令可結束。",6)
+
+func _start_advance_command():
+	if paused or game_over or not _has_selected_military(): return
+	_cancel_mode()
+	unit_command_kind="advance"; touch_command=true
+	_update_hud()
+	_message("警戒前進：點目的地；射程內迎擊，敵軍離開後繼續，不追擊。",6)
 
 func _start_unit_command():
 	# Validate current projected selection before retiring another valid mode.
@@ -3215,6 +3992,24 @@ func _camera_update():
 	camera.position=camera_focus+Vector3(19,25,23)
 	camera.look_at(camera_focus)
 	camera.size=camera_zoom
+	_cover_camera_ground()
+
+func _cover_camera_ground():
+	# Extend only the public visual surface, never playable cells or camera limits.
+	# Ground shader uses world coordinates, so scaling does not stretch its detail.
+	if not is_instance_valid(camera_ground): return
+	var viewport_size=get_viewport().get_visible_rect().size
+	if not viewport_size.is_finite() or viewport_size.x<=0.0 or viewport_size.y<=0.0: return
+	var half_size=(camera_ground.mesh as PlaneMesh).size*0.5
+	var required=half_size
+	for screen in [Vector2.ZERO,Vector2(viewport_size.x,0),viewport_size,Vector2(0,viewport_size.y)]:
+		var origin=camera.project_ray_origin(screen)
+		var direction=camera.project_ray_normal(screen)
+		if absf(direction.y)<0.0001: continue
+		var point=origin+direction*((camera_ground.position.y-origin.y)/direction.y)
+		required.x=maxf(required.x,absf(point.x)+1.0)
+		required.y=maxf(required.y,absf(point.z)+1.0)
+	camera_ground.scale=Vector3(required.x/half_size.x,1.0,required.y/half_size.y)
 
 func _ui_owns_camera_keys():
 	if not is_instance_valid(ui): return false
@@ -3342,30 +4137,44 @@ func _pick(screen,allow_enemy=true):
 	# A missed triangle keeps the existing resource-anchor touch tolerance.
 	return resource if resource>=0 else best
 
-func _start_ground_rally(id):
+func _start_ground_rally(id,mode="move"):
 	if paused or game_over: return
 	var record=faction_views[0].get_record(id)
 	if record.is_empty() or not record.owned or not record.alive or not record.built or not Rules.PRODUCES.has(record.kind): return
+	if mode not in ["move","advance"] or (mode=="advance" and "villager" in Rules.products_for(record.kind)): return
 	_cancel_mode()
-	rally_building=id; touch_command=true; action_key=""; _update_hud()
+	rally_building=id; rally_mode=mode; touch_command=true; action_key=""; _update_hud()
 
 func _send_world_order(screen,contextual=false):
 	if rally_building>=0:
-		_submit("rally",{"building":rally_building,"position":_world_at(screen)})
+		var rally_order={"building":rally_building,"position":_world_at(screen),"mode":rally_mode}
+		var rally_record=faction_views[0].get_record(_pick(screen))
+		var rally_producer=faction_views[0].get_record(rally_building)
+		if rally_mode=="move" and "villager" in Rules.products_for(rally_producer.get("kind","")) and rally_record.get("category","")=="resource" and rally_record.get("alive",false) and not rally_record.get("remembered",false): rally_order.target=rally_record.id
+		_submit("rally",rally_order)
 		_cancel_mode(); return
 
+	if touch_command and unit_command_kind in ["advance","patrol"]:
+		var destination=_world_at(screen)
+		_submit(unit_command_kind,{"ids":selected.duplicate(),"position":destination})
+		_cancel_mode()
+		order_marker.position=destination; marker_time=0.8
+		return
 	if selected.is_empty(): return
 	var p=_world_at(screen)
 	var target_id=_pick(screen)
 	var ids=selected.duplicate()
 	var tapped=faction_views[0].get_record(target_id)
-	if contextual and (tapped.get("category","")=="resource" or tapped.get("kind","")=="farm"):
+	if contextual and (tapped.get("category","")=="resource" or (tapped.get("kind","")=="farm" and tapped.get("owned",false))):
 		# Resource taps task capable workers only; escorts keep their orders.
 		ids=ids.filter(func(id):
 			var record=faction_views[0].get_record(id)
 			return record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and record.get("kind","")=="villager" and not record.get("remembered",false))
 		if ids.is_empty(): return
-	_submit("order",{"ids":ids,"target":target_id,"position":p})
+	var order={"ids":ids,"target":target_id,"position":p}
+	if contextual and tapped.get("owned",false) and tapped.get("alive",false) and not tapped.get("remembered",false) and tapped.get("kind","")=="farm" and tapped.get("built",false):
+		order.farm_gather=true
+	_submit("order",order)
 	order_marker.position=p; marker_time=0.8; touch_command=false; rally_building=-1
 
 func _tap(screen,is_touch):
@@ -3470,9 +4279,10 @@ func _track_action_scroll(event,viewport):
 		if event.pressed:
 			if all_touch_ids.size()!=1:
 				action_touch_scroll.clear(); return
-			var scroll_control=compact_menu.get_child(0) if compact_menu.visible else action_scroll
-			var horizontal=not compact_menu.visible
-			if is_instance_valid(scroll_control) and scroll_control.is_visible_in_tree() and scroll_control.get_global_rect().has_point(event.position) and not game_over:
+			var report_scroll=game_over and end_panel.visible
+			var scroll_control=end_scroll if report_scroll else (compact_menu.get_child(0) if compact_menu.visible else action_scroll)
+			var horizontal=not report_scroll and not compact_menu.visible
+			if is_instance_valid(scroll_control) and scroll_control.is_visible_in_tree() and scroll_control.get_global_rect().has_point(event.position) and (not game_over or report_scroll):
 				var bar=scroll_control.get_h_scroll_bar() if horizontal else scroll_control.get_v_scroll_bar()
 				if bar.max_value>bar.page:
 					action_touch_scroll[event.index]={"control":weakref(scroll_control),"horizontal":horizontal,"origin":event.position,"offset":scroll_control.scroll_horizontal if horizontal else scroll_control.scroll_vertical,"active":false}
@@ -3495,12 +4305,32 @@ func _track_action_scroll(event,viewport):
 				else: control.scroll_vertical=int(scroll.offset-delta.y)
 			viewport.set_input_as_handled()
 
+func _sync_touch_camera_pair():
+	# A GUI press may reuse an ID before deferred cleanup removes its old
+	# world point. Pair only still-held, same-lifetime WORLD presses.
+	var ids=[]
+	for index in touch_points:
+		if index not in all_touch_ids or touch_world_epochs.get(index,-1)!=touch_press_epochs.get(index,-2): continue
+		ids.append(index)
+	var pair=[]
+	if ids.size()>=2:
+		for index in [ids[0],ids[1]]: pair.append([index,touch_world_epochs[index]])
+	if pair!=touch_camera_pair:
+		touch_camera_pair=pair
+		if pair.size()==2:
+			# Called before the next drag replaces its stored position.
+			var first=touch_points[ids[0]]; var second=touch_points[ids[1]]
+			touch_previous_center=(first+second)*0.5
+			touch_previous_distance=first.distance_to(second)
+	return ids
+
 func _cleanup_touch_release(index,press_epoch):
 	if touch_press_epochs.get(index,-1)!=press_epoch: return
 	# A release consumed by HUD must not complete or retain a world rectangle.
 	if touch_box_index==index:
 		_clear_box_select(); _update_hud()
-	touch_points.erase(index)
+	touch_points.erase(index); touch_world_epochs.erase(index)
+	_sync_touch_camera_pair()
 	if all_touch_ids.is_empty(): touch_gesture=false
 
 func _cleanup_mouse_release():
@@ -3557,28 +4387,32 @@ func _unhandled_input(event):
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			touch_points[event.index]=event.position
-			if touch_points.size()==1:
+			touch_world_epochs[event.index]=touch_press_epochs.get(event.index,-1)
+			var active_world_ids=_sync_touch_camera_pair()
+			if active_world_ids.size()==1:
 				touch_origin=event.position; touch_gesture=all_touch_ids.size()>1
 				if box_select_mode and not touch_gesture and not game_over:
 					touch_box_index=event.index; touch_box_origin=event.position; touch_box_active=false
-			if touch_points.size()>=2:
+			if active_world_ids.size()>=2:
 				touch_gesture=true; touch_command=false; rally_building=-1
-				var values=touch_points.values(); touch_previous_center=(values[0]+values[1])*0.5; touch_previous_distance=values[0].distance_to(values[1])
 		else:
 			if box_select_mode and touch_box_index==event.index:
 				var complete=touch_box_active and not touch_gesture and not event.canceled and touch_points.has(event.index) and not game_over
-				touch_box_index=-1; touch_box_active=false; drag_rect.hide(); touch_points.erase(event.index)
+				touch_box_index=-1; touch_box_active=false; drag_rect.hide(); touch_points.erase(event.index); touch_world_epochs.erase(event.index)
 				if complete: _select(_box_selection_ids(Rect2(touch_box_origin,event.position-touch_box_origin).abs()))
 				return
 			var should_tap=not event.canceled and touch_points.has(event.index) and touch_points.size()==1 and not touch_gesture and event.position.distance_to(touch_origin)<14
-			touch_points.erase(event.index)
+			touch_points.erase(event.index); touch_world_epochs.erase(event.index)
+			_sync_touch_camera_pair()
 			if should_tap: _tap(event.position,true)
 			if touch_points.is_empty(): touch_gesture=false
 	if event is InputEventScreenDrag:
-		if not touch_points.has(event.index): return
+		var active_world_ids=_sync_touch_camera_pair()
+		if event.index not in active_world_ids: return
 		touch_points[event.index]=event.position
-		if touch_points.size()>=2:
-			var values=touch_points.values(); var center=(values[0]+values[1])*0.5; var distance=values[0].distance_to(values[1])
+		if active_world_ids.size()>=2:
+			var first=touch_points[active_world_ids[0]]; var second=touch_points[active_world_ids[1]]
+			var center=(first+second)*0.5; var distance=first.distance_to(second)
 			_pan_camera(touch_previous_center-center)
 			if touch_previous_distance>0: camera_zoom=clampf(camera_zoom*touch_previous_distance/maxf(1,distance),15,46)
 			touch_previous_center=center; touch_previous_distance=distance
@@ -3590,7 +4424,7 @@ func _unhandled_input(event):
 		# A camera gesture keeps ownership until every finger is released.
 		elif not build_mode.is_empty() and not touch_gesture:
 			pointer_world=_point(_cell(_world_at(event.position))); build_preview_held=true
-		elif event.position.distance_to(touch_origin)>14:
+		elif touch_gesture or event.position.distance_to(touch_origin)>14:
 			touch_gesture=true; touch_command=false; rally_building=-1; _pan_camera(-event.relative)
 
 func _start_build(kind):
@@ -3636,7 +4470,7 @@ func _cancel_mode():
 	if toast_build_guidance:
 		toast_build_guidance=false; toast_time=0.0
 		if is_instance_valid(toast_label): toast_label.text=""; toast_label.visible=false
-	build_mode=""; build_preview_held=false; touch_command=false; rally_building=-1
+	build_mode=""; build_preview_held=false; touch_command=false; unit_command_kind="order"; rally_building=-1; rally_mode="move"
 	_cancel_pointer_streams()
 	if is_instance_valid(ghost): ghost.queue_free(); ghost=null
 	action_key=""; _update_hud()
@@ -3756,14 +4590,14 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 		ent.node.queue_free()
 	path_requests.clear(); path_budget_tick=-1; last_path_queries=0; last_path_expansions=0; path_expansion_budget=4096
 	traffic_priority_order.clear(); traffic_tick_segments.clear()
-	entities.clear(); selected.clear(); commands.clear(); next_id=0; tick_count=0; game_time=0
-	attack_ledger=AttackLedger.new(); pending_damage.clear()
+	entities.clear(); selected.clear(); squad_selection.reset(); idle_worker_cursor=-1; repeat_train_cursor=[0,0]; commands.clear(); next_id=0; tick_count=0; game_time=0
+	attack_ledger=AttackLedger.new(); pending_damage.clear(); battle_alerts.reset(); match_report.reset(); last_match_report={}; end_report_page="overview"
 	command_sequence=0; processed_command_ids.clear(); next_queue_id=0; ready_cursor=-1; spawn_commit_order.clear(); game_over=false; victory=false; outcome=""; paused=false
 	recovery_ticks=[0,0]; no_progress_ticks=0; progress_serial=0; inactivity_paused=false; future_recovery_events.clear(); end_reason=""
 	_surrender_intent.clear()
 	ai_opening_assigned=false; ai_last_raid_tick=-AI_RAID_INTERVAL_TICKS; ai_raids=0
 	ai_raid_members.clear(); ai_raid_departure_count=0; ai_raid_keep.clear(); ai_raid_retreating=false
-	ai_scout_attempts.clear(); ai_claimed_workers.clear(); ai_build_submitted=false; ai_budget.clear(); ai_status.clear(); ai_site_recovery.clear(); owned_motion_witness_tick=-1
+	ai_scout_attempts.clear(); ai_scout_moves.clear(); ai_claimed_workers.clear(); ai_build_submitted=false; ai_budget.clear(); ai_status.clear(); ai_site_recovery.clear(); owned_motion_witness_tick=-1
 	application_focused=true; application_suspended=false; background_paused=false; discard_return_delta=false; tick_accumulator=0.0
 	for team in 2:
 		visible_cells[team].fill(0); explored_cells[team].fill(0)
@@ -4023,18 +4857,141 @@ func _compact_panel_style():
 	return style
 
 
+func _shortcut_menu_caption() -> String:
+	if compact_menu.visible: return "收起"
+	if not game_over and not battle_alerts.peek(tick_count).is_empty(): return "受襲"
+	if not game_over and is_instance_valid(idle_worker_button) and not idle_worker_button.get_meta("idle_ids",[]).is_empty(): return "閒置"
+	return "選單"
+
+func _refresh_attack_alert():
+	if not is_instance_valid(attack_alert_button): return
+	var current={} if game_over else battle_alerts.peek(tick_count)
+	var sequence=current.get("sequence",-1)
+	if attack_alert_button.get_meta("alert_sequence",-1)!=sequence:
+		# A different/expired destination must not inherit a held touch or mouse.
+		for index in gui_touch_press.keys():
+			if gui_touch_press[index].button.get_ref()==attack_alert_button: gui_touch_press.erase(index)
+		if attack_alert_button.button_pressed:
+			attack_alert_button.disabled=true; attack_alert_button.disabled=false
+		attack_alert_button.set_meta("alert_sequence",sequence)
+	attack_alert_button.visible=not current.is_empty()
+	attack_alert_button.disabled=paused or game_over or not application_focused or application_suspended
+	if not current.is_empty():
+		attack_alert_button.text="前往受襲位置 · "+Rules.NAMES.get(current.kind,current.kind)
+	compact_menu_button.text=_shortcut_menu_caption()
+
+func _focus_attack_alert():
+	if paused or game_over or not application_focused or application_suspended or not is_instance_valid(attack_alert_button): return
+	# Revalidate the displayed identity before consuming anything or canceling intent.
+	var current=battle_alerts.acknowledge(attack_alert_button.get_meta("alert_sequence",-1),tick_count)
+	if current.is_empty(): return
+	_cancel_mode()
+	compact_menu.hide(); compact_menu_dismiss.hide()
+	camera_focus=current.position
+	_camera_update()
+	_refresh_attack_alert()
+	# Camera navigation only: selection, queued orders and all authority stay intact.
+
+func _refresh_idle_worker_button():
+	if not is_instance_valid(idle_worker_button): return
+	var ids=[] if game_over else IdleWorkerSelection.eligible(faction_views[0].records(),commands)
+	var target=IdleWorkerSelection.next_id(ids,idle_worker_cursor)
+	var blocked=game_over or not application_focused or application_suspended
+	# A replaced roster/target cannot inherit an old held touch or native click.
+	if idle_worker_button.get_meta("idle_ids",[])!=ids or idle_worker_button.get_meta("idle_target",-1)!=target or idle_worker_button.get_meta("idle_blocked",true)!=blocked:
+		for index in gui_touch_press.keys():
+			if gui_touch_press[index].button.get_ref()==idle_worker_button: gui_touch_press.erase(index)
+		if idle_worker_button.button_pressed:
+			idle_worker_button.disabled=true; idle_worker_button.disabled=false
+		idle_worker_button.set_meta("idle_ids",ids.duplicate())
+		idle_worker_button.set_meta("idle_target",target)
+		idle_worker_button.set_meta("idle_blocked",blocked)
+	idle_worker_button.disabled=blocked or ids.is_empty()
+	idle_worker_button.text="閒置村民 %d · 下一位" % ids.size()
+
+func _focus_idle_worker():
+	# Navigation remains available while paused, exactly like ordinary selection.
+	# It never issues work, movement, retry, payment or combat commands.
+	if game_over or not application_focused or application_suspended or not compact_menu.visible or not is_instance_valid(idle_worker_button): return
+	var records=faction_views[0].records()
+	var ids=IdleWorkerSelection.eligible(records,commands)
+	var target=IdleWorkerSelection.next_id(ids,idle_worker_cursor)
+	if idle_worker_button.disabled or ids.is_empty() or ids!=idle_worker_button.get_meta("idle_ids",[]) or target!=idle_worker_button.get_meta("idle_target",-1):
+		_refresh_idle_worker_button(); return
+	idle_worker_cursor=target
+	_cancel_mode()
+	compact_menu.hide(); compact_menu_dismiss.hide()
+	_select([target])
+	camera_focus=records[target].pos; _camera_update()
+	_refresh_idle_worker_button()
+	compact_menu_button.text=_shortcut_menu_caption()
+
+func _squad_actions_available():
+	return not paused and not game_over and application_focused and not application_suspended
+
+func _bind_squad_button(button,ids,blocked):
+	# Membership changes retire held touch/mouse; a new group cannot inherit it.
+	if button.get_meta("squad_ids",[])!=ids or button.get_meta("squad_blocked",true)!=blocked:
+		for index in gui_touch_press.keys():
+			if gui_touch_press[index].button.get_ref()==button: gui_touch_press.erase(index)
+		if button.button_pressed:
+			button.disabled=true; button.disabled=false
+		button.set_meta("squad_ids",ids.duplicate())
+		button.set_meta("squad_blocked",blocked)
+	button.disabled=blocked or ids.is_empty()
+
+func _refresh_squad_buttons():
+	if squad_buttons.size()!=SquadSelection.SLOT_COUNT: return
+	var records=faction_views[0].records()
+	var chosen=SquadSelection.eligible(records,selected)
+	var blocked=not _squad_actions_available()
+	for slot in range(SquadSelection.SLOT_COUNT):
+		var pair=squad_buttons[slot]
+		var members=squad_selection.members(slot,records)
+		_bind_squad_button(pair.recall,members,blocked)
+		_bind_squad_button(pair.save,chosen,blocked)
+		pair.recall.text="%d 隊 · %d 人" % [slot+1,members.size()]
+		pair.save.text=("存入 %d 隊" if members.is_empty() else "取代 %d 隊") % (slot+1)
+
+func _activate_squad(slot,save):
+	if not _squad_actions_available() or not compact_menu.visible: return
+	if typeof(slot)!=TYPE_INT or slot<0 or slot>=squad_buttons.size(): return
+	var records=faction_views[0].records()
+	var pair=squad_buttons[slot]
+	var button=pair.save if save else pair.recall
+	var expected=button.get_meta("squad_ids",[])
+	var current=SquadSelection.eligible(records,selected) if save else squad_selection.members(slot,records)
+	# Validate the displayed selection again at activation, before canceling intent.
+	if button.disabled or current.is_empty() or current!=expected:
+		_refresh_squad_buttons(); return
+	if save and not squad_selection.assign(slot,records,selected,expected): return
+	_cancel_mode()
+	compact_menu.hide(); compact_menu_dismiss.hide()
+	if save:
+		_message("已存入 %d 隊，共 %d 人；原有指令不變。" % [slot+1,current.size()],3)
+	else:
+		_select(current)
+		camera_focus=records[current[0]].pos
+		_camera_update()
+	_refresh_squad_buttons()
+	compact_menu_button.text=_shortcut_menu_caption()
+	# Selection/camera only. No queued orders, new path budget, economy or AI mutation.
+
 func _toggle_compact_menu():
 	compact_menu.visible=not compact_menu.visible
 	if compact_menu.visible:
 		_quarantine_camera_keys()
+		_refresh_idle_worker_button()
+		_refresh_squad_buttons()
 		if box_select_mode: _cancel_mode()
 	compact_menu_dismiss.visible=compact_menu.visible
-	compact_menu_button.text="收起" if compact_menu.visible else "選單"
+	compact_menu_button.text=_shortcut_menu_caption()
 	_layout_ui()
 
 
 func _compact_menu_action(callback:Callable):
-	compact_menu.hide(); compact_menu_dismiss.hide(); compact_menu_button.text="選單"; callback.call()
+	compact_menu.hide(); compact_menu_dismiss.hide(); callback.call()
+	compact_menu_button.text=_shortcut_menu_caption()
 
 
 func _dismiss_compact_menu_input(event:InputEvent):
@@ -4184,8 +5141,13 @@ func _ai_progression_plots(kind: String) -> Array:
 	return result
 
 func _ai_progression_goal(records: Array,workers: int,capacity: int,committed: int) -> String:
-	var counts={}; var known_food=0
+	# Rebuild the two-food-worker floor plus a spare builder after attrition.
+	# Count queued villagers too. Only prioritize a currently affordable birth;
+	# otherwise preserve the farm route that may be needed to restore food.
+	if workers<3 and committed<capacity and _ai_can_budget("villager"): return "villager"
+	var counts={}; var known_food=0; var known_enemy_keep=false
 	for record in records:
+		if record.team==0 and record.category=="building" and record.kind=="town_center": known_enemy_keep=true
 		if record.category=="resource" and record.kind=="berry": known_food+=1
 		if not record.owned: continue
 		counts[record.kind]=counts.get(record.kind,0)+1
@@ -4201,6 +5163,9 @@ func _ai_progression_goal(records: Array,workers: int,capacity: int,committed: i
 	if counts.get("range",0)==0: return "range"
 	if counts.get("spearman",0)+counts.get("archer",0)<4:
 		return "spearman" if counts.get("spearman",0)<=counts.get("archer",0) else "archer"
+	# Restore reconnaissance before expensive age progression, after a viable
+	# economy and four defenders. Queued scouts and remembered keeps count.
+	if counts.get("scout",0)==0 and not known_enemy_keep: return "scout"
 	if not _age2(1): return "age2"
 	if counts.get("stable",0)==0: return "stable"
 	if counts.get("workshop",0)==0: return "workshop"
@@ -4235,16 +5200,28 @@ func _route_grid(ent: Dictionary) -> AStarGrid2D:
 	large_route_cache[ent.team]={"revision":memory.revision,"grid":grid}
 	return grid
 
-func _attack_approach(ent: Dictionary,target: Dictionary) -> Vector3:
-	if ent.radius<=0.5: return _free_adjacent(target,ent.pos,false,ent.team,ent)
+func _attack_approach(ent: Dictionary,target: Dictionary,inspect_site=false) -> Vector3:
+	if ent.radius<=0.5 and ent.kind!="archer": return _free_adjacent(target,ent.pos,false,ent.team,ent)
 	var best=Vector3.INF; var distance=INF
-	# Siege uses a two-cell outer ring to leave its larger swept disk clear.
-	var center=_cell(target.pos); var extent=int(Rules.FOOTPRINT.get(target.kind,3)/2)+3
+	# Archers need a clear firing slot, not a vacant melee perimeter cell.
+	# The public footprint/range bound is at most 225 cells; no path probe.
+	# Large actors retain their original swept-clearance envelope.
+	var center=_cell(target.pos); var extent=int(Rules.FOOTPRINT.get(target.kind,3)/2)+(ceili(Rules.RANGE.archer) if ent.kind=="archer" else 3)
+	var inspect_archer=ent.kind=="archer" and inspect_site
+	var site_visible=inspect_archer and visible_cells[ent.team][_cell_index(target.pos)]!=0
 	for y in range(center.y-extent,center.y+extent+1):
 		for x in range(center.x-extent,center.x+extent+1):
 			var cell=Vector2i(x,y)
 			if not _route_grid(ent).region.has_point(cell) or _route_grid(ent).is_point_solid(cell): continue
 			var point=_point(cell)
+			if inspect_archer:
+				# Regain center sight without demanding a vacant melee ring.
+				# Only an already revealed but unobserved site needs the old
+				# close-inspection rule; site visibility never grants death knowledge.
+				if site_visible:
+					if _attack_distance(point,target)>=0.6: continue
+				elif (cell-center).length_squared()>Rules.SIGHT.archer*Rules.SIGHT.archer: continue
+			if ent.kind=="archer" and point.distance_squared_to(ent.pos)>=distance: continue
 			if _attack_distance(point,target)>Rules.RANGE[ent.kind] or not _known_destination_clear(ent,point): continue
 			var d=point.distance_squared_to(ent.pos)
 			if d<distance: distance=d; best=point

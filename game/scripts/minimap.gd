@@ -28,6 +28,11 @@ func _draw():
 	if corners.size()==4:
 		corners.append(corners[0]); draw_polyline(corners,Color(1,0.96,0.78,0.7),1.0,true)
 func _gui_input(event):
+	# The global tracker runs before GUI dispatch. A second/gesture finger
+	# is not a new minimap command and must not teleport the battle camera.
+	if event is InputEventScreenTouch and event.pressed:
+		if game.all_touch_ids.size()!=1 or event.index not in game.all_touch_ids or game.touch_gesture:
+			accept_event(); return
 	if (event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT) or (event is InputEventScreenTouch and event.pressed):
 		var uv=(event.position-Vector2(9,9))/(size-Vector2(18,18))
 		game.camera_focus=Vector3(clampf(uv.x*Rules.MAP_SIZE-Rules.MAP_HALF,-Rules.CAMERA_LIMIT,Rules.CAMERA_LIMIT),0,clampf(uv.y*Rules.MAP_SIZE-Rules.MAP_HALF,-Rules.CAMERA_LIMIT,Rules.CAMERA_LIMIT))

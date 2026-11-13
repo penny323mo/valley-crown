@@ -1,6 +1,7 @@
 extends SceneTree
 # Prepared native control contract; never executed by file-only preparation.
-# Fixed world hit-testing is synthetic. Input routing/rendering needs phone test.
+# Fixed world hit-testing and direct input-handler calls are synthetic.
+# ENGINE_UNRUN; this is not routed native touch or rendering. Phone test owns that coverage.
 class ControlFixture:
 	extends "res://scripts/game.gd"
 	func _world_at(_screen): return Vector3.ZERO
@@ -13,6 +14,7 @@ func check(label,ok):
 func _initialize():
 	var game=ControlFixture.new()
 	game.actions=HBoxContainer.new()
+	game.order_marker=Node3D.new()
 	var record={"id":1,"owned":true,"alive":true,"team":0,"category":"unit","kind":"scout","built":true}
 	game.faction_views[0].current={1:record}
 	game.selected=[1]
@@ -31,13 +33,20 @@ func _initialize():
 		check(pair[1]+" clears targeting and held world pointer",not game.touch_command and game.touch_points.is_empty() and not game.dragging and game.canceled_touch_ids.has(4))
 		check(pair[1]+" selection preserved",game.selected==[1])
 		check(pair[1]+" ordinary queued action only",game.commands.size()==1 and game.commands[0].type==pair[1] and game.commands[0].ids==[1] and game.commands[0].team==0)
+		# This OLD physical release is quarantined before world dispatch.
+		var viewport=SubViewport.new(); root.add_child(viewport)
+		var release=InputEventScreenTouch.new(); release.index=4; release.position=Vector2(200,200); release.pressed=false
+		check(pair[1]+" isolated release viewport starts unhandled",not viewport.is_input_handled())
+		game._track_pointer_input(release,viewport)
+		check(pair[1]+" old release is handled without replacing stance",viewport.is_input_handled() and not game.canceled_touch_ids.has(4) and game.commands.size()==1 and game.selected==[1])
+		viewport.free()
+		# A NEW deliberate semantic tap must retain contextual movement.
 		game._tap(Vector2(200,200),true)
-		check(pair[1]+" next empty-ground tap is not a replacement order",game.commands.size()==1 and game.selected==[1])
+		check(pair[1]+" fresh contextual tap queues ground move",game.commands.size()==2 and game.commands[1].type=="order" and game.commands[1].target==-1 and game.commands[1].ids==[1] and game.selected==[1] and not game.touch_command)
+		var contextual=game.commands[1].duplicate(true)
 		game.touch_command=true
-		game.order_marker=Node3D.new()
 		game._tap(Vector2(200,200),true)
-		check(pair[1]+" explicitly rearmed command still works",game.commands.size()==2 and game.commands[1].type=="order" and not game.touch_command)
-		game.order_marker.free()
+		check(pair[1]+" explicitly rearmed move preserves contextual order",game.commands.size()==3 and game.commands[1]==contextual and game.commands[2].type=="order" and game.commands[2].target==-1 and not game.touch_command)
 	game.commands.clear(); game.touch_command=true
 	var key=InputEventKey.new(); key.physical_keycode=KEY_X; key.pressed=true
 	game._unhandled_input(key)
@@ -58,6 +67,6 @@ func _initialize():
 		game.set(blocked,false)
 	game.commands.clear(); game.selected=[]; game._submit_selected_stance("defend")
 	check("empty selection left to existing authority rejection",game.commands.size()==1 and game.commands[0].ids.is_empty())
-	game.actions.free(); game.free()
+	game.order_marker.free(); game.actions.free(); game.free()
 	print("STANCE_TARGET_CANCEL_CONTRACT %d/%d (synthetic control fixture)" % [checks-failures,checks])
 	quit(1 if failures else 0)

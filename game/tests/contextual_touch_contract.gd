@@ -72,6 +72,28 @@ func _initialize():
 	g.faction_views[0].current[1]=worker; g.faction_views[0].current[6]=farm; g.selected=[1]; g.picked=6
 	g._tap(Vector2.ZERO,true)
 	check("normal farm touch starts work not building selection",g.selected==[1] and g.sent[-1].target==6)
+	# NEW reconstructed coverage. Actual _tap -> inherited producer -> _submit;
+	# hit testing/projections are synthetic, not routed device input.
+	for kind in ["scout","spearman","archer","cavalry","siege"]:
+		var military=soldier.duplicate(); military.kind=kind
+		orders.faction_views[0].current[2]=military
+		for completed in [false,true]:
+			var hostile=farm.duplicate(); hostile.id=7; hostile.owned=false; hostile.team=1; hostile.built=completed; hostile.remembered=false
+			orders.faction_views[0].current[7]=hostile; orders.picked=7
+			for selection in [[2],[1,2]]:
+				orders.commands.clear(); orders.selected=selection.duplicate(); orders.touch_command=false
+				orders._tap(Vector2.ZERO,true)
+				check("enemy farm contextual "+kind+"/"+str(completed)+"/"+str(selection),orders.commands.size()==1 and orders.commands[0].ids==selection and orders.commands[0].target==7 and not orders.commands[0].has("farm_gather"))
+				check("enemy farm authority attack "+kind+"/"+str(completed),orders._target_order_intent(military,hostile,0)=="attack")
+		orders.commands.clear(); orders.picked=6; orders.selected=[1,2]; orders.touch_command=false
+		orders._tap(Vector2.ZERO,true)
+		check("owned farm filters escort "+kind,orders.commands.size()==1 and orders.commands[0].ids==[1] and orders.commands[0].get("farm_gather",false))
+		orders.commands.clear(); orders.picked=5; orders.selected=[1,2]
+		orders._send_world_order(Vector2.ZERO,true)
+		check("resource still filters escort "+kind,orders.commands.size()==1 and orders.commands[0].ids==[1] and not orders.commands[0].has("farm_gather"))
+	orders.commands.clear(); orders.picked=6; orders.selected=[1]; orders.touch_command=true
+	orders._tap(Vector2.ZERO,true)
+	check("explicit owned farm targeting remains untagged",orders.commands.size()==1 and not orders.commands[0].has("farm_gather"))
 	orders.order_marker.free(); orders.free()
 	g.free()
 	print("CONTEXTUAL_TOUCH_CONTRACT "+JSON.stringify(checks))

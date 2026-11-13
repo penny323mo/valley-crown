@@ -275,7 +275,8 @@ func _show_page(next_page: String):
 				description.text = "目前戰役已暫停。\n按繼續返回戰場。"
 				_add_button("繼續戰役", "ResumeMatchButton", _resume_match)
 			else:
-				description.text = "戰役已結束。\n再開一局，建立新的聚落。"
+				description.text = "戰役已結束。\n查看總結，或再開一局。"
+				_add_button("戰役總結", "MatchReportButton", _review_finished_match)
 			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _start_match())
 		else:
 			_add_button("開始戰役", "StartMatchButton", _start_match)
@@ -322,6 +323,26 @@ func _open_menu():
 	match_node.ui.hide()
 	menu_layer.show()
 	_show_page("home")
+
+func _review_finished_match():
+	if transition_busy or not is_instance_valid(match_node) or not match_node.game_over: return
+	transition_busy = true
+	call_deferred("_finish_report_review")
+
+func _finish_report_review():
+	if not is_instance_valid(match_node) or not match_node.game_over:
+		transition_busy = false
+		return
+	match_node._cancel_pointer_streams()
+	match_node.process_mode = Node.PROCESS_MODE_INHERIT
+	match_node.show(); match_node.ui.show()
+	match_node.end_panel.show()
+	match_node._layout_ui()
+	_release_menu_focus()
+	menu_layer.hide()
+	touch_presses.clear()
+	transition_busy = false
+	# Do not toggle pause, replace the match or reset its frozen report.
 
 func _resume_match():
 	if transition_busy or not is_instance_valid(match_node) or match_node.game_over: return
