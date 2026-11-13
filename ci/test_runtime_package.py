@@ -113,9 +113,10 @@ class PackageTests(unittest.TestCase):
             stage=self.root/'latest-contracts'/suite;stage.mkdir(parents=True)
             raw={'suite':suite,'build':lock['build'],'failed':0,'checks':[{'name':n,'passed':True} for n in latest.TRAINING_NAMES]}
             line='FOG_MATERIAL_CONTRACT checks=13 failures=0' if suite=='material_contract' else json.dumps(raw)
+            if suite=='resource_visual_contract':line='\n'.join('RESOURCE_METRIC '+k+' vertices='+str(n)+' surfaces=1 bounds=(synthetic schema fixture)' for k,n in [('stone',945),('iron',1365),('berry',3174)])+'\nRESOURCE_CONTRACT_PASS 27'
             (stage/'godot.log').write_text(line+'\n');result=mon(stage)
             latest_rows.append({'suite':suite,'monitor':result,'report':latest.read_report(stage,suite),'assertions_executed':latest.COUNTS[suite],'receipt_sha256':q.sha(stage/'receipt.json'),'log_sha256':q.sha(stage/'godot.log')})
-        self.save(self.root/'latest-contracts/latest-contracts-receipt.json',dict(base,suites=latest_rows,assertions_executed=29))
+        self.save(self.root/'latest-contracts/latest-contracts-receipt.json',dict(base,suites=latest_rows,assertions_executed=56))
         stage=self.root/'faction-contracts/faction-publication';stage.mkdir(parents=True)
         raw=tf.report();raw['build']=lock['build'];self.save(stage/tf.a.REPORT,raw);(stage/'godot.log').write_text('Faction report complete')
         result=mon(stage)

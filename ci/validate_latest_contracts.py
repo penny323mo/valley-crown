@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 from validate_building_contracts import require,parse_json,validate_monitor,validate_identity,LIMITS
-COUNTS={'material_contract':13,'continuous_training_contract':16}
+COUNTS={'material_contract':13,'continuous_training_contract':16,'resource_visual_contract':27}
 SUITES=tuple(COUNTS)
 EXTERNAL=()
 REPORT='not-used.json'
@@ -10,6 +10,14 @@ TRAINING_NAMES=['repeat is off by default', 'ordinary opt-in accepted', 'worker 
 def read_report(stage,suite):
  log=(Path(stage)/'godot.log').read_text()
  require(not re.search(r'(?im)^\s*(?:SCRIPT ERROR:|ERROR:|FATAL:|FAIL )',log),'Error in log')
+ if suite=='resource_visual_contract':
+  rows=[l for l in log.splitlines() if l.startswith('RESOURCE_CONTRACT_PASS ')]
+  require(rows==['RESOURCE_CONTRACT_PASS 27'],'Wrong resource summary')
+  metrics=[l for l in log.splitlines() if l.startswith('RESOURCE_METRIC ')]
+  require(len(metrics)==3,'Missing/duplicate resource metrics')
+  for line,kind,count in zip(metrics,('stone','iron','berry'),(945,1365,3174)):
+   require(line.startswith('RESOURCE_METRIC '+kind+' vertices='+str(count)+' surfaces=1 bounds='),'Wrong resource geometry')
+  return {'summary':rows[0],'assertions':27,'metrics':metrics}
  if suite=='material_contract':
   rows=[l for l in log.splitlines() if l.startswith('FOG_MATERIAL_CONTRACT ')]
   require(rows==['FOG_MATERIAL_CONTRACT checks=13 failures=0'],'Wrong material summary')

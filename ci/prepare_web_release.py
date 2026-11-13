@@ -12,13 +12,13 @@ import subprocess
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-BRANCH = 'refs/heads/ci/release-vc-5a977bb2321a'
-SOURCE = '44dde647632f19b5148ca7c3ecf74f4fb09060c7'
+BRANCH = 'refs/heads/ci/release-vc-a3e77de29039'
+SOURCE = '740b3dd5f81130cbceaabd838cf7724013a1fec8'
 ENGINE = '4.6.3.stable.official.7d41c59c4'
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 TEMPLATE_SHA = '1446f79dc12f60ce5d244c39fb6628ec298337ca5c4f91a16491feea72aa1bc9'
 SIDES = {
-    'product': {'directory':'game', 'build':'vc-5a977bb2321a', 'tree':'26d431e893af3459c0f93ad8bf5b1804103a49a6', 'files':297, 'runtime':160, 'runner':'run_export.py'},
+    'product': {'directory':'game', 'build':'vc-a3e77de29039', 'tree':'b6474eacdfcc812407e279e9299ae468e4402e8a', 'files':299, 'runtime':161, 'runner':'run_export.py'},
     'diagnostic': {'directory':'diagnostic-game', 'build':'vc-09c394aef6d8', 'tree':'5d478c5414ba732f41b109515e90d45495406a1b', 'files':258, 'runtime':155, 'runner':'run_export_diagnostic.py'},
 }
 OUTPUT_FILES = sorted(['index.html','index.js','index.wasm','index.pck','index.png','index.icon.png','index.apple-touch-icon.png','index.audio.worklet.js','index.audio.position.worklet.js'])
@@ -110,7 +110,7 @@ def prepare(side, work):
     if side=='product':
         lock['latest_runner_sha256']=sha(ROOT/'ci/run_latest_contracts.py')
         lock['latest_validator_sha256']=sha(ROOT/'ci/validate_latest_contracts.py')
-        lock['latest_harness_sha256']={n:sha(project/'tests'/(n+'.gd')) for n in ('material_contract','continuous_training_contract')}
+        lock['latest_harness_sha256']={n:sha(project/'tests'/(n+'.gd')) for n in ('material_contract','continuous_training_contract','resource_visual_contract')}
     dump(work/'export-lock.json',lock)
     (work/'pins.env').write_text('ARCHIVE_SHA='+lock['source_archive_sha256']+'\nMANIFEST_SHA='+lock['import_manifest_sha256']+'\n')
     dump(work/'source-attestation.json',dict(side=side,build=identity['build'],game_tree=identity['tree'],source_commit=SOURCE,workflow_commit=git('rev-parse','HEAD'),source_files=len(files),runtime_inputs=len(paths),source_archive_sha256=sha(archive),import_manifest_sha256=sha(work/'import-manifest.json'),diagnostic_only=side=='diagnostic',engine_executed=False))

@@ -3,11 +3,11 @@
 name: Validate building runtime and package separate Web candidates
 on:
   push:
-    branches: [ci/release-vc-5a977bb2321a]
+    branches: [ci/release-vc-a3e77de29039]
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-5a977bb2321a
+  group: building-runtime-vc-a3e77de29039
   cancel-in-progress: false
 jobs:
   validate:
@@ -18,7 +18,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 44dde647632f19b5148ca7c3ecf74f4fb09060c7
+      BUILDING_RUNTIME_SOURCE_COMMIT: 740b3dd5f81130cbceaabd838cf7724013a1fec8
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -26,7 +26,7 @@ jobs:
           set -euo pipefail
           test "$BUILDING_RUNTIME_EXECUTION_APPROVED" = true
           test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
-          test "$GITHUB_REF" = refs/heads/ci/release-vc-5a977bb2321a
+          test "$GITHUB_REF" = refs/heads/ci/release-vc-a3e77de29039
           test "$GITHUB_RUN_ATTEMPT" = 1
           [[ "$BUILDING_RUNTIME_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
       - name: Select separate fresh runner workspace
@@ -38,7 +38,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '0e7b95dda917ee0f5a8baf4fdfb812b62851617e57b5039b6c3b998fe5ff9e62  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '45efddafd450efcb01ddaf9002ddcdbc0e05e0c2bebafd5d0546e2c9a2b2634a  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -137,6 +137,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/material_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/continuous_training_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/continuous_training_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/resource_visual_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/resource_visual_contract/godot.log
             ${{ env.RTS_WORK }}/product/building-contracts/building-contracts-receipt.json
             ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/receipt.json
             ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/godot.log
