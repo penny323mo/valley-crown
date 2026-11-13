@@ -19,11 +19,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
       - name: Download exact reviewed candidate artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           artifact-ids: '13854909658'
           run-id: '43022406764'
@@ -62,7 +62,7 @@ jobs:
           mkdir -p site/builds/vc-bff2dcf4109a
           unzip -q valley-crown-vc-bff2dcf4109a-web.zip -d site/builds/vc-bff2dcf4109a
       - name: Download preserved prior beta artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           artifact-ids: '13830390118'
           run-id: '42962521219'
@@ -95,7 +95,7 @@ jobs:
           print('Preserved immutable prior beta route; current play route unchanged')
           PYVERIFY
       - name: Download preserved construction beta artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           artifact-ids: '13833927602'
           run-id: '42973027221'
@@ -128,7 +128,7 @@ jobs:
           print('Preserved immutable construction beta route')
           PYVERIFY
       - name: Download preserved menu and touch beta artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           artifact-ids: '13841514220'
           run-id: '42991393471'
@@ -161,7 +161,7 @@ jobs:
           print('Preserved immutable menu and touch beta route')
           PYVERIFY
       - name: Download preserved illustrated-menu beta artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           artifact-ids: '13849965133'
           run-id: '43008259514'
@@ -193,10 +193,50 @@ jobs:
           assert len([p for p in target.rglob('*') if p.is_file()])==21
           print('Preserved exact illustrated-menu beta route')
           PYVERIFY
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Download exact vc-5a977bb2321a product artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '14017792953'
+          run-id: '43384621134'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: new-product
+          merge-multiple: true
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('new-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='861274b82ceec7faa952a0b822ca17c3c548973801e73d3ef72d05881c723a1d'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-5a977bb2321a' and m['source_commit']=='44dde647632f19b5148ca7c3ecf74f4fb09060c7'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-5a977bb2321a')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-5a977bb2321a/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-5a977bb2321a/"><a href="../builds/vc-5a977bb2321a/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         with:
           path: site
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
