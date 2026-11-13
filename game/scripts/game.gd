@@ -4179,6 +4179,9 @@ func _send_world_order(screen,contextual=false):
 	order_marker.position=p; marker_time=0.8; touch_command=false; rally_building=-1
 
 func _tap(screen,is_touch):
+	# Compact/mobile layouts use the same contextual tap contract even when
+	# a browser/webview delivers a primary click instead of ScreenTouch.
+	var contextual_pointer=is_touch or compact_ui or DisplayServer.is_touchscreen_available()
 	if game_over: return
 	pointer_screen=screen; pointer_world=_point(_cell(_world_at(screen)))
 	if box_select_mode: return # A tap is not a completed box-selection drag.
@@ -4188,9 +4191,9 @@ func _tap(screen,is_touch):
 		return
 	if not paused and touch_command:
 		_send_world_order(screen); return
-	var id=_pick(screen,is_touch)
+	var id=_pick(screen,contextual_pointer)
 	var tapped=faction_views[0].get_record(id)
-	if is_touch and not paused and tapped.get("owned",false) and tapped.get("kind","")=="farm" and tapped.get("built",false) and _selected_builder()>=0:
+	if contextual_pointer and not paused and tapped.get("owned",false) and tapped.get("kind","")=="farm" and tapped.get("built",false) and _selected_builder()>=0:
 		_send_world_order(screen,true); _update_hud(); return
 	if id>=0 and faction_views[0].get_record(id).team==0:
 		if Input.is_physical_key_pressed(KEY_SHIFT) and not is_touch:
@@ -4199,7 +4202,7 @@ func _tap(screen,is_touch):
 			else: ids.append(id)
 			_select(ids)
 		else: _select([id])
-	elif is_touch and not selected.is_empty():
+	elif contextual_pointer and not selected.is_empty():
 		# Normal touch is contextual. Friendly taps above select; explicit
 		# targeting remains available for repair/delivery to friendly buildings.
 		# Use the ordinary order path: authority resolves each unit's capability.
