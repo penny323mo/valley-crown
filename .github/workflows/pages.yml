@@ -46,7 +46,7 @@ jobs:
           for source,dest in [('GODOT-LICENSES.txt', 'GODOT-LICENSES.txt'), ('THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_NOTICES.txt'), ('art/action_characters/licenses/kaykit-animations.txt', 'art/action_characters/licenses/kaykit-animations.txt'), ('art/action_characters/licenses/quaternius-base.txt', 'art/action_characters/licenses/quaternius-base.txt'), ('art/action_characters/licenses/quaternius-outfits.txt', 'art/action_characters/licenses/quaternius-outfits.txt'), ('art/action_characters/licenses/quaternius-ual.txt', 'art/action_characters/licenses/quaternius-ual.txt'), ('art/action_characters/licenses/quaternius-ual2.txt', 'art/action_characters/licenses/quaternius-ual2.txt'), ('assets/fonts/DEJAVU-LICENSE.txt', 'assets/fonts/DEJAVU-LICENSE.txt'), ('assets/fonts/NOTO-LICENSE.txt', 'assets/fonts/NOTO-LICENSE.txt'), ('assets/fonts/MENU-TITLE-LICENSE.txt', 'assets/fonts/MENU-TITLE-LICENSE.txt')]:
               out=target/dest;out.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/'clean-a'/source,out)
           for name in ['WEB_EXPORT_MANIFEST.json','THIRD_PARTY_NOTICES.txt']:
-              shutil.copyfile(name,target/name)
+              shutil.copyfile(pathlib.Path('release-history/vc-79ebcaef19e3')/name,target/name)
           (target/'.nojekyll').touch()
           manifest=json.loads((target/'WEB_EXPORT_MANIFEST.json').read_text())
           assert manifest['build']=='vc-79ebcaef19e3'
