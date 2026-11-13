@@ -20,6 +20,7 @@ const EndRules = preload("res://scripts/end_rules.gd")
 const Economy = preload("res://scripts/economy_ledger.gd")
 const AttackLedger = preload("res://scripts/attack_ledger.gd")
 const INITIAL_STOCKS = [{"food":150,"wood":200,"stone":100,"iron":0},{"food":150,"wood":200,"stone":100,"iron":0}]
+const ResourceVisuals = preload("res://scripts/resource_visuals.gd")
 const ProgressionVisuals = preload("res://scripts/progression_visuals.gd")
 const AdvancedBuildingVisuals = preload("res://scripts/advanced_building_visuals.gd")
 var age_completed_tick=[-1,-1]
@@ -444,9 +445,9 @@ func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacit
 	elif category=="resource":
 		if kind in ["pine","oak"]:
 			_tree_visual(body,Vector3.ZERO,kind,0.85+rng.randf()*0.2)
+		elif kind in ["stone","iron","berry"]:
+			ResourceVisuals.build(body,kind)
 		elif models.has(kind): body.add_child(models[kind].instantiate())
-		elif kind in ["stone","iron"]:
-			ProgressionVisuals.build(body,kind,BLUE)
 		elif kind=="gold":
 			for i in 3:
 				var rock=_box(body,Vector3((i-1)*0.25,0.3+i*0.15,0),Vector3(0.7,0.6,0.65),Color("c4ab61")); rock.rotation=Vector3(0.2,i*0.8,0.2)
