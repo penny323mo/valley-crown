@@ -6,7 +6,7 @@ from pathlib import Path
 FIXTURES = {
  'construction_status': ('tests/construction_status_contract.gd', 'd67dc52d6e60152fb783112ba99afc19d610e20b935566b67b8b9268f7c6065a'),
  'construction_status_hud': ('tests/construction_status_hud.gd', 'dfb464ce2e645a865845a5a567c7670cb6885e73b460f668ef98246debc0189a'),
- 'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '102c1da25e4c526364a340d57cfa0b7ae336b8ee33da032ac3493c2820db4543'),
+ 'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '2c81a5c1cadf9d4a5f5ac084a75e6d27a24fc56c9714d7a73fc06450e278be92'),
  'mobile_stop_control_phone': ('tests/mobile_stop_control_phone.gd', '6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a'),
  'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'fe1a38da69e900aeef7edd4403f5b553727a704ca30c2ade83df654116b653e6'),
  'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '3b61446f685b32b8c84e13efaf5b2a87a06eec27087e0728b9b265832629d0d9'),

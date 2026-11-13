@@ -12,7 +12,7 @@
   "tests/action_characters.gd.uid": "639b3adb68173992ca96efb6c94942ce8a9b0f8f154fb7543f611ae0c9937443",
   "tests/occlusion_viewport_lifecycle.gd.uid": "a6d1e9b09ea83ac9be5d695cf4f2271a9862bd8ce1a6932accb2e76e37987df5",
   "tests/map80_sparse_memory.gd": "62876df1003c18eb143b987a42fff9715cebda0a8fb5c7acfa2fad0b6be69e26",
-  "tests/mobile_stop_control_contract.gd": "102c1da25e4c526364a340d57cfa0b7ae336b8ee33da032ac3493c2820db4543",
+  "tests/mobile_stop_control_contract.gd": "2c81a5c1cadf9d4a5f5ac084a75e6d27a24fc56c9714d7a73fc06450e278be92",
   "tests/ai_keep_recovery_contract.gd": "239c2715ac53f255ef72757cbb11e043c82302966d3fd15374e8decd1ab6f129",
   "tests/battle_alert_contract.gd": "b039f85375c6218dc060b80c2f13dfefd54126b425d9e92613d14d80ce45696e",
   "tests/occlusion_stencil_contract.gd.uid": "4585c4b2bf70253b95a7dd955915733aff1bf0c8489fbcc30e33c86b4e16b485",
