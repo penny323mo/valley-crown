@@ -72,6 +72,9 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const ProductionOverview=preload("res://scripts/production_overview.gd")
+var production_buttons={}
+var production_cursor={}
 const WorkforceOverview=preload("res://scripts/workforce_overview.gd")
 var workforce_buttons={}
 var workforce_label: Label
@@ -3439,6 +3442,15 @@ func _create_ui():
 		var resource_button=_button("",func(): _select_workforce(resource_kind),112)
 		resource_button.name="Workforce_"+resource; resource_button.tooltip_text="選取分配於此資源的村民（包括來回運送），再點其他資源即可改派。人數不是每秒產量。"
 		workforce_row.add_child(resource_button); workforce_buttons[resource]=resource_button
+	var production_help=_label("生產總覽 · 點按輪流前往同類建築",13)
+	production_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(production_help)
+	for production_kind in ProductionOverview.KINDS:
+		var kind=production_kind
+		var production_button=_button("",func(): _focus_production(kind),160)
+		production_button.name="Production_"+kind
+		production_button.tooltip_text="顯示已落實隊列，含研發。自動待產指連續生產開啟但隊列為空；可能等待資源或人口。點按只選取建築，不會付費或生產。"
+		production_button.add_theme_font_size_override("font_size",12)
+		menu_box.add_child(production_button); production_buttons[kind]=production_button
 	var nav=HFlowContainer.new(); nav.add_theme_constant_override("h_separation",6); nav.add_theme_constant_override("v_separation",6); menu_box.add_child(nav)
 	nav.add_child(_button("主堡",func(): _compact_menu_action(_home),78))
 	nav.add_child(_button("全選閒置",func(): _compact_menu_action(func(): _select_group("idle")),96))
@@ -5148,6 +5160,7 @@ func _bind_squad_button(button,ids,blocked):
 	button.disabled=blocked or ids.is_empty()
 
 func _refresh_squad_buttons():
+	_refresh_production_buttons()
 	_refresh_workforce_buttons()
 	_refresh_idle_army_button()
 	if squad_buttons.size()!=SquadSelection.SLOT_COUNT: return
@@ -5673,4 +5686,29 @@ func _select_workforce(resource):
 	_select(ids)
 	camera_focus=records[ids[0]].pos; _camera_update()
 	_refresh_workforce_buttons()
+	compact_menu_button.text=_shortcut_menu_caption()
+
+func _refresh_production_buttons():
+	if production_buttons.is_empty(): return
+	var status=ProductionOverview.snapshot(faction_views[0].records())
+	for kind in ProductionOverview.KINDS:
+		var group=status[kind]
+		var button=production_buttons[kind]
+		_bind_squad_button(button,group.ids,not _squad_actions_available())
+		button.text="%s %d · 隊列%d\n閒置%d · 生產%d · 自動待產%d" % [Rules.NAMES[kind],group.ids.size(),group.queued,group.idle,group.busy,group.automatic]
+
+func _focus_production(kind):
+	if kind not in ProductionOverview.KINDS or not _squad_actions_available() or not compact_menu.visible: return
+	var records=faction_views[0].records()
+	var ids=ProductionOverview.snapshot(records)[kind].ids
+	var button=production_buttons[kind]
+	if button.disabled or ids.is_empty() or ids!=button.get_meta("squad_ids",[]):
+		_refresh_production_buttons(); return
+	var target=ProductionOverview.next_id(ids,production_cursor.get(kind,-1))
+	production_cursor[kind]=target
+	_cancel_mode()
+	compact_menu.hide(); compact_menu_dismiss.hide()
+	_select([target])
+	camera_focus=records[target].pos; _camera_update()
+	_refresh_production_buttons()
 	compact_menu_button.text=_shortcut_menu_caption()
