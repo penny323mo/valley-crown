@@ -20,6 +20,9 @@ func check_visible_controls(shell, phase: String):
 		previous_bottom = rect.end.y
 	check(shell.scroll.get_global_rect().end.y <= shell.buttons.get_global_rect().position.y, phase + ": prose cannot push or overlap actions")
 	if shell.footer.visible:
+		if viewport.size.y >= viewport.size.x or viewport.size.y >= 500.0:
+			check(shell.identity.is_visible_in_tree(), phase + ": home identity must be visible on portrait and desktop")
+			check(shell.wordmark.is_visible_in_tree(), phase + ": game title must be visible on portrait and desktop")
 		check(viewport.encloses(shell.footer.get_global_rect()), phase + ": footer visible")
 		check(not shell.identity.visible or viewport.encloses(shell.identity.get_global_rect()), phase + ": visible identity inside viewport")
 		var identity_clear = not shell.identity.visible or (not shell.identity.get_global_rect().intersects(shell.scroll.get_global_rect()) and not shell.identity.get_global_rect().intersects(shell.buttons.get_global_rect()))
@@ -29,7 +32,7 @@ func check_visible_controls(shell, phase: String):
 
 func check_layout_matrix(shell, phase: String):
 	var previous = root.size
-	for size in [Vector2i(320,568), Vector2i(390,844), Vector2i(844,390), Vector2i(1440,900), Vector2i(568,320)]:
+	for size in [Vector2i(1280,800), Vector2i(390,844), Vector2i(320,568), Vector2i(390,844), Vector2i(844,390), Vector2i(1440,900), Vector2i(568,320)]:
 		root.size = size
 		shell._layout()
 		await process_frame

@@ -181,7 +181,13 @@ func _layout():
 	backdrop_material.set_shader_parameter("view_size", available)
 	backdrop_material.set_shader_parameter("inner_page", not home)
 	wordmark.add_theme_font_size_override("font_size", 34 if short_landscape else (60 if wide else 44))
-	identity.size = Vector2(width, 0)
+	# Measure the current labels, not the VBox's previous-frame rectangle.
+	# On desktop -> portrait resize that rectangle still held the 60px title
+	# and the old visibility guard incorrectly hid the entire identity.
+	var identity_height = wordmark.get_combined_minimum_size().y
+	if latin_name.visible:
+		identity_height += latin_name.get_combined_minimum_size().y + 10.0
+	identity.size = Vector2(width, identity_height)
 	var actions_height = 54.0 * buttons.get_child_count() + 10.0 * max(0, buttons.get_child_count() - 1)
 	var height: float
 	var y: float
@@ -189,7 +195,7 @@ func _layout():
 		height = actions_height + (104.0 if short_landscape else 144.0)
 		y = minf(available.y - height - 28.0, available.y * 0.49) if not short_landscape else available.y - height - 16.0
 		y = maxf(16.0, y)
-		identity.position = Vector2(x, 14.0 if short_landscape else maxf(28.0, y - (148.0 if wide else 128.0)))
+		identity.position = Vector2(x, maxf(14.0, y - identity_height - 24.0))
 		card_style.bg_color = Color(0, 0, 0, 0)
 		card_style.set_border_width_all(0)
 		card_style.set_content_margin_all(0)
@@ -207,7 +213,7 @@ func _layout():
 		scroll.custom_minimum_size.y = 0
 	card.position = Vector2(x, y)
 	card.size = Vector2(width, height)
-	identity.visible = home and identity.get_global_rect().end.y + 16.0 <= card.position.y
+	identity.visible = home and identity.position.y + identity_height + 16.0 <= card.position.y
 	var inset = 0.0 if home else 22.0
 	var content_width = maxf(1.0, width - inset * 2.0)
 	var actions_y = height - inset - actions_height - (34.0 if home else 0.0)
