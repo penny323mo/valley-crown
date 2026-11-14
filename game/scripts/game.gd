@@ -3996,6 +3996,11 @@ func _refresh_stop_button():
 		stop_button.reparent(parent)
 		# Keep desktop/targeting action order unchanged: Cargo, Stop, Defend.
 		if parent==actions: actions.move_child(stop_button,actions.get_child_count()-2)
+	# Desktop Stop is core, not an optional tail action that new tools can hide.
+	# Only reposition/scroll on a layout/order transition, never each HUD tick.
+	if not compact_ui and parent==actions and stop_button.get_index()!=0:
+		actions.move_child(stop_button,0)
+		action_scroll.scroll_horizontal=0
 	stop_button.disabled=paused or game_over
 
 func _refresh_return_cargo_button():
