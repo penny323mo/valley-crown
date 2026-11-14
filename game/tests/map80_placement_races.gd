@@ -3,7 +3,7 @@ extends SceneTree
 ## Prepare only locally. Run under the reviewed CI resource supervisor.
 const Rules=preload("res://scripts/rules.gd")
 const SITE=Vector3(12,0,12)
-const FOG="需要地點及周邊目前可見"
+const FOG="先派村民探索建築範圍"
 var g
 var checks=[]
 func _initialize(): call_deferred("run")

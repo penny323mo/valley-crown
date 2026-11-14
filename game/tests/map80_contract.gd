@@ -26,10 +26,10 @@ func world_anchor(x,y,width):
 	return Vector3(x-Rules.MAP_HALF+(0.5 if width%2 else 0),0,y-Rules.MAP_HALF+(0.5 if width%2 else 0))
 func sweep(label):
 	var builder=g._first(0,"villager")
-	# Independent source-model oracle: opening128/66, full-visible4956/4605.
+	# Independent source-model oracle: opening231/147, full-visible4956/4605.
 	# The oracle never derives eligibility from _placement_reason's verdict.
-	var expected_by_width={2:128,3:66} if label=="opening" else {2:4956,3:4605}
-	var known_reasons=["","地圖邊界","需要地點及周邊目前可見","與建築或資源重疊","地點有單位","需要留有施工通道","不可阻住生產建築最後出口"]
+	var expected_by_width={2:231,3:147} if label=="opening" else {2:4956,3:4605}
+	var known_reasons=["","地圖邊界","先派村民探索建築範圍","與建築或資源重疊","地點有單位","需要留有施工通道","不可阻住生產建築最後出口"]
 	for kind in ["house","barracks","range","storehouse"]:
 		var width=Rules.FOOTPRINT[kind]; var reasons={}; var legal_count=0; var unknown_reasons={}
 		for y in Rules.MAP_SIZE:
@@ -108,7 +108,7 @@ func run():
 		unit.pos=point; before=occupied_snapshot()
 		fog_results.append(g._placement_reason("house",Vector3(10,0,10),0,builder.id))
 		check("fog-no-debit-"+str(point),g._place_building("house",Vector3(10,0,10),builder.id,0).is_empty() and occupied_snapshot()==before)
-	check("fog-response-independent-of-hidden-occupancy",fog_results[0]=="需要地點及周邊目前可見" and fog_results[0]==fog_results[1])
+	check("fog-response-independent-of-hidden-occupancy",fog_results[0]=="先派村民探索建築範圍" and fog_results[0]==fog_results[1])
 	# Geometry-only local exit guard. Synthetic known blockers do not assert
 	# global connectivity and do not grant enemy knowledge.
 	reset(true); builder=g._first(0,"villager")

@@ -45,8 +45,11 @@ func _initialize():
 		dispose(visible)
 		for destroyed in [false,true]:
 			var game=setup(team); archer=game.entities[0]; target=game.entities[1]
+			# Physical-footprint sight now sees the keep from the old -6.5
+			# origin. Move farther back so this remains a truly unseen-site case.
+			archer.pos=Vector3(-8.5,0,0.5)
 			game.entities[2].pos=Vector3(-20.5,0,20.5); game._update_vision(false)
-			check("observer withdrawal really hides building center",not game._visible_to(target,team))
+			check("observer withdrawal really hides entire building footprint",not game._visible_to(target,team))
 			if destroyed:
 				# Explicit synthetic unseen destruction, not a natural combat claim.
 				target.alive=false; game._navigation_rebuild()

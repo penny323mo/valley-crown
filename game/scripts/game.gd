@@ -1263,8 +1263,8 @@ func _refresh_work_memory():
 					own[ent.id]=_work_snapshot(ent); own[ent.id].knowledge_source="owned_current"
 					for cell in _occupied_cells(ent): owned_cells[cell]=true
 				continue
-			# Same center visibility as the existing entity presentation/commands.
-			# A hidden center with one revealed footprint cell is NOT observable.
+			# Physical intersection observation matches presentation/commands:
+			# a building visibly crossing the fog edge is an observed blocker.
 			if _visible_to(ent,team):
 				observed[ent.id]=_work_snapshot(ent)
 				observed[ent.id].knowledge_source="visible_static_entity_observation"
@@ -1845,21 +1845,14 @@ func _move(ent,destination,dt):
 		return ent.path.is_empty()
 	return false
 
-# Public geometry only: union of building-center bounds and the unit-radius
-# ring. Never derive the envelope from live/hidden entities or their state.
-func _placement_visibility_cells(footprint,catalog=Rules.FOOTPRINT,public_max_unit_radius=Rules.MAX_UNIT_RADIUS):
-	var unit_pad=ceili(public_max_unit_radius)
-	var max_low=unit_pad; var max_high=unit_pad
-	for width in catalog.values():
-		var low=floori(width/2.0)
-		max_low=maxi(max_low,low); max_high=maxi(max_high,int(width)-low-1)
-	var cells={}
-	for cell in footprint:
-		for y in range(cell.y-max_high,cell.y+max_low+1):
-			for x in range(cell.x-max_high,cell.x+max_low+1): cells[Vector2i(x,y)]=true
-	return cells.keys()
+# A site requires sight of its actual occupied cells, not an extra arbitrary
+# halo based on the largest building in the catalog. Physical intersection
+# observation in _visible_to makes every overlapping blocker observable.
+func _placement_visibility_cells(footprint):
+	return footprint
 
-func _placement_reason(kind,p,team,builder_id):
+func _placement_reason(kind,p,team,builder_id,check_resources=true):
+	p=_snap_build_position(kind,p)
 	if victory_mode=="control" and p.distance_to(ControlPoint.CENTER)<ControlPoint.RADIUS+Rules.FOOTPRINT.get(kind,1): return "中央據點範圍須留作爭奪，不可建造。"
 	if not Rules.BUILD_TIME.has(kind): return "未知建築"
 	if not _kind_unlocked(kind,team): return "需要城防時代"
@@ -1872,10 +1865,10 @@ func _placement_reason(kind,p,team,builder_id):
 		# Out-of-map envelope cells are public boundary, not observable cells.
 		# Bounds precede indexing even if the public size catalog grows.
 		if c.x<0 or c.y<0 or c.x>=Rules.MAP_SIZE or c.y>=Rules.MAP_SIZE: continue
-		if visible_cells[team][c.y*Rules.MAP_SIZE+c.x]==0: return "需要地點及周邊目前可見"
+		if visible_cells[team][c.y*Rules.MAP_SIZE+c.x]==0: return "先派村民探索建築範圍"
 	var builder=_get_entity(builder_id)
 	if builder.is_empty() or not builder.alive or builder.team!=team or builder.kind!="villager": return "請先選取村民"
-	if not _can_pay(COSTS[kind],team): return "資源不足"
+	if check_resources and not _can_pay(COSTS[kind],team): return "資源不足"
 	for c in footprint:
 		if navigation.is_point_solid(c): return "與建築或資源重疊"
 		for unit in entities:
@@ -3175,7 +3168,24 @@ func _refresh_fog():
 			fog.multimesh.set_instance_color(i,Color(0.055,0.12,0.12,0.0 if state==2 else (0.65 if state==1 else 0.94)))
 
 func _visible_to(ent,team):
-	return ent.team==team or (not visible_cells[team].is_empty() and visible_cells[team][_cell_index(ent.pos)]!=0)
+	if ent.team==team: return true
+	if visible_cells[team].is_empty(): return false
+	if visible_cells[team][_cell_index(ent.pos)]!=0: return true
+	# Observe actual geometry intersecting current sight. This is NOT a sight
+	# extension: entirely hidden objects still contribute nothing to knowledge.
+	var cells=_occupied_cells(ent)
+	if ent.category=="unit":
+		cells=[]
+		var radius=ent.get("radius",Rules.UNIT_RADIUS)
+		var center=_cell(ent.pos)
+		for y in range(center.y-ceili(radius),center.y+ceili(radius)+1):
+			for x in range(center.x-ceili(radius),center.x+ceili(radius)+1):
+				var c=Vector2i(x,y)
+				if _box_distance_squared(ent.pos,c)<radius*radius-0.0000001: cells.append(c)
+	for cell in cells:
+		if cell.x<0 or cell.y<0 or cell.x>=Rules.MAP_SIZE or cell.y>=Rules.MAP_SIZE: continue
+		if visible_cells[team][cell.y*Rules.MAP_SIZE+cell.x]!=0: return true
+	return false
 
 func _note_unit_action(ent: Dictionary, action: String, facing_point: Vector3=Vector3.INF) -> void:
 	# Called only after a successful authority action. It can never cause one.
@@ -3696,7 +3706,7 @@ func _update_hud():
 		if is_instance_valid(build_confirm): build_confirm.disabled=not reason.is_empty() or paused or not build_preview_held
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		selection_detail.text=help_label.text
-		queue_label.text=Rules.cost_label(build_mode); queue_label.show()
+		queue_label.text=Rules.cost_label(build_mode)+(" · 資源不足" if not _can_pay(COSTS[build_mode],0) else ""); queue_label.show()
 	if rally_building>=0:
 		selection_detail.text="警戒集合點：點可見空地；新軍隊射程內迎擊，敵軍離開後繼續前進，不追擊。" if rally_mode=="advance" else "點可見空地設定集合點；主堡亦可點資源，讓新村民自動採集。"
 		help_label.text=selection_detail.text
@@ -4635,7 +4645,8 @@ func _update_ghost():
 	ghost.position=_snap_build_position(build_mode,pointer_world)
 	var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
 	placement_ok=reason.is_empty()
-	ghost.get_child(0).material_override=_material(Color("92d389") if placement_ok else Color("d97c65"))
+	var site_clear=_placement_reason(build_mode,pointer_world,0,_selected_builder(),false).is_empty()
+	ghost.get_child(0).material_override=_material(Color("92d389") if placement_ok else (Color("e4bc68") if site_clear else Color("d97c65")))
 	if short_ui: _message(("位置已選，按確認建造。" if build_preview_held else "點選空地作預覽，再按確認建造。") if placement_ok else "不可建造："+reason,1,true)
 
 func _confirm_build():

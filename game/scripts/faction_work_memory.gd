@@ -1,8 +1,8 @@
 extends RefCounted
 ## Narrow work-routing view, NOT a complete FactionView/HUD/AI memory system.
 ## Receives observed entity snapshots only, never full navigation/world data.
-## Visibility matches GameSession._visible_to (entity center), not a partly
-## visible footprint. Remembered unseen static footprints remain frozen.
+## Visibility matches GameSession._visible_to (physical footprint intersection).
+## Remembered entirely unseen static footprints remain frozen.
 const Rules = preload("res://scripts/rules.gd")
 var grid := AStarGrid2D.new()
 var revision := 0

@@ -21,11 +21,19 @@ static func freeze(value):
 
 func publish(observed: Dictionary, visible, now: int):
 	tick = now
-	# Only a legitimate center observation can retire a static memory.
+	# Retire a remembered static object only when its remembered physical
+	# footprint is inspected and absent. Never inspect hidden current liveness.
 	for id in memory.keys():
+		if observed.has(id): continue
 		var p = memory[id].pos
-		var cell = Vector2i(clampi(floori(p.x+Rules.MAP_HALF),0,Rules.MAP_SIZE-1),clampi(floori(p.z+Rules.MAP_HALF),0,Rules.MAP_SIZE-1))
-		if visible[cell.y*Rules.MAP_SIZE+cell.x] and not observed.has(id): memory.erase(id)
+		var cell = Vector2i(floori(p.x+Rules.MAP_HALF),floori(p.z+Rules.MAP_HALF))
+		var width = Rules.FOOTPRINT.get(memory[id].kind,1)
+		var low = floori(width/2.0)
+		var inspected = false
+		for y in range(cell.y-low,cell.y-low+width):
+			for x in range(cell.x-low,cell.x-low+width):
+				if x>=0 and y>=0 and x<Rules.MAP_SIZE and y<Rules.MAP_SIZE and visible[y*Rules.MAP_SIZE+x]: inspected=true
+		if inspected: memory.erase(id)
 	var next = {}
 	for id in observed:
 		var record = observed[id].duplicate(true)
