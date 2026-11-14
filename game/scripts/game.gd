@@ -97,6 +97,7 @@ var shortcut_sections={"economy":[],"army":[],"production":[],"settings":[]}
 const WorkforceOverview=preload("res://scripts/workforce_overview.gd")
 var workforce_buttons={}
 var workforce_label: Label
+var blocked_workers_button: Button
 const IdleArmySelection=preload("res://scripts/idle_army_selection.gd")
 var idle_army_button: Button
 var idle_worker_button: Button
@@ -3499,6 +3500,8 @@ func _create_ui():
 		var resource_button=_button("",func(): _select_workforce(resource_kind),112)
 		resource_button.name="Workforce_"+resource; resource_button.tooltip_text="選取分配於此資源的村民（包括來回運送），再點其他資源即可改派。人數不是每秒產量。"
 		workforce_row.add_child(resource_button); workforce_buttons[resource]=resource_button
+	blocked_workers_button=_button("",_select_blocked_workers,160);blocked_workers_button.name="BlockedGatherWorkers";menu_box.add_child(blocked_workers_button)
+	blocked_workers_button.tooltip_text="找出空手、採集路線已停止而原資源仍可見的村民。只選取及定位，不自動改派；可再按重試受阻採集。"
 	var dispatch_help=_label("快捷派工 · 每次最多 3 名空手閒置村民",13)
 	dispatch_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(dispatch_help)
 	var dispatch_row=HFlowContainer.new();dispatch_row.add_theme_constant_override("h_separation",6);dispatch_row.add_theme_constant_override("v_separation",6);menu_box.add_child(dispatch_row)
@@ -3507,7 +3510,7 @@ func _create_ui():
 		var dispatch=_button("",func():_dispatch_idle_gather(kind),140)
 		dispatch.name="IdleDispatch_"+resource;dispatch.tooltip_text="只派空手待命村民到最近可見、沒有已知敵人附近的資源點。不搶工作或搬運；路線仍可能受阻。"
 		dispatch_row.add_child(dispatch);idle_dispatch_buttons[resource]=dispatch
-	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,dispatch_help,dispatch_row]
+	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,dispatch_help,dispatch_row]
 	shortcut_sections.army=[idle_army_button]
 	var production_help=_label("生產總覽 · 點按輪流前往同類建築",13)
 	production_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(production_help)
@@ -5807,6 +5810,7 @@ func _select_idle_army():
 	compact_menu_button.text=_shortcut_menu_caption()
 
 func _refresh_workforce_buttons():
+	_refresh_blocked_workers_button()
 	if not is_instance_valid(workforce_label): return
 	var status=WorkforceOverview.snapshot(faction_views[0].records(),commands)
 	var groups=status.groups
@@ -6131,3 +6135,29 @@ func _clear_production_exit(building):
 	_cancel_pointer_streams()
 	for order in plan:_submit("order",order)
 	_refresh_clear_exit_button()
+
+# Reuse the retry action's sanitized eligibility rather than invent another
+# definition of "stuck". Selection/navigation only; no automatic work orders.
+func _blocked_worker_ids() -> Array:
+	var records=faction_views[0].records()
+	var ids=records.keys();ids.sort()
+	var result=[]
+	for order in RetryGatherAction.orders(records,ids,commands): result.append(order.ids[0])
+	return result
+
+func _refresh_blocked_workers_button():
+	if not is_instance_valid(blocked_workers_button):return
+	var ids=_blocked_worker_ids()
+	_bind_squad_button(blocked_workers_button,ids,not _squad_actions_available())
+	blocked_workers_button.text="受阻採集 · %d 人 · 選取" % ids.size()
+
+func _select_blocked_workers():
+	if not _squad_actions_available() or not compact_menu.visible or not is_instance_valid(blocked_workers_button) or not blocked_workers_button.visible:return
+	var ids=_blocked_worker_ids()
+	if blocked_workers_button.disabled or ids.is_empty() or ids!=blocked_workers_button.get_meta("squad_ids",[]):
+		_refresh_blocked_workers_button();return
+	_cancel_mode()
+	compact_menu.hide();compact_menu_dismiss.hide()
+	_select(ids)
+	camera_focus=faction_views[0].records()[ids[0]].pos;_camera_update()
+	compact_menu_button.text=_shortcut_menu_caption()
