@@ -359,8 +359,15 @@ func _ready():
 	_create_ui()
 	_create_tutorial_ui()
 	audio_cues.observe(faction_views[0].records(),tick_count,Time.get_ticks_msec())
-	_select([_first(0,"town_center").id])
-	_message("選取村民，再向漿果或樹木落指令。建立聚落，探索霧谷。",9)
+	if skirmish_mode=="battle" and victory_mode=="conquest":
+		var army=[]
+		for unit in entities:
+			if unit.team==0 and unit.category=="unit" and unit.kind not in ["villager","scout"]:army.append(unit.id)
+		_select(army);camera_focus=Vector3(-25,0,11)
+		_message("軍隊已完成。點空地移動，點敵軍攻擊；主堡與村民仍可採集與建造。",9)
+	else:
+		_select([_first(0,"town_center").id])
+		_message("選取村民，再向漿果或樹木落指令。建立聚落，探索霧谷。",9)
 	_install_web_bridge()
 	if test_mode: call_deferred("_run_smoke_test")
 
@@ -486,6 +493,17 @@ func _seed_match():
 	# still include the inherited home groves and need paired simulation QA.
 	for p in [Vector3(-3.5,0,-1.5),Vector3(-0.5,0,-1.5),Vector3(2.5,0,-1.5)]:
 		_spawn("berry",-1,p); _spawn("berry",-1,-p)
+
+	if skirmish_mode=="battle" and victory_mode=="conquest":
+		# Explicit symmetric scenario start, never paid training/completion events.
+		for team in 2:
+			var sign_team=1.0 if team==0 else -1.0
+			_spawn("house",team,Vector3(-29,0,23)*sign_team,true)
+			var kinds=["spearman","spearman","archer","archer","cavalry","siege"]
+			for index in kinds.size():
+				_spawn(kinds[index],team,Vector3(-26+2*(index%2),0,13-2*(index/2))*sign_team,true)
+			age_completed_tick[team]=0
+		demo_tutorial.skip()
 
 func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacity_milli=-1):
 	var category="unit" if kind in Rules.UNIT_KINDS else ("resource" if kind in Rules.RESOURCE_KINDS else "building")
@@ -5507,7 +5525,7 @@ func _request_restart():
 
 # --- Integrated economy, age and military progression ---
 func _age2(team: int) -> bool:
-	return age_completed_tick[team]>=0 and tick_count>age_completed_tick[team]
+	return (skirmish_mode=="battle" and victory_mode=="conquest") or (age_completed_tick[team]>=0 and tick_count>age_completed_tick[team])
 
 func _kind_unlocked(kind: String,team: int) -> bool:
 	return kind not in Rules.AGE2_KINDS or _age2(team)

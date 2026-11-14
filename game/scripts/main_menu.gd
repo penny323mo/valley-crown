@@ -515,8 +515,10 @@ func _input(event):
 	if _help_touch(event): get_viewport().set_input_as_handled()
 
 func _cycle_victory_mode():
+	if selected_mode=="battle":
+		selected_mode="practice";selected_victory_mode="conquest";_show_page("setup");return
 	if selected_victory_mode=="supply":
-		selected_victory_mode="conquest";selected_mode="practice";_show_page("setup");return
+		selected_victory_mode="conquest";selected_mode="battle";_show_page("setup");return
 	if selected_victory_mode=="control":
 		selected_victory_mode="supply";selected_mode="standard"
 	elif selected_mode=="pressure":
