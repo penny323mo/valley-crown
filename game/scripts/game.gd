@@ -90,6 +90,9 @@ var production_buttons={}
 var production_cursor={}
 const IdleGatherDispatch=preload("res://scripts/idle_gather_dispatch.gd")
 var idle_dispatch_buttons={}
+var shortcut_category="all"
+var shortcut_category_buttons={}
+var shortcut_sections={"economy":[],"army":[],"production":[],"settings":[]}
 const WorkforceOverview=preload("res://scripts/workforce_overview.gd")
 var workforce_buttons={}
 var workforce_label: Label
@@ -3474,6 +3477,13 @@ func _create_ui():
 	var menu_title=HBoxContainer.new(); menu_box.add_child(menu_title)
 	var menu_heading=_label("霧谷王旗 · 快捷選單",17,GOLD); menu_heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL; menu_title.add_child(menu_heading)
 	menu_title.add_child(_button("關閉",func(): _toggle_compact_menu(),60))
+	var category_row=HFlowContainer.new();category_row.name="ShortcutCategories";category_row.add_theme_constant_override("h_separation",4);category_row.add_theme_constant_override("v_separation",4);menu_box.add_child(category_row)
+	var category_names={"all":"全部","economy":"經濟","army":"軍隊","production":"生產","settings":"設定"}
+	for category in category_names:
+		var page=category
+		var category_button=_button(category_names[category],func():_set_shortcut_category(page),44)
+		category_button.name="ShortcutCategory_"+category;category_button.toggle_mode=true;category_button.add_theme_font_size_override("font_size",12)
+		category_row.add_child(category_button);shortcut_category_buttons[category]=category_button
 	attack_alert_button=_button("前往受襲位置",_focus_attack_alert,110); attack_alert_button.name="AttackAlert"; menu_box.add_child(attack_alert_button); attack_alert_button.hide()
 	mission_label=_label("",14,Color("c8d4b3")); mission_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(mission_label)
 	idle_worker_button=_button("閒置村民 0 · 下一位",_focus_idle_worker,160); idle_worker_button.name="IdleWorkerCycle"; menu_box.add_child(idle_worker_button)
@@ -3495,8 +3505,11 @@ func _create_ui():
 		var dispatch=_button("",func():_dispatch_idle_gather(kind),140)
 		dispatch.name="IdleDispatch_"+resource;dispatch.tooltip_text="只派空手待命村民到最近可見、沒有已知敵人附近的資源點。不搶工作或搬運；路線仍可能受阻。"
 		dispatch_row.add_child(dispatch);idle_dispatch_buttons[resource]=dispatch
+	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,dispatch_help,dispatch_row]
+	shortcut_sections.army=[idle_army_button]
 	var production_help=_label("生產總覽 · 點按輪流前往同類建築",13)
 	production_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(production_help)
+	shortcut_sections.production.append(production_help)
 	for production_kind in ProductionOverview.KINDS:
 		var kind=production_kind
 		var production_button=_button("",func(): _focus_production(kind),160)
@@ -3504,6 +3517,7 @@ func _create_ui():
 		production_button.tooltip_text="顯示已落實隊列，含研發。自動待產指連續生產開啟但隊列為空；可能等待資源或人口。點按只選取建築，不會付費或生產。"
 		production_button.add_theme_font_size_override("font_size",12)
 		menu_box.add_child(production_button); production_buttons[kind]=production_button
+		shortcut_sections.production.append(production_button)
 	var nav=HFlowContainer.new(); nav.add_theme_constant_override("h_separation",6); nav.add_theme_constant_override("v_separation",6); menu_box.add_child(nav)
 	nav.add_child(_button("主堡",func(): _compact_menu_action(_home),78))
 	nav.add_child(_button("全選閒置",func(): _compact_menu_action(func(): _select_group("idle")),96))
@@ -3513,12 +3527,12 @@ func _create_ui():
 	nav2.add_child(_button("所有村民",func(): _compact_menu_action(func(): _select_group("villagers")),96))
 	nav2.add_child(_button("斥候",func(): _compact_menu_action(func(): _select_group("scout")),78))
 	nav2.add_child(_button("小地圖",func(): compact_map_choice=0 if minimap.visible else 1; _layout_ui(),84))
-	menu_box.add_child(_button("框選單位",func(): _compact_menu_action(_start_box_select),110))
+	var box_select=_button("框選單位",func(): _compact_menu_action(_start_box_select),110);menu_box.add_child(box_select);shortcut_sections.army.append(box_select)
 	var squad_help=_label("軍隊編組：先選部隊再存入；重選不會落指令。",13)
-	squad_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(squad_help)
+	squad_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(squad_help);shortcut_sections.army.append(squad_help)
 	for slot in range(SquadSelection.SLOT_COUNT):
 		var group_slot=slot
-		var row=HBoxContainer.new(); row.add_theme_constant_override("separation",6); menu_box.add_child(row)
+		var row=HBoxContainer.new(); row.add_theme_constant_override("separation",6); menu_box.add_child(row);shortcut_sections.army.append(row)
 		var recall=_button("",func(): _activate_squad(group_slot,false),150)
 		recall.size_flags_horizontal=Control.SIZE_EXPAND_FILL; recall.name="RecallSquad%d" % (slot+1); row.add_child(recall)
 		var save=_button("存入 %d 隊" % (slot+1),func(): _activate_squad(group_slot,true),100)
@@ -3532,7 +3546,9 @@ func _create_ui():
 	nav3.add_child(_button("移動／攻擊",func(): _compact_menu_action(_start_unit_command),110))
 	nav3.add_child(_button("投降",func(): _compact_menu_action(_confirm_surrender),78))
 	help_label=_label("",13,Color("c6cbbd")); help_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(help_label)
-	menu_box.add_child(_button("主選單", _request_main_menu, 110))
+	var main_menu_action=_button("主選單", _request_main_menu, 110);menu_box.add_child(main_menu_action)
+	shortcut_sections.settings=[audio_button,nav3,help_label,main_menu_action]
+	_apply_shortcut_category()
 	compact_menu.hide()
 	toast_label=_label("",15,GOLD); ui.add_child(toast_label); toast_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	toast_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
@@ -6029,3 +6045,19 @@ func _dispatch_idle_gather(resource):
 	compact_menu.hide();compact_menu_dismiss.hide()
 	_refresh_idle_dispatch_buttons()
 	_message("已下達 %d 名閒置村民採%s指令；需沿可通行路線前往。" % [orders.size(),Rules.RESOURCE_NAMES[resource]],3)
+
+func _apply_shortcut_category():
+	for category in shortcut_sections:
+		for control in shortcut_sections[category]:
+			control.visible=shortcut_category=="all" or shortcut_category==category
+	for category in shortcut_category_buttons:
+		shortcut_category_buttons[category].set_pressed_no_signal(category==shortcut_category)
+
+func _set_shortcut_category(category):
+	if not compact_menu.visible or not shortcut_category_buttons.has(category):return
+	_cancel_pointer_streams()
+	shortcut_category=category
+	_apply_shortcut_category()
+	compact_menu.get_child(0).scroll_vertical=0
+	_refresh_squad_buttons()
+	_layout_ui()
