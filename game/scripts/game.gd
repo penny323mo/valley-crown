@@ -72,6 +72,9 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const WorkforceOverview=preload("res://scripts/workforce_overview.gd")
+var workforce_buttons={}
+var workforce_label: Label
 const IdleArmySelection=preload("res://scripts/idle_army_selection.gd")
 var idle_army_button: Button
 var idle_worker_button: Button
@@ -3429,6 +3432,13 @@ func _create_ui():
 	idle_worker_button.tooltip_text="選取一位閒置村民，不改動任何指令。"
 	idle_army_button=_button("待命軍隊 0 · 全選",_select_idle_army,160); idle_army_button.name="IdleArmySelect"; menu_box.add_child(idle_army_button)
 	idle_army_button.tooltip_text="選取沒有行動或待處理指令的軍隊，不改變原有防守姿態。"
+	workforce_label=_label("",13); workforce_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(workforce_label)
+	var workforce_row=HFlowContainer.new(); workforce_row.add_theme_constant_override("h_separation",6); workforce_row.add_theme_constant_override("v_separation",6); menu_box.add_child(workforce_row)
+	for resource in WorkforceOverview.RESOURCES:
+		var resource_kind=resource
+		var resource_button=_button("",func(): _select_workforce(resource_kind),112)
+		resource_button.name="Workforce_"+resource; resource_button.tooltip_text="選取分配於此資源的村民（包括來回運送），再點其他資源即可改派。人數不是每秒產量。"
+		workforce_row.add_child(resource_button); workforce_buttons[resource]=resource_button
 	var nav=HFlowContainer.new(); nav.add_theme_constant_override("h_separation",6); nav.add_theme_constant_override("v_separation",6); menu_box.add_child(nav)
 	nav.add_child(_button("主堡",func(): _compact_menu_action(_home),78))
 	nav.add_child(_button("全選閒置",func(): _compact_menu_action(func(): _select_group("idle")),96))
@@ -5138,6 +5148,7 @@ func _bind_squad_button(button,ids,blocked):
 	button.disabled=blocked or ids.is_empty()
 
 func _refresh_squad_buttons():
+	_refresh_workforce_buttons()
 	_refresh_idle_army_button()
 	if squad_buttons.size()!=SquadSelection.SLOT_COUNT: return
 	var records=faction_views[0].records()
@@ -5638,4 +5649,28 @@ func _select_idle_army():
 	_select(ids)
 	camera_focus=records[ids[0]].pos; _camera_update()
 	_refresh_idle_army_button()
+	compact_menu_button.text=_shortcut_menu_caption()
+
+func _refresh_workforce_buttons():
+	if not is_instance_valid(workforce_label): return
+	var status=WorkforceOverview.snapshot(faction_views[0].records(),commands)
+	var groups=status.groups
+	workforce_label.text="村民分配 %d · 建修 %d · 待命 %d · 其他 %d · 改派中 %d" % [status.total,groups.building.size(),groups.idle.size(),groups.other.size(),groups.pending.size()]
+	for resource in WorkforceOverview.RESOURCES:
+		var button=workforce_buttons[resource]
+		_bind_squad_button(button,groups[resource],not _squad_actions_available())
+		button.text="%s · %d 人" % [Rules.RESOURCE_NAMES[resource],groups[resource].size()]
+
+func _select_workforce(resource):
+	if resource not in WorkforceOverview.RESOURCES or not _squad_actions_available() or not compact_menu.visible: return
+	var records=faction_views[0].records()
+	var ids=WorkforceOverview.snapshot(records,commands).groups[resource]
+	var button=workforce_buttons[resource]
+	if button.disabled or ids.is_empty() or ids!=button.get_meta("squad_ids",[]):
+		_refresh_workforce_buttons(); return
+	_cancel_mode()
+	compact_menu.hide(); compact_menu_dismiss.hide()
+	_select(ids)
+	camera_focus=records[ids[0]].pos; _camera_update()
+	_refresh_workforce_buttons()
 	compact_menu_button.text=_shortcut_menu_caption()
