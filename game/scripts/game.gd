@@ -86,6 +86,8 @@ const ConstructionDispatch=preload("res://scripts/construction_dispatch.gd")
 var construction_dispatch_button: Button
 const FarmDispatch=preload("res://scripts/farm_dispatch.gd")
 var farm_dispatch_button: Button
+var vacant_farm_button: Button
+var vacant_farm_cursor=-1
 const RepairDispatch=preload("res://scripts/repair_dispatch.gd")
 var repair_dispatch_button: Button
 const ProductionOverview=preload("res://scripts/production_overview.gd")
@@ -3511,6 +3513,8 @@ func _create_ui():
 		workforce_row.add_child(resource_button); workforce_buttons[resource]=resource_button
 	blocked_workers_button=_button("",_select_blocked_workers,160);blocked_workers_button.name="BlockedGatherWorkers";menu_box.add_child(blocked_workers_button)
 	blocked_workers_button.tooltip_text="找出空手、採集路線已停止而原資源仍可見的村民。只選取及定位，不自動改派；可再按重試受阻採集。"
+	vacant_farm_button=_button("",_focus_vacant_farm,160);vacant_farm_button.name="VacantFarmCycle";menu_box.add_child(vacant_farm_button)
+	vacant_farm_button.tooltip_text="輪流前往空置、沒有待處理派工的己方農田。只選取及定位；選中後可派空手閒置村民耕作。"
 	var dispatch_help=_label("快捷派工 · 每次最多 3 名空手閒置村民",13)
 	dispatch_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(dispatch_help)
 	var dispatch_row=HFlowContainer.new();dispatch_row.add_theme_constant_override("h_separation",6);dispatch_row.add_theme_constant_override("v_separation",6);menu_box.add_child(dispatch_row)
@@ -3519,7 +3523,7 @@ func _create_ui():
 		var dispatch=_button("",func():_dispatch_idle_gather(kind),140)
 		dispatch.name="IdleDispatch_"+resource;dispatch.tooltip_text="只派空手待命村民到最近可見、沒有已知敵人附近的資源點。不搶工作或搬運；路線仍可能受阻。"
 		dispatch_row.add_child(dispatch);idle_dispatch_buttons[resource]=dispatch
-	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,dispatch_help,dispatch_row]
+	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row]
 	shortcut_sections.army=[idle_army_button]
 	var production_help=_label("生產總覽 · 點按輪流前往同類建築",13)
 	production_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(production_help)
@@ -5832,6 +5836,7 @@ func _select_idle_army():
 	compact_menu_button.text=_shortcut_menu_caption()
 
 func _refresh_workforce_buttons():
+	_refresh_vacant_farms()
 	_refresh_blocked_workers_button()
 	if not is_instance_valid(workforce_label): return
 	var status=WorkforceOverview.snapshot(faction_views[0].records(),commands)
@@ -6224,3 +6229,27 @@ func _request_farm_dispatch(id):
 	_cancel_mode()
 	_submit("order",{"ids":[plan.worker],"target":id,"farm_gather":true,"farm_dispatch":true})
 	_refresh_farm_dispatch()
+
+func _vacant_farm_ids() -> Array:
+	var result=[];var pending={}
+	for command in commands:
+		if command.get("team",-1)==0 and command.get("type","")=="order":pending[command.get("target",-1)]=true
+	for record in faction_views[0].records().values():
+		if record.get("owned",false) and record.get("alive",false) and not record.get("remembered",false) and record.get("team",-1)==0 and record.get("kind","")=="farm" and record.get("built",false) and not pending.has(record.id) and economy.farm_view(record.id).get("worker_id",-1)<0:result.append(record.id)
+	result.sort();return result
+
+func _refresh_vacant_farms():
+	if not is_instance_valid(vacant_farm_button):return
+	var ids=_vacant_farm_ids()
+	_bind_squad_button(vacant_farm_button,ids,not _squad_actions_available())
+	vacant_farm_button.text="空置農田 · %d · 下一塊" % ids.size()
+
+func _focus_vacant_farm():
+	if not _squad_actions_available() or not compact_menu.visible or not is_instance_valid(vacant_farm_button) or not vacant_farm_button.visible or vacant_farm_button.disabled:return
+	var ids=_vacant_farm_ids()
+	if ids.is_empty() or ids!=vacant_farm_button.get_meta("squad_ids",[]):
+		_refresh_vacant_farms();return
+	vacant_farm_cursor=ProductionOverview.next_id(ids,vacant_farm_cursor)
+	_cancel_mode();compact_menu.hide();compact_menu_dismiss.hide()
+	_select([vacant_farm_cursor]);camera_focus=faction_views[0].records()[vacant_farm_cursor].pos;_camera_update()
+	compact_menu_button.text=_shortcut_menu_caption()
