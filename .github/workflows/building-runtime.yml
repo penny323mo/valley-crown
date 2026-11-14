@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '88427275dee81a39eb57e3ad5550e6297946b922157052f25f89f5203bb2d267  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '37f4870c5e2ff48a95afbff4c866f09debf834c807a5d6a1559f3b4f926d9633  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -153,6 +153,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/retry_gather_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/context_manual_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/context_manual_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/training_batch_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/training_batch_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/desktop_stop_scroll_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/desktop_stop_scroll_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/latest-contracts-receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/material_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/material_contract/godot.log
