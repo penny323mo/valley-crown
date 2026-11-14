@@ -10,7 +10,7 @@ import validate_faction as v
 p=r.p
 LOGIC_SHA='2800e75273335ce8ffefccb1db6128b54f09850b50dc243cf73e7065ff107607'
 HARNESS_SHA='0d83d9f9fe1f1878ab43c9cca1984c7bb194e6bf95629c97fbde0a57959f4f0c'
-VALIDATOR_SHA='3088fdffc286e4a18afd0530f93246660a4f7f16b227549c3a6de6459ce29135'
+VALIDATOR_SHA='f7604feb2bcff0adca86d07831f37db8a0e5bbd6513afa981e320afb65f6dfdb'
 REPORT='faction-publication-report.json'
 
 def validate_gate(lock):
