@@ -27,6 +27,8 @@ def check(work,side):
         import run_contracts as contracts
         import run_military as military
         import run_faction as faction
+        prep.need(lock.get('startup_identity_sha256')==building.logic.STARTUP_SHA,'Wrong startup identity gate')
+        runner.checked(ci/'startup_identity.py',lock['startup_identity_sha256'])
         b.validate_identity(lock);faction.validate_gate(lock)
         for flag in ('contracts_reviewed_for_execution','contracts_stop_reviewed_for_execution','contracts_consolidated_reviewed_for_execution','military_reviewed_for_execution'):
             prep.need(lock.get(flag) is True,'Unreviewed '+flag)

@@ -353,7 +353,7 @@ class ConsolidatedTests(unittest.TestCase):
 
     def test_monitors_only_exact_identity_rebound(self):
         expected={'owned_process.py':'e25db8799c62725ee6af547484c7414a6f2685dcbd5ad97d78ea9b059657f320',
-                  'run_logic.py':'04b8be583b5db6a4bb210adb55af4dde80e51f260579767daff41ee769b7bef1',
+                  'run_logic.py':'2800e75273335ce8ffefccb1db6128b54f09850b50dc243cf73e7065ff107607',
                   'run_export.py':'f16e36308ee76c6dc7759cf9540bc2a00b13d635b398c6881d0eb5f5fca34819'}
         for name,sha in expected.items():
             data=(HERE/name).read_bytes()

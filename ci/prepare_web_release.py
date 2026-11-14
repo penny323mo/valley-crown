@@ -97,6 +97,7 @@ def prepare(side, work):
         if shader in files and shader+'.uid' not in files:generated.append(shader+'.uid')
     lock=dict(schema='vc-web-export-v1',reviewed_for_execution=True,source_commit=SOURCE,game_tree=identity['tree'],build=identity['build'],godot_sha256=ENGINE_SHA,web_release_sha256=TEMPLATE_SHA,runner_sha256=sha(ROOT/'ci'/identity['runner']),owned_process_sha256=sha(ROOT/'ci/owned_process.py'),source_archive_sha256=sha(archive),import_manifest_sha256=sha(work/'import-manifest.json'),import_adapter_sha256=sha(ROOT/'ci/guarded_manifest_ci.py'),project_files=project_files,allowed_generated_uid_files=sorted(generated),output_files=OUTPUT_FILES,diagnostic_only=side=='diagnostic',artifact_kind='controlled-building-visual-review' if side=='diagnostic' else 'tested-building-product-candidate')
     if side=='product':
+        lock['startup_identity_sha256']=sha(ROOT/'ci/startup_identity.py')
         lock.update(contracts_reviewed_for_execution=True,contracts_stop_reviewed_for_execution=True,contracts_consolidated_reviewed_for_execution=True,military_reviewed_for_execution=True,faction_reviewed_for_execution=True,building_reviewed_for_execution=True)
         for prefix,roles in {
             'contracts':{'runner':'run_contracts.py','supervisor':'run_logic.py','validator':'validate_contracts.py','names':'check_contract.json'},

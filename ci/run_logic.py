@@ -11,6 +11,8 @@ import signal
 import subprocess
 import time
 import owned_process as p
+import startup_identity as startup
+STARTUP_SHA = "65be5a6d5b41d3e13536d9772c40e59a643b4347157e24246c3718fd8f31d7f5"
 
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 SOURCE = 'c5b78df4dab1e1f58f83bc2d8678512ddc628045'
@@ -20,7 +22,7 @@ MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
 REAL = (subprocess.Popen, p.metrics, p.process_metrics, p.observe_descendants,
         p.cleanup_observed_descendant, p.reap_owned, time.monotonic, time.sleep,
         signal.signal, p.process_identity, os.pidfd_open, signal.pidfd_send_signal,
-        p.select.select, os.close)
+        p.select.select, os.close, startup.gate, startup.trace_me)
 
 
 def path_checked(path):
@@ -91,7 +93,7 @@ def check_sample(system, before, row):
 
 
 def supervise(argv, env, directory, before):
-    """One owned child, no shells or process groups; all descendants fatal."""
+    """Direct engine; verified bounded startup chain, then zero descendants."""
     receipt = {'passed': False, 'cleanup_complete': False, 'unexpected_descendants': [],
                'samples': [], 'argv': argv, 'system_before': before,
                'limits': {'timeout_seconds': 120, 'admission_kib': 4194304,
@@ -101,7 +103,7 @@ def supervise(argv, env, directory, before):
                    (subprocess.Popen, p.metrics, p.process_metrics, p.observe_descendants,
                     p.cleanup_observed_descendant, p.reap_owned, time.monotonic, time.sleep,
                     signal.signal, p.process_identity, os.pidfd_open, signal.pidfd_send_signal,
-                    p.select.select, os.close), REAL))}
+                    p.select.select, os.close, startup.gate, startup.trace_me), REAL))}
     child = None; tracked = []; handlers = {}; stopped = False
     start = time.monotonic()
     def save():
@@ -133,8 +135,31 @@ def supervise(argv, env, directory, before):
         check_sample(system, before, row)
         receipt['samples'].append({'seconds': round(time.monotonic()-start, 3), **system, 'process': row})
         return system
+    def startup_sample(owned_pids):
+        # Never poll/wait here: ptrace gate alone consumes startup wait events.
+        p.require(not stopped, 'Termination requested')
+        p.require(time.monotonic() - start <= 120, 'Logic timeout')
+        system = p.metrics()
+        p.require((directory / 'godot.log').stat().st_size <= 16*1024*1024, 'Logic log oversized')
+        rows = []
+        for pid in owned_pids:
+            fields = dict(line.split(':', 1) for line in Path(f'/proc/{pid}/status').read_text().splitlines() if ':' in line)
+            p.require(int(fields['Tgid'].strip()) == pid, 'Startup ownership identifier changed')
+            zombie = fields['State'].strip().startswith('Z')
+            row = {'pid': pid}
+            for key in ('VmRSS', 'VmHWM'):
+                row[key] = 0 if zombie else int(fields[key].split()[0])
+                p.require(row[key] >= 0, 'Negative startup telemetry')
+            check_sample(system, before, row)
+            rows.append(row)
+        p.require(sum(row['VmRSS'] for row in rows) <= 3145728, 'Startup combined RSS guard')
+        check_sample(system, before, None)
+        receipt['samples'].append({'seconds': round(time.monotonic()-start, 3), **system,
+                                  'startup_processes': rows})
     try:
         save()
+        checked(startup.__file__, STARTUP_SHA)
+        receipt['startup_identity_sha256'] = STARTUP_SHA
         p.require(before['available_kib'] >= 4194304, 'Admission below 4 GiB')
         for sig in (signal.SIGTERM, signal.SIGINT):
             handlers[sig] = signal.signal(sig, stop)
@@ -143,8 +168,10 @@ def supervise(argv, env, directory, before):
             p.require(admission['available_kib'] >= 4194304, 'Fresh admission below 4 GiB')
             receipt['launch_admission'] = admission
             child = subprocess.Popen(argv, env=env, stdin=subprocess.DEVNULL, stdout=log,
-                                     stderr=subprocess.STDOUT, close_fds=True)
+                                     stderr=subprocess.STDOUT, close_fds=True, preexec_fn=startup.trace_me)
             receipt['pid'] = child.pid; save()
+            startup.gate(child, argv[0], receipt, resource_check=startup_sample)
+            save()
             while child.poll() is None:
                 sample(); time.sleep(0.05)
             sample()
@@ -161,10 +188,14 @@ def supervise(argv, env, directory, before):
             except BaseException as exc: receipt.setdefault('handler_errors', []).append(type(exc).__name__)
         receipt['cleanup_complete'] = (receipt['cleanup']['complete'] and not receipt['cleanup']['errors']
             and not receipt['unexpected_descendants'] and not receipt.get('handler_errors')
+            and (child is None or receipt.get('startup_identity', {}).get('passed') is True
+                 or receipt.get('startup_identity', {}).get('cleanup_complete') is True)
             and all(x['exited'] and x['pidfd_closed'] for x in receipt['descendant_cleanup']))
         try:
+            checked(startup.__file__, STARTUP_SHA)
             receipt['system_after'] = p.metrics(); check_sample(receipt['system_after'], before, None)
-            p.require(receipt.get('logic_completed') and 'error' not in receipt and receipt['cleanup_complete'], 'Incomplete logic run')
+            p.require(receipt.get('logic_completed') and 'error' not in receipt and receipt['cleanup_complete']
+                      and receipt.get('startup_identity', {}).get('passed') is True, 'Incomplete logic run')
             log = directory / 'godot.log'
             p.require(log.stat().st_size <= 16*1024*1024, 'Logic log oversized')
             p.require(not re.search(r'(?im)^\s*(?:SCRIPT ERROR:|ERROR:|FATAL:)', log.read_text(errors='replace')), 'Logic log error')

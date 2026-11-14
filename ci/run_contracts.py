@@ -15,7 +15,7 @@ p=r.p
 SUITES=('construction_status','construction_status_hud','mobile_stop_control_contract',
         'mobile_stop_control_phone','stance_target_cancel_phone',
         'contextual_touch_contract','contextual_touch_phone','main_menu_flow_contract')
-LOGIC_SHA='04b8be583b5db6a4bb210adb55af4dde80e51f260579767daff41ee769b7bef1'
+LOGIC_SHA='2800e75273335ce8ffefccb1db6128b54f09850b50dc243cf73e7065ff107607'
 
 def argv(godot, project, suite, stage=None):
     p.require(suite in SUITES, 'Unsupported suite')
