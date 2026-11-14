@@ -76,6 +76,7 @@ const WoundedRetreat=preload("res://scripts/wounded_retreat.gd")
 var wounded_retreat_button: Button
 const TrainingBatch=preload("res://scripts/training_batch.gd")
 var training_batch_button: Button
+var clear_exit_button: Button
 const ContextManual=preload("res://scripts/context_manual.gd")
 const RetryGatherAction=preload("res://scripts/retry_gather_action.gd")
 var retry_gather_button: Button
@@ -704,6 +705,13 @@ func _execute(command):
 				if retreat_orders.size()!=1 or retreat_orders[0].retreat_base!=command.get("retreat_base",-1) or retreat_orders[0].position!=command.get("position",Vector3.INF):return
 				var wounded=_get_entity(command.ids[0]);var home=_get_entity(command.retreat_base)
 				if wounded.is_empty() or not wounded.alive or wounded.team!=0 or wounded.hp>=wounded.max_hp or home.is_empty() or not home.alive or not home.built or home.team!=0:return
+			if command.has("clear_exit_building"):
+				if team!=0 or target_id!=-1 or typeof(command.clear_exit_building)!=TYPE_INT or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
+				var producer=_get_entity(command.clear_exit_building);var blocker=_get_entity(command.ids[0])
+				if producer.is_empty() or not producer.alive or producer.team!=0 or not producer.built or producer.queue.is_empty():return
+				var front=producer.queue[0]
+				if front.queue_id!=command.get("clear_exit_queue",-1) or front.remaining_ticks>0 or front.get("research",false) or _population(0,false)>=_capacity(0):return
+				if blocker.is_empty() or not blocker.alive or blocker.team!=0 or blocker.category!="unit" or not _unit_blocks_production_exit(blocker,producer,front.kind):return
 			if command.has("idle_gather"):
 				if typeof(command.idle_gather)!=TYPE_STRING or command.idle_gather not in ["food","wood","stone","iron"] or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
 				var gather_worker=_get_entity(command.ids[0])
@@ -1089,13 +1097,7 @@ func _spawn_exit(building,order):
 	# Maximum building is 4x4, so its one-cell outer perimeter has 20 cells.
 	# Fixed (x,z) coordinate order; bounded occupancy checks only, never A*.
 	# Placement preserves a locally open exit, not exclusive birth cells.
-	var candidates=_perimeter_cells(building)
-	if Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS)>0.5:
-		var expanded={}
-		for first in candidates:
-			for dx in [-1,0,1]:
-				for dy in [-1,0,1]: expanded[first+Vector2i(dx,dy)]=true
-		candidates=expanded.keys(); candidates.sort_custom(func(a,b): return a.x<b.x or (a.x==b.x and a.y<b.y))
+	var candidates=_production_exit_cells(building,order.kind)
 	for cell in candidates:
 		spawn_candidate_checks+=1
 		if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or navigation.is_point_solid(cell): continue
@@ -3763,6 +3765,7 @@ func _update_hud():
 	var key=str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].hp<selection[0].max_hp)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
 	key+=":"+str(WoundedRetreat.injured(faction_views[0].records(),selected))
+	if selection.size()==1 and not selection[0].get("queue",[]).is_empty():key+=":"+str(selection[0].queue[0].remaining_ticks<=0)
 	if key!=action_key: action_key=key; _rebuild_actions(selection)
 	_refresh_return_cargo_button()
 	_refresh_queue_actions()
@@ -3774,6 +3777,7 @@ func _update_hud():
 	_refresh_training_batch_button()
 	_refresh_wounded_retreat_button()
 	_refresh_clear_site_button()
+	_refresh_clear_exit_button()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -3843,6 +3847,7 @@ func _rebuild_actions(selection):
 	unit_type_buttons.clear()
 	retry_gather_button=null
 	training_batch_button=null
+	clear_exit_button=null
 	wounded_retreat_button=null
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
@@ -3919,6 +3924,11 @@ func _rebuild_actions(selection):
 				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
 				cancel.name="CancelQueue%d" % queue_id
 				actions.add_child(cancel); queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
+		if ent.owned and ent.built and not ent.get("queue",[]).is_empty() and ent.queue[0].remaining_ticks<=0 and not ent.queue[0].get("research",false):
+			clear_exit_button=_button("疏通出兵口",func():_clear_production_exit(ent.id),170)
+			clear_exit_button.name="ClearProductionExit";clear_exit_button.set_meta("building",ent.id);clear_exit_button.set_meta("queue_id",ent.queue[0].queue_id)
+			clear_exit_button.tooltip_text="只移開出口旁沒有待處理命令的己方單位，會中止原工作。保留已付款隊列，仍由正常生產規則決定出兵；無法移開敵人、資源或建築。"
+			actions.add_child(clear_exit_button)
 		if ent.owned and ent.built and ent.kind in ["barracks","range","stable","workshop"]:
 			training_batch_button=_button("批量訓練",func(): _request_training_batch(ent.id),190)
 			training_batch_button.name="TrainingBatch";training_batch_button.set_meta("building",ent.id)
@@ -6061,3 +6071,63 @@ func _set_shortcut_category(category):
 	compact_menu.get_child(0).scroll_vertical=0
 	_refresh_squad_buttons()
 	_layout_ui()
+
+func _production_exit_cells(building,kind):
+	var candidates=_perimeter_cells(building)
+	if Rules.UNIT_RADII.get(kind,Rules.UNIT_RADIUS)>0.5:
+		var expanded={}
+		for first in candidates:
+			for dx in [-1,0,1]:
+				for dy in [-1,0,1]:expanded[first+Vector2i(dx,dy)]=true
+		candidates=expanded.keys();candidates.sort_custom(func(a,b):return a.x<b.x or (a.x==b.x and a.y<b.y))
+	return candidates
+
+func _unit_blocks_production_exit(unit,building,kind):
+	for cell in _production_exit_cells(building,kind):
+		if unit.pos.distance_to(_point(cell))<unit.radius+Rules.UNIT_RADII.get(kind,Rules.UNIT_RADIUS):return true
+	return false
+
+func _clear_exit_plan(building_id):
+	var result=[]
+	var records=faction_views[0].records();var building=records.get(building_id,{})
+	if not building.get("owned",false) or not building.get("alive",false) or building.get("team",-1)!=0 or not building.get("built",false) or building.get("queue",[]).is_empty() or _population(0,false)>=_capacity(0):return result
+	var front=building.queue[0]
+	if front.remaining_ticks>0 or front.get("research",false):return result
+	var pending={}
+	for c in commands:
+		if c.get("team",-1)!=0:continue
+		for id in c.get("ids",[]):pending[id]=true
+		if c.get("type","")=="build":pending[c.get("builder",-1)]=true
+	var ids=records.keys();ids.sort();var reserved={}
+	for id in ids:
+		var unit=records[id]
+		if not unit.get("owned",false) or not unit.get("alive",false) or unit.get("remembered",false) or unit.get("team",-1)!=0 or unit.get("category","")!="unit" or pending.has(id) or not _unit_blocks_production_exit(unit,building,front.kind):continue
+		var mover=_get_entity(id);var best=Vector3.INF;var distance=INF
+		if mover.is_empty() or not mover.alive:continue
+		var radius=ceilf(Rules.FOOTPRINT.get(building.kind,3)/2.0)+4.0
+		for direction in [Vector3(1,0,0),Vector3(-1,0,0),Vector3(0,0,1),Vector3(0,0,-1),Vector3(1,0,1),Vector3(-1,0,1),Vector3(1,0,-1),Vector3(-1,0,-1)]:
+			var cell=_cell(building.pos+direction*radius);var point=_point(cell)
+			if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or visible_cells[0][cell.y*Rules.MAP_SIZE+cell.x]==0 or _route_grid(mover).is_point_solid(cell):continue
+			var candidate=unit.duplicate();candidate.pos=point
+			if _unit_blocks_production_exit(candidate,building,front.kind) or not _known_destination_clear(mover,point,reserved):continue
+			var d=unit.pos.distance_squared_to(point)
+			if d<distance:distance=d;best=point
+		if best==Vector3.INF:continue
+		reserved[_cell(best)]=true;result.append({"ids":[id],"target":-1,"position":best,"clear_exit_building":building_id,"clear_exit_queue":front.queue_id})
+		if result.size()>=8:break
+	return result
+
+func _refresh_clear_exit_button():
+	if not is_instance_valid(clear_exit_button):return
+	var plan=_clear_exit_plan(clear_exit_button.get_meta("building",-1))
+	_bind_squad_button(clear_exit_button,plan,not _squad_actions_available())
+	clear_exit_button.text="疏通出兵口 · %d" % plan.size()
+
+func _clear_production_exit(building):
+	if not _squad_actions_available() or selected!=[building] or not is_instance_valid(clear_exit_button) or clear_exit_button.disabled:return
+	var plan=_clear_exit_plan(building)
+	if plan.is_empty() or plan!=clear_exit_button.get_meta("squad_ids",[]) or plan[0].clear_exit_queue!=clear_exit_button.get_meta("queue_id",-1):
+		_refresh_clear_exit_button();return
+	_cancel_pointer_streams()
+	for order in plan:_submit("order",order)
+	_refresh_clear_exit_button()
