@@ -60,6 +60,8 @@ class ModalInputBridge:
 		if is_instance_valid(game) and game.is_inside_tree(): game._cancel_pointer_streams()
 const ATTACK_EFFECT_SECONDS = 0.12
 const MAX_ATTACK_EFFECTS = 2 * Rules.POP_LIMIT # At most one cue per unit inside the 0.12s lifetime.
+const DamageFeedback=preload("res://scripts/damage_feedback.gd")
+var damage_feedback=DamageFeedback.new()
 var attack_effects: Array = [] # Detached, witnessed release cues; never authoritative projectiles.
 # S09 isolated candidate: observers receive only verified own commit facts.
 var demo_tutorial = preload("res://scripts/demo_tutorial.gd").new()
@@ -653,6 +655,7 @@ func _tick(dt):
 	for id in pending_damage:
 		var target=_get_entity(id)
 		if not target.is_empty() and target.alive:
+			_record_damage_feedback(target,pending_damage[id])
 			target.hp-=pending_damage[id]; target.last_damage_tick=tick_count
 			battle_alerts.record_hit(target,pending_damage[id],tick_count)
 			match_report.record_settled_loss(target,pending_damage[id])
@@ -3345,6 +3348,7 @@ func _update_visuals(delta):
 	# Static condition only: no animation clock during pause/focus loss/end.
 	building_damage_presenter.update(records,self)
 	var running=not paused and not game_over and application_focused and not application_suspended
+	damage_feedback.update(delta,running,game_over,func(p):return visible_cells[0][_cell_index(p)]!=0)
 	_update_attack_effects(delta,running)
 	character_presenter.consume_deaths(pending_visual_deaths,self,BLUE,RED)
 	pending_visual_deaths.clear()
@@ -4262,6 +4266,7 @@ func _restore_box_input_accumulation():
 func _exit_tree():
 	building_damage_presenter.clear()
 	_clear_attack_effects()
+	damage_feedback.clear()
 	character_presenter.clear()
 	_restore_box_input_accumulation()
 	if OS.has_feature("web"):
@@ -4968,6 +4973,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 	demo_tutorial.reset()
 	building_damage_presenter.clear()
 	_clear_attack_effects()
+	damage_feedback.clear()
 	character_presenter.clear(); unit_action_cues=[{},{}]; pending_visual_deaths.clear()
 	for proxy in presentation_nodes.values(): proxy.node.queue_free()
 	presentation_nodes.clear()
@@ -6253,3 +6259,9 @@ func _focus_vacant_farm():
 	_cancel_mode();compact_menu.hide();compact_menu_dismiss.hide()
 	_select([vacant_farm_cursor]);camera_focus=faction_views[0].records()[vacant_farm_cursor].pos;_camera_update()
 	compact_menu_button.text=_shortcut_menu_caption()
+
+func _record_damage_feedback(target,damage):
+	# Observe only at settlement. Later exploration can never reveal past hits.
+	if game_over or paused or target.is_empty() or not target.alive or not _visible_to(target,0):return
+	var lost=mini(maxi(0,target.hp),maxi(0,damage))
+	if lost>0:damage_feedback.add(self,target.pos,lost,target.team==0,damage>=target.hp)
