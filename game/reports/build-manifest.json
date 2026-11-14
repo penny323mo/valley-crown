@@ -1,5 +1,5 @@
 {
-  "build": "vc-94a74244d52b",
+  "build": "vc-8a55620acab1",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -146,7 +146,7 @@
     "scripts/faction_work_memory.gd": "bf3e2e99754a949ad2282a8e79040485da4274bf3774327f7c8e229f589c2f29",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
     "scripts/field_manual.gd": "be179ae91fdb405a0f5c49e90c3977348f2efb47f1faf641f94e8ca1ecfd8f26",
-    "scripts/game.gd": "31dd5a8fad604425ba116b68bf7d5047afb05dd00c03ec2d4e2b29213f16bbae",
+    "scripts/game.gd": "0d51e73377eed446549791f6fd9ca7e12d0c863420e7b2ef258a7c71f85d57e8",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
     "scripts/idle_army_selection.gd": "1e65f91c328ef25ec2a6f6a4a06bad4aff2b2c78594dd81bfb9f073d477fe802",
@@ -173,7 +173,7 @@
     "scripts/rest_recovery.gd": "6c3b4c9387c0f8ab8443bde375b803775de40c698be42a4e26a3c57ec8a21917",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "8bf694fe232375475ca5249415c3eef2027cdffc769bc2ccf6c6fe6419704142",
+    "scripts/rules.gd": "e064fe7b866854bfeeb7eefe518370ce2843b858c70c63070fc8d697d119c2e1",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/skirmish_policy.gd": "ba4fe7d2661de3b3749ef51d603a98409876965289a1a3d5d77df7aca0345cc5",
