@@ -72,6 +72,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const RepairDispatch=preload("res://scripts/repair_dispatch.gd")
+var repair_dispatch_button: Button
 const ProductionOverview=preload("res://scripts/production_overview.gd")
 var production_buttons={}
 var production_cursor={}
@@ -679,6 +681,11 @@ func _execute(command):
 			# invalid before execution must leave prior orders/paths unchanged.
 			if target_id>=0 and (target.is_empty() or not _visible_to(target,team) or not target.alive):
 				return _reject_command(team,"目標已失效或不在視野內，請重新落指令。")
+			# Explicit dispatch must never degrade into cargo delivery or movement.
+			if command.has("repair_dispatch"):
+				if typeof(command.repair_dispatch)!=TYPE_BOOL or not command.repair_dispatch or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
+				var worker=_get_entity(command.ids[0])
+				if worker.is_empty() or worker.team!=team or not worker.alive or worker.state!="idle" or not worker.path.is_empty() or worker.get("path_pending",false) or _cargo_amount(worker)>0 or not _repair_order_allowed(worker,target): return
 			# Contextual farm work is explicit intent, never an implicit repair.
 			var farm_gather=command.has("farm_gather")
 			if farm_gather and (typeof(command.farm_gather)!=TYPE_BOOL or not command.farm_gather or target.is_empty() or not target.alive or target.team!=team or target.category!="building" or target.kind!="farm" or not target.built):
@@ -3697,6 +3704,7 @@ func _update_hud():
 	_refresh_return_cargo_button()
 	_refresh_queue_actions()
 	_refresh_repeat_train_button()
+	_refresh_repair_dispatch_button()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -3760,6 +3768,7 @@ func _rebuild_actions(selection):
 	return_cargo_button=null
 	queue_actions.clear()
 	repeat_train_button=null
+	repair_dispatch_button=null
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
 	if box_select_mode:
@@ -3779,6 +3788,11 @@ func _rebuild_actions(selection):
 			button.disabled=not _kind_unlocked(kind,0); actions.add_child(button)
 	elif selection.size()==1:
 		var ent=selection[0]
+		if ent.owned and ent.category=="building" and ent.built:
+			repair_dispatch_button=_button("派閒置村民維修",func(): _request_repair_dispatch(ent.id),180)
+			repair_dispatch_button.name="RepairDispatch"; repair_dispatch_button.set_meta("building",ent.id)
+			repair_dispatch_button.tooltip_text="派最近的空手閒置村民；不搶採集工作。維修逐步消耗木材，不保證路線暢通。"
+			actions.add_child(repair_dispatch_button)
 		if not ent.built:
 			actions.add_child(_button("取消施工\n退回 75%",func(): _submit("cancel_build",{"building":ent.id}),130))
 		elif Rules.PRODUCES.has(ent.kind):
@@ -5712,3 +5726,20 @@ func _focus_production(kind):
 	camera_focus=records[target].pos; _camera_update()
 	_refresh_production_buttons()
 	compact_menu_button.text=_shortcut_menu_caption()
+
+func _refresh_repair_dispatch_button():
+	if not is_instance_valid(repair_dispatch_button): return
+	var building=repair_dispatch_button.get_meta("building",-1)
+	var plan=RepairDispatch.plan(faction_views[0].records(),commands,building,tick_count)
+	var ids=[plan.worker] if plan.worker>=0 else []
+	_bind_squad_button(repair_dispatch_button,ids,not _squad_actions_available() or selected!=[building])
+	repair_dispatch_button.text=plan.reason+"\n每秒 1 木材修復 5 生命"
+
+func _request_repair_dispatch(building):
+	if not _squad_actions_available() or selected!=[building] or not is_instance_valid(repair_dispatch_button): return
+	var plan=RepairDispatch.plan(faction_views[0].records(),commands,building,tick_count)
+	if plan.worker<0 or repair_dispatch_button.disabled or repair_dispatch_button.get_meta("building",-1)!=building or repair_dispatch_button.get_meta("squad_ids",[])!=[plan.worker]:
+		_refresh_repair_dispatch_button(); return
+	_cancel_mode()
+	_submit("order",{"ids":[plan.worker],"target":building,"repair_dispatch":true})
+	_refresh_repair_dispatch_button()
