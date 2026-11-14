@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-08e7cfdf004a
+  group: building-runtime-vc-c06b349e87da
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 4165e0348c55e01bcb925046c5c25610b34e2299
+      BUILDING_RUNTIME_SOURCE_COMMIT: 84721b66ad19c7739383b15502bb60e2a8e4e11b
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -39,7 +39,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'ddb44b947cbeaee48ec431fb7053c939ecc026bb747eef122844b92afe2a0873  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '99a2e562a75ce7ec7ac29155aee1f80b62a418c0ec013e433d889810f78668e3  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -158,6 +158,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/resource_polish_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/normal_probe/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/normal_probe/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_composition_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_composition_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_recruitment_integration/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_recruitment_integration/godot.log
             ${{ env.RTS_WORK }}/product/building-contracts/building-contracts-receipt.json
             ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/receipt.json
             ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/godot.log
