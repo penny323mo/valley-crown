@@ -62,7 +62,7 @@
   "tests/main_menu_flow_contract.gd": "2d6a92307d1ad8641119b99d17cd08f5fa8681970590726234f4c286a3d9192b",
   "tests/idle_worker_cycle_contract.gd": "86e5af4a589983c14722197233cb41f9ebb9d28576625d9f809413bdb0a46ff6",
   "tests/stance_target_cancel_phone.gd": "fe1a38da69e900aeef7edd4403f5b553727a704ca30c2ade83df654116b653e6",
-  "tests/hold_box_phone.gd": "b1fc4202d2c796c668cce95b44560ab88a1fb58dd891d6c5924f17e32010a7ce",
+  "tests/hold_box_phone.gd": "56ee84355042112e9503fa4502119d1da341283d164a9f7318cc0702f82849ac",
   "tests/wide_click_contract.gd": "ebe983589b2e01b10aa31b09428041df8c35c3785217ac0505bd7e647a2f4fc1",
   "tests/return_cargo_action_contract.gd": "a32e5cef11308c47f0f36de7953e9b2f29228330d68ea32eca865cb33068c7aa",
   "tests/construction_status_hud.gd": "dfb464ce2e645a865845a5a567c7670cb6885e73b460f668ef98246debc0189a",
