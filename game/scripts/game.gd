@@ -72,6 +72,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const TrainingBatch=preload("res://scripts/training_batch.gd")
+var training_batch_button: Button
 const ContextManual=preload("res://scripts/context_manual.gd")
 const RetryGatherAction=preload("res://scripts/retry_gather_action.gd")
 var retry_gather_button: Button
@@ -3727,6 +3729,7 @@ func _update_hud():
 	_refresh_construction_dispatch_button()
 	_refresh_unit_type_buttons()
 	_refresh_retry_gather_button()
+	_refresh_training_batch_button()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -3794,6 +3797,7 @@ func _rebuild_actions(selection):
 	construction_dispatch_button=null
 	unit_type_buttons.clear()
 	retry_gather_button=null
+	training_batch_button=null
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
 	if box_select_mode:
@@ -3865,6 +3869,11 @@ func _rebuild_actions(selection):
 				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
 				cancel.name="CancelQueue%d" % queue_id
 				actions.add_child(cancel); queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
+		if ent.owned and ent.built and ent.kind in ["barracks","range","stable","workshop"]:
+			training_batch_button=_button("批量訓練",func(): _request_training_batch(ent.id),190)
+			training_batch_button.name="TrainingBatch";training_batch_button.set_meta("building",ent.id)
+			training_batch_button.tooltip_text="按目前資源、隊列空位與人口，最多加訓3個。每個仍按普通訓練規則付款；執行時條件改變可能只接受部分。"
+			actions.add_child(training_batch_button)
 		if ent.owned and ent.category=="building" and ent.built and ent.hp<ent.max_hp:
 			repair_dispatch_button=_button("派閒置村民維修",func(): _request_repair_dispatch(ent.id),180)
 			repair_dispatch_button.name="RepairDispatch"; repair_dispatch_button.set_meta("building",ent.id)
@@ -5868,3 +5877,27 @@ func _show_context_manual():
 	dialog.get_ok_button().gui_input.connect(func(event): _button_touch_input(dialog.get_ok_button(),event))
 	dialog.confirmed.connect(dialog.queue_free);dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered(Vector2i(mini(430,int(viewport_size.x)-24),mini(430,int(viewport_size.y)-48)))
+
+func _training_batch_plan(building):
+	var record=faction_views[0].get_record(building)
+	var kind=Rules.PRODUCES.get(record.get("kind",""),"")
+	return TrainingBatch.plan(record,economy.bank_milli(0),_capacity(0)-_population(0),commands,not kind.is_empty() and _kind_unlocked(kind,0))
+
+func _refresh_training_batch_button():
+	if not is_instance_valid(training_batch_button):return
+	var building=training_batch_button.get_meta("building",-1)
+	var plan=_training_batch_plan(building)
+	_bind_squad_button(training_batch_button,[plan] if plan.count>0 else [],not _squad_actions_available() or selected!=[building])
+	if plan.count<=0:training_batch_button.text=plan.reason;return
+	var prices=PackedStringArray()
+	for resource in plan.cost:prices.append(Rules.RESOURCE_NAMES[resource]+str(plan.cost[resource]))
+	training_batch_button.text="加訓%d個%s\n總計 %s" % [plan.count,Rules.NAMES[plan.kind]," · ".join(prices)]
+
+func _request_training_batch(building):
+	if not _squad_actions_available() or selected!=[building] or not is_instance_valid(training_batch_button) or training_batch_button.disabled or training_batch_button.get_meta("building",-1)!=building:return
+	var plan=_training_batch_plan(building)
+	if plan.count<=0 or [plan]!=training_batch_button.get_meta("squad_ids",[]):
+		_refresh_training_batch_button();return
+	_cancel_mode()
+	for i in plan.count:_submit("train",{"building":building,"kind":plan.kind})
+	_refresh_training_batch_button()
