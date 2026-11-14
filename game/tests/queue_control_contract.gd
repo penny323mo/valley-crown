@@ -52,7 +52,10 @@ func run():
 	var completed_id=keep.queue[0].queue_id
 	var retained_id=keep.queue[1].queue_id
 	for index in 300:game._tick(Rules.TICK)
-	game._enqueue_train(keep.id,"villager",0);game._update_hud()
+	game._enqueue_train(keep.id,"villager",0)
+	# Direct fixture enqueue bypasses the tick publication boundary. Refresh
+	# the owned view before asserting what the HUD sees; assertions unchanged.
+	game._publish_faction_views();game._update_hud()
 	var current_ids=[]
 	for action in game.queue_actions:current_ids.append(action.queue_id)
 	check("same-kind queue replacement rebinds exact identities",keep.queue.size()==2 and current_ids==[retained_id,keep.queue[1].queue_id] and completed_id not in current_ids)

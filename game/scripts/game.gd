@@ -27,6 +27,7 @@ const ResourceVisuals = preload("res://scripts/resource_visuals.gd")
 const ProgressionVisuals = preload("res://scripts/progression_visuals.gd")
 const AdvancedBuildingVisuals = preload("res://scripts/advanced_building_visuals.gd")
 var age_completed_tick=[-1,-1]
+var military_tech_completed=[{},{}]
 var large_route_cache=[{},{}]
 const BoundedPath = preload("res://scripts/bounded_grid_pathfinder.gd")
 const WorkPath = preload("res://scripts/bounded_work_routes.gd")
@@ -749,6 +750,7 @@ func _execute(command):
 		"train":
 			if not command.has("repeat_generation") or _repeat_train_current(command): _enqueue_train(command.building,command.kind,team)
 		"research": _enqueue_research(command.get("building",-1),team)
+		"military_research": _enqueue_military_research(command.get("building",-1),command.get("kind",""),team)
 		"cancel_train": _cancel_train(command.building,team)
 		"cancel_queue_item": _cancel_queue_item(command.get("building",-1),command.get("queue_id",-1),command.get("expected_refund",null),team)
 		"build": _place_building(command.kind,command.position,command.builder,team)
@@ -840,7 +842,7 @@ func _capacity(team):
 	return mini(total,Rules.POP_LIMIT)
 
 func _reset_economy(initial_stocks_units):
-	economy=Economy.new(Economy.FOUR_RESOURCE_TYPES); economy_sequence=0; age_completed_tick=[-1,-1]; large_route_cache=[{},{}]
+	economy=Economy.new(Economy.FOUR_RESOURCE_TYPES); economy_sequence=0; age_completed_tick=[-1,-1]; military_tech_completed=[{},{}]; large_route_cache=[{},{}]
 	var initialized=economy.initialize(initial_stocks_units)
 	assert(initialized.ok)
 
@@ -1094,8 +1096,13 @@ func _try_ready_production(ent):
 	if order.get("research",false):
 		var receipt_id=order.get("receipt_id","")
 		if not economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,ent.team).applied: return
-		ent.queue.pop_front(); age_completed_tick[ent.team]=tick_count; progress_serial+=1
-		if ent.team==0: _message("城防時代研究完成。下一步可建馬廄與工坊。",6)
+		ent.queue.pop_front(); progress_serial+=1
+		if order.kind=="age2":
+			age_completed_tick[ent.team]=tick_count
+			if ent.team==0: _message("城防時代研究完成。下一步可建馬廄與工坊。",6)
+		elif order.kind in Rules.MILITARY_TECHS:
+			military_tech_completed[ent.team][order.kind]=tick_count
+			if ent.team==0: _message(Rules.NAMES[order.kind]+"完成："+Rules.TECH_DETAILS[order.kind],6)
 		return
 	order.next_retry_tick=tick_count+20
 	spawn_availability_polls+=1
@@ -2257,7 +2264,7 @@ func _release_attack(ent: Dictionary,target: Dictionary) -> Dictionary:
 		return {"ok":false,"applied":false,"reason":"NOT_READY"}
 	var resolved=Rules.CONTENT.resolve_damage(ent.kind,target.kind)
 	if not resolved.ok: return {"ok":false,"applied":false,"reason":"INVALID_PROFILE"}
-	var damage=resolved.damage
+	var damage=maxi(1,resolved.base+resolved.bonus+_military_attack_bonus(ent.kind,ent.team)-resolved.armor)
 	var result=attack_ledger.issue(tick_count,ent.id,target.id,damage,ent.pos,target.pos)
 	if result.applied:
 		ent.cooldown_ticks=Rules.ATTACK_TICKS[ent.kind]
@@ -2708,7 +2715,19 @@ func _ai_recover_worker_funding(castle,workers,queued_workers,capacity,committed
 	# With no worker left, paid research may hold the only viable recovery
 	# funds. Do not abandon research when a replacement is already possible.
 	if workers!=0 or queued_workers!=0 or committed>=capacity or _ai_can_budget("villager"): return false
-	if castle.is_empty() or not castle.owned or not castle.alive or castle.team!=1 or castle.kind!="town_center" or not castle.built or castle.queue.size()!=1: return false
+	if castle.is_empty() or not castle.owned or not castle.alive or castle.team!=1 or castle.kind!="town_center" or not castle.built: return false
+	# Military research can be behind another item. Cancel its exact receipt,
+	# never accidentally remove the queue head or assume the quoted money exists.
+	for queued in castle.queue:
+		if not queued.get("research",false) or queued.get("kind","") not in Rules.MILITARY_TECHS: continue
+		var quote=economy.quote_refund(queued.get("receipt_id",""),1)
+		if ai_budget.get("food",0)+quote.get("food",0)<COSTS.villager.food*Economy.SCALE: continue
+		var sequence=command_sequence
+		_submit("cancel_queue_item",{"building":castle.id,"queue_id":queued.queue_id,"expected_refund":quote},1)
+		if command_sequence==sequence: return false
+		ai_status.worker_recovery="research_refund_requested"
+		return true
+	if castle.queue.size()!=1: return false
 	var order=castle.queue[0]
 	if not order.get("research",false) or order.get("kind","")!="age2": return false
 	var refund=economy.quote_refund(order.get("receipt_id",""),1)
@@ -3036,6 +3055,7 @@ func _ai_update():
 			if (building.queue.size()<2 or (goal=="villager" and workers.is_empty() and queued_workers==0 and building.kind=="town_center" and building.queue.size()<5)) and capacity-living-reserved>0 and _ai_can_budget(goal):
 				_submit("train",{"building":building.id,"kind":goal},1); _ai_reserve_budget(goal)
 				break
+	_ai_military_research(records,castle,workers.size())
 	var desired=_ai_resource_gap(records,workers.size()+queued_workers,capacity,living+reserved)
 	# Keep two food gatherers; balance the rest toward the next real paid goal.
 	# Reassign one compatible worker per turn, not every worker on every tick.
@@ -3552,6 +3572,7 @@ func _update_hud():
 		var route_failure=WorkerIdleStatus.route_failure(ent,own_command_pending)
 		if not route_failure.is_empty(): status=route_failure
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
+		if ent.owned and _military_attack_bonus(ent.kind,0)>0: selection_detail.text+=" · 軍備攻擊 +%d" % _military_attack_bonus(ent.kind,0)
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
 		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / 10" % floori(ent.cargo_milli/1000.0)
 		if ent.built and Rules.PRODUCES.has(ent.kind):
@@ -3570,7 +3591,7 @@ func _update_hud():
 			selection_detail.text=(selection_detail.text+" · " if missing_workers>0 else "")+("%d 村民工作路線停止" % route_failed_workers)
 	var stance_summary=_selection_stance_summary(selection)
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
-	var key=str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
+	var key=str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
 	if key!=action_key: action_key=key; _rebuild_actions(selection)
 	_refresh_return_cargo_button()
@@ -3679,6 +3700,15 @@ func _rebuild_actions(selection):
 			if ent.kind=="town_center" and not _age2(0):
 				var research=_button("城防時代\n"+Rules.cost_label("age2"),func(): _submit("research",{"building":ent.id}),160)
 				research.disabled=_research_pending(0); actions.add_child(research)
+			if ent.kind=="town_center" and _age2(0):
+				for technology in Rules.MILITARY_TECHS:
+					var tech=technology
+					var completed=military_tech_completed[0].has(tech)
+					var pending=_military_research_pending(tech,0)
+					var label=Rules.NAMES[tech]+(" · 已完成" if completed else (" · 研究中" if pending else " · 45 秒"))+"\n"+Rules.TECH_DETAILS[tech]
+					if not completed and not pending: label+="\n"+Rules.cost_label(tech)
+					var button=_button(label,func(): _submit("military_research",{"building":ent.id,"kind":tech}),200)
+					button.disabled=completed or pending; button.name=tech; actions.add_child(button)
 			for item in ent.queue:
 				var queue_id=item.queue_id
 				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
@@ -4651,7 +4681,7 @@ func _snapshot():
 	var own_pending_commands=0
 	for command in commands:
 		if command.team==0: own_pending_commands+=1
-	return {"build":Rules.BUILD_ID,"version":Rules.VERSION,"tick":tick_count,"time":game_time,"paused":paused,"game_over":game_over,"outcome":outcome,"selected":selected,"food":stocks[0].food,"wood":stocks[0].wood,"stone":stocks[0].stone,"iron":stocks[0].iron,"age":2 if _age2(0) else 1,"bank_milli":economy.bank_milli(0),"economy_scale":Economy.SCALE,"population":_population(0),"capacity":_capacity(0),"delivered":delivered_total[0],"built":completed_builds[0],"trained":trained_total[0],"own_pending_commands":own_pending_commands,"touch_mode":touch_command,"build_mode":build_mode}
+	return {"build":Rules.BUILD_ID,"version":Rules.VERSION,"tick":tick_count,"time":game_time,"paused":paused,"game_over":game_over,"outcome":outcome,"selected":selected,"food":stocks[0].food,"wood":stocks[0].wood,"stone":stocks[0].stone,"iron":stocks[0].iron,"age":2 if _age2(0) else 1,"military_techs":military_tech_completed[0].keys(),"bank_milli":economy.bank_milli(0),"economy_scale":Economy.SCALE,"population":_population(0),"capacity":_capacity(0),"delivered":delivered_total[0],"built":completed_builds[0],"trained":trained_total[0],"own_pending_commands":own_pending_commands,"touch_mode":touch_command,"build_mode":build_mode}
 
 # --- Deterministic headless rule/regression suite ---
 var test_results=[]
@@ -5172,7 +5202,7 @@ func _research_pending(team: int) -> bool:
 	for ent in entities:
 		if ent.alive and ent.team==team:
 			for item in ent.queue:
-				if item.get("research",false): return true
+				if item.get("research",false) and item.kind=="age2": return true
 	return false
 
 func _enqueue_research(id: int,team: int):
@@ -5307,3 +5337,45 @@ func _attack_approach(ent: Dictionary,target: Dictionary,inspect_site=false) -> 
 			var d=point.distance_squared_to(ent.pos)
 			if d<distance: distance=d; best=point
 	return best
+
+# Research uses the ordinary paid queue, receipts, cancellation, and next-tick
+# activation. No per-unit mutation: existing and future troops share the bonus.
+func _military_research_pending(kind: String,team: int) -> bool:
+	if military_tech_completed[team].has(kind): return true
+	for building in entities:
+		if not building.alive or building.team!=team: continue
+		for item in building.queue:
+			if item.get("research",false) and item.kind==kind: return true
+	return false
+
+func _enqueue_military_research(id,kind,team):
+	if team not in [0,1] or typeof(kind)!=TYPE_STRING or kind not in Rules.MILITARY_TECHS: return false
+	var building=_get_entity(id)
+	if building.is_empty() or not building.alive or not building.built or building.team!=team or building.kind!="town_center": return _reject_command(team,"請選取自己的已完成主堡。")
+	if not _age2(team): return _reject_command(team,"軍備科技需要城防時代。")
+	if _military_research_pending(kind,team): return _reject_command(team,"這項軍備科技已在研究或已完成。")
+	if building.queue.size()>=5: return _reject_command(team,"生產隊列已滿。")
+	var payment=_pay(COSTS[kind],team)
+	if not payment.applied: return _reject_command(team,Rules.NAMES[kind]+"需要 "+Rules.cost_label(kind))
+	building.queue.append({"receipt_id":payment.receipt_id,"queue_id":next_queue_id,"kind":kind,"research":true,"remaining_ticks":Rules.TRAIN_TICKS[kind],"started":false,"next_retry_tick":0,"candidate_cursor":0})
+	next_queue_id+=1
+	return true
+
+func _military_attack_bonus(kind: String,team: int) -> int:
+	if team not in [0,1]: return 0
+	for tech in Rules.MILITARY_TECHS:
+		if kind in Rules.TECH_UNITS[tech] and military_tech_completed[team].has(tech) and tick_count>military_tech_completed[team][tech]: return Rules.TECH_BONUS
+	return 0
+
+func _ai_military_research(records: Array,castle: Dictionary,worker_count: int):
+	if castle.is_empty() or not _age2(1) or worker_count<6 or castle.queue.size()>=2: return
+	for tech in Rules.MILITARY_TECHS:
+		if _military_research_pending(tech,1) or not _ai_can_budget(tech): continue
+		if ai_budget.get("food",0)-COSTS[tech].get("food",0)*Economy.SCALE<150*Economy.SCALE: continue
+		var eligible=0
+		for record in records:
+			if record.get("owned",false) and record.get("alive",false) and record.get("kind","") in Rules.TECH_UNITS[tech]: eligible+=1
+		if eligible<4: continue
+		_submit("military_research",{"building":castle.id,"kind":tech},1)
+		_ai_reserve_budget(tech)
+		return
