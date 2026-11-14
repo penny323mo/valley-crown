@@ -216,6 +216,7 @@ var ground_trails=MapRoutes.corridor_mask() # Visual only, never a construction 
 var navigation_version=0
 var faction_views=[FactionView.new(),FactionView.new()]
 var building_damage_presenter=BuildingDamagePresenter.new()
+var order_routes=preload("res://scripts/order_routes.gd").new()
 var presentation_nodes={}
 var character_presenter=CharacterPresenter.new()
 # Observation-only cues, intentionally outside entity/ledger authority.
@@ -3355,6 +3356,7 @@ func _update_visuals(delta):
 	var records=faction_views[0].records()
 	# Static condition only: no animation clock during pause/focus loss/end.
 	building_damage_presenter.update(records,self)
+	order_routes.update(self,records,selected,game_over)
 	var running=not paused and not game_over and application_focused and not application_suspended
 	damage_feedback.update(delta,running,game_over,func(p):return visible_cells[0][_cell_index(p)]!=0)
 	_update_attack_effects(delta,running)
@@ -4285,6 +4287,7 @@ func _restore_box_input_accumulation():
 
 func _exit_tree():
 	building_damage_presenter.clear()
+	order_routes.clear()
 	_clear_attack_effects()
 	damage_feedback.clear()
 	character_presenter.clear()
@@ -4992,6 +4995,7 @@ func _test_check(name,passed,detail=""):
 func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 	demo_tutorial.reset()
 	building_damage_presenter.clear()
+	order_routes.clear()
 	_clear_attack_effects()
 	damage_feedback.clear()
 	character_presenter.clear(); unit_action_cues=[{},{}]; pending_visual_deaths.clear()
