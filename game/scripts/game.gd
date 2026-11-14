@@ -28,6 +28,7 @@ const ProgressionVisuals = preload("res://scripts/progression_visuals.gd")
 const AdvancedBuildingVisuals = preload("res://scripts/advanced_building_visuals.gd")
 var age_completed_tick=[-1,-1]
 var military_tech_completed=[{},{}]
+const RestRecovery=preload("res://scripts/rest_recovery.gd")
 const WorkerSafety=preload("res://scripts/worker_safety.gd")
 var worker_safety_enabled=true
 var worker_evacuations={}
@@ -622,6 +623,7 @@ func _tick(dt):
 			if pending_damage[id]>0: progress_serial+=1
 	for ent in entities:
 		if ent.alive and ((ent.category=="resource" and economy.node_view(ent.id).remaining_milli<=0) or (ent.category!="resource" and ent.hp<=0)): _kill(ent)
+	_update_rest_recovery()
 	if victory_mode=="control" and control_point.advance(entities,tick_count): progress_serial+=1
 	_publish_faction_views()
 	_update_worker_safety()
@@ -2092,6 +2094,7 @@ func _advance_combat(ent):
 	if ent.cooldown_ticks<=0: _release_attack(ent,target)
 
 func _order_move(ent,p,reserved={},ignore_orders=[]):
+	ent.rest_ticks=0; ent.rest_base=-1
 	# Resolve once with the ordinary owned/observed geometry and reservations.
 	var destination=_nearest_free(p,8,ent.team,ent,reserved,ignore_orders)
 	_retire_ai_attack_move_failure(ent,destination)
@@ -2103,6 +2106,7 @@ func _order_move(ent,p,reserved={},ignore_orders=[]):
 	if ent.dest==Vector3.INF: ent.dest=ent.pos; _set_stance(ent,"STOP")
 
 func _set_stance(ent,mode):
+	ent.rest_ticks=0; ent.rest_base=-1
 	_release_farm(ent)
 	_path_cancel_pending(ent)
 	ent.path_request_kind="point"
@@ -2295,6 +2299,7 @@ func _release_attack(ent: Dictionary,target: Dictionary) -> Dictionary:
 	var damage=maxi(1,resolved.base+resolved.bonus+_military_attack_bonus(ent.kind,ent.team)-resolved.armor)
 	var result=attack_ledger.issue(tick_count,ent.id,target.id,damage,ent.pos,target.pos)
 	if result.applied:
+		ent.last_attack_tick=tick_count
 		ent.cooldown_ticks=Rules.ATTACK_TICKS[ent.kind]
 		_note_unit_action(ent,"attack",target.pos)
 		if not test_mode: _attack_effect(ent,target)
@@ -3202,6 +3207,7 @@ func _publish_faction_views():
 				record.visual_anticipation=1.0-float(ent.cooldown_ticks)/anticipate_ticks
 			if record.owned:
 				record.last_damage_tick=ent.last_damage_tick
+				record.rest_ticks=ent.get("rest_ticks",0)
 				record.rally_point=ent.get("rally_point",Vector3.INF)
 				record.rally_target=ent.get("rally_target",-1)
 				record.rally_mode=ent.get("rally_mode","move")
@@ -3617,6 +3623,9 @@ func _update_hud():
 		if not route_failure.is_empty(): status=route_failure
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
 		if ent.owned and _military_attack_bonus(ent.kind,0)>0: selection_detail.text+=" · 軍備攻擊 +%d" % _military_attack_bonus(ent.kind,0)
+		var rest_label=RestRecovery.label(ent)
+		if not rest_label.is_empty(): selection_detail.text+=" · "+rest_label
+		if ent.kind=="town_center": selection_detail.text+=" · 步兵／弓手／騎兵在堡旁安全待命 10 秒後，每 2 秒回 1 生命"
 		if worker_evacuations.has(ent.id): selection_detail.text+=" · "+_worker_safety_label(ent)
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
 		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / 10" % floori(ent.cargo_milli/1000.0)
@@ -5557,3 +5566,31 @@ func _ai_control_point_orders(army: Array,records: Array):
 			_submit("advance",{"ids":[unit.id],"position":ControlPoint.CENTER+Vector3(cos(angle),0,sin(angle))*2.0},1)
 
 	ai_control_targets=assignments
+
+
+func _update_rest_recovery():
+	if paused or game_over: return
+	var bases=[[],[]]
+	var threats=[[],[]]
+	for entity in entities:
+		if not entity.alive or entity.team not in [0,1]: continue
+		if entity.kind=="town_center" and entity.built: bases[entity.team].append(entity)
+		# Current visibility only. This list is never made from hidden authority.
+		if _visible_to(entity,1-entity.team): threats[1-entity.team].append(entity)
+	for unit in entities:
+		if unit.category!="unit" or unit.team not in [0,1]: continue
+		if unit.get("rest_update_tick",-1)>=tick_count: continue
+		var consecutive=unit.get("rest_update_tick",-1)==tick_count-1
+		unit.rest_update_tick=tick_count
+		var base=RestRecovery.base_for(unit,bases[unit.team])
+		var reason=RestRecovery.blocked(unit,base,threats[unit.team],tick_count)
+		if not reason.is_empty():
+			unit.rest_ticks=0; unit.rest_base=-1; continue
+		if not consecutive or unit.get("rest_base",-1)!=base.id or unit.get("rest_pos",Vector3.INF)!=unit.pos:
+			unit.rest_ticks=0
+		unit.rest_base=base.id; unit.rest_pos=unit.pos
+		unit.rest_ticks=int(unit.get("rest_ticks",0))+1
+		# No stacking from overlapping keeps; first point is after 10 s + 2 s.
+		if unit.rest_ticks>RestRecovery.SAFE_TICKS and (unit.rest_ticks-RestRecovery.SAFE_TICKS)%RestRecovery.HEAL_TICKS==0:
+			if tick_count-maxi(unit.last_damage_tick,maxi(base.last_damage_tick,unit.get("last_attack_tick",-1000)))<RestRecovery.SAFE_TICKS: continue
+			unit.hp=mini(unit.max_hp,unit.hp+1); progress_serial+=1
