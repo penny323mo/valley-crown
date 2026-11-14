@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-524e21fb25c4
+  group: building-runtime-vc-a60fa4203779
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 8c055d9c04c7feeb51f83b34350c0065440e6be1
+      BUILDING_RUNTIME_SOURCE_COMMIT: 406c000ec1c400cfd3e0097127bb5de00d984b62
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
