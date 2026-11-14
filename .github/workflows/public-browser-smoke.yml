@@ -26,7 +26,7 @@ jobs:
           import {chromium} from 'playwright';
           import fs from 'node:fs/promises';
           const out=process.env.WORK+'/evidence';
-          const target='https://penny323mo.github.io/valley-crown/builds/vc-697a5681098b/';
+          const target='https://penny323mo.github.io/valley-crown/builds/vc-e34dd7caadc3/';
           const report={target,started:new Date().toISOString(),sandbox:true,passed:false,interacted:false};
           let browser;
           const timer=setTimeout(()=>process.exit(124),330000);
@@ -53,6 +53,10 @@ jobs:
             await page.screenshot({path:out+'/setup-mobile.png'});
             await page.setViewportSize({width:1280,height:800}); await page.waitForTimeout(2000);
             await page.screenshot({path:out+'/setup-desktop.png'});
+            await page.mouse.click(350,612); await page.waitForTimeout(12000);
+            await page.screenshot({path:out+'/battlefield-new-ai.png'});
+            await page.waitForTimeout(30000);
+            await page.screenshot({path:out+'/battlefield-later.png'});
             report.interacted=true;report.actions=['Observe desktop and mobile viewport main menu','Click visible 開始戰役 at (185,550) in 390x844 viewport','Capture resulting mobile and desktop setup'];
             report.passed=report.webgl.available&&report.status===200&&!report.body.includes('WebGL2');
           } catch(e) {report.error=String(e);} finally {
