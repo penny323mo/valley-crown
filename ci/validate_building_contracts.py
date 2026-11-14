@@ -3,9 +3,9 @@ import hashlib
 import json
 import re
 from pathlib import Path
-BUILD = 'vc-e8b25174bddf'
-GAME_TREE = 'ffc8be384ea86c6107f320d5335a537d4a702a4f'
-INVENTORY_SHA = '5e54bf05dd14a533a86f41b10eb1724c9fef9e93951c6d379d427260dd2daaa2'
+BUILD = 'vc-16cfe99b89a9'
+GAME_TREE = 'd8a16a415c05dad663fb4d3ef6b09b6379abecac'
+INVENTORY_SHA = 'dc000d2b5abc5f9933e49061966ee26ec00b9e6c048aa860b5fa7bd1e7bbe178'
 COUNTS = {'advanced_building_visuals':175, 'advanced_building_observation':52,
           'construction_visual':203, 'building_damage_component':100,
           'building_damage_projection':17, 'map80_sparse_memory':10}
@@ -34,7 +34,7 @@ def validate_identity(lock):
     require(lock.get('building_reviewed_for_execution') is True,'Building execution not reviewed')
     require(lock.get('build') == BUILD and lock.get('game_tree') == GAME_TREE,'Wrong product identity')
     files = lock.get('project_files')
-    require(type(files) is dict and len(files) == 349,'Wrong frozen inventory size')
+    require(type(files) is dict and len(files) == 351,'Wrong frozen inventory size')
     digest = hashlib.sha256(json.dumps(files,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     require(digest == INVENTORY_SHA,'Frozen source inventory drift')
 
