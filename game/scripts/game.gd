@@ -72,6 +72,7 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const ContextManual=preload("res://scripts/context_manual.gd")
 const RetryGatherAction=preload("res://scripts/retry_gather_action.gd")
 var retry_gather_button: Button
 const UnitTypeSelection=preload("res://scripts/unit_type_selection.gd")
@@ -3886,6 +3887,11 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
+	var manual_entry=ContextManual.selected_entry(faction_views[0].records(),selected)
+	if not manual_entry.is_empty():
+		var manual_button=_button("查看"+manual_entry.title+"資料",_show_context_manual,150)
+		manual_button.name="ContextManual"; manual_button.tooltip_text="開啟規則手冊，不改動選取或指令；戰役會繼續。數值是基礎值，科技效果另計。"
+		actions.add_child(manual_button)
 	# Stop shares Cancel's unused compact slot; never add a third pinned target.
 	# During targeting it stays in the strip, preserving the ordinary Cancel.
 	for ent in selection:
@@ -5836,3 +5842,24 @@ func _retry_selected_gather():
 	_cancel_mode()
 	for order in orders: _submit("order",order)
 	_refresh_retry_gather_button()
+
+func _show_context_manual():
+	if not _squad_actions_available(): return
+	for child in ui.get_children():
+		if child is Window and child.visible: return
+	var item=ContextManual.selected_entry(faction_views[0].records(),selected)
+	if item.is_empty(): return
+	_quarantine_camera_keys(); _cancel_pointer_streams()
+	var dialog=AcceptDialog.new(); dialog.name="ContextManualDialog"; ui.add_child(dialog)
+	dialog.theme=ui.theme; dialog.title=item.title+" · 戰場資料"; dialog.ok_button_text="返回戰場"
+	dialog.add_theme_constant_override("buttons_min_height",46)
+	var bridge=ModalInputBridge.new(); bridge.game=self; dialog.add_child(bridge)
+	dialog.focus_exited.connect(_cancel_pointer_streams)
+	var body=RichTextLabel.new();body.name="ManualBody";body.text="戰役繼續進行；以下為基礎值。\n\n"+item.body
+	body.scroll_active=true;body.bbcode_enabled=false
+	var viewport_size=get_viewport().get_visible_rect().size
+	body.custom_minimum_size=Vector2(minf(390,viewport_size.x-64),minf(340,maxf(120,viewport_size.y-170)))
+	dialog.add_child(body)
+	dialog.get_ok_button().gui_input.connect(func(event): _button_touch_input(dialog.get_ok_button(),event))
+	dialog.confirmed.connect(dialog.queue_free);dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered(Vector2i(mini(430,int(viewport_size.x)-24),mini(430,int(viewport_size.y)-48)))
