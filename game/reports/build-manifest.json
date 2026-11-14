@@ -1,5 +1,5 @@
 {
-  "build": "vc-2a34660346e1",
+  "build": "vc-08e7cfdf004a",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -158,9 +158,9 @@
     "scripts/progression_visuals.gd": "9727e75c84646f9e7daa2691cbb2e2a2405d73e46d4cc5180deee99ff189e675",
     "scripts/raid_tactics.gd": "6f7a39119567ef38adf191bbd361494a85e5e93d907fd1a895800c4d4706d844",
     "scripts/remembered_material.gd": "e8260500484e9222cf4475c3d353f5e27f07955ca5293f64cb0afa42177abd6e",
-    "scripts/resource_visuals.gd": "6b984c91e1a7277b6544fc80a01886a7f42161d7441e43493f32800a2fc91e29",
+    "scripts/resource_visuals.gd": "be717e8b2bc9533395e0403fa4b12fe3fe609c18fb786b0dd0926a42028cdbd0",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "3698e167df76865496e41c822cfaf08f71caee9e86518cb7de39f975b1ffec9c",
+    "scripts/rules.gd": "b69decdffbfc24766a787f654247f6411dc53cbdbbed6f1e5ad6c5c324115bc5",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/skirmish_policy.gd": "ba4fe7d2661de3b3749ef51d603a98409876965289a1a3d5d77df7aca0345cc5",
     "scripts/squad_selection.gd": "82e1e197d4135d37852771935d185105f1674091a667188696960be77c7387b1",
