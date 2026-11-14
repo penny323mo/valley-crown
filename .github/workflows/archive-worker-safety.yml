@@ -1,0 +1,46 @@
+name: Preserve verified worker safety candidate without deployment
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/archive-worker-safety.yml]
+permissions:
+  contents: read
+concurrency:
+  group: durable-web-release-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Preserve exact passing candidate and verify Release readback
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import sys,json,pathlib,os
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,sha
+          row={'artifact_id':14104492200,'run_id':43570972113,'build':'vc-d70eac07471f','metadata_sha256':'85b67b2ad0833a7b682a26dd07d5721b7650b2fcb2a9e5bb5841cb57022b9b27','zip_sha256':'1c7662d79ee81fca2dec969c0035f991ac3f4fe3177c7665fa4cc5fef13b3b19'}
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']=='83cdd56e7fc8e16461c785a087cf9b1619a1a3eb'
+          asset,data,files=g.ensure(row,create=True)
+          report={**row,'asset_id':asset['id'],'file_count':len(files),'zip_bytes':len(data),'readback_verified':True,'deployed':False}
+          pathlib.Path('worker-safety-archive-report.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: worker-safety-durable-archive-${{ github.run_id }}
+          path: worker-safety-archive-report.json
+          retention-days: 30
+          if-no-files-found: error
