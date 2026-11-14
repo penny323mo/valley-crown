@@ -2,7 +2,7 @@
 import json,math,statistics
 from pathlib import Path
 REFERENCE_SHA='5862071a65d1d3a0bf513c8ff48258664013a84ef19f63936c2a891e576a5ab5'
-CANDIDATE_SHA='cf2f462e2d20b91a699775d5b290c8ccf3d604fe7a07a8165c4e215add836931'
+CANDIDATE_SHA='32ab5419c2d75806d84bc38ec143c7f0a4d8035cc6385dbf8ce82dc32c40715c'
 def pairs(rows):
  d={}
  for k,v in rows:
