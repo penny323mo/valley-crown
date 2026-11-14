@@ -84,6 +84,8 @@ const UnitTypeSelection=preload("res://scripts/unit_type_selection.gd")
 var unit_type_buttons={}
 const ConstructionDispatch=preload("res://scripts/construction_dispatch.gd")
 var construction_dispatch_button: Button
+const FarmDispatch=preload("res://scripts/farm_dispatch.gd")
+var farm_dispatch_button: Button
 const RepairDispatch=preload("res://scripts/repair_dispatch.gd")
 var repair_dispatch_button: Button
 const ProductionOverview=preload("res://scripts/production_overview.gd")
@@ -739,6 +741,10 @@ func _execute(command):
 				if typeof(command.repair_dispatch)!=TYPE_BOOL or not command.repair_dispatch or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
 				var worker=_get_entity(command.ids[0])
 				if worker.is_empty() or worker.team!=team or not worker.alive or worker.state!="idle" or not worker.path.is_empty() or worker.get("path_pending",false) or _cargo_amount(worker)>0 or not _repair_order_allowed(worker,target): return
+			if command.has("farm_dispatch"):
+				if typeof(command.farm_dispatch)!=TYPE_BOOL or not command.farm_dispatch or not command.get("farm_gather",false) or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
+				var farmer=_get_entity(command.ids[0])
+				if farmer.is_empty() or not farmer.alive or farmer.team!=0 or farmer.kind!="villager" or farmer.state!="idle" or not farmer.path.is_empty() or farmer.get("path_pending",false) or _cargo_amount(farmer)>0:return
 			# Contextual farm work is explicit intent, never an implicit repair.
 			var farm_gather=command.has("farm_gather")
 			if farm_gather and (typeof(command.farm_gather)!=TYPE_BOOL or not command.farm_gather or target.is_empty() or not target.alive or target.team!=team or target.category!="building" or target.kind!="farm" or not target.built):
@@ -3784,6 +3790,7 @@ func _update_hud():
 	_refresh_repeat_train_button()
 	_refresh_repair_dispatch_button()
 	_refresh_construction_dispatch_button()
+	_refresh_farm_dispatch()
 	_refresh_unit_type_buttons()
 	_refresh_retry_gather_button()
 	_refresh_training_batch_button()
@@ -3856,6 +3863,7 @@ func _rebuild_actions(selection):
 	repeat_train_button=null
 	repair_dispatch_button=null
 	construction_dispatch_button=null
+	farm_dispatch_button=null
 	unit_type_buttons.clear()
 	retry_gather_button=null
 	training_batch_button=null
@@ -3936,6 +3944,11 @@ func _rebuild_actions(selection):
 				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
 				cancel.name="CancelQueue%d" % queue_id
 				actions.add_child(cancel); queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
+		if ent.owned and ent.built and ent.kind=="farm":
+			farm_dispatch_button=_button("派閒置村民耕作",func():_request_farm_dispatch(ent.id),180)
+			farm_dispatch_button.name="FarmDispatch";farm_dispatch_button.set_meta("building",ent.id)
+			farm_dispatch_button.tooltip_text="派最近空手閒置村民到空置農田；不搶工作，不會免費增加糧食，仍須正常走路、耕作和運送。"
+			actions.add_child(farm_dispatch_button)
 		if ent.owned and ent.built and not ent.get("queue",[]).is_empty() and ent.queue[0].remaining_ticks<=0 and not ent.queue[0].get("research",false):
 			clear_exit_button=_button("疏通出兵口",func():_clear_production_exit(ent.id),170)
 			clear_exit_button.name="ClearProductionExit";clear_exit_button.set_meta("building",ent.id);clear_exit_button.set_meta("queue_id",ent.queue[0].queue_id)
@@ -6192,3 +6205,22 @@ func _focus_building_attention(category):
 	_cancel_mode();compact_menu.hide();compact_menu_dismiss.hide()
 	_select([id]);camera_focus=records[id].pos;_camera_update()
 	compact_menu_button.text=_shortcut_menu_caption()
+
+func _farm_dispatch_plan(id):
+	return FarmDispatch.plan(faction_views[0].records(),commands,id,economy.farm_view(id).get("worker_id",-1))
+
+func _refresh_farm_dispatch():
+	if not is_instance_valid(farm_dispatch_button):return
+	var id=farm_dispatch_button.get_meta("building",-1)
+	var plan=_farm_dispatch_plan(id)
+	_bind_squad_button(farm_dispatch_button,[plan.worker] if plan.worker>=0 else [],not _squad_actions_available() or selected!=[id])
+	farm_dispatch_button.text=plan.reason
+
+func _request_farm_dispatch(id):
+	if not _squad_actions_available() or selected!=[id] or not is_instance_valid(farm_dispatch_button):return
+	var plan=_farm_dispatch_plan(id)
+	if plan.worker<0 or farm_dispatch_button.disabled or farm_dispatch_button.get_meta("building",-1)!=id or farm_dispatch_button.get_meta("squad_ids",[])!=[plan.worker]:
+		_refresh_farm_dispatch();return
+	_cancel_mode()
+	_submit("order",{"ids":[plan.worker],"target":id,"farm_gather":true,"farm_dispatch":true})
+	_refresh_farm_dispatch()
