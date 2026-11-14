@@ -1,5 +1,5 @@
 {
-  "build": "vc-394dab3b674d",
+  "build": "vc-9c9a56cc80bc",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -144,7 +144,7 @@
     "scripts/faction_work_memory.gd": "bf3e2e99754a949ad2282a8e79040485da4274bf3774327f7c8e229f589c2f29",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
     "scripts/field_manual.gd": "be179ae91fdb405a0f5c49e90c3977348f2efb47f1faf641f94e8ca1ecfd8f26",
-    "scripts/game.gd": "080ecd4fecf34c40c6963191e5f7f6eea97e70e6b64bfafd2fe8ea1b2cbb2fda",
+    "scripts/game.gd": "2207b24c60428cc9764a68a47f9ae2315f3c526c3c8efd3a46fa822d92adc7e5",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
     "scripts/idle_army_selection.gd": "1e65f91c328ef25ec2a6f6a4a06bad4aff2b2c78594dd81bfb9f073d477fe802",
@@ -165,10 +165,11 @@
     "scripts/progression_visuals.gd": "9727e75c84646f9e7daa2691cbb2e2a2405d73e46d4cc5180deee99ff189e675",
     "scripts/raid_tactics.gd": "6f7a39119567ef38adf191bbd361494a85e5e93d907fd1a895800c4d4706d844",
     "scripts/remembered_material.gd": "e8260500484e9222cf4475c3d353f5e27f07955ca5293f64cb0afa42177abd6e",
+    "scripts/repair_dispatch.gd": "4393c2a65eb488e3aab11bb22d16f767dd88d02a50573e29f79d8c866e25e147",
     "scripts/resource_visuals.gd": "be717e8b2bc9533395e0403fa4b12fe3fe609c18fb786b0dd0926a42028cdbd0",
     "scripts/rest_recovery.gd": "6c3b4c9387c0f8ab8443bde375b803775de40c698be42a4e26a3c57ec8a21917",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "e70ba878db3cb7b227f642fb07bafe14a4c0f68955e3bd87fa007ed8e888ca8b",
+    "scripts/rules.gd": "6e4b5c30cab6ecc1e351d8b72cf369b6466900178122f04542b12ebbe972d130",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/skirmish_policy.gd": "ba4fe7d2661de3b3749ef51d603a98409876965289a1a3d5d77df7aca0345cc5",
