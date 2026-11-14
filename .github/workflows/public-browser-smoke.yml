@@ -58,8 +58,10 @@ jobs:
             await page.screenshot({path:out+'/scout-actions.png'});
             await page.waitForTimeout(160000);
             await page.screenshot({path:out+'/recruited.png'});
-            await page.mouse.move(480,330); await page.mouse.down(); await page.mouse.move(790,485,{steps:20}); await page.mouse.up(); await page.waitForTimeout(2000);
+            await page.mouse.click(754,410); await page.keyboard.down('Shift'); await page.mouse.click(628,320); await page.keyboard.up('Shift'); await page.waitForTimeout(2000);
             await page.screenshot({path:out+'/group-selected.png'});
+            await page.mouse.click(1234,35); await page.waitForTimeout(1000);
+            await page.screenshot({path:out+'/army-menu.png'});
             report.interacted=true;report.actions=['Start campaign','Cycle mode once','Launch match'];
             report.passed=report.webgl.available&&report.status===200&&!report.body.includes('WebGL2');
           } catch(e) {report.error=String(e);} finally {
