@@ -2,6 +2,7 @@ extends Node3D
 signal main_menu_requested
 signal restart_requested
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
+const ArmyFormation = preload("res://scripts/army_formation.gd")
 const WorkerIdleStatus = preload("res://scripts/worker_idle_status.gd")
 const IdleWorkerSelection = preload("res://scripts/idle_worker_selection.gd")
 const BattleAlerts = preload("res://scripts/battle_alerts.gd")
@@ -100,6 +101,7 @@ var dragging=false
 var drag_active=false
 var touch_command=false
 var unit_command_kind="order"
+var advance_formation=""
 var rally_building=-1
 var rally_mode="move"
 # UX01 selection intent only; no simulation command or world-state mutation.
@@ -719,7 +721,7 @@ func _execute(command):
 						ai_scout_attempts[_cell_index(ent.dest)]=true
 				index+=1
 			if index==0: return _reject_command(team,"請選取自己的存活單位。")
-		"advance": _order_advance(command.get("ids",[]),command.get("position",Vector3.INF),team)
+		"advance": _order_advance(command.get("ids",[]),command.get("position",Vector3.INF),team,command.get("formation",""))
 		"patrol": _order_patrol(command.get("ids",[]),command.get("position",Vector3.INF),team)
 		"stop":
 			var applied=false
@@ -1950,7 +1952,8 @@ func _order(ent,state,target_id,automatic=false):
 		if _cargo_amount(ent)>0 and not known.is_empty() and _cargo_type(ent)!=_resource_type(known): _route_to_dropoff(ent)
 	elif not target.is_empty(): ent.last_known=target.pos
 
-func _order_advance(ids,position,team):
+func _order_advance(ids,position,team,formation=""):
+	if typeof(formation)!=TYPE_STRING or formation not in ["","line","spread"]: return _reject_command(team,"陣形指令已失效。")
 	# Explicit military intent. Ordinary MOVE and workers keep their semantics.
 	if typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT or not position is Vector3 or not position.is_finite(): return _reject_command(team,"請選取軍隊並點選地圖目的地。")
 	if absf(position.x)>=Rules.MAP_WORLD_LIMIT or absf(position.z)>=Rules.MAP_WORLD_LIMIT: return _reject_command(team,"目的地超出地圖。")
@@ -1963,11 +1966,14 @@ func _order_advance(ids,position,team):
 		if not ent.is_empty() and ent.alive and ent.team==team and ent.category=="unit" and ent.kind in Rules.UNIT_KINDS and ent.kind!="villager": military.append(id)
 	if military.is_empty(): return _reject_command(team,"請選取自己的軍事單位。")
 	military.sort()
+	var members=[]
+	for id in military: members.append(_get_entity(id))
+	var slots=ArmyFormation.plan(members,position,formation) if formation!="" else {}
 	var reserved={}
 	for id in military:
 		var ent=_get_entity(id)
 		if team==0: _path_new_command(ent)
-		_order_move(ent,position,reserved,military)
+		_order_move(ent,slots.get(id,position),reserved,military)
 		if ent.state=="move":
 			ent.mode="ADVANCE"
 			reserved[_cell(ent.dest)]=true
@@ -3597,7 +3603,7 @@ func _update_hud():
 		selection_detail.text="警戒集合點：點可見空地；新軍隊射程內迎擊，敵軍離開後繼續前進，不追擊。" if rally_mode=="advance" else "點可見空地設定集合點；主堡亦可點資源，讓新村民自動採集。"
 		help_label.text=selection_detail.text
 	if touch_command and unit_command_kind=="advance":
-		selection_detail.text="警戒前進：點目的地；射程內迎擊，敵軍離開後繼續，不追擊。"
+		selection_detail.text=("分散" if advance_formation=="spread" else "橫列")+"前進：點目的地，近戰在前、遠程在後；地形會調整落點。" if advance_formation!="" else "警戒前進：點目的地；射程內迎擊，敵軍離開後繼續，不追擊。"
 		help_label.text=selection_detail.text
 	if touch_command and unit_command_kind=="patrol":
 		selection_detail.text="巡邏：點另一端，在原位與目的地來回；射程內迎擊，不追擊。停止或新指令可結束。"
@@ -3674,6 +3680,8 @@ func _rebuild_actions(selection):
 	actions.add_child(return_cargo_button)
 	if _has_selected_military():
 		actions.add_child(_button("警戒前進",_start_advance_command,100))
+		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
+		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
 	# Stop shares Cancel's unused compact slot; never add a third pinned target.
 	# During targeting it stays in the strip, preserving the ordinary Cancel.
@@ -3818,6 +3826,13 @@ func _start_advance_command():
 	unit_command_kind="advance"; touch_command=true
 	_update_hud()
 	_message("警戒前進：點目的地；射程內迎擊，敵軍離開後繼續，不追擊。",6)
+
+func _start_formation_command(style):
+	if style not in ArmyFormation.TYPES or paused or game_over or not _has_selected_military(): return
+	_start_advance_command()
+	advance_formation=style
+	_update_hud()
+	_message("點目的地：近戰前排、弓手與攻城器後排；沿途警戒迎擊。地形會調整落點，不保證行軍時保持陣形。",7)
 
 func _start_unit_command():
 	# Validate current projected selection before retiring another valid mode.
@@ -4182,7 +4197,9 @@ func _send_world_order(screen,contextual=false):
 
 	if touch_command and unit_command_kind in ["advance","patrol"]:
 		var destination=_world_at(screen)
-		_submit(unit_command_kind,{"ids":selected.duplicate(),"position":destination})
+		var payload={"ids":selected.duplicate(),"position":destination}
+		if unit_command_kind=="advance" and advance_formation!="": payload.formation=advance_formation
+		_submit(unit_command_kind,payload)
 		_cancel_mode()
 		order_marker.position=destination; marker_time=0.8
 		return
@@ -4522,7 +4539,7 @@ func _cancel_mode():
 	if toast_build_guidance:
 		toast_build_guidance=false; toast_time=0.0
 		if is_instance_valid(toast_label): toast_label.text=""; toast_label.visible=false
-	build_mode=""; build_preview_held=false; touch_command=false; unit_command_kind="order"; rally_building=-1; rally_mode="move"
+	build_mode=""; build_preview_held=false; touch_command=false; unit_command_kind="order"; advance_formation=""; rally_building=-1; rally_mode="move"
 	_cancel_pointer_streams()
 	if is_instance_valid(ghost): ghost.queue_free(); ghost=null
 	action_key=""; _update_hud()
