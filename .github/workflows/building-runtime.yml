@@ -3,11 +3,12 @@
 name: Validate building runtime and package separate Web candidates
 on:
   push:
-    branches: [ci/release-vc-51872ab8fa5f]
+    branches: [main]
+    paths: ["ci/SUPPORT_SHA256SUMS", ".github/workflows/building-runtime.yml"]
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-51872ab8fa5f
+  group: building-runtime-vc-082afef9b546
   cancel-in-progress: false
 jobs:
   validate:
@@ -18,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: b152f2bfd5db69a85060444a12dc06f44b41b471
+      BUILDING_RUNTIME_SOURCE_COMMIT: 9fa794d6e4b432146048b6fef28298ea58683ad0
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -26,7 +27,7 @@ jobs:
           set -euo pipefail
           test "$BUILDING_RUNTIME_EXECUTION_APPROVED" = true
           test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
-          test "$GITHUB_REF" = refs/heads/ci/release-vc-51872ab8fa5f
+          test "$GITHUB_REF" = refs/heads/main
           test "$GITHUB_RUN_ATTEMPT" = 1
           [[ "$BUILDING_RUNTIME_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
       - name: Select separate fresh runner workspace
@@ -38,7 +39,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'ac7d0178bdfe1ee1768b16bbf8aa4699c46e4678cca83657b8169b72995632ec  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '27c33e956394c6123a027473c9089680fe6c01d23456de1208bd43c46482b80f  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -143,6 +144,14 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/compact_click_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/compact_move_runtime/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/compact_move_runtime/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/hold_box_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/hold_box_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/hold_box_phone/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/hold_box_phone/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/contextual_routed_touch/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/contextual_routed_touch/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/wide_click_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/wide_click_contract/godot.log
             ${{ env.RTS_WORK }}/product/building-contracts/building-contracts-receipt.json
             ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/receipt.json
             ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/godot.log

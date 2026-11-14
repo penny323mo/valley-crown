@@ -9,17 +9,17 @@ FIXTURES = {
  'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '2c81a5c1cadf9d4a5f5ac084a75e6d27a24fc56c9714d7a73fc06450e278be92'),
  'mobile_stop_control_phone': ('tests/mobile_stop_control_phone.gd', '6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a'),
  'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'fe1a38da69e900aeef7edd4403f5b553727a704ca30c2ade83df654116b653e6'),
- 'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '3b61446f685b32b8c84e13efaf5b2a87a06eec27087e0728b9b265832629d0d9'),
+ 'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '020e0ba0df41b0406fc29d27386ba2a4cdc327737d5129250d65c97de429d0ea'),
  'contextual_touch_phone': ('tests/contextual_touch_phone.gd', '5962568a2347360f8ed70cca4d3f026181b0c24a965c0f9b0a64b224143e7e5d'),
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '2d6a92307d1ad8641119b99d17cd08f5fa8681970590726234f4c286a3d9192b')}
-MENU_SHA = 'f492fb015a48206b4df37a9e6341295712d4f1ededb381fbc203c13dd490b947'
+MENU_SHA = 'd6b1b08f62b59774e366ffd78c236e32873c583c0a36fdbfa8c265670c304be8'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-51872ab8fa5f'
+BUILD = 'vc-082afef9b546'
 ARRAY_COUNTS = {'contextual_touch_contract':76, 'contextual_touch_phone':26}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}
 STATUS_SHA = '3d858e112dc953e3365003b535df0843751d3238ad80ffa9b0f25069a7c80d3b'
-GAME_SHA = '288991b22dc9d2903d3da20888ddeac206ea8bbdb801c29fe86302d5aa261a28'
+GAME_SHA = '84ff59ff027906ce68ee72a47cbd76a8d568b870289194d3c9db9f94c3a8b9ac'
 FILE_SUITE = 'stance_target_cancel_phone'
 FILE_REPORT = 'stance-target-cancel-phone.json'
 STOP_COUNTS = {'mobile_stop_control_contract':21, 'mobile_stop_control_phone':64,

@@ -259,7 +259,7 @@
     "paused ended and box modes block contextual orders",
     "placement tap previews without command",
     "explicit targeting still targets friendly building",
-    "desktop empty left click remains selection",
+    "desktop empty left click issues contextual move",
     "reject invalid selection {\"alive\":false}",
     "reject invalid selection {\"owned\":false}",
     "reject invalid selection {\"team\":1}",
