@@ -36,6 +36,8 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 2
+      - name: Fetch exact frozen source independently of support history
+        run: git fetch --no-tags --depth=1 origin "$BUILDING_RUNTIME_SOURCE_COMMIT"
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
