@@ -1,0 +1,58 @@
+name: Preserve verified current game candidates without deployment
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/archive-verified-candidates.yml
+      - release-history/VERIFIED_CANDIDATE_ARCHIVES.json
+permissions:
+  contents: read
+concurrency:
+  group: durable-web-release-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Archive only pinned passing artifacts and verify every Release readback
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import sys,json,pathlib,os,re
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,sha
+          catalog=json.loads(pathlib.Path('release-history/VERIFIED_CANDIDATE_ARCHIVES.json').read_text())
+          assert catalog['schema_version']==1
+          rows=catalog['artifacts']
+          assert rows and len({r['artifact_id'] for r in rows})==len(rows)
+          g=GitHub(os.environ['GITHUB_REPOSITORY']);reports=[]
+          for row in rows:
+              assert set(row)=={'artifact_id','run_id','build','metadata_sha256','zip_sha256','workflow_head'}
+              assert re.fullmatch(r'vc-[0-9a-f]{12}',row['build'])
+              assert all(re.fullmatch('[0-9a-f]{64}',row[k]) for k in ('metadata_sha256','zip_sha256'))
+              run=g.request('/actions/runs/'+str(row['run_id']))
+              assert run['conclusion']=='success' and run['head_sha']==row['workflow_head']
+              assert run['head_branch']=='main' and run['path']=='.github/workflows/building-runtime.yml'
+              asset,data,files=g.ensure(row,create=True)
+              report={**row,'asset_id':asset['id'],'file_count':len(files),'zip_bytes':len(data),'readback_verified':True,'deployed':False}
+              reports.append(report)
+              pathlib.Path('verified-candidate-archives-report.json').write_text(json.dumps(reports,indent=2)+'\n')
+              print(json.dumps(report),flush=True)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: verified-candidate-permanent-archives-${{ github.run_id }}
+          path: verified-candidate-archives-report.json
+          retention-days: 30
+          if-no-files-found: warn

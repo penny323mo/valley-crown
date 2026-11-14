@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "artifacts": [
+    {
+      "artifact_id": 14104654103,
+      "run_id": 43572749880,
+      "build": "vc-b2214c870214",
+      "metadata_sha256": "bcc9827527ebc46443f0cc8ce4a2b4c955461c40060d2452c2d750f8ab26b8be",
+      "zip_sha256": "55715b80b9d0672611a85fd1cfcd51607dc236ce5d8fd9e74c3b493d14a31216",
+      "workflow_head": "4811a11d92682693103e6c9aff4b37c0edfcf66d"
+    },
+    {
+      "artifact_id": 14105119420,
+      "run_id": 43573905860,
+      "build": "vc-345a450ab545",
+      "metadata_sha256": "356e7734b278e0f0e80c4b1ab93f6982fdc80f7e1bdec4629148bed0798ab443",
+      "zip_sha256": "aae19f4f7150a15ede3f3fb96f04ac71b020097996c40484d92652cec8fc0852",
+      "workflow_head": "4284a5541b268c8326cac17d07606fb3578eaf44"
+    },
+    {
+      "artifact_id": 14106073061,
+      "run_id": 43575624553,
+      "build": "vc-a6e1a94c4e8d",
+      "metadata_sha256": "2a75a7a66c55b3bfbee39e629c672b261649756b09c220078a01a588a379dc47",
+      "zip_sha256": "09070f5c1e1a0a980d2b4c9a338bb5ec145beb11f2d6d05320555ed67a804203",
+      "workflow_head": "9572cca9f9a7c8a0a24198172828a96d3935e6b8"
+    },
+    {
+      "artifact_id": 14107101738,
+      "run_id": 43577338526,
+      "build": "vc-5b4301d720eb",
+      "metadata_sha256": "0afa39dd0b81bed70bdcdc1927fae2347f5bf53f02bec64db9aecb78fc58ad40",
+      "zip_sha256": "e4de1ef634243191cc24d2268060375b7299e2d03719c20c8928ba9ba6da4659",
+      "workflow_head": "a7f20c9e6696b8e906e7ee60666687140f7b9c7f"
+    }
+  ]
+}
