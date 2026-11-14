@@ -17,7 +17,14 @@ func run():
  var first=rect.position;var last=rect.end
  check("box endpoints are battlefield",game._box_point_in_world(first) and game._box_point_in_world(last))
  var expected=game._box_selection_ids(rect);var before=game.camera_focus
- touch(first,true);await create_timer(0.37).timeout
+ touch(first,true)
+ # The product measures monotonic wall time, not simulated frame delta.
+ # --fixed-fps may run 0.37 simulation seconds in far less real time.
+ var hold_started=Time.get_ticks_msec()
+ while Time.get_ticks_msec()-hold_started<370:
+  await process_frame
+  OS.delay_msec(1)
+ print("HOLD_BOX_WALL_MSEC "+str(Time.get_ticks_msec()-hold_started))
  drag(last,last-first);await settle()
  check("hold drag shows rectangle without menu",game.drag_rect.visible and game.touch_box_automatic and not game.box_select_mode)
  touch(last,false);await settle()
