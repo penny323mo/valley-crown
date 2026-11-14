@@ -36,7 +36,18 @@ def inventory(workflow):
         raise ValueError('Empty or duplicate artifact inventory')
     return rows
 
+def load_inventory(workflow):
+    catalog = pathlib.Path('release-history/WEB_ARCHIVE_CATALOG.json')
+    if catalog.exists():
+        obj = json.loads(catalog.read_text())
+        if obj['schema_version'] != 1 or not obj['artifacts']:
+            raise ValueError('Invalid archive catalog')
+        return obj['artifacts']
+    return inventory(pathlib.Path(workflow).read_text())
+
 def verified_members(data, row):
+    if row.get('zip_sha256') and sha(data) != row['zip_sha256']:
+        raise ValueError('Pinned archive ZIP digest mismatch')
     z = zipfile.ZipFile(io.BytesIO(data))
     names = set()
     total = 0
@@ -121,6 +132,8 @@ class GitHub:
         return assets[0] if assets else None
 
     def read_asset(self, asset, row):
+        if row.get('release_asset_id') and asset['id'] != row['release_asset_id']:
+            raise ValueError('Pinned release asset identity changed')
         data = self.request('/releases/assets/' + str(asset['id']), binary=True)
         files = verified_members(data, row)
         if asset.get('digest') and asset['digest'] != 'sha256:' + sha(data):
@@ -165,7 +178,7 @@ def main():
     parser.add_argument('--destination')
     parser.add_argument('--report', default='web-archive-report.json')
     args = parser.parse_args()
-    rows = inventory(pathlib.Path(args.workflow).read_text())
+    rows = load_inventory(args.workflow)
     if args.artifact:
         rows = [r for r in rows if r['artifact_id'] == args.artifact]
         if len(rows) != 1:

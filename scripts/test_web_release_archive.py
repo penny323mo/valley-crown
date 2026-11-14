@@ -32,7 +32,7 @@ class ArchiveSafety(unittest.TestCase):
     def test_inventory_has_trust_pins(self):
         workflow=pathlib.Path('.github/workflows/pages.yml')
         if not workflow.exists(): self.skipTest('requires checkout')
-        rows=archive.inventory(workflow.read_text())
+        rows=archive.load_inventory(workflow)
         self.assertTrue(rows)
         for r in rows:self.assertTrue(r.get('files_sha256') or r.get('metadata_sha256'))
 

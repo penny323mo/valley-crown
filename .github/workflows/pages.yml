@@ -22,14 +22,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - name: Download exact reviewed candidate artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '13854909658'
-          run-id: '43022406764'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: candidate
-          merge-multiple: true
+      - name: Restore durable verified archive 13854909658
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13854909658 --destination candidate
       - name: Verify every candidate byte and package public assets
         shell: bash
         run: |
@@ -61,14 +57,10 @@ jobs:
           echo '0d6c1bd6f8d8b42bc605ad74401c1f600f9f66d7485fd3b706d9278516095fa7  valley-crown-vc-bff2dcf4109a-web.zip' | sha256sum --check --strict
           mkdir -p site/builds/vc-bff2dcf4109a
           unzip -q valley-crown-vc-bff2dcf4109a-web.zip -d site/builds/vc-bff2dcf4109a
-      - name: Download preserved prior beta artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '13830390118'
-          run-id: '42962521219'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: previous-candidate
-          merge-multiple: true
+      - name: Restore durable verified archive 13830390118
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13830390118 --destination previous-candidate
       - name: Verify and preserve exact prior beta bytes
         shell: bash
         run: |
@@ -94,14 +86,10 @@ jobs:
           assert len([p for p in target.rglob('*') if p.is_file()])==20
           print('Preserved immutable prior beta route; current play route unchanged')
           PYVERIFY
-      - name: Download preserved construction beta artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '13833927602'
-          run-id: '42973027221'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: previous-construction-candidate
-          merge-multiple: true
+      - name: Restore durable verified archive 13833927602
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13833927602 --destination previous-construction-candidate
       - name: Verify and preserve exact construction beta bytes
         shell: bash
         run: |
@@ -127,14 +115,10 @@ jobs:
           assert len([p for p in target.rglob('*') if p.is_file()])==20
           print('Preserved immutable construction beta route')
           PYVERIFY
-      - name: Download preserved menu and touch beta artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '13841514220'
-          run-id: '42991393471'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: previous-menu-candidate
-          merge-multiple: true
+      - name: Restore durable verified archive 13841514220
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13841514220 --destination previous-menu-candidate
       - name: Verify and preserve exact menu and touch beta bytes
         shell: bash
         run: |
@@ -160,14 +144,10 @@ jobs:
           assert len([p for p in target.rglob('*') if p.is_file()])==20
           print('Preserved immutable menu and touch beta route')
           PYVERIFY
-      - name: Download preserved illustrated-menu beta artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '13849965133'
-          run-id: '43008259514'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: previous-illustrated-menu-candidate
-          merge-multiple: true
+      - name: Restore durable verified archive 13849965133
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13849965133 --destination previous-illustrated-menu-candidate
       - name: Verify and preserve exact illustrated-menu beta bytes
         shell: bash
         run: |
@@ -193,14 +173,10 @@ jobs:
           assert len([p for p in target.rglob('*') if p.is_file()])==21
           print('Preserved exact illustrated-menu beta route')
           PYVERIFY
-      - name: Download exact vc-5a977bb2321a product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14017792953'
-          run-id: '43384621134'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: new-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14017792953
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14017792953 --destination new-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -233,14 +209,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-5a977bb2321a/"><a href="../builds/vc-5a977bb2321a/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-a3e77de29039 product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14022635856'
-          run-id: '43395162042'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: resource-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14022635856
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14022635856 --destination resource-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -273,14 +245,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-a3e77de29039/"><a href="../builds/vc-a3e77de29039/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-51872ab8fa5f product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14029163982'
-          run-id: '43411301129'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: touch-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14029163982
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14029163982 --destination touch-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -313,14 +281,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-51872ab8fa5f/"><a href="../builds/vc-51872ab8fa5f/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-082afef9b546 product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14094036533'
-          run-id: '43545600955'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: hold-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14094036533
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14094036533 --destination hold-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -353,14 +317,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-082afef9b546/"><a href="../builds/vc-082afef9b546/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-2a34660346e1 product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14095462720'
-          run-id: '43549158625'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: skirmish-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14095462720
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14095462720 --destination skirmish-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -393,14 +353,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-2a34660346e1/"><a href="../builds/vc-2a34660346e1/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-08e7cfdf004a product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14095494187'
-          run-id: '43549884242'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: polish-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14095494187
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14095494187 --destination polish-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -433,14 +389,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-08e7cfdf004a/"><a href="../builds/vc-08e7cfdf004a/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-c06b349e87da product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14096485100'
-          run-id: '43550600477'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: army-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14096485100
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14096485100 --destination army-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -473,14 +425,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-c06b349e87da/"><a href="../builds/vc-c06b349e87da/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-35ac50658b60 product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14098043958'
-          run-id: '43557100730'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: formation-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14098043958
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14098043958 --destination formation-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -513,14 +461,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-35ac50658b60/"><a href="../builds/vc-35ac50658b60/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-be8c3c2f8ca5 product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14098714511'
-          run-id: '43557788949'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: menu-redesign-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14098714511
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14098714511 --destination menu-redesign-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -553,14 +497,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-be8c3c2f8ca5/"><a href="../builds/vc-be8c3c2f8ca5/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-697a5681098b product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14099198517'
-          run-id: '43559145386'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: title-fix-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14099198517
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14099198517 --destination title-fix-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -593,14 +533,10 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-697a5681098b/"><a href="../builds/vc-697a5681098b/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
-      - name: Download exact vc-e34dd7caadc3 product artifact
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          artifact-ids: '14100074005'
-          run-id: '43560378628'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: home-defense-product
-          merge-multiple: true
+      - name: Restore durable verified archive 14100074005
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14100074005 --destination home-defense-product
       - name: Verify current product bytes and preserve immutable history
         shell: bash
         run: |
@@ -633,6 +569,22 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-e34dd7caadc3/"><a href="../builds/vc-e34dd7caadc3/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
+      - name: Preserve every historical raw URL and enforce Pages capacity
+        run: |
+          python3 - <<'PYHISTORY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('site')
+          baseline=json.loads(pathlib.Path('release-history/PAGES_ARCHIVE_BASELINE.json').read_text())
+          for name,meta in baseline['files'].items():
+              if name.startswith('builds/'):
+                  path=root/name
+                  assert path.is_file() and not path.is_symlink(), name
+                  assert path.stat().st_size==meta['bytes'], name
+                  assert hashlib.sha256(path.read_bytes()).hexdigest()==meta['sha256'], name
+          total=sum(p.stat().st_size for p in root.rglob('*') if p.is_file())
+          assert total<1_000_000_000, f'Pages site {total} bytes exceeds conservative 1GB capacity; publish new builds on new host, never remove history'
+          print('Historical raw bytes unchanged; total site bytes:',total)
+          PYHISTORY
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         with:
