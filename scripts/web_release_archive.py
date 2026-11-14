@@ -85,7 +85,7 @@ class GitHub:
         if not url.startswith(('https://api.github.com/', 'https://uploads.github.com/')):
             raise ValueError('Unexpected GitHub endpoint')
         headers = {'Authorization': 'Bearer ' + self.token, 'X-GitHub-Api-Version': '2022-11-28',
-                   'Accept': 'application/octet-stream' if binary else 'application/vnd.github+json'}
+                   'Accept': 'application/octet-stream' if binary and '/releases/assets/' in url else 'application/vnd.github+json'}
         if isinstance(body, dict):
             body = json.dumps(body).encode()
             headers['Content-Type'] = 'application/json'
