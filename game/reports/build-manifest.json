@@ -1,5 +1,5 @@
 {
-  "build": "vc-a6e1a94c4e8d",
+  "build": "vc-5b4301d720eb",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -144,7 +144,7 @@
     "scripts/faction_work_memory.gd": "a223ca640285a950e0a1524fb00b100e3c9b022aec5ec8d65fc9a20e99a51100",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
     "scripts/field_manual.gd": "be179ae91fdb405a0f5c49e90c3977348f2efb47f1faf641f94e8ca1ecfd8f26",
-    "scripts/game.gd": "821dc3f085092359179fffc4582db2d1a84c7d835435a3202838331f570a871b",
+    "scripts/game.gd": "319ea96d3ad3d150a2b35f95f04be97f95ea919f37a087e94de09e35b1ff87ce",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
     "scripts/idle_worker_selection.gd": "aa7c8b804c7449409ec852bf290c7240321d3f2174b8d65bc6d75f1d7133c619",
@@ -166,8 +166,9 @@
     "scripts/resource_visuals.gd": "be717e8b2bc9533395e0403fa4b12fe3fe609c18fb786b0dd0926a42028cdbd0",
     "scripts/rest_recovery.gd": "6c3b4c9387c0f8ab8443bde375b803775de40c698be42a4e26a3c57ec8a21917",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "d1743c94d23281bd7b7b03c02d98d363cc117d06519ba7de0eddd64d8685b851",
+    "scripts/rules.gd": "87686d5e4da7b9dc73def215f0d3bcf6fa278bf03ee7a8a1e3660d6e62f9638c",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
+    "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/skirmish_policy.gd": "ba4fe7d2661de3b3749ef51d603a98409876965289a1a3d5d77df7aca0345cc5",
     "scripts/squad_selection.gd": "82e1e197d4135d37852771935d185105f1674091a667188696960be77c7387b1",
     "scripts/worker_idle_status.gd": "d99bf87d3d86c48df14813a47f0ad9d1cc2baf473d0fbf36c53d5b0554b4d236",

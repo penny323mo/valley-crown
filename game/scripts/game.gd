@@ -9,6 +9,7 @@ const BattleAlerts = preload("res://scripts/battle_alerts.gd")
 const MatchReport = preload("res://scripts/match_report.gd")
 const SquadSelection = preload("res://scripts/squad_selection.gd")
 const RaidTactics = preload("res://scripts/raid_tactics.gd")
+const ScoutFrontier=preload("res://scripts/scout_frontier.gd")
 const HomeDefense = preload("res://scripts/home_defense.gd")
 const ArmyComposition = preload("res://scripts/army_composition.gd")
 const ConstructionStatus = preload("res://scripts/construction_status.gd")
@@ -2815,6 +2816,8 @@ func _ai_scout(ent):
 		if queued.get("team",-1)==1 and ent.id in queued.get("ids",[]) and queued.get("type","") in ["order","stop","defend"]:
 			ai_status.scout="pending_order"; return
 	var point=Vector3.INF; var distance=INF; var chosen=-1
+	var own_keep=_ai_owned(_ai_records(),"town_center")
+	var own_home=own_keep.get("pos",Vector3.ZERO)
 	# Finite shared attempted-cell set for the match. Inspect explored public
 	# cells only; no hidden occupancy, enemy coordinates or path probe.
 	for y in range(Rules.MAP_BORDER,Rules.MAP_LAST_PLAYABLE+1):
@@ -2823,7 +2826,7 @@ func _ai_scout(ent):
 			if explored_cells[1][index]!=0 or ai_scout_attempts.has(index): continue
 			var candidate=_point(Vector2i(x,y))
 			if recover_static and _cell(candidate)==_cell(ent.dest): continue
-			var d=ent.pos.distance_squared_to(candidate)
+			var d=ScoutFrontier.score(ent.pos,candidate,own_home,float(Rules.SIGHT.scout))
 			if d<distance: point=candidate; distance=d; chosen=index
 	if chosen<0: ai_status.scout="no_untried_unknown_cell"; return
 	var previous_sequence=command_sequence
