@@ -118,10 +118,11 @@ class PackageTests(unittest.TestCase):
             if suite=='normal_probe':line='NORMALS_PASS 3'
             if suite=='skirmish_policy_contract':line='SKIRMISH 17/17'
             if suite in latest.ARMY_CONTRACTS:line=json.dumps({'suite':latest.ARMY_CONTRACTS[suite]['suite'],'checks':[{'name':n,'passed':True} for n in latest.ARMY_CONTRACTS[suite]['names']],'failed':0})
+            if suite=='army_formation_integration':d=json.loads(line);d['scope']='Controlled actual game handlers; not natural battle or rendered acceptance';line=json.dumps(d)
             if suite in latest.INPUT_CONTRACTS:line=latest.INPUT_CONTRACTS[suite]['prefix']+' '+json.dumps([{'name':n,'passed':True} for n in latest.INPUT_CONTRACTS[suite]['names']])
             (stage/'godot.log').write_text(line+'\n');result=mon(stage)
             latest_rows.append({'suite':suite,'monitor':result,'report':latest.read_report(stage,suite),'assertions_executed':latest.COUNTS[suite],'receipt_sha256':q.sha(stage/'receipt.json'),'log_sha256':q.sha(stage/'godot.log')})
-        self.save(self.root/'latest-contracts/latest-contracts-receipt.json',dict(base,suites=latest_rows,assertions_executed=243))
+        self.save(self.root/'latest-contracts/latest-contracts-receipt.json',dict(base,suites=latest_rows,assertions_executed=277))
         stage=self.root/'faction-contracts/faction-publication';stage.mkdir(parents=True)
         raw=tf.report();raw['build']=lock['build'];self.save(stage/tf.a.REPORT,raw);(stage/'godot.log').write_text('Faction report complete')
         result=mon(stage)
