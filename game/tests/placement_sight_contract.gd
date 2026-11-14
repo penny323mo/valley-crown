@@ -13,9 +13,6 @@ func reset():
 func run():
  g=load("res://main.tscn").instantiate(); root.add_child(g); g.test_mode=true; g.set_process(false)
  reset()
- var geometry=[]
- for e in g.entities: geometry.append({"kind":e.kind,"category":e.category,"pos":[e.pos.x,e.pos.z],"alive":e.alive,"radius":e.radius})
- FileAccess.open("res://reports/placement-opening-oracle-inputs.json",FileAccess.WRITE).store_string(JSON.stringify({"entities":geometry,"visible":Array(g.visible_cells[0])}))
  var worker=g._first(0,"villager")
  var candidate=Vector3.INF
  # Natural opening sight. Find genuinely clear ground rejected by old halo.
