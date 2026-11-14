@@ -122,6 +122,7 @@ var victory=false
 var build_mode=""
 var ghost: Node3D
 var placement_ok=false
+var clear_site_button: Button
 var build_preview_held=false # Presentation/input intent only; no payment until explicit Confirm.
 var pointer_world=Vector3.ZERO
 var pointer_screen=Vector2.ZERO
@@ -3740,6 +3741,7 @@ func _update_hud():
 	_refresh_retry_gather_button()
 	_refresh_training_batch_button()
 	_refresh_wounded_retreat_button()
+	_refresh_clear_site_button()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -3771,7 +3773,7 @@ func _update_hud():
 	else:
 		var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
 		help_label.text=("位置已選，按確認建造；點空地可重選。" if build_preview_held else "點選空地作預覽，再按確認建造。") if reason.is_empty() else "不可建造："+reason
-		if Rules.PRODUCES.has(build_mode): selection_detail.text="生產建築需鄰接淺色保護通道；通道上不可建造。"
+		if Rules.PRODUCES.has(build_mode): selection_detail.text="可在目前可見空地建造，留有施工通道，勿堵住既有生產建築最後出口。"
 		if is_instance_valid(build_confirm): build_confirm.disabled=not reason.is_empty() or paused or not build_preview_held
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		selection_detail.text=help_label.text
@@ -3800,6 +3802,7 @@ func _rebuild_actions(selection):
 	stop_button=null
 	for child in actions.get_children(): actions.remove_child(child); child.queue_free()
 	build_confirm=null
+	clear_site_button=null
 	return_cargo_button=null
 	queue_actions.clear()
 	repeat_train_button=null
@@ -3817,7 +3820,11 @@ func _rebuild_actions(selection):
 		actions.add_child(cancel); return
 	if not build_mode.is_empty():
 		build_confirm=_button("確認建造",func(): _confirm_build(),120); actions.add_child(build_confirm)
-		actions.add_child(_button("取消建造",func(): _cancel_mode(),110)); return
+		actions.add_child(_button("取消建造",func(): _cancel_mode(),110))
+		clear_site_button=_button("移開己方單位",_clear_build_site,170)
+		clear_site_button.name="ClearBuildSite"
+		clear_site_button.tooltip_text="只移開預覽地點內沒有待處理指令的己方單位，會中止牠們原本工作。保留建造預覽；必須等移開後自行確認建造。不保證路線暢通。"
+		actions.add_child(clear_site_button); return
 	if selection.is_empty():
 		actions.add_child(_button("選取村民",func(): _select_group("villagers"),120))
 		actions.add_child(_button("探索霧谷",func(): _select_group("scout"),120)); return
@@ -5931,3 +5938,57 @@ func _retreat_wounded():
 	_cancel_mode()
 	for order in orders:_submit("order",order)
 	_refresh_wounded_retreat_button()
+
+func _clear_site_plan():
+	var result=[]
+	if build_mode.is_empty() or not build_preview_held or not Rules.BUILD_TIME.has(build_mode):return result
+	var center=_snap_build_position(build_mode,pointer_world)
+	var cells=_occupied_cells({"pos":center,"kind":build_mode,"category":"building"})
+	var records=faction_views[0].records();var ids=records.keys();ids.sort()
+	var pending={}
+	for command in commands:
+		if command.get("team",-1)!=0:continue
+		for id in command.get("ids",[]):pending[id]=true
+		if command.get("type","")=="build":pending[command.get("builder",-1)]=true
+	var reserved={}
+	for id in ids:
+		var record=records[id]
+		if not record.get("owned",false) or not record.get("alive",false) or record.get("remembered",false) or record.get("team",-1)!=0 or record.get("category","")!="unit" or pending.has(id):continue
+		var overlaps=false
+		for cell in cells:
+			if _box_distance_squared(record.pos,cell)<record.radius*record.radius-0.0000001:overlaps=true;break
+		if not overlaps:continue
+		var mover=_get_entity(id);var best=Vector3.INF;var distance=INF
+		if mover.is_empty() or not mover.alive:continue
+		var radius=ceilf(Rules.FOOTPRINT.get(build_mode,3)/2.0)+2.0
+		for direction in [Vector3(1,0,0),Vector3(-1,0,0),Vector3(0,0,1),Vector3(0,0,-1),Vector3(1,0,1),Vector3(-1,0,1),Vector3(1,0,-1),Vector3(-1,0,-1)]:
+			var cell=_cell(center+direction*radius);var point=_point(cell)
+			if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or visible_cells[0][cell.y*Rules.MAP_SIZE+cell.x]==0 or _route_grid(mover).is_point_solid(cell):continue
+			var inside=false
+			for occupied in cells:
+				if _box_distance_squared(point,occupied)<mover.radius*mover.radius-0.0000001:inside=true;break
+			if inside or not _known_destination_clear(mover,point,reserved):continue
+			var d=record.pos.distance_squared_to(point)
+			if d<distance:distance=d;best=point
+		if best==Vector3.INF:continue
+		reserved[_cell(best)]=true
+		result.append({"ids":[id],"target":-1,"position":best})
+		if result.size()>=8:break
+	return result
+
+func _refresh_clear_site_button():
+	if not is_instance_valid(clear_site_button):return
+	var plan=_clear_site_plan()
+	_bind_squad_button(clear_site_button,plan,not _squad_actions_available())
+	clear_site_button.set_meta("site_identity",[build_mode,_snap_build_position(build_mode,pointer_world),selected.duplicate()])
+	clear_site_button.text="移開己方單位 · %d" % plan.size()
+
+func _clear_build_site():
+	if not _squad_actions_available() or not is_instance_valid(clear_site_button) or clear_site_button.disabled:return
+	var identity=[build_mode,_snap_build_position(build_mode,pointer_world),selected.duplicate()]
+	var plan=_clear_site_plan()
+	if identity!=clear_site_button.get_meta("site_identity",[]) or plan.is_empty() or plan!=clear_site_button.get_meta("squad_ids",[]):
+		_refresh_clear_site_button();return
+	_cancel_pointer_streams()
+	for order in plan:_submit("order",order)
+	_refresh_clear_site_button()
