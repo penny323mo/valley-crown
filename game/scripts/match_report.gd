@@ -2,6 +2,10 @@ extends RefCounted
 ## Read-only end-of-match reporting. Hooks run only after authority commits.
 ## No enemy data, payment, damage, win rule, command or persistence authority.
 const Rules=preload("res://scripts/rules.gd")
+const MAX_EVENTS=64
+var events=[]
+var event_serial=0
+var omitted_events=0
 var trained={}
 var completed={}
 var unit_losses={}
@@ -12,23 +16,26 @@ var seen_loss={}
 
 func reset():
 	trained.clear(); completed.clear(); unit_losses.clear(); building_losses.clear()
+	events.clear();event_serial=0;omitted_events=0
 	seen_training.clear(); seen_building.clear(); seen_loss.clear()
 
-func record_training(unit: Dictionary) -> bool:
+func record_training(unit: Dictionary,tick: int=0) -> bool:
 	if unit.get("team",-1)!=0 or not unit.get("alive",false) or unit.get("category","")!="unit": return false
 	if unit.get("kind","") not in Rules.UNIT_KINDS or unit.get("id",-1)<0 or seen_training.has(unit.id): return false
 	seen_training[unit.id]=true
 	trained[unit.kind]=trained.get(unit.kind,0)+1
+	_event("trained",unit.kind,tick)
 	return true
 
-func record_completion(building: Dictionary) -> bool:
+func record_completion(building: Dictionary,tick: int=0) -> bool:
 	if building.get("team",-1)!=0 or not building.get("alive",false) or not building.get("built",false) or building.get("category","")!="building": return false
 	if building.get("kind","") not in Rules.BUILDABLE_KINDS or building.get("id",-1)<0 or seen_building.has(building.id): return false
 	seen_building[building.id]=true
 	completed[building.kind]=completed.get(building.kind,0)+1
+	_event("completed",building.kind,tick)
 	return true
 
-func record_settled_loss(victim: Dictionary,damage: float) -> bool:
+func record_settled_loss(victim: Dictionary,damage: float,tick: int=0) -> bool:
 	# Called after HP settlement but before _kill, never by generic destruction.
 	if victim.get("team",-1)!=0 or not victim.get("alive",false) or victim.get("hp",1)>0: return false
 	if not is_finite(damage) or damage<=0 or victim.get("id",-1)<0 or seen_loss.has(victim.id): return false
@@ -39,14 +46,22 @@ func record_settled_loss(victim: Dictionary,damage: float) -> bool:
 		building_losses[kind]=building_losses.get(kind,0)+1
 	else: return false
 	seen_loss[victim.id]=true
+	_event("lost",kind,tick)
 	return true
+
+func _event(action: String,kind: String,tick: int):
+	if tick<0:return
+	event_serial+=1
+	events.append({"action":action,"kind":kind,"tick":tick,"sequence":event_serial})
+	if events.size()>MAX_EVENTS:events.pop_front();omitted_events+=1
 
 func make_report(outcome: String,reason: String,tick: int,age_tick: int,stats: Dictionary,bank: Dictionary) -> Dictionary:
 	# Only _check_end calls this once, after final-tick events and deaths.
 	return {"build":Rules.BUILD_ID,"outcome":outcome,"reason":reason,"tick":tick,
 		"age_tick":age_tick,"economy":stats.duplicate(true),"bank":bank.duplicate(true),
 		"trained":trained.duplicate(true),"completed":completed.duplicate(true),
-		"unit_losses":unit_losses.duplicate(true),"building_losses":building_losses.duplicate(true)}
+		"unit_losses":unit_losses.duplicate(true),"building_losses":building_losses.duplicate(true),
+		"events":events.duplicate(true),"omitted_events":omitted_events}
 
 static func time_label(tick: int) -> String:
 	var seconds=int(maxi(0,tick)/20)
@@ -95,4 +110,15 @@ static func page_text(report: Dictionary,page: String) -> String:
 		lines.append("訓練完成　%d 個單位" % production)
 		lines.append("建造完成　%d 座建築" % construction)
 		lines.append("選擇分頁回顧經濟、軍隊與建設。")
+		lines.append("")
+		lines.append("我方戰役紀錄（最近 12 項）")
+		var history=report.get("events",[]).duplicate(true)
+		if report.get("age_tick",-1)>=0:history.append({"action":"research","kind":"age2","tick":report.age_tick,"sequence":-1})
+		history.sort_custom(func(a,b):return a.tick<b.tick if a.tick!=b.tick else a.sequence<b.sequence)
+		var hidden=int(report.get("omitted_events",0))+maxi(0,history.size()-12)
+		if hidden>0:lines.append("較早 %d 項未列出；總數仍完整。" % hidden)
+		if history.is_empty():lines.append("尚無建造、出兵或戰損紀錄。")
+		for event in history.slice(maxi(0,history.size()-12)):
+			var action={"trained":"出兵","completed":"完工","lost":"戰損","research":"研究"}.get(event.action,"")
+			lines.append("%s  %s · %s" % [time_label(event.tick),action,Rules.NAMES.get(event.kind,event.kind)])
 	return "\n".join(lines)

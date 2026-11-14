@@ -662,7 +662,7 @@ func _tick(dt):
 			if target.team==1 and pending_damage[id]>0 and _visible_to(target,0): demo_tutorial.record("combat")
 			target.hp-=pending_damage[id]; target.last_damage_tick=tick_count
 			battle_alerts.record_hit(target,pending_damage[id],tick_count)
-			match_report.record_settled_loss(target,pending_damage[id])
+			match_report.record_settled_loss(target,pending_damage[id],tick_count)
 			if pending_damage[id]>0 and target.hp>0 and target.category=="unit": _note_unit_action(target,"hit")
 			if pending_damage[id]>0: progress_serial+=1
 	for ent in entities:
@@ -1221,7 +1221,7 @@ func _try_ready_production(ent):
 	# current plan once, through a queued gather order or bounded ground MOVE.
 	if ent.has("rally_point"): _apply_newborn_rally(unit,ent)
 	trained_total[ent.team]+=1
-	match_report.record_training(unit)
+	match_report.record_training(unit,tick_count)
 	if ent.team==0 and order.kind in ["cavalry","siege"]: demo_tutorial.record("advanced_unit")
 	if ent.team==0 and order.kind in ["spearman","archer"]: demo_tutorial.record("soldier")
 	if ent.team==0: _message(Rules.NAMES[order.kind]+"已準備好。",2.5)
@@ -2508,7 +2508,7 @@ func _update_unit(ent,dt):
 						var fulfilled=economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,target.team)
 						if not fulfilled.applied: return
 					target.built=true; completed_builds[ent.team]+=1; ent.state="idle"
-					match_report.record_completion(target)
+					match_report.record_completion(target,tick_count)
 					if target.kind=="farm":
 						var registered=economy.register_farm(target.id,target.team)
 						assert(registered.ok)
