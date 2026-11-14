@@ -72,6 +72,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const RetryGatherAction=preload("res://scripts/retry_gather_action.gd")
+var retry_gather_button: Button
 const UnitTypeSelection=preload("res://scripts/unit_type_selection.gd")
 var unit_type_buttons={}
 const ConstructionDispatch=preload("res://scripts/construction_dispatch.gd")
@@ -685,6 +687,13 @@ func _execute(command):
 			# invalid before execution must leave prior orders/paths unchanged.
 			if target_id>=0 and (target.is_empty() or not _visible_to(target,team) or not target.alive):
 				return _reject_command(team,"目標已失效或不在視野內，請重新落指令。")
+			# A deliberate work retry must not steal a new job or degrade to MOVE.
+			if command.has("retry_gather"):
+				if typeof(command.retry_gather)!=TYPE_BOOL or not command.retry_gather or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
+				var retry_worker=_get_entity(command.ids[0])
+				if retry_worker.is_empty() or retry_worker.team!=team or not retry_worker.alive or retry_worker.kind!="villager" or retry_worker.state!="idle" or not retry_worker.path.is_empty() or retry_worker.get("path_pending",false) or _cargo_amount(retry_worker)>0: return
+				if retry_worker.get("path_request_kind","")!="work" or retry_worker.get("path_status","") not in ["NO_PATH","LIMIT_REACHED","NO_WORK"] or retry_worker.get("path_request_target",-1)!=target_id: return
+				if target.is_empty() or target.category!="resource" or RetryGatherAction.RESOURCE_TYPES.get(target.kind,"")=="" or RetryGatherAction.RESOURCE_TYPES.get(target.kind,"")!=retry_worker.gather_type: return
 			# Resume construction only if the site and idle worker remain eligible.
 			if command.has("construction_dispatch"):
 				if typeof(command.construction_dispatch)!=TYPE_BOOL or not command.construction_dispatch or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
@@ -3716,6 +3725,7 @@ func _update_hud():
 	_refresh_repair_dispatch_button()
 	_refresh_construction_dispatch_button()
 	_refresh_unit_type_buttons()
+	_refresh_retry_gather_button()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -3782,6 +3792,7 @@ func _rebuild_actions(selection):
 	repair_dispatch_button=null
 	construction_dispatch_button=null
 	unit_type_buttons.clear()
+	retry_gather_button=null
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
 	if box_select_mode:
@@ -3865,6 +3876,11 @@ func _rebuild_actions(selection):
 	actions.add_child(_button("取消選取",func(): _select([]),100))
 	return_cargo_button=_button("交付資源",_return_selected_cargo,100)
 	actions.add_child(return_cargo_button)
+	if _selected_builder()>=0:
+		retry_gather_button=_button("重試受阻採集",_retry_selected_gather,150)
+		retry_gather_button.name="RetryGather"; retry_gather_button.set_meta("selection_source",selected.duplicate())
+		retry_gather_button.tooltip_text="只重試所選空手閒置村民原本可見的採集點；不會自動循環重試，不保證路線已暢通。搬運資源請用交付資源。"
+		actions.add_child(retry_gather_button)
 	if _has_selected_military():
 		actions.add_child(_button("警戒前進",_start_advance_command,100))
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
@@ -5805,3 +5821,18 @@ func _filter_selected_type(kind):
 		_refresh_unit_type_buttons(); return
 	_cancel_mode()
 	_select(ids)
+
+func _refresh_retry_gather_button():
+	if not is_instance_valid(retry_gather_button): return
+	var orders=RetryGatherAction.orders(faction_views[0].records(),selected,commands)
+	_bind_squad_button(retry_gather_button,orders,not _squad_actions_available() or selected!=retry_gather_button.get_meta("selection_source",[]))
+	retry_gather_button.text="重試受阻採集 · %d" % orders.size()
+
+func _retry_selected_gather():
+	if not _squad_actions_available() or not is_instance_valid(retry_gather_button) or retry_gather_button.disabled or selected!=retry_gather_button.get_meta("selection_source",[]): return
+	var orders=RetryGatherAction.orders(faction_views[0].records(),selected,commands)
+	if orders.is_empty() or orders!=retry_gather_button.get_meta("squad_ids",[]):
+		_refresh_retry_gather_button(); return
+	_cancel_mode()
+	for order in orders: _submit("order",order)
+	_refresh_retry_gather_button()
