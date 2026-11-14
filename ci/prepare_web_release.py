@@ -13,12 +13,12 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 BRANCH = 'refs/heads/main'
-SOURCE = 'f4dade117f7e30c0866fea31dc0b4c4c5ade5eeb'
+SOURCE = '9cca5fa8f47956783f1934f6768d0e2ed6331db2'
 ENGINE = '4.6.3.stable.official.7d41c59c4'
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 TEMPLATE_SHA = '1446f79dc12f60ce5d244c39fb6628ec298337ca5c4f91a16491feea72aa1bc9'
 SIDES = {
-    'product': {'directory':'game', 'build':'vc-345a450ab545', 'tree':'a8470e9beb308440a9c09d9a8052128fe8cc52b6', 'files':329, 'runtime':168, 'runner':'run_export.py'},
+    'product': {'directory':'game', 'build':'vc-a6e1a94c4e8d', 'tree':'814d0ccb5eeae3a83c45a3d43561b1e58301f8c0', 'files':331, 'runtime':169, 'runner':'run_export.py'},
     'diagnostic': {'directory':'diagnostic-game', 'build':'vc-09c394aef6d8', 'tree':'5d478c5414ba732f41b109515e90d45495406a1b', 'files':258, 'runtime':155, 'runner':'run_export_diagnostic.py'},
 }
 OUTPUT_FILES = sorted(['index.html','index.js','index.wasm','index.pck','index.png','index.icon.png','index.apple-touch-icon.png','index.audio.worklet.js','index.audio.position.worklet.js'])
@@ -111,7 +111,7 @@ def prepare(side, work):
     if side=='product':
         lock['latest_runner_sha256']=sha(ROOT/'ci/run_latest_contracts.py')
         lock['latest_validator_sha256']=sha(ROOT/'ci/validate_latest_contracts.py')
-        lock['latest_harness_sha256']={n:sha(project/'tests'/(n+'.gd')) for n in ('material_contract','continuous_training_contract','resource_visual_contract','compact_click_contract','compact_move_runtime','hold_box_contract','hold_box_phone','contextual_routed_touch','wide_click_contract','skirmish_policy_contract','resource_polish_contract','normal_probe','army_composition_contract','army_recruitment_integration','army_formation_contract','army_formation_integration','home_defense_contract','home_defense_integration','military_technology_contract','military_tech_worker_recovery_contract','military_tech_lifecycle_contract','worker_safety_contract','worker_safety_cargo_contract','control_point_contract','control_point_menu_contract','rest_recovery_contract')}
+        lock['latest_harness_sha256']={n:sha(project/'tests'/(n+'.gd')) for n in ('material_contract','continuous_training_contract','resource_visual_contract','compact_click_contract','compact_move_runtime','hold_box_contract','hold_box_phone','contextual_routed_touch','wide_click_contract','skirmish_policy_contract','resource_polish_contract','normal_probe','army_composition_contract','army_recruitment_integration','army_formation_contract','army_formation_integration','home_defense_contract','home_defense_integration','military_technology_contract','military_tech_worker_recovery_contract','military_tech_lifecycle_contract','worker_safety_contract','worker_safety_cargo_contract','control_point_contract','control_point_menu_contract','rest_recovery_contract','field_manual_contract')}
     dump(work/'export-lock.json',lock)
     (work/'pins.env').write_text('ARCHIVE_SHA='+lock['source_archive_sha256']+'\nMANIFEST_SHA='+lock['import_manifest_sha256']+'\n')
     dump(work/'source-attestation.json',dict(side=side,build=identity['build'],game_tree=identity['tree'],source_commit=SOURCE,workflow_commit=git('rev-parse','HEAD'),source_files=len(files),runtime_inputs=len(paths),source_archive_sha256=sha(archive),import_manifest_sha256=sha(work/'import-manifest.json'),diagnostic_only=side=='diagnostic',engine_executed=False))

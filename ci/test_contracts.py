@@ -161,8 +161,8 @@ class FinalBindingTests(unittest.TestCase):
     def test_success_counts_reported_executed_assertions(self):
         code,receipt,state=self.exercise()
         self.assertEqual(code,0);self.assertTrue(receipt['passed'])
-        self.assertEqual([row['assertions_executed'] for row in receipt['suites']],[34,34,22,64,58,76,26,446])
-        self.assertEqual(receipt['assertions_executed'],760)
+        self.assertEqual([row['assertions_executed'] for row in receipt['suites']],[34,34,22,64,58,76,26,474])
+        self.assertEqual(receipt['assertions_executed'],788)
         self.assertEqual(state['monitor_calls'],8)
     def test_drift_after_last_report_parse_fails(self):
         code,receipt,state=self.exercise(drift_on_parse=True)
@@ -261,7 +261,7 @@ class ConsolidatedTests(unittest.TestCase):
     def test_exact_suite_order_and_count(self):
         self.assertEqual(r.SUITES,('construction_status','construction_status_hud','mobile_stop_control_contract',
             'mobile_stop_control_phone','stance_target_cancel_phone','contextual_touch_contract','contextual_touch_phone','main_menu_flow_contract'))
-        for suite,count in {**v.ARRAY_COUNTS,'main_menu_flow_contract':446}.items():
+        for suite,count in {**v.ARRAY_COUNTS,'main_menu_flow_contract':474}.items():
             self.assertEqual(len(C[suite+'_names']),count)
             self.assertEqual(len(C[suite+'_names']),count)
             self.assertEqual(r.argv('/godot','/game',suite)[-1],'res://'+v.FIXTURES[suite][0])
@@ -364,7 +364,7 @@ class ConsolidatedTests(unittest.TestCase):
                 data=data.replace(delta,b'')
             if name=='run_export.py':
                 # Exact reviewed source identity changes only; all monitor bytes remain equal.
-                for current,baseline in [('f4dade117f7e30c0866fea31dc0b4c4c5ade5eeb','677096aaaa5131089971c2ec85b598ad20bd91da'),('a8470e9beb308440a9c09d9a8052128fe8cc52b6','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-345a450ab545','vc-cf764648c52f')]:
+                for current,baseline in [('9cca5fa8f47956783f1934f6768d0e2ed6331db2','677096aaaa5131089971c2ec85b598ad20bd91da'),('814d0ccb5eeae3a83c45a3d43561b1e58301f8c0','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-a6e1a94c4e8d','vc-cf764648c52f')]:
                     self.assertEqual(data.count(current.encode()),1)
                     data=data.replace(current.encode(),baseline.encode())
             self.assertEqual(hashlib.sha256(data).hexdigest(),sha)

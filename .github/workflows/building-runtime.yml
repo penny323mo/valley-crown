@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-345a450ab545
+  group: building-runtime-vc-a6e1a94c4e8d
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: f4dade117f7e30c0866fea31dc0b4c4c5ade5eeb
+      BUILDING_RUNTIME_SOURCE_COMMIT: 9cca5fa8f47956783f1934f6768d0e2ed6331db2
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '3a6be43647650a057765f13b6b17f3f1591d44c0ff851256a1a7cda5391ae8d8  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'd699d1e7daefaf1dd85a3970c8483b66ecbd7d01e54bb78f748459e617cda02d  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -168,6 +168,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_integration/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_integration/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/field_manual_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/field_manual_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/rest_recovery_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/rest_recovery_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_contract/receipt.json
