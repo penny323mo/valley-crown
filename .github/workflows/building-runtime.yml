@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-d70eac07471f
+  group: building-runtime-vc-b2214c870214
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 1f7530a4bf9f15f7a1b3b1709efc0e9e516e1a71
+      BUILDING_RUNTIME_SOURCE_COMMIT: dec59f18e8e655400d73938862341fa4a414f392
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'ff910c37fd262c66102e5fd032a549798cf6175516c28956b3c2d684157e76f9  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '0d4f81725e65a8c788ce6087287dddf2de6a422f201036d9f4e8659342d5ea56  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -168,6 +168,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_integration/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_integration/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/control_point_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/control_point_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/control_point_menu_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/control_point_menu_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_cargo_contract/receipt.json
