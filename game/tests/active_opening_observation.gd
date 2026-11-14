@@ -6,6 +6,7 @@ var samples=[]
 var scout_stage=0
 var policy_log=[]
 var milestones={}
+var dispatched={}
 func _initialize():call_deferred("run")
 func submit(kind,data):
 	game._submit(kind,data,0)
@@ -75,7 +76,13 @@ func player_turn():
 		if soldier.kind=="scout" and scout_stage<2 and soldier.state=="idle":
 			submit("advance",{"ids":[soldier.id],"position":Vector3.ZERO if scout_stage==0 else Vector3(25,0,-24)})
 			scout_stage+=1
-	# Defend own economy. Player army remains normally idle/defensive at home.
+	# Ordinary attack-move from home toward the public centre, never hidden targets.
+	if game.game_time>=95:
+		var departures=[]
+		for soldier in army:
+			if soldier.kind!="scout" and not dispatched.has(soldier.id):
+				departures.append(soldier.id);dispatched[soldier.id]=true
+		if not departures.is_empty():submit("advance",{"ids":departures,"position":Vector3.ZERO})
 func record():
 	var troops=[{},{}];var buildings=[{},{}];var details=[]
 	for e in game.entities:
@@ -83,7 +90,7 @@ func record():
 		if e.category=="unit":troops[e.team][e.kind]=troops[e.team].get(e.kind,0)+1
 		elif e.built:buildings[e.team][e.kind]=buildings[e.team].get(e.kind,0)+1
 		var row={}
-		for key in ["id","team","kind","state","target","hp","built","pos","dest","gather_type","resource_target","work_epoch","path_status","path_reason","path_next_attempt_tick","path_failures"]:row[key]=e.get(key,null)
+		for key in ["id","team","kind","state","target","hp","built","pos","dest","gather_type","resource_target","work_epoch","path_status","path_reason","path_next_attempt_tick","path_failures","mode","advance_engaged","auto_target","last_damage_tick","last_attack_tick"]:row[key]=e.get(key,null)
 		row.queue=e.queue.duplicate(true);row.cargo_milli=game.economy.worker_view(e.id).get("cargo_milli",0) if e.kind=="villager" else 0
 		details.append(row)
 	var s={"tick":game.tick_count,"seconds":game.game_time,"troops":troops,"buildings":buildings,"banks":[game.economy.bank_units_floor(0),game.economy.bank_units_floor(1)],"delivered":game.delivered_total.duplicate(),"trained":game.trained_total.duplicate(),"ai":game.ai_status.duplicate(true),"raids":game.ai_raids,"settled_attacks":game.attack_ledger._settled_through,"outcome":game.outcome,"paused":game.paused,"toast":game.toast_label.text,"ledger_ok":game.economy.audit().ok,"entities":details}
@@ -102,9 +109,16 @@ func run():
 				if known.team==0 and known.kind=="town_center":observed_keep=true
 			if observed_keep and not milestones.has("enemy_keep_known"):milestones.enemy_keep_known=game.tick_count
 			if game.ai_raids>0 and not milestones.has("raid_departure"):milestones.raid_departure=game.tick_count
-		if (i+1)%600==0:record()
+		if (i+1)%200==0:record()
 		if game.game_over or game.paused:record();break
 	record()
 	print("MILESTONES "+JSON.stringify(milestones))
-	var f=FileAccess.open("res://reports/active-opening.json",FileAccess.WRITE);f.store_string(JSON.stringify({"samples":samples,"player_commands":policy_log,"milestones_ticks":milestones,"scope":"160 seconds ordinary commands and natural authority, pressure AI vs scripted defensive economy; no health/resources/units grants"},"  "));f.close()
+	var attacks=[]
+	for attack_id in range(1,game.attack_ledger._settled_through+1):
+		var event=game.attack_ledger.event(attack_id)
+		var attacker=game._get_entity(event.attacker_id);var target=game._get_entity(event.target_id)
+		event.attacker_kind=attacker.get("kind","");event.attacker_team=attacker.get("team",-1)
+		event.target_kind=target.get("kind","");event.target_team=target.get("team",-1)
+		attacks.append(event)
+	var f=FileAccess.open("res://reports/active-opening.json",FileAccess.WRITE);f.store_string(JSON.stringify({"settled_events":attacks,"samples":samples,"player_commands":policy_log,"milestones_ticks":milestones,"scope":"160 seconds ordinary commands and natural authority, pressure AI vs scripted economy with military advance to public centre after 95 seconds; no health/resources/units grants"},"  "));f.close()
 	game.queue_free();quit()

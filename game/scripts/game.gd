@@ -1718,7 +1718,10 @@ func _queue_traffic_route(ent):
 	ent.traffic_path_length=ent.path.size(); ent.path=PackedVector3Array()
 	if ent.state in ["gather","deliver"]:
 		ent.work_approach=Vector3.INF; ent.work_target_id=-1; _plan_work_path(ent)
-	else: _plan_path(ent,ent.dest)
+	else:
+		# A combat target's original observed aim can differ from the free
+		# endpoint. Local yielding must preserve that request identity.
+		_plan_path(ent,ent.path_request_goal if ent.state=="attack" else ent.dest)
 
 func _anticipate_local_traffic(ent,waypoint):
 	# Look only as far as the next adjacent grid waypoint, not a remote goal.
@@ -1811,7 +1814,11 @@ func _move(ent,destination,dt):
 	if ent.pos.distance_to(destination)<0.001:
 		ent.path=PackedVector3Array(); ent.path_status=BoundedPath.FOUND; ent.path_reason="goal_reached"; return true
 	if ent.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: return false
-	if ent.path_version!=work_memory[ent.team].revision or ent.dest.distance_to(destination)>1.1 or ent.path.is_empty():
+	# A known occupied target cell may resolve to a neighboring free endpoint.
+	# Compare both the resolved endpoint and the original request; an unchanged
+	# requested target must not invalidate its own still-usable path every tick.
+	var goal_changed=ent.dest.distance_to(destination)>1.1 and ent.path_request_goal.distance_to(destination)>1.1
+	if ent.path_version!=work_memory[ent.team].revision or goal_changed or ent.path.is_empty():
 		_plan_path(ent,destination)
 		return false
 	var next=ent.path[0]
