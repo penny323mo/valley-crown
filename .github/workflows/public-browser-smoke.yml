@@ -1,0 +1,69 @@
+name: Public sandbox browser smoke
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/public-browser-smoke.yml']
+permissions:
+  contents: read
+jobs:
+  public-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Prepare official browser driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/rts-public-$GITHUB_RUN_ID"
+          mkdir -p "$WORK" "$WORK/evidence" "$WORK/home" "$WORK/tmp"
+          cd "$WORK"
+          npm install --ignore-scripts --no-audit --no-fund --save-exact playwright@1.57.0
+          echo "WORK=$WORK" >> "$GITHUB_ENV"
+          cat > smoke.mjs <<'JS'
+          import {chromium} from 'playwright';
+          import fs from 'node:fs/promises';
+          const out=process.env.WORK+'/evidence';
+          const target='https://penny323mo.github.io/valley-crown/builds/vc-08e7cfdf004a/';
+          const report={target,started:new Date().toISOString(),sandbox:true,passed:false,interacted:false};
+          let browser;
+          const timer=setTimeout(()=>process.exit(124),75000);
+          try {
+            browser=await chromium.launch({executablePath:'/opt/google/chrome/chrome',headless:true,chromiumSandbox:true,timeout:15000,ignoreDefaultArgs:['--enable-unsafe-swiftshader','--unsafely-disable-devtools-self-xss-warnings','--disable-ipc-flooding-protection']});
+            report.version=browser.version();
+            const session=await browser.newBrowserCDPSession();
+            report.commandLine=await session.send('Browser.getBrowserCommandLine');
+            report.gpu=await session.send('SystemInfo.getInfo');
+            if(report.commandLine.arguments.some(a=>a==='--no-sandbox'||a==='--disable-gpu-sandbox'||a==='--enable-unsafe-swiftshader')) throw Error('Unsafe flags not accepted');
+            const context=await browser.newContext({viewport:{width:1280,height:800},serviceWorkers:'block'});
+            const page=await context.newPage();
+            report.webgl=await page.evaluate(()=>{const g=document.createElement('canvas').getContext('webgl2');if(!g)return {available:false};const d=g.getExtension('WEBGL_debug_renderer_info');return {available:true,renderer:d?g.getParameter(d.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER),vendor:g.getParameter(g.VENDOR)};});
+            await page.route('**/*',r=>new URL(r.request().url()).origin===new URL(target).origin?r.continue():r.abort());
+            report.console=[];page.on('console',m=>report.console.push({type:m.type(),text:m.text().slice(0,1500)}));
+            const response=await page.goto(target,{waitUntil:'load',timeout:30000});report.status=response.status();
+            await page.waitForTimeout(15000);
+            report.body=await page.locator('body').innerText();
+            report.canvas=await page.locator('canvas').count();
+            await page.screenshot({path:out+'/public.png'});
+            report.passed=report.webgl.available&&report.status===200&&!report.body.includes('WebGL2');
+          } catch(e) {report.error=String(e);} finally {
+            if(browser)await browser.close();clearTimeout(timer);report.finished=new Date().toISOString();await fs.writeFile(out+'/report.json',JSON.stringify(report,null,2));
+          }
+          JS
+      - name: Bounded sandbox browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          UNIT="rts-public-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          trap 'sudo systemctl stop "$UNIT" || true' EXIT
+          sudo systemd-run --wait --unit="$UNIT" --service-type=exec --uid="$(id -un)" --gid="$(id -gn)" --working-directory="$WORK" --property=MemoryMax=3G --property=MemorySwapMax=0 --property=TasksMax=256 --property=CPUQuota=200% --property=RuntimeMaxSec=85 --property=TimeoutStopSec=5 --property=KillMode=control-group --property=OOMPolicy=stop /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 HOME="$WORK/home" TMPDIR="$WORK/tmp" WORK="$WORK" "$(command -v node)" "$WORK/smoke.mjs"
+          sudo journalctl --unit="$UNIT" --no-pager > "$WORK/evidence/runner.log"
+      - name: Retain actual results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-browser-${{ github.run_id }}
+          path: ${{ runner.temp }}/rts-public-${{ github.run_id }}/evidence
+          retention-days: 7
