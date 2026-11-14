@@ -1,0 +1,47 @@
+name: Bounded Godot startup identity diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/godot-startup-identity.yml']
+permissions:
+  contents: read
+jobs:
+  startup-identity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Prepare official engine and empty project
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/rts-startup-$GITHUB_RUN_ID"
+          mkdir -p "$WORK/evidence" "$WORK/project" "$WORK/home"
+          echo "WORK=$WORK" >> "$GITHUB_ENV"
+          curl --fail --location --proto '=https' --proto-redir '=https' --max-time 90 --max-filesize 100000000 'https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip' -o "$WORK/engine.zip"
+          python - "$WORK" <<'PY'
+          import hashlib,pathlib,sys,zipfile,stat
+          w=pathlib.Path(sys.argv[1]); n='Godot_v4.6.3-stable_linux.x86_64'
+          with zipfile.ZipFile(w/'engine.zip') as z:
+            assert z.namelist()==[n]
+            i=z.getinfo(n); assert 0<i.file_size<192*1024*1024 and stat.S_IFMT(i.external_attr>>16) in (0,stat.S_IFREG)
+            b=z.read(n);assert hashlib.sha256(b).hexdigest()=='f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
+          (w/'godot').write_bytes(b);(w/'godot').chmod(0o700)
+          (w/'project/project.godot').write_text('config_version=5\n[threading]\nworker_pool/max_threads=1\n')
+          (w/'project/quit.gd').write_text('extends SceneTree\nfunc _initialize():\n\tquit()\n')
+          PY
+          command -v strace
+          strace --help | grep -- --kill-on-exit
+      - name: One bounded startup trace, no game or release test
+        shell: bash
+        run: |
+          set -euo pipefail
+          UNIT="rts-startup-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          trap 'sudo systemctl stop "$UNIT" || true; sudo journalctl --unit="$UNIT" --no-pager > "$WORK/evidence/service.log"' EXIT
+          sudo systemd-run --wait --unit="$UNIT" --service-type=exec --uid="$(id -un)" --gid="$(id -gn)" --working-directory="$WORK" --property=MemoryMax=1G --property=MemorySwapMax=0 --property=TasksMax=64 --property=CPUQuota=100% --property=RuntimeMaxSec=15 --property=TimeoutStopSec=3 --property=KillMode=control-group --property=OOMPolicy=stop --property=LimitFSIZE=1048576 --property=LimitCPU=5 /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 HOME="$WORK/home" GODOT_SILENCE_ROOT_WARNING=1 /usr/bin/strace --kill-on-exit -f -qq -e trace=clone,clone3,fork,vfork,execve,wait4,exit,exit_group -o "$WORK/evidence/startup.trace" "$WORK/godot" --headless --path "$WORK/project" --audio-driver Dummy --script res://quit.gd
+      - name: Retain bounded diagnosis
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: godot-startup-${{ github.run_id }}
+          path: ${{ runner.temp }}/rts-startup-${{ github.run_id }}/evidence
+          retention-days: 7
