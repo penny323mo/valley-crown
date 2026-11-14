@@ -1,0 +1,40 @@
+name: Preserve exact Web releases beyond Actions retention
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/web_release_archive.py
+      - scripts/test_web_release_archive.py
+      - .github/workflows/archive-web-releases.yml
+permissions:
+  contents: read
+concurrency:
+  group: durable-web-release-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Validate archive safety contracts
+        run: python3 -m unittest discover -s scripts -p test_web_release_archive.py -v
+      - name: Archive and independently re-download every pinned Pages input
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py archive
+      - name: Preserve migration inventory and byte totals
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: durable-web-archive-inventory-${{ github.run_id }}
+          path: web-archive-report.json
+          retention-days: 30
+          if-no-files-found: warn
