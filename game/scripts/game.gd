@@ -3706,7 +3706,7 @@ func _update_hud():
 	var stance_summary=_selection_stance_summary(selection)
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
 	var key=str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
-	if selection.size()==1: key+=":"+str(selection[0].built)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
+	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].hp<selection[0].max_hp)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
 	if key!=action_key: action_key=key; _rebuild_actions(selection)
 	_refresh_return_cargo_button()
 	_refresh_queue_actions()
@@ -3797,11 +3797,6 @@ func _rebuild_actions(selection):
 			button.disabled=not _kind_unlocked(kind,0); actions.add_child(button)
 	elif selection.size()==1:
 		var ent=selection[0]
-		if ent.owned and ent.category=="building" and ent.built:
-			repair_dispatch_button=_button("派閒置村民維修",func(): _request_repair_dispatch(ent.id),180)
-			repair_dispatch_button.name="RepairDispatch"; repair_dispatch_button.set_meta("building",ent.id)
-			repair_dispatch_button.tooltip_text="派最近的空手閒置村民；不搶採集工作。維修逐步消耗木材，不保證路線暢通。"
-			actions.add_child(repair_dispatch_button)
 		if not ent.built:
 			construction_dispatch_button=_button("派閒置村民續建",func(): _request_construction_dispatch(ent.id),180)
 			construction_dispatch_button.name="ConstructionDispatch"; construction_dispatch_button.set_meta("building",ent.id)
@@ -3845,6 +3840,11 @@ func _rebuild_actions(selection):
 				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
 				cancel.name="CancelQueue%d" % queue_id
 				actions.add_child(cancel); queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
+		if ent.owned and ent.category=="building" and ent.built and ent.hp<ent.max_hp:
+			repair_dispatch_button=_button("派閒置村民維修",func(): _request_repair_dispatch(ent.id),180)
+			repair_dispatch_button.name="RepairDispatch"; repair_dispatch_button.set_meta("building",ent.id)
+			repair_dispatch_button.tooltip_text="派最近的空手閒置村民；不搶採集工作。維修逐步消耗木材，不保證路線暢通。"
+			actions.add_child(repair_dispatch_button)
 		if ent.owned and ent.category=="building" and ent.built and ent.kind!="town_center":
 			actions.add_child(_button("拆除建築\n不退資源",func(): _confirm_demolish(ent.id),120))
 	# Preserve the first build targets on narrow phones. Cargo delivery is
