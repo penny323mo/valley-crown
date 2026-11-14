@@ -72,6 +72,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const IdleArmySelection=preload("res://scripts/idle_army_selection.gd")
+var idle_army_button: Button
 var idle_worker_button: Button
 var next_id = 0
 var economy = Economy.new()
@@ -3425,6 +3427,8 @@ func _create_ui():
 	mission_label=_label("",14,Color("c8d4b3")); mission_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(mission_label)
 	idle_worker_button=_button("閒置村民 0 · 下一位",_focus_idle_worker,160); idle_worker_button.name="IdleWorkerCycle"; menu_box.add_child(idle_worker_button)
 	idle_worker_button.tooltip_text="選取一位閒置村民，不改動任何指令。"
+	idle_army_button=_button("待命軍隊 0 · 全選",_select_idle_army,160); idle_army_button.name="IdleArmySelect"; menu_box.add_child(idle_army_button)
+	idle_army_button.tooltip_text="選取沒有行動或待處理指令的軍隊，不改變原有防守姿態。"
 	var nav=HFlowContainer.new(); nav.add_theme_constant_override("h_separation",6); nav.add_theme_constant_override("v_separation",6); menu_box.add_child(nav)
 	nav.add_child(_button("主堡",func(): _compact_menu_action(_home),78))
 	nav.add_child(_button("全選閒置",func(): _compact_menu_action(func(): _select_group("idle")),96))
@@ -5134,6 +5138,7 @@ func _bind_squad_button(button,ids,blocked):
 	button.disabled=blocked or ids.is_empty()
 
 func _refresh_squad_buttons():
+	_refresh_idle_army_button()
 	if squad_buttons.size()!=SquadSelection.SLOT_COUNT: return
 	var records=faction_views[0].records()
 	var chosen=SquadSelection.eligible(records,selected)
@@ -5615,3 +5620,22 @@ func _update_rest_recovery():
 		if unit.rest_ticks>RestRecovery.SAFE_TICKS and (unit.rest_ticks-RestRecovery.SAFE_TICKS)%RestRecovery.HEAL_TICKS==0:
 			if tick_count-maxi(unit.last_damage_tick,maxi(base.last_damage_tick,unit.get("last_attack_tick",-1000)))<RestRecovery.SAFE_TICKS: continue
 			unit.hp=mini(unit.max_hp,unit.hp+1); progress_serial+=1
+
+func _refresh_idle_army_button():
+	if not is_instance_valid(idle_army_button): return
+	var ids=IdleArmySelection.eligible(faction_views[0].records(),commands)
+	_bind_squad_button(idle_army_button,ids,not _squad_actions_available())
+	idle_army_button.text="待命軍隊 %d · 全選" % ids.size()
+
+func _select_idle_army():
+	if not _squad_actions_available() or not compact_menu.visible: return
+	var records=faction_views[0].records()
+	var ids=IdleArmySelection.eligible(records,commands)
+	if idle_army_button.disabled or ids.is_empty() or ids!=idle_army_button.get_meta("squad_ids",[]):
+		_refresh_idle_army_button(); return
+	_cancel_mode()
+	compact_menu.hide(); compact_menu_dismiss.hide()
+	_select(ids)
+	camera_focus=records[ids[0]].pos; _camera_update()
+	_refresh_idle_army_button()
+	compact_menu_button.text=_shortcut_menu_caption()
