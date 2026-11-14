@@ -21,6 +21,6 @@ void fragment() {
         shade = max(0.12, (1.0 - smoothstep(0.20, 0.68, p.x)) * 0.90);
         shade += smoothstep(0.78, 1.0, p.y) * 0.20;
     }
-    if (inner_page) { shade = max(shade, 0.58); }
+    if (inner_page) { shade = max(shade, landscape ? 0.20 : 0.52); }
     COLOR = vec4(mix(art.rgb, vec3(0.035, 0.047, 0.051), clamp(shade, 0.0, 0.96)), art.a);
 }

@@ -20,6 +20,9 @@ var footer: Label
 var scroll: ScrollContainer
 var card_style: StyleBoxFlat
 var backdrop_material: ShaderMaterial
+var eyebrow: Label
+var section_rule: Panel
+var mode_title: Label
 var page = "home"
 var transition_busy = false
 var touch_presses = {}
@@ -58,7 +61,7 @@ func _ready():
 	menu_root.add_child(background)
 	identity = VBoxContainer.new()
 	identity.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	identity.add_theme_constant_override("separation", 6)
+	identity.add_theme_constant_override("separation", 10)
 	menu_root.add_child(identity)
 	crest = TextureRect.new()
 	crest.texture = load("res://assets/mature/menu/valley_crown_mark.svg")
@@ -67,9 +70,10 @@ func _ready():
 	crest.custom_minimum_size.y = 44
 	crest.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	identity.add_child(crest)
+	crest.visible = false
 	wordmark = Label.new()
 	wordmark.text = "霧谷王旗"
-	wordmark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wordmark.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	wordmark.add_theme_font_override("font", load("res://assets/fonts/menu_title_tc.otf"))
 	wordmark.add_theme_color_override("font_color", Color("eee5d2"))
 	wordmark.add_theme_color_override("font_shadow_color", Color(0.02, 0.025, 0.03, 0.7))
@@ -77,8 +81,8 @@ func _ready():
 	wordmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	identity.add_child(wordmark)
 	latin_name = Label.new()
-	latin_name.text = "V A L L E Y   &   C R O W N"
-	latin_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	latin_name.text = "V A L L E Y   /   C R O W N"
+	latin_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	latin_name.add_theme_font_override("font", load("res://assets/fonts/title.ttf"))
 	latin_name.add_theme_font_size_override("font_size", 13)
 	latin_name.add_theme_color_override("font_color", Color("c7ae7b"))
@@ -87,7 +91,7 @@ func _ready():
 	card = Panel.new()
 	menu_root.add_child(card)
 	card_style = StyleBoxFlat.new()
-	card_style.set_corner_radius_all(2)
+	card_style.set_corner_radius_all(0)
 	card.add_theme_stylebox_override("panel", card_style)
 	# The fixed panel does not inherit wrapped prose minimum sizes. Keep every
 	# action in a separately bounded area, including the first layout frame.
@@ -98,13 +102,29 @@ func _ready():
 	card.add_child(scroll)
 	var box = VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 16)
+	box.add_theme_constant_override("separation", 14)
+	eyebrow = Label.new()
+	eyebrow.add_theme_font_size_override("font_size", 12)
+	eyebrow.add_theme_color_override("font_color", Color("c7ae7b"))
+	box.add_child(eyebrow)
 	scroll.add_child(box)
 	heading = Label.new()
 	heading.add_theme_font_size_override("font_size", 28)
 	heading.add_theme_color_override("font_color", Color("eee5d2"))
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(heading)
+	section_rule = Panel.new()
+	section_rule.custom_minimum_size.y = 2
+	section_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var rule = StyleBoxFlat.new()
+	rule.bg_color = Color("b89a65")
+	section_rule.add_theme_stylebox_override("panel", rule)
+	box.add_child(section_rule)
+	mode_title = Label.new()
+	mode_title.add_theme_font_size_override("font_size", 24)
+	mode_title.add_theme_color_override("font_color", Color("f2e9d7"))
+	mode_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(mode_title)
 	description = Label.new()
 	description.add_theme_color_override("font_color", Color("ded9ce"))
 	description.add_theme_constant_override("line_spacing", 5)
@@ -141,53 +161,55 @@ func _layout():
 	_cancel_menu_touches()
 	if not is_instance_valid(card): return
 	var available = get_viewport().get_visible_rect().size
-	var wide = available.x >= 640.0 and available.x > available.y * 1.15
+	var wide = available.x >= 900.0 and available.x > available.y * 1.15
 	var short_landscape = available.x > available.y and available.y < 500.0
-	var margin = 28.0 if available.x >= 360.0 else 20.0
-	var width = minf(390.0 if wide else 440.0, maxf(1.0, available.x - margin * 2.0))
-	var x = maxf(32.0, available.x * 0.075) if wide else (available.x - width) * 0.5
+	var margin = 24.0 if available.x >= 360.0 else 16.0
 	var home = page == "home"
-	identity.visible = home
-	crest.visible = not wide and not short_landscape
-	latin_name.visible = not wide and not short_landscape
+	var width = minf(410.0 if wide else 440.0, available.x - margin * 2.0)
+	var x = available.x * 0.08 if wide else (available.x - width) * 0.5
+	crest.visible = false
+	latin_name.visible = not short_landscape
 	heading.visible = not home
+	mode_title.visible = page == "setup"
+	mode_title.text = SkirmishPolicy.title(selected_mode)
+	eyebrow.text = "THE BORDERLANDS  /  01" if home else ("SKIRMISH  /  01" if page == "setup" else "FIELD MANUAL" if page == "help" else "NEW CAMPAIGN")
+	section_rule.visible = true
 	help_tail.visible = page == "help"
 	footer.visible = home
-	description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if home else HORIZONTAL_ALIGNMENT_LEFT
+	description.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	backdrop_material.set_shader_parameter("landscape", wide)
 	backdrop_material.set_shader_parameter("view_size", available)
 	backdrop_material.set_shader_parameter("inner_page", not home)
-	# Update the font minimum before resetting the container size. Otherwise
-	# a previous larger font can leave empty identity bounds over the prose.
-	wordmark.add_theme_font_size_override("font_size", 32 if short_landscape else (40 if wide else (46 if width >= 330.0 else 38)))
-	identity.position = Vector2(x, 18.0 if short_landscape else clampf(available.y * 0.065, 24.0, 60.0))
+	wordmark.add_theme_font_size_override("font_size", 34 if short_landscape else (60 if wide else 44))
 	identity.size = Vector2(width, 0)
+	var actions_height = 54.0 * buttons.get_child_count() + 10.0 * max(0, buttons.get_child_count() - 1)
 	var height: float
+	var y: float
 	if home:
+		height = actions_height + (104.0 if short_landscape else 144.0)
+		y = minf(available.y - height - 28.0, available.y * 0.49) if not short_landscape else available.y - height - 16.0
+		y = maxf(16.0, y)
+		identity.position = Vector2(x, 14.0 if short_landscape else maxf(28.0, y - (148.0 if wide else 128.0)))
 		card_style.bg_color = Color(0, 0, 0, 0)
 		card_style.set_border_width_all(0)
 		card_style.set_content_margin_all(0)
-		scroll.custom_minimum_size.y = 56
-		height = 54.0 * buttons.get_child_count() + 10.0 * max(0, buttons.get_child_count() - 1) + 104.0
-	else:
-		card_style.bg_color = Color(0.055, 0.075, 0.083, 0.96)
-		card_style.border_color = Color("76674d")
-		card_style.set_border_width_all(1)
-		card_style.set_content_margin_all(20)
 		scroll.custom_minimum_size.y = 0
-		height = minf(640.0, maxf(1.0, available.y - 48.0))
-		width = minf(560.0, maxf(1.0, available.x - margin * 2.0))
-		x = (available.x - width) * 0.5
-	var y = available.y - height - 28.0 if home else (available.y - height) * 0.5
-	card.position = Vector2(x, maxf(16.0, y))
+	else:
+		width = minf(520.0, available.x - margin * 2.0)
+		x = available.x * 0.08 if wide else (available.x - width) * 0.5
+		height = minf(650.0, available.y - 32.0)
+		y = (available.y - height) * 0.5
+		card_style.bg_color = Color(0.045, 0.06, 0.064, 0.94)
+		card_style.border_color = Color("5f5745")
+		card_style.set_border_width_all(1)
+		card_style.border_width_top = 3
+		card_style.set_content_margin_all(22)
+		scroll.custom_minimum_size.y = 0
+	card.position = Vector2(x, y)
 	card.size = Vector2(width, height)
-	# A paused match needs three full-size actions. In a 320px-tall viewport
-	# its pause message takes priority over a repeated decorative wordmark.
-	identity.visible = home and (not short_landscape or identity.get_global_rect().end.y + 12.0 <= card.position.y)
-	# Layout authority belongs to the viewport, not deferred content minima.
-	var inset = 0.0 if home else 20.0
+	identity.visible = home and identity.get_global_rect().end.y + 16.0 <= card.position.y
+	var inset = 0.0 if home else 22.0
 	var content_width = maxf(1.0, width - inset * 2.0)
-	var actions_height = 54.0 * buttons.get_child_count() + 10.0 * max(0, buttons.get_child_count() - 1)
 	var actions_y = height - inset - actions_height - (34.0 if home else 0.0)
 	buttons.position = Vector2(inset, actions_y)
 	buttons.size = Vector2(content_width, actions_height)
@@ -201,8 +223,8 @@ func _button_style(fill: Color, border: Color) -> StyleBoxFlat:
 	style.bg_color = fill
 	style.border_color = border
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	style.content_margin_left = 16
+	style.set_corner_radius_all(0)
+	style.content_margin_left = 20
 	style.content_margin_right = 16
 	style.content_margin_top = 10
 	style.content_margin_bottom = 10
@@ -214,15 +236,18 @@ func _add_button(label: String, id: String, action: Callable):
 	button.text = label
 	button.custom_minimum_size.y = 54
 	button.add_theme_font_size_override("font_size", 18)
-	var primary = buttons.get_child_count() == 0 and id != "BackButton" and id != "HelpButton"
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var primary = id in ["StartMatchButton", "LaunchMatchButton", "ResumeMatchButton", "ConfirmNewMatchButton", "MatchReportButton"]
 	if primary:
-		button.add_theme_stylebox_override("normal", _button_style(Color("c4aa78"), Color("ddc593")))
-		button.add_theme_stylebox_override("hover", _button_style(Color("d7bd8b"), Color("f0ddae")))
-		button.add_theme_stylebox_override("pressed", _button_style(Color("aa8d59"), Color("dec18a")))
+		var primary_style = _button_style(Color("263b3b"), Color("b89a65"))
+		primary_style.border_width_left = 4
+		button.add_theme_stylebox_override("normal", primary_style)
+		button.add_theme_stylebox_override("hover", _button_style(Color("385251"), Color("e0c28b")))
+		button.add_theme_stylebox_override("pressed", _button_style(Color("192a2c"), Color("dec18a")))
 		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			button.add_theme_color_override(state, Color("141c20"))
+			button.add_theme_color_override(state, Color("f2e9d7"))
 	else:
-		button.add_theme_stylebox_override("normal", _button_style(Color("151e22"), Color("756b57")))
+		button.add_theme_stylebox_override("normal", _button_style(Color(0.06, 0.08, 0.085, 0.66), Color("58574c")))
 		button.add_theme_stylebox_override("hover", _button_style(Color("263136"), Color("c4aa78")))
 		button.add_theme_stylebox_override("pressed", _button_style(Color("0d1519"), Color("c4aa78")))
 		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
@@ -266,7 +291,7 @@ func _show_page(next_page: String):
 		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "setup":
 		heading.text = "戰役設定"
-		description.text = "霧谷 · 1 對 1 電腦戰\n\n"+SkirmishPolicy.title(selected_mode)+"\n"+SkirmishPolicy.details(selected_mode)
+		description.text = "霧谷 · 1 對 1 電腦戰\n\n"+SkirmishPolicy.details(selected_mode)
 		_add_button("模式："+SkirmishPolicy.title(selected_mode)+" >", "CycleModeButton", func(): _choose_mode(SkirmishPolicy.IDS[(SkirmishPolicy.IDS.find(selected_mode)+1)%SkirmishPolicy.IDS.size()]))
 		_add_button("出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("home"))

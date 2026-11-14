@@ -23,13 +23,14 @@ class MenuSourceContract(unittest.TestCase):
         menu = (ROOT / 'scripts/main_menu.gd').read_text()
         # Source arithmetic only; actual rendered geometry is a separate gate.
         for w, h in [(320,568),(390,844),(844,390),(568,320),(1440,900)]:
-            wide = w >= 640 and w > h * 1.15
-            margin = 28 if w >= 360 else 20
-            card_w = min(390 if wide else 440, max(1,w-2*margin))
-            x = max(32,w*.075) if wide else (w-card_w)*.5
+            wide = w >= 900 and w > h * 1.15
+            margin = 24 if w >= 360 else 16
+            card_w = min(410 if wide else 440, max(1,w-2*margin))
+            x = w*.08 if wide else (w-card_w)*.5
             for count in (2,3):
-                card_h = 54*count + 10*max(0,count-1) + 104
-                y = max(16,h-card_h-28)
+                short_landscape = w > h and h < 500
+                card_h = 54*count + 10*max(0,count-1) + (104 if short_landscape else 144)
+                y = max(16,h-card_h-16) if short_landscape else max(16,min(h-card_h-28,h*.49))
                 self.assertGreaterEqual(x,16)
                 self.assertGreaterEqual(y,16)
                 self.assertLessEqual(x+card_w,w-16)
@@ -46,7 +47,7 @@ class MenuSourceContract(unittest.TestCase):
         self.assertIn('scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO',menu)
         self.assertIn('TextServer.AUTOWRAP_WORD_SMART',menu)
         self.assertIn('var short_landscape = available.x > available.y and available.y < 500.0',menu)
-        self.assertIn('identity.visible = home and (not short_landscape or identity.get_global_rect().end.y + 12.0 <= card.position.y)',menu)
+        self.assertIn('identity.visible = home and identity.get_global_rect().end.y + 16.0 <= card.position.y',menu)
         self.assertIn('maxf(bar.min_value, bar.max_value - bar.page)',menu)
         self.assertIn('if _help_touch(event): get_viewport().set_input_as_handled()',menu)
         self.assertIn('prose_touch = -1',menu)
