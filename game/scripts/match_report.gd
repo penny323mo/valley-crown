@@ -80,6 +80,10 @@ static func page_text(report: Dictionary,page: String) -> String:
 			lines.append("戰役模式　中央據點爭奪")
 			var scores=report.get("control_ticks",[0,0])
 			lines.append("控制時間　我方 %d / 敵方 %d 秒（180 秒勝利）" % [scores[0]/20,scores[1]/20])
+		elif report.get("victory_mode","conquest")=="supply":
+			lines.append("戰役模式　資源爭奪戰")
+			var supplies=report.get("supply_progress",[{"food":0,"wood":0},{"food":0,"wood":0}])
+			for team in 2:lines.append(("我方" if team==0 else "敵方")+"送抵　糧 %d/600 · 木 %d/400" % [supplies[team].food/1000,supplies[team].wood/1000])
 		else:
 			lines.append("戰役模式　"+preload("res://scripts/skirmish_policy.gd").title(report.get("skirmish_mode","standard")))
 		lines.append("戰役歷時　"+time_label(report.tick))

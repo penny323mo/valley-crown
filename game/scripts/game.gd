@@ -328,6 +328,7 @@ var traffic_tick_segments={}
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var skirmish_mode="standard"
 const ControlPoint=preload("res://scripts/control_point.gd")
+const SupplyRace=preload("res://scripts/supply_race.gd")
 var victory_mode="conquest"
 var control_point=ControlPoint.new()
 var control_point_marker: Node3D
@@ -338,7 +339,7 @@ var ai_control_targets={}
 func _ready():
 	skirmish_mode=SkirmishPolicy.valid(skirmish_mode)
 	victory_mode=valid_victory_mode(victory_mode)
-	if victory_mode=="control": skirmish_mode="standard"
+	if victory_mode in ["control","supply"]: skirmish_mode="standard"
 	_sync_web_display_scale()
 	audio_cues=preload("res://scripts/audio_cues.gd").new(); add_child(audio_cues)
 	_reset_economy(INITIAL_STOCKS)
@@ -2593,6 +2594,8 @@ func _check_end():
 	if _surrender_intent.is_empty() and player_alive and enemy_alive:
 		if victory_mode=="control" and control_point.winner()>=0:
 			player_lost=control_point.winner()==1; enemy_lost=control_point.winner()==0; end_reason="control_point"
+		elif victory_mode=="supply" and (SupplyRace.complete(economy.stats_view(0)) or SupplyRace.complete(economy.stats_view(1))):
+			player_lost=SupplyRace.complete(economy.stats_view(1));enemy_lost=SupplyRace.complete(economy.stats_view(0));end_reason="supply_race"
 		elif tick_count>=roundi(Rules.TIME_LIMIT/Rules.TICK):
 			player_lost=true; enemy_lost=true; end_reason="time_limit"
 		else:
@@ -2607,12 +2610,16 @@ func _check_end():
 	last_match_report.skirmish_mode=skirmish_mode
 	last_match_report.victory_mode=victory_mode
 	last_match_report.control_ticks=control_point.scores.duplicate()
+	if victory_mode=="supply":last_match_report.supply_progress=[SupplyRace.progress(economy.stats_view(0)),SupplyRace.progress(economy.stats_view(1))]
 	commands.clear(); _cancel_mode()
 	if is_instance_valid(end_panel):
 		end_title.text={"victory":"王旗再起","defeat":"聚落失守","draw":"戰事暫歇"}[outcome]
 		if end_reason=="surrender":
 			end_title.text={"victory":"敵方投降","defeat":"我方投降","draw":"雙方投降"}[outcome]
 			end_body.text={"victory":"敵方已確認投降。","defeat":"你已確認投降。這局判定為失敗。","draw":"雙方已確認投降。和局。"}[outcome]
+		elif end_reason=="supply_race":
+			end_title.text={"victory":"資源目標完成","defeat":"敵方資源目標完成","draw":"雙方資源目標同時完成"}[outcome]
+			end_body.text="先實際送抵 600 糧食及 400 木材的一方勝出；同一結算回合達標為和局。起始庫存與退款不計。"
 		elif end_reason=="control_point":
 			end_title.text="王旗歸我" if victory else "王旗失守"
 			end_body.text=("我軍" if victory else "敵軍")+"累積控制中央據點 180 秒，取得勝利。"
@@ -3487,7 +3494,7 @@ func _create_ui():
 	compact_unit_tools=HBoxContainer.new(); compact_unit_tools.add_theme_constant_override("separation",8); command_row.add_child(compact_unit_tools); command_row.move_child(compact_unit_tools,0)
 	touch_button=_button("指定",_toggle_unit_command,54); compact_unit_tools.add_child(touch_button)
 	compact_cancel_button=_button("取消",func(): _cancel_mode(),54); compact_unit_tools.add_child(compact_cancel_button)
-	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode=="control"; compact_top_stack.add_child(objective_button)
+	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"]; compact_top_stack.add_child(objective_button)
 	compact_menu_dismiss=Control.new(); compact_menu_dismiss.name="MenuDismissShield"; compact_menu_dismiss.mouse_filter=Control.MOUSE_FILTER_STOP; compact_menu_dismiss.gui_input.connect(_dismiss_compact_menu_input); ui.add_child(compact_menu_dismiss); compact_menu_dismiss.hide()
 	compact_menu=PanelContainer.new(); compact_menu.name="ShortcutMenu"; ui.add_child(compact_menu); compact_menu.add_theme_stylebox_override("panel",_style(Color("1d241ef5")))
 	var menu_scroll=ScrollContainer.new(); menu_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; menu_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO; compact_menu.add_child(menu_scroll)
@@ -3736,6 +3743,7 @@ func _update_hud():
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
 	if victory_mode=="control": mission_label.text=control_point.caption()
+	elif victory_mode=="supply":mission_label.text="資源爭奪戰：實際送抵600糧＋400木；保護村民並截斷敵方資源。主堡被毀仍會落敗。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: time_label.text+=" · 和局 %ds" % ceili(Rules.TIME_LIMIT-game_time)
 	touch_button.text=("巡邏中" if unit_command_kind=="patrol" else ("前進中" if unit_command_kind=="advance" else "指定中")) if touch_command else "指定"
@@ -5737,7 +5745,7 @@ func _worker_safety_label(record):
 	return "安全確認 %d / 5 秒" % mini(5,int((tick_count-saved.safe_since_tick)/20))
 
 static func valid_victory_mode(value: String) -> String:
-	return value if value in ["conquest","control"] else "conquest"
+	return value if value in ["conquest","control","supply"] else "conquest"
 
 func _create_control_point_marker():
 	control_point_marker=Node3D.new();control_point_marker.name="CentralControlPoint";add_child(control_point_marker)
@@ -5751,7 +5759,12 @@ func _create_control_point_marker():
 func _refresh_control_point_marker():
 	if not is_instance_valid(control_point_marker):return
 	control_point_marker.visible=victory_mode=="control"
-	if is_instance_valid(objective_button): objective_button.visible=victory_mode=="control"
+	if is_instance_valid(objective_button): objective_button.visible=victory_mode in ["control","supply"]
+	if victory_mode=="supply":
+		if is_instance_valid(objective_button):
+			objective_button.text="我 "+SupplyRace.caption(economy.stats_view(0))+"\n敵 "+SupplyRace.caption(economy.stats_view(1))
+			objective_button.tooltip_text="資源爭奪戰：只計真正送抵主堡／倉庫的糧食及木材。雙方進度公開，支出不倒扣；點此回主堡。"
+		return
 	if victory_mode!="control":return
 	if is_instance_valid(objective_button):
 		var status="爭奪中，停止計時" if control_point.contested else ("我軍控制" if control_point.owner==0 else ("敵軍控制" if control_point.owner==1 else "至少兩名軍人進圈"))
@@ -5763,6 +5776,10 @@ func _refresh_control_point_marker():
 		control_point_flag.set_meta("owner",control_point.owner)
 
 func _focus_control_point():
+	if victory_mode=="supply":
+		var keep=_first(0,"town_center")
+		if not keep.is_empty():camera_focus=keep.pos;_camera_update()
+		return
 	camera_focus=ControlPoint.CENTER;_camera_update()
 
 func _ai_control_point_orders(army: Array,records: Array):

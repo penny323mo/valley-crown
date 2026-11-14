@@ -175,7 +175,7 @@ func _layout():
 	latin_name.visible = not short_landscape
 	heading.visible = not home
 	mode_title.visible = page == "setup"
-	mode_title.text = "中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode)
+	mode_title.text = "資源爭奪戰" if selected_victory_mode=="supply" else ("中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode))
 	eyebrow.text = "THE BORDERLANDS  /  01" if home else ("SKIRMISH  /  01" if page == "setup" else "FIELD MANUAL" if page in ["help","manual"] else "NEW CAMPAIGN")
 	section_rule.visible = true
 	help_tail.visible = page == "help"
@@ -310,9 +310,11 @@ func _show_page(next_page: String):
 	elif page == "setup":
 		heading.text = "戰役設定"
 		description.text = "霧谷 · 1 對 1 電腦戰\n\n"+SkirmishPolicy.details(selected_mode)
-		_add_button("模式："+("中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode))+" >", "CycleModeButton", _cycle_victory_mode)
+		_add_button("模式："+("資源爭奪戰" if selected_victory_mode=="supply" else ("中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode)))+" >", "CycleModeButton", _cycle_victory_mode)
 		if selected_victory_mode=="control":
 			description.text="中央王旗爭奪戰 · 1 對 1\n至少兩名軍人進入中央圈，且圈內沒有敵軍，才累積控制時間。雙方同在圈內時停止計時；累積 180 秒勝利。主堡被毀仍會落敗。\n電腦從兩名軍人開始爭奪據點。雙方資源、戰鬥規則相同；據點狀態與分數公開，敵軍位置仍受迷霧限制。"
+		if selected_victory_mode=="supply":
+			description.text="資源爭奪戰 · 1 對 1\n先實際送抵 600 糧食及 400 木材勝出。起始庫存、退款與尚在村民身上的負重不計；已送抵的資源用於建造後仍保留進度。\n雙方資源進度公開，敵軍位置仍受迷霧限制。可襲擊採集線或摧毀敵方主堡取勝；同回合達標為和局。使用標準電腦，雙方經濟規則相同。"
 		_add_button("出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "confirm":
@@ -513,8 +515,10 @@ func _input(event):
 	if _help_touch(event): get_viewport().set_input_as_handled()
 
 func _cycle_victory_mode():
+	if selected_victory_mode=="supply":
+		selected_victory_mode="conquest";selected_mode="practice";_show_page("setup");return
 	if selected_victory_mode=="control":
-		selected_victory_mode="conquest";selected_mode="practice"
+		selected_victory_mode="supply";selected_mode="standard"
 	elif selected_mode=="pressure":
 		selected_victory_mode="control";selected_mode="standard"
 	else:

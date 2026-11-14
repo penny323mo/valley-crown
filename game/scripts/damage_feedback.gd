@@ -13,7 +13,7 @@ func add(parent: Node3D,position: Vector3,amount: int,owned: bool,lethal: bool):
 	label.no_depth_test=false;label.shaded=false
 	label.modulate=Color("ffbdad") if owned else Color("ffe0a0")
 	label.outline_modulate=Color("221c19")
-	label.text=("-%d\n擊破" if lethal else "-%d") % amount
+	label.text=("-%d\n擊倒" if lethal else "-%d") % amount
 	parent.add_child(label);label.position=position+Vector3(0,2.5,0)
 	cues.append({"node":label,"origin":position,"owned":owned,"age":0.0,"lethal":lethal})
 func discard(index: int):

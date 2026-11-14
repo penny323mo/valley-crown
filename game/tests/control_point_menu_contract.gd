@@ -32,6 +32,8 @@ func run():
 	game=shell.match_node;game.set_process(false)
 	check("restart preserves mode but resets score",game.victory_mode=="control" and game.control_point.scores==[0,0])
 	shell._show_page("setup");shell._cycle_victory_mode()
+	check("fifth option selects supply mode",shell.selected_victory_mode=="supply")
+	shell._cycle_victory_mode()
 	check("mode cycle returns to ordinary practice",shell.selected_victory_mode=="conquest" and shell.selected_mode=="practice")
 	var failed=checks.filter(func(c):return not c.passed).size()
 	print(JSON.stringify({"suite":"control_point_menu_contract","checks":checks,"failed":failed,"scope":"native controls, viewport geometry and real menu transitions; no rendered or physical-device acceptance"}))
