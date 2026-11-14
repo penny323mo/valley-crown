@@ -28,7 +28,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 - <<'PY'
-          import sys,json,pathlib,os,re
+          import sys,json,pathlib,os,re,urllib.error
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,sha
           catalog=json.loads(pathlib.Path('release-history/VERIFIED_CANDIDATE_ARCHIVES.json').read_text())
@@ -43,7 +43,15 @@ jobs:
               run=g.request('/actions/runs/'+str(row['run_id']))
               assert run['conclusion']=='success' and run['head_sha']==row['workflow_head']
               assert run['head_branch']=='main' and run['path']=='.github/workflows/building-runtime.yml'
-              asset,data,files=g.ensure(row,create=True)
+              try:
+                  asset,data,files=g.ensure(row,create=True)
+              except urllib.error.HTTPError as exc:
+                  try:
+                      detail=json.loads(exc.read(16384).decode('utf-8','replace'))
+                  except (ValueError,UnicodeError):
+                      detail={}
+                  print(json.dumps({'github_error':exc.code,'message':detail.get('message'),'documentation_url':detail.get('documentation_url'),'request_id':exc.headers.get('X-GitHub-Request-Id'),'retry_after':exc.headers.get('Retry-After'),'rate_remaining':exc.headers.get('X-RateLimit-Remaining'),'rate_reset':exc.headers.get('X-RateLimit-Reset')}),flush=True)
+                  raise
               report={**row,'asset_id':asset['id'],'file_count':len(files),'zip_bytes':len(data),'readback_verified':True,'deployed':False}
               reports.append(report)
               pathlib.Path('verified-candidate-archives-report.json').write_text(json.dumps(reports,indent=2)+'\n')
