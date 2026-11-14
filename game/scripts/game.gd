@@ -72,6 +72,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const UnitTypeSelection=preload("res://scripts/unit_type_selection.gd")
+var unit_type_buttons={}
 const ConstructionDispatch=preload("res://scripts/construction_dispatch.gd")
 var construction_dispatch_button: Button
 const RepairDispatch=preload("res://scripts/repair_dispatch.gd")
@@ -3713,6 +3715,7 @@ func _update_hud():
 	_refresh_repeat_train_button()
 	_refresh_repair_dispatch_button()
 	_refresh_construction_dispatch_button()
+	_refresh_unit_type_buttons()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -3778,6 +3781,7 @@ func _rebuild_actions(selection):
 	repeat_train_button=null
 	repair_dispatch_button=null
 	construction_dispatch_button=null
+	unit_type_buttons.clear()
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
 	if box_select_mode:
@@ -3790,6 +3794,15 @@ func _rebuild_actions(selection):
 	if selection.is_empty():
 		actions.add_child(_button("選取村民",func(): _select_group("villagers"),120))
 		actions.add_child(_button("探索霧谷",func(): _select_group("scout"),120)); return
+	var type_groups=UnitTypeSelection.groups(faction_views[0].records(),selected)
+	if type_groups.size()>1:
+		for unit_kind in Rules.UNIT_KINDS:
+			if not type_groups.has(unit_kind): continue
+			var kind=unit_kind
+			var filter_button=_button("",func(): _filter_selected_type(kind),120)
+			filter_button.name="SelectType_"+kind; filter_button.set_meta("selection_source",selected.duplicate())
+			filter_button.tooltip_text="只保留目前選取的此兵種，不會全地圖選兵，也不改動指令、姿態或鏡頭。"
+			actions.add_child(filter_button); unit_type_buttons[kind]=filter_button
 	if _selected_builder()>=0:
 		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
@@ -5773,3 +5786,22 @@ func _request_construction_dispatch(building):
 	_cancel_mode()
 	_submit("order",{"ids":[plan.worker],"target":building,"construction_dispatch":true})
 	_refresh_construction_dispatch_button()
+
+func _refresh_unit_type_buttons():
+	var groups=UnitTypeSelection.groups(faction_views[0].records(),selected)
+	for kind in unit_type_buttons:
+		var button=unit_type_buttons[kind]
+		if not is_instance_valid(button): continue
+		var ids=groups.get(kind,[])
+		_bind_squad_button(button,ids,not _squad_actions_available() or selected!=button.get_meta("selection_source",[]))
+		button.text="只選"+Rules.NAMES[kind]+" · %d" % ids.size()
+
+func _filter_selected_type(kind):
+	if not _squad_actions_available() or not unit_type_buttons.has(kind): return
+	var button=unit_type_buttons[kind]
+	if not is_instance_valid(button) or button.disabled or selected!=button.get_meta("selection_source",[]): return
+	var ids=UnitTypeSelection.groups(faction_views[0].records(),selected).get(kind,[])
+	if ids.is_empty() or ids!=button.get_meta("squad_ids",[]):
+		_refresh_unit_type_buttons(); return
+	_cancel_mode()
+	_select(ids)
