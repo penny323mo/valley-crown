@@ -105,6 +105,7 @@
     "no duplicate Stop in strip",
     "targeting moves same Stop back to strip",
     "reparent retires old touch ownership without issuing command",
+    "targeting includes explicit formations before Patrol",
     "targeting preserves Cargo Stop Defend ordering",
     "returning same Stop retires old touch ownership",
     "paused disables pinned Stop",
