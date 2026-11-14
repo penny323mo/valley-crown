@@ -1,18 +1,18 @@
 {
-  "build": "vc-c06b349e87da",
-  "source_commit": "84721b66ad19c7739383b15502bb60e2a8e4e11b",
-  "game_tree": "14b55fa2649c5497c46f22a58e833b309a9bbd9d",
-  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/43550600477",
-  "artifact_id": 14096485100,
-  "artifact_zip_sha256": "3da41b744585403968bbe3dbbfcb9f27a347a8e1f01716b8c4d368b05103c8be",
+  "build": "vc-35ac50658b60",
+  "source_commit": "6133a8aa9874233d0a3f15a9778bc61ca6c7f6da",
+  "game_tree": "342e93d3047183adbe3b311ec0a60423ae9159ca",
+  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/43557100730",
+  "artifact_id": 14098043958,
+  "artifact_zip_sha256": "3995999eec0f8d041e1749655d4a7a3e35586481f7198cc82001c9a7e843d197",
   "files_sha256": {
     "index.apple-touch-icon.png": "9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a",
     "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
     "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
-    "index.html": "56b1c8566c94d58704787435e18a935f7cfefb71745ed1eb13423a98bac18d16",
+    "index.html": "0f11c39329ee35f2845d767f371f41ff240273d82f6da0e4dff4ae6fd565681c",
     "index.icon.png": "08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5",
     "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
-    "index.pck": "b4a7236f8a2d4c9dc27665cfd4970e2f4c9b8d942b3dd01dc744261bc91951fc",
+    "index.pck": "5b6a9f2158fb0e21db999b1d50c81b0a066230a6548141f8a47bb79b3c1f2949",
     "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
     "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6",
     "THIRD_PARTY_NOTICES.txt": "7afd20f756ae18339cbd42382b6c6d55b2297fb10749ad472230f703e3ad8193",
@@ -29,7 +29,7 @@
   },
   "verification": {
     "engine": "Godot 4.6.3",
-    "native_assertions": 1526,
+    "native_assertions": 1561,
     "faction_semantics": "PASS",
     "two_identical_web_exports": true,
     "browser": "UNVERIFIED for this build; native viewport events and simulation are not browser or physical iPhone acceptance",
@@ -43,7 +43,8 @@
     "skirmish_policy_assertions": 17,
     "main_menu_assertions": 316,
     "resource_geometry_assertions": 54,
-    "adaptive_recruitment_assertions": 29
+    "adaptive_recruitment_assertions": 29,
+    "destination_formation_assertions": 34
   },
   "release_status": "development beta; native contracts and reproducible export passed; browser interaction and physical iPhone unverified"
 }
