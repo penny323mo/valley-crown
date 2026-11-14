@@ -72,6 +72,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const WoundedRetreat=preload("res://scripts/wounded_retreat.gd")
+var wounded_retreat_button: Button
 const TrainingBatch=preload("res://scripts/training_batch.gd")
 var training_batch_button: Button
 const ContextManual=preload("res://scripts/context_manual.gd")
@@ -690,6 +692,12 @@ func _execute(command):
 			# invalid before execution must leave prior orders/paths unchanged.
 			if target_id>=0 and (target.is_empty() or not _visible_to(target,team) or not target.alive):
 				return _reject_command(team,"目標已失效或不在視野內，請重新落指令。")
+			if command.has("wounded_retreat"):
+				if typeof(command.wounded_retreat)!=TYPE_BOOL or not command.wounded_retreat or team!=0 or target_id!=-1 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
+				var retreat_orders=WoundedRetreat.orders(faction_views[0].records(),command.ids,[])
+				if retreat_orders.size()!=1 or retreat_orders[0].retreat_base!=command.get("retreat_base",-1) or retreat_orders[0].position!=command.get("position",Vector3.INF):return
+				var wounded=_get_entity(command.ids[0]);var home=_get_entity(command.retreat_base)
+				if wounded.is_empty() or not wounded.alive or wounded.team!=0 or wounded.hp>=wounded.max_hp or home.is_empty() or not home.alive or not home.built or home.team!=0:return
 			# A deliberate work retry must not steal a new job or degrade to MOVE.
 			if command.has("retry_gather"):
 				if typeof(command.retry_gather)!=TYPE_BOOL or not command.retry_gather or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
@@ -3721,6 +3729,7 @@ func _update_hud():
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
 	var key=str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].hp<selection[0].max_hp)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
+	key+=":"+str(WoundedRetreat.injured(faction_views[0].records(),selected))
 	if key!=action_key: action_key=key; _rebuild_actions(selection)
 	_refresh_return_cargo_button()
 	_refresh_queue_actions()
@@ -3730,6 +3739,7 @@ func _update_hud():
 	_refresh_unit_type_buttons()
 	_refresh_retry_gather_button()
 	_refresh_training_batch_button()
+	_refresh_wounded_retreat_button()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -3798,6 +3808,7 @@ func _rebuild_actions(selection):
 	unit_type_buttons.clear()
 	retry_gather_button=null
 	training_batch_button=null
+	wounded_retreat_button=null
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
 	if box_select_mode:
@@ -3896,6 +3907,11 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
+	if not WoundedRetreat.injured(faction_views[0].records(),selected).is_empty():
+		wounded_retreat_button=_button("傷兵回城",_retreat_wounded,150)
+		wounded_retreat_button.name="WoundedRetreat";wounded_retreat_button.set_meta("selection_source",selected.duplicate())
+		wounded_retreat_button.tooltip_text="只撤回所選受傷步兵、弓手、騎兵與斥候到最近沒有已知敵人的主堡旁。已在休整範圍不打斷；不保證路線安全或必定到達，不會瞬間回血。"
+		actions.add_child(wounded_retreat_button)
 	var manual_entry=ContextManual.selected_entry(faction_views[0].records(),selected)
 	if not manual_entry.is_empty():
 		var manual_button=_button("查看"+manual_entry.title+"資料",_show_context_manual,150)
@@ -5901,3 +5917,17 @@ func _request_training_batch(building):
 	_cancel_mode()
 	for i in plan.count:_submit("train",{"building":building,"kind":plan.kind})
 	_refresh_training_batch_button()
+
+func _refresh_wounded_retreat_button():
+	if not is_instance_valid(wounded_retreat_button):return
+	var orders=WoundedRetreat.orders(faction_views[0].records(),selected,commands)
+	_bind_squad_button(wounded_retreat_button,orders,not _squad_actions_available() or selected!=wounded_retreat_button.get_meta("selection_source",[]))
+	wounded_retreat_button.text="傷兵回城 · %d" % orders.size()
+func _retreat_wounded():
+	if not _squad_actions_available() or not is_instance_valid(wounded_retreat_button) or wounded_retreat_button.disabled or selected!=wounded_retreat_button.get_meta("selection_source",[]):return
+	var orders=WoundedRetreat.orders(faction_views[0].records(),selected,commands)
+	if orders.is_empty() or orders!=wounded_retreat_button.get_meta("squad_ids",[]):
+		_refresh_wounded_retreat_button();return
+	_cancel_mode()
+	for order in orders:_submit("order",order)
+	_refresh_wounded_retreat_button()
