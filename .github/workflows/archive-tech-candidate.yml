@@ -1,0 +1,46 @@
+name: Preserve verified military research candidate without deployment
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/archive-tech-candidate.yml]
+permissions:
+  contents: read
+concurrency:
+  group: durable-web-release-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Preserve exact passing candidate and verify Release readback
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import sys,json,pathlib,os
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,sha
+          row={'artifact_id':14103412994,'run_id':43569461437,'build':'vc-d2576a6b683b','metadata_sha256':'bb5ea3241ce487a74d456a998dce19bb728d8a9f811d4de2c23304b28848685d','zip_sha256':'3dbc4fe6af0206e2f1604942f24a8a06cc01e07563959c65c9f1e9bdc73887f9'}
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']=='6c4cbf901c522b7f42a1f34eb3910d7ae5ff9117'
+          asset,data,files=g.ensure(row,create=True)
+          report={**row,'asset_id':asset['id'],'file_count':len(files),'zip_bytes':len(data),'readback_verified':True,'deployed':False}
+          pathlib.Path('tech-archive-report.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: military-research-durable-archive-${{ github.run_id }}
+          path: tech-archive-report.json
+          retention-days: 30
+          if-no-files-found: error
