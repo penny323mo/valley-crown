@@ -287,9 +287,18 @@ var traffic_tick_segments={}
 
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var skirmish_mode="standard"
+const ControlPoint=preload("res://scripts/control_point.gd")
+var victory_mode="conquest"
+var control_point=ControlPoint.new()
+var control_point_marker: Node3D
+var control_point_flag: MeshInstance3D
+var objective_button: Button
+var ai_control_targets={}
 
 func _ready():
 	skirmish_mode=SkirmishPolicy.valid(skirmish_mode)
+	victory_mode=valid_victory_mode(victory_mode)
+	if victory_mode=="control": skirmish_mode="standard"
 	_sync_web_display_scale()
 	audio_cues=preload("res://scripts/audio_cues.gd").new(); add_child(audio_cues)
 	_reset_economy(INITIAL_STOCKS)
@@ -388,6 +397,7 @@ func _create_world():
 	var ring=TorusMesh.new(); ring.inner_radius=0.43; ring.outer_radius=0.52; ring.rings=24; ring.ring_segments=6
 	_mesh(order_marker,ring,Vector3(0,0.1,0),GOLD)
 	order_marker.visible=false
+	_create_control_point_marker()
 
 func _tree_visual(parent, p, kind, sc=1.0):
 	var root=Node3D.new(); parent.add_child(root); root.position=p; root.scale=Vector3.ONE*sc
@@ -612,6 +622,7 @@ func _tick(dt):
 			if pending_damage[id]>0: progress_serial+=1
 	for ent in entities:
 		if ent.alive and ((ent.category=="resource" and economy.node_view(ent.id).remaining_milli<=0) or (ent.category!="resource" and ent.hp<=0)): _kill(ent)
+	if victory_mode=="control" and control_point.advance(entities,tick_count): progress_serial+=1
 	_publish_faction_views()
 	_update_worker_safety()
 	_sync_audio()
@@ -1839,6 +1850,7 @@ func _placement_visibility_cells(footprint,catalog=Rules.FOOTPRINT,public_max_un
 	return cells.keys()
 
 func _placement_reason(kind,p,team,builder_id):
+	if victory_mode=="control" and p.distance_to(ControlPoint.CENTER)<ControlPoint.RADIUS+Rules.FOOTPRINT.get(kind,1): return "中央據點範圍須留作爭奪，不可建造。"
 	if not Rules.BUILD_TIME.has(kind): return "未知建築"
 	if not _kind_unlocked(kind,team): return "需要城防時代"
 	if kind=="tower" and _count(team,"tower")>=2: return "每方最多兩座守望塔"
@@ -2500,7 +2512,9 @@ func _check_end():
 	var enemy_lost=_surrender_intent.has(1) if not _surrender_intent.is_empty() else not enemy_alive
 	end_reason="surrender" if not _surrender_intent.is_empty() else "keep_destroyed"
 	if _surrender_intent.is_empty() and player_alive and enemy_alive:
-		if tick_count>=roundi(Rules.TIME_LIMIT/Rules.TICK):
+		if victory_mode=="control" and control_point.winner()>=0:
+			player_lost=control_point.winner()==1; enemy_lost=control_point.winner()==0; end_reason="control_point"
+		elif tick_count>=roundi(Rules.TIME_LIMIT/Rules.TICK):
 			player_lost=true; enemy_lost=true; end_reason="time_limit"
 		else:
 			player_lost=recovery_ticks[0]>=EndRules.IRRECOVERABLE_TICKS
@@ -2512,12 +2526,17 @@ func _check_end():
 	victory=outcome=="victory"
 	last_match_report=match_report.make_report(outcome,end_reason,tick_count,age_completed_tick[0],economy.stats_view(0),economy.bank_milli(0))
 	last_match_report.skirmish_mode=skirmish_mode
+	last_match_report.victory_mode=victory_mode
+	last_match_report.control_ticks=control_point.scores.duplicate()
 	commands.clear(); _cancel_mode()
 	if is_instance_valid(end_panel):
 		end_title.text={"victory":"王旗再起","defeat":"聚落失守","draw":"戰事暫歇"}[outcome]
 		if end_reason=="surrender":
 			end_title.text={"victory":"敵方投降","defeat":"我方投降","draw":"雙方投降"}[outcome]
 			end_body.text={"victory":"敵方已確認投降。","defeat":"你已確認投降。這局判定為失敗。","draw":"雙方已確認投降。和局。"}[outcome]
+		elif end_reason=="control_point":
+			end_title.text="王旗歸我" if victory else "王旗失守"
+			end_body.text=("我軍" if victory else "敵軍")+"累積控制中央據點 180 秒，取得勝利。"
 		elif end_reason=="irrecoverable":
 			end_body.text={"victory":"敵方持續 60 秒沒有單位或任何復原途徑，已自動投降。","defeat":"我方持續 60 秒沒有單位或任何復原途徑，已自動投降。","draw":"雙方持續 60 秒沒有單位或任何復原途徑。和局。"}[outcome]
 		else: end_body.text={"victory":"敵方主堡已倒下，霧谷由你守護。","defeat":"你的主堡已被摧毀。重新部署，再戰一局。","draw":"雙方同時失守，或已達 40 分鐘上限。和局。"}[outcome]
@@ -2867,6 +2886,7 @@ func _ai_army(records,castle):
 	if not ai_raid_members.is_empty() and survivors.is_empty(): ai_raid_members.clear(); ai_raid_retreating=false
 	# Visible home defense takes priority over an ongoing offensive order.
 	if not threats.is_empty():
+		ai_control_targets.clear()
 		var assignments={}
 		for ent in army:
 			var threat=HomeDefense.choose(ent,threats)
@@ -2886,6 +2906,9 @@ func _ai_army(records,castle):
 	ai_home_defense_targets.clear()
 	if released:
 		ai_status.army="home_defense_released"; return
+	if victory_mode=="control":
+		_ai_control_point_orders(army,records)
+		return
 	if not SkirmishPolicy.offensive(skirmish_mode):
 		_ai_move_home(army,castle)
 		ai_status.army="defensive_practice"; return
@@ -3364,6 +3387,7 @@ func _create_ui():
 	compact_unit_tools=HBoxContainer.new(); compact_unit_tools.add_theme_constant_override("separation",8); command_row.add_child(compact_unit_tools); command_row.move_child(compact_unit_tools,0)
 	touch_button=_button("指定",_toggle_unit_command,54); compact_unit_tools.add_child(touch_button)
 	compact_cancel_button=_button("取消",func(): _cancel_mode(),54); compact_unit_tools.add_child(compact_cancel_button)
+	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode=="control"; compact_top_stack.add_child(objective_button)
 	compact_menu_dismiss=Control.new(); compact_menu_dismiss.name="MenuDismissShield"; compact_menu_dismiss.mouse_filter=Control.MOUSE_FILTER_STOP; compact_menu_dismiss.gui_input.connect(_dismiss_compact_menu_input); ui.add_child(compact_menu_dismiss); compact_menu_dismiss.hide()
 	compact_menu=PanelContainer.new(); compact_menu.name="ShortcutMenu"; ui.add_child(compact_menu); compact_menu.add_theme_stylebox_override("panel",_style(Color("1d241ef5")))
 	var menu_scroll=ScrollContainer.new(); menu_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; menu_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO; compact_menu.add_child(menu_scroll)
@@ -3378,6 +3402,7 @@ func _create_ui():
 	var nav=HFlowContainer.new(); nav.add_theme_constant_override("h_separation",6); nav.add_theme_constant_override("v_separation",6); menu_box.add_child(nav)
 	nav.add_child(_button("主堡",func(): _compact_menu_action(_home),78))
 	nav.add_child(_button("全選閒置",func(): _compact_menu_action(func(): _select_group("idle")),96))
+	if victory_mode=="control": menu_box.add_child(_button("中央王旗",func(): _compact_menu_action(_focus_control_point),100))
 	nav.add_child(_button("全軍",func(): _compact_menu_action(func(): _select_group("army")),78))
 	var nav2=HFlowContainer.new(); nav2.add_theme_constant_override("h_separation",6); nav2.add_theme_constant_override("v_separation",6); menu_box.add_child(nav2)
 	nav2.add_child(_button("所有村民",func(): _compact_menu_action(func(): _select_group("villagers")),96))
@@ -3544,6 +3569,7 @@ func _rally_detail(record):
 
 func _update_hud():
 	if not is_instance_valid(top_resources): return
+	_refresh_control_point_marker()
 	_refresh_idle_worker_button()
 	_refresh_attack_alert()
 	_refresh_squad_buttons()
@@ -3560,6 +3586,7 @@ func _update_hud():
 	mission_label.text=("城防時代：建馬廄出騎兵，建工坊出攻城車，摧毀敵方主堡。" if _age2(0) else "聚落時代：採鐵，於主堡研究城防時代，解鎖騎兵與攻城車。")
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
+	if victory_mode=="control": mission_label.text=control_point.caption()
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: time_label.text+=" · 和局 %ds" % ceili(Rules.TIME_LIMIT-game_time)
 	touch_button.text=("巡邏中" if unit_command_kind=="patrol" else ("前進中" if unit_command_kind=="advance" else "指定中")) if touch_command else "指定"
@@ -4703,7 +4730,7 @@ func _snapshot():
 	var own_pending_commands=0
 	for command in commands:
 		if command.team==0: own_pending_commands+=1
-	return {"build":Rules.BUILD_ID,"version":Rules.VERSION,"tick":tick_count,"time":game_time,"paused":paused,"game_over":game_over,"outcome":outcome,"selected":selected,"food":stocks[0].food,"wood":stocks[0].wood,"stone":stocks[0].stone,"iron":stocks[0].iron,"age":2 if _age2(0) else 1,"military_techs":military_tech_completed[0].keys(),"bank_milli":economy.bank_milli(0),"economy_scale":Economy.SCALE,"population":_population(0),"capacity":_capacity(0),"delivered":delivered_total[0],"built":completed_builds[0],"trained":trained_total[0],"own_pending_commands":own_pending_commands,"touch_mode":touch_command,"build_mode":build_mode}
+	return {"build":Rules.BUILD_ID,"version":Rules.VERSION,"victory_mode":victory_mode,"control_ticks":control_point.scores.duplicate(),"tick":tick_count,"time":game_time,"paused":paused,"game_over":game_over,"outcome":outcome,"selected":selected,"food":stocks[0].food,"wood":stocks[0].wood,"stone":stocks[0].stone,"iron":stocks[0].iron,"age":2 if _age2(0) else 1,"military_techs":military_tech_completed[0].keys(),"bank_milli":economy.bank_milli(0),"economy_scale":Economy.SCALE,"population":_population(0),"capacity":_capacity(0),"delivered":delivered_total[0],"built":completed_builds[0],"trained":trained_total[0],"own_pending_commands":own_pending_commands,"touch_mode":touch_command,"build_mode":build_mode}
 
 # --- Deterministic headless rule/regression suite ---
 var test_results=[]
@@ -4724,6 +4751,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 		ent.node.queue_free()
 	path_requests.clear(); path_budget_tick=-1; last_path_queries=0; last_path_expansions=0; path_expansion_budget=4096
 	traffic_priority_order.clear(); traffic_tick_segments.clear()
+	control_point.reset();ai_control_targets.clear()
 	worker_evacuations.clear(); worker_manual_until.clear(); worker_safety_hits.clear(); worker_safety_enabled=true
 	entities.clear(); selected.clear(); squad_selection.reset(); idle_worker_cursor=-1; repeat_train_cursor=[0,0]; commands.clear(); next_id=0; tick_count=0; game_time=0
 	attack_ledger=AttackLedger.new(); pending_damage.clear(); battle_alerts.reset(); match_report.reset(); last_match_report={}; end_report_page="overview"
@@ -5471,3 +5499,61 @@ func _worker_safety_label(record):
 	if visible_cells[0][_cell_index(saved.origin)]==0: return "等待原工作區重新可見"
 	if saved.get("safe_since_tick",-1)<0: return "等待威脅離開"
 	return "安全確認 %d / 5 秒" % mini(5,int((tick_count-saved.safe_since_tick)/20))
+
+static func valid_victory_mode(value: String) -> String:
+	return value if value in ["conquest","control"] else "conquest"
+
+func _create_control_point_marker():
+	control_point_marker=Node3D.new();control_point_marker.name="CentralControlPoint";add_child(control_point_marker)
+	var ring=TorusMesh.new();ring.inner_radius=ControlPoint.RADIUS-0.10;ring.outer_radius=ControlPoint.RADIUS+0.10;ring.rings=48;ring.ring_segments=6
+	_mesh(control_point_marker,ring,Vector3(0,0.08,0),GOLD)
+	_cylinder(control_point_marker,Vector3(0,1.5,0),0.08,3.0,Color("b6ad91"),0.08,8)
+	var banner=BoxMesh.new();banner.size=Vector3(1.6,0.9,0.08)
+	control_point_flag=_mesh(control_point_marker,banner,Vector3(0.8,2.5,0),GOLD)
+	control_point_marker.visible=victory_mode=="control"
+
+func _refresh_control_point_marker():
+	if not is_instance_valid(control_point_marker):return
+	control_point_marker.visible=victory_mode=="control"
+	if is_instance_valid(objective_button): objective_button.visible=victory_mode=="control"
+	if victory_mode!="control":return
+	if is_instance_valid(objective_button):
+		var status="爭奪中，停止計時" if control_point.contested else ("我軍控制" if control_point.owner==0 else ("敵軍控制" if control_point.owner==1 else "至少兩名軍人進圈"))
+		objective_button.text="王旗 我 %d/180 · 敵 %d/180 秒\n%s · 點此定位" % [control_point.scores[0]/20,control_point.scores[1]/20,status]
+		objective_button.tooltip_text=control_point.caption()
+	var color=BLUE if control_point.owner==0 else (RED if control_point.owner==1 else GOLD)
+	if control_point_flag.get_meta("owner",-2)!=control_point.owner:
+		control_point_flag.material_override=_material(color)
+		control_point_flag.set_meta("owner",control_point.owner)
+
+func _focus_control_point():
+	camera_focus=ControlPoint.CENTER;_camera_update()
+
+func _ai_control_point_orders(army: Array,records: Array):
+	ai_status.army="control_point"
+	if army.size()<2 and ai_control_targets.is_empty():
+		ai_status.army="control_point_mustering";return
+	var threats=[]
+	for record in records:
+		if record.get("team",-1)==0 and record.get("alive",false) and not record.get("remembered",true) and record.get("category","")=="unit" and record.pos.distance_to(ControlPoint.CENTER)<ControlPoint.RADIUS+3: threats.append(record)
+	var assignments={}
+	for unit in army:
+		var tracked=unit.state=="attack" and ai_control_targets.get(unit.id,-1)==unit.get("target",-2)
+		var old_target_visible=false
+		for threat in threats:
+			if threat.id==unit.get("target",-1):old_target_visible=true;break
+		if tracked and not old_target_visible:
+			_submit("stop",{"ids":[unit.id]},1);continue
+		if unit.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]:
+			if tracked:assignments[unit.id]=unit.target
+			continue
+		var target=HomeDefense.choose(unit,threats)
+		if not target.is_empty():
+			assignments[unit.id]=target.id
+			if unit.state!="attack" or unit.target!=target.id:_submit("order",{"ids":[unit.id],"target":target.id,"position":target.pos},1)
+		elif unit.pos.distance_to(ControlPoint.CENTER)>3.0:
+			if unit.state=="move" and unit.get("dest",Vector3.INF).distance_to(ControlPoint.CENTER)<3.0:continue
+			var angle=float(unit.id%8)*TAU/8.0
+			_submit("advance",{"ids":[unit.id],"position":ControlPoint.CENTER+Vector3(cos(angle),0,sin(angle))*2.0},1)
+
+	ai_control_targets=assignments

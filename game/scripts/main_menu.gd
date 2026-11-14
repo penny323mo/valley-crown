@@ -4,6 +4,7 @@ extends Node
 const MATCH_SCENE = preload("res://main.tscn")
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var selected_mode="standard"
+var selected_victory_mode="conquest"
 var match_node
 var menu_layer: CanvasLayer
 var menu_root: Control
@@ -171,7 +172,7 @@ func _layout():
 	latin_name.visible = not short_landscape
 	heading.visible = not home
 	mode_title.visible = page == "setup"
-	mode_title.text = SkirmishPolicy.title(selected_mode)
+	mode_title.text = "中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode)
 	eyebrow.text = "THE BORDERLANDS  /  01" if home else ("SKIRMISH  /  01" if page == "setup" else "FIELD MANUAL" if page == "help" else "NEW CAMPAIGN")
 	section_rule.visible = true
 	help_tail.visible = page == "help"
@@ -298,7 +299,9 @@ func _show_page(next_page: String):
 	elif page == "setup":
 		heading.text = "戰役設定"
 		description.text = "霧谷 · 1 對 1 電腦戰\n\n"+SkirmishPolicy.details(selected_mode)
-		_add_button("模式："+SkirmishPolicy.title(selected_mode)+" >", "CycleModeButton", func(): _choose_mode(SkirmishPolicy.IDS[(SkirmishPolicy.IDS.find(selected_mode)+1)%SkirmishPolicy.IDS.size()]))
+		_add_button("模式："+("中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode))+" >", "CycleModeButton", _cycle_victory_mode)
+		if selected_victory_mode=="control":
+			description.text="中央王旗爭奪戰 · 1 對 1\n至少兩名軍人進入中央圈，且圈內沒有敵軍，才累積控制時間。雙方同在圈內時停止計時；累積 180 秒勝利。主堡被毀仍會落敗。\n電腦從兩名軍人開始爭奪據點。雙方資源、戰鬥規則相同；據點狀態與分數公開，敵軍位置仍受迷霧限制。"
 		_add_button("出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "confirm":
@@ -332,7 +335,9 @@ func _choose_mode(mode: String):
 	_show_page("setup")
 
 func _restart_match():
-	if is_instance_valid(match_node): selected_mode=match_node.skirmish_mode
+	if is_instance_valid(match_node):
+		selected_mode=match_node.skirmish_mode
+		selected_victory_mode=match_node.victory_mode
 	_start_match()
 
 func _start_match():
@@ -347,6 +352,7 @@ func _replace_match():
 		match_node.queue_free()
 	match_node = MATCH_SCENE.instantiate()
 	match_node.skirmish_mode=selected_mode
+	match_node.victory_mode=selected_victory_mode
 	match_node.main_menu_requested.connect(_open_menu)
 	match_node.restart_requested.connect(_restart_match)
 	add_child(match_node)
@@ -494,3 +500,12 @@ func _input(event):
 			if event.canceled: touch_presses.erase(event.index)
 			if active_touches.is_empty(): touch_blocked = false
 	if _help_touch(event): get_viewport().set_input_as_handled()
+
+func _cycle_victory_mode():
+	if selected_victory_mode=="control":
+		selected_victory_mode="conquest";selected_mode="practice"
+	elif selected_mode=="pressure":
+		selected_victory_mode="control";selected_mode="standard"
+	else:
+		selected_mode=SkirmishPolicy.IDS[(SkirmishPolicy.IDS.find(selected_mode)+1)%SkirmishPolicy.IDS.size()]
+	_show_page("setup")
