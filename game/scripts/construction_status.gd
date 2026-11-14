@@ -24,6 +24,6 @@ static func detail(site: Dictionary, records: Dictionary, pending=false, paused=
 		stopped=stopped or worker.get("path_status","") in ["NO_PATH","LIMIT_REACHED","NO_WORK"]
 	if walking: return prefix+"村民移動到工地"
 	if searching: return prefix+"村民已接單，尋路中"
-	if stopped: return prefix+"村民尋路停止；選村民→指令→點工地"
+	if stopped: return prefix+"村民尋路停止；選村民後直接點工地"
 	if assigned: return prefix+"村民已接單，等候施工"
-	return prefix+"無施工村民；選村民→指令→點工地"
+	return prefix+"無施工村民；可按「派閒置村民續建」"

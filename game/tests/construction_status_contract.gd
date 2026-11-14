@@ -9,7 +9,7 @@ func _initialize():
 	var site={"id":20,"owned":true,"alive":true,"remembered":false,"team":0,"category":"building","built":false,"progress":0.25}
 	var worker={"id":1,"owned":true,"alive":true,"remembered":false,"team":0,"category":"unit","kind":"villager","state":"build","target":20,"visual_action":"idle","path":[],"path_pending":false,"path_status":"IDLE"}
 	var empty_text=Status.detail(site,{})
-	check("unassigned site explains manual recovery",empty_text=="施工 25% · 無施工村民；選村民→指令→點工地")
+	check("unassigned site explains manual recovery",empty_text=="施工 25% · 無施工村民；可按「派閒置村民續建」")
 	check("assignment alone does not claim work or arrival",Status.detail(site,{1:worker})=="施工 25% · 村民已接單，等候施工")
 	var working=worker.duplicate(true); working.visual_action="build"
 	check("only successful construction cue claims work",Status.detail(site,{1:working})=="施工 25% · 建造中")
@@ -19,7 +19,7 @@ func _initialize():
 	check("pending path is not claimed to be walking",Status.detail(site,{1:searching})=="施工 25% · 村民已接單，尋路中")
 	for status in ["NO_PATH","LIMIT_REACHED","NO_WORK"]:
 		var blocked=worker.duplicate(true); blocked.path_status=status
-		check(status+" explains route stopped and manual recovery",Status.detail(site,{1:blocked})=="施工 25% · 村民尋路停止；選村民→指令→點工地")
+		check(status+" explains route stopped and manual recovery",Status.detail(site,{1:blocked})=="施工 25% · 村民尋路停止；選村民後直接點工地")
 	check("pause does not claim building from frozen work cue",Status.detail(site,{1:working},false,true)=="施工 25% · 已暫停；按繼續返回戰場")
 	check("queued own command does not claim old assignment",Status.detail(site,{1:working},true)=="施工 25% · 指令等待中")
 	check("queued reassignment does not claim new builder",Status.detail(site,{},true)=="施工 25% · 指令等待中")

@@ -36,7 +36,7 @@ func run():
 	check("pending route is reported without claiming arrival",game.selection_detail.text.contains("尋路中"))
 	worker.path_pending=false
 	game._path_stop(worker,game.BoundedPath.NO_PATH,"controlled_test"); publish()
-	check("terminal route has manual resume directions",game.selection_detail.text.contains("尋路停止") and game.selection_detail.text.contains("選村民→指令→點工地"))
+	check("terminal route has manual resume directions",game.selection_detail.text.contains("尋路停止") and game.selection_detail.text.contains("選村民後直接點工地"))
 	# Place the controlled worker on a real legal approach, then perform an actual
 	# construction update. The status must follow the resulting successful cue.
 	game._path_new_command(worker); game._order(worker,"build",site.id)
@@ -53,7 +53,7 @@ func run():
 	game._submit("stop",{"ids":[worker.id]}); game._update_hud()
 	check("pending stop is not displayed as continuing work",game.selection_detail.text.contains("指令等待中") and not game.selection_detail.text.contains("建造中"))
 	game._execute(game.commands.pop_front()); publish()
-	check("actual stop explains missing builder despite old work cue",game.selection_detail.text.contains("無施工村民") and game.selection_detail.text.contains("選村民→指令→點工地"))
+	check("actual stop explains missing builder despite old work cue",game.selection_detail.text.contains("無施工村民") and game.selection_detail.text.contains("派閒置村民續建"))
 	game._order(worker,"build",site.id); game._update_unit(worker,game.Rules.TICK); publish()
 	check("explicit reassignment resumes actual work feedback",game.selection_detail.text.contains("建造中"))
 	game._order_move(worker,worker.pos+Vector3(3,0,0)); publish()

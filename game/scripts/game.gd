@@ -72,6 +72,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const ConstructionDispatch=preload("res://scripts/construction_dispatch.gd")
+var construction_dispatch_button: Button
 const RepairDispatch=preload("res://scripts/repair_dispatch.gd")
 var repair_dispatch_button: Button
 const ProductionOverview=preload("res://scripts/production_overview.gd")
@@ -681,6 +683,11 @@ func _execute(command):
 			# invalid before execution must leave prior orders/paths unchanged.
 			if target_id>=0 and (target.is_empty() or not _visible_to(target,team) or not target.alive):
 				return _reject_command(team,"目標已失效或不在視野內，請重新落指令。")
+			# Resume construction only if the site and idle worker remain eligible.
+			if command.has("construction_dispatch"):
+				if typeof(command.construction_dispatch)!=TYPE_BOOL or not command.construction_dispatch or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
+				var builder=_get_entity(command.ids[0])
+				if target.is_empty() or target.team!=team or target.category!="building" or target.built or builder.is_empty() or builder.team!=team or not builder.alive or builder.kind!="villager" or builder.state!="idle" or not builder.path.is_empty() or builder.get("path_pending",false) or _cargo_amount(builder)>0: return
 			# Explicit dispatch must never degrade into cargo delivery or movement.
 			if command.has("repair_dispatch"):
 				if typeof(command.repair_dispatch)!=TYPE_BOOL or not command.repair_dispatch or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
@@ -3705,6 +3712,7 @@ func _update_hud():
 	_refresh_queue_actions()
 	_refresh_repeat_train_button()
 	_refresh_repair_dispatch_button()
+	_refresh_construction_dispatch_button()
 	queue_label.visible=not queue_label.text.is_empty()
 	var has_unit=false
 	for ent in selection:
@@ -3769,6 +3777,7 @@ func _rebuild_actions(selection):
 	queue_actions.clear()
 	repeat_train_button=null
 	repair_dispatch_button=null
+	construction_dispatch_button=null
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
 	if box_select_mode:
@@ -3794,6 +3803,10 @@ func _rebuild_actions(selection):
 			repair_dispatch_button.tooltip_text="派最近的空手閒置村民；不搶採集工作。維修逐步消耗木材，不保證路線暢通。"
 			actions.add_child(repair_dispatch_button)
 		if not ent.built:
+			construction_dispatch_button=_button("派閒置村民續建",func(): _request_construction_dispatch(ent.id),180)
+			construction_dispatch_button.name="ConstructionDispatch"; construction_dispatch_button.set_meta("building",ent.id)
+			construction_dispatch_button.tooltip_text="派最近空手閒置村民接手工地，不再收建築費；不搶其他工作。路線仍須可通行。"
+			actions.add_child(construction_dispatch_button)
 			actions.add_child(_button("取消施工\n退回 75%",func(): _submit("cancel_build",{"building":ent.id}),130))
 		elif Rules.PRODUCES.has(ent.kind):
 			actions.add_child(_button("集合點",func(): _start_ground_rally(ent.id),100))
@@ -5743,3 +5756,20 @@ func _request_repair_dispatch(building):
 	_cancel_mode()
 	_submit("order",{"ids":[plan.worker],"target":building,"repair_dispatch":true})
 	_refresh_repair_dispatch_button()
+
+func _refresh_construction_dispatch_button():
+	if not is_instance_valid(construction_dispatch_button): return
+	var building=construction_dispatch_button.get_meta("building",-1)
+	var plan=ConstructionDispatch.plan(faction_views[0].records(),commands,building)
+	var ids=[plan.worker] if plan.worker>=0 else []
+	_bind_squad_button(construction_dispatch_button,ids,not _squad_actions_available() or selected!=[building])
+	construction_dispatch_button.text=plan.reason+"\n繼續原進度 · 不重收建築費"
+
+func _request_construction_dispatch(building):
+	if not _squad_actions_available() or selected!=[building] or not is_instance_valid(construction_dispatch_button): return
+	var plan=ConstructionDispatch.plan(faction_views[0].records(),commands,building)
+	if plan.worker<0 or construction_dispatch_button.disabled or construction_dispatch_button.get_meta("building",-1)!=building or construction_dispatch_button.get_meta("squad_ids",[])!=[plan.worker]:
+		_refresh_construction_dispatch_button(); return
+	_cancel_mode()
+	_submit("order",{"ids":[plan.worker],"target":building,"construction_dispatch":true})
+	_refresh_construction_dispatch_button()
