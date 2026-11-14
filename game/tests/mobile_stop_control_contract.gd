@@ -32,9 +32,9 @@ func run():
 	check("reparent retires old touch ownership without issuing command",game.gui_touch_press.is_empty() and game.commands.is_empty())
 	var names=[]
 	for child in game.actions.get_children(): names.append(child.text)
-	check("targeting includes explicit formations before Patrol",names==["取消選取","交付資源","警戒前進","橫列前進","分散前進","巡邏","停止","守備"])
+	check("targeting includes explicit formations before Patrol",names==["取消選取","交付資源","警戒前進","橫列前進","分散前進","巡邏","查看斥候資料","停止","守備"])
 	var legacy_names=names.filter(func(label): return label not in ["橫列前進","分散前進"])
-	check("targeting preserves Cargo Stop Defend ordering",legacy_names==["取消選取","交付資源","警戒前進","巡邏","停止","守備"])
+	check("targeting preserves Cargo Stop Defend ordering",legacy_names==["取消選取","交付資源","警戒前進","巡邏","查看斥候資料","停止","守備"])
 	game.gui_touch_press={4:{"button":weakref(button),"origin":Vector2.ZERO,"valid":true}}
 	game.touch_command=false; game._refresh_stop_button()
 	check("returning same Stop retires old touch ownership",button.get_parent()==game.compact_unit_tools and game.gui_touch_press.is_empty() and game.commands.is_empty())

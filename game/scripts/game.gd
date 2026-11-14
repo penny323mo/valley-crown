@@ -4009,7 +4009,7 @@ func _refresh_stop_button():
 	# Only reposition/scroll on a layout/order transition, never each HUD tick.
 	if not compact_ui and parent==actions and stop_button.get_index()!=0:
 		actions.move_child(stop_button,0)
-		action_scroll.scroll_horizontal=0
+		if is_instance_valid(action_scroll): action_scroll.scroll_horizontal=0
 	stop_button.disabled=paused or game_over
 
 func _refresh_return_cargo_button():
