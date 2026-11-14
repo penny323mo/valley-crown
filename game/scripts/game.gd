@@ -98,6 +98,9 @@ const WorkforceOverview=preload("res://scripts/workforce_overview.gd")
 var workforce_buttons={}
 var workforce_label: Label
 var blocked_workers_button: Button
+const BuildingAttention=preload("res://scripts/building_attention.gd")
+var building_attention_buttons={}
+var building_attention_cursor={}
 const IdleArmySelection=preload("res://scripts/idle_army_selection.gd")
 var idle_army_button: Button
 var idle_worker_button: Button
@@ -3523,6 +3526,12 @@ func _create_ui():
 		production_button.add_theme_font_size_override("font_size",12)
 		menu_box.add_child(production_button); production_buttons[kind]=production_button
 		shortcut_sections.production.append(production_button)
+	for category in ["unassigned","damaged"]:
+		var key=category
+		var button=_button("",func():_focus_building_attention(key),170)
+		button.name="BuildingAttention_"+key;button.tooltip_text="輪流選取並前往需要處理的己方建築。只定位，不會自行派工或付費；仍須使用續建／維修。"
+		menu_box.add_child(button);building_attention_buttons[key]=button;shortcut_sections.production.append(button)
+
 	var nav=HFlowContainer.new(); nav.add_theme_constant_override("h_separation",6); nav.add_theme_constant_override("v_separation",6); menu_box.add_child(nav)
 	nav.add_child(_button("主堡",func(): _compact_menu_action(_home),78))
 	nav.add_child(_button("全選閒置",func(): _compact_menu_action(func(): _select_group("idle")),96))
@@ -5835,6 +5844,7 @@ func _select_workforce(resource):
 	compact_menu_button.text=_shortcut_menu_caption()
 
 func _refresh_production_buttons():
+	_refresh_building_attention()
 	if production_buttons.is_empty(): return
 	var status=ProductionOverview.snapshot(faction_views[0].records())
 	for kind in ProductionOverview.KINDS:
@@ -6160,4 +6170,25 @@ func _select_blocked_workers():
 	compact_menu.hide();compact_menu_dismiss.hide()
 	_select(ids)
 	camera_focus=faction_views[0].records()[ids[0]].pos;_camera_update()
+	compact_menu_button.text=_shortcut_menu_caption()
+
+func _refresh_building_attention():
+	var status=BuildingAttention.snapshot(faction_views[0].records(),commands)
+	for category in building_attention_buttons:
+		var button=building_attention_buttons[category]
+		_bind_squad_button(button,status[category],not _squad_actions_available())
+		button.text=("待接手工地" if category=="unassigned" else "受損建築")+" · %d · 下一座" % status[category].size()
+
+func _focus_building_attention(category):
+	if not _squad_actions_available() or not compact_menu.visible or not building_attention_buttons.has(category):return
+	var button=building_attention_buttons[category]
+	if not button.visible or button.disabled:return
+	var records=faction_views[0].records()
+	var ids=BuildingAttention.snapshot(records,commands)[category]
+	if ids.is_empty() or ids!=button.get_meta("squad_ids",[]):
+		_refresh_building_attention();return
+	var id=ProductionOverview.next_id(ids,building_attention_cursor.get(category,-1))
+	building_attention_cursor[category]=id
+	_cancel_mode();compact_menu.hide();compact_menu_dismiss.hide()
+	_select([id]);camera_focus=records[id].pos;_camera_update()
 	compact_menu_button.text=_shortcut_menu_caption()
