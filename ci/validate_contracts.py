@@ -4,8 +4,8 @@ import math
 from pathlib import Path
 
 FIXTURES = {
- 'construction_status': ('tests/construction_status_contract.gd', 'd67dc52d6e60152fb783112ba99afc19d610e20b935566b67b8b9268f7c6065a'),
- 'construction_status_hud': ('tests/construction_status_hud.gd', 'dfb464ce2e645a865845a5a567c7670cb6885e73b460f668ef98246debc0189a'),
+ 'construction_status': ('tests/construction_status_contract.gd', '4f73d7643fc066c7ed610f658c0e1a3f49150b2951933ebf5d695e5acda444df'),
+ 'construction_status_hud': ('tests/construction_status_hud.gd', '6865c29184a9226e577b0f24e43a414b10832b2d534db3d4a6d3510b4e81e31a'),
  'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '339518cfadefdf034ce9220e3386e307a9d7ac0e6598f47a053a9aa834b812a2'),
  'mobile_stop_control_phone': ('tests/mobile_stop_control_phone.gd', '6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a'),
  'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'fe1a38da69e900aeef7edd4403f5b553727a704ca30c2ade83df654116b653e6'),
@@ -14,12 +14,12 @@ FIXTURES = {
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '4dfe17222274a38a71ff828f62dd357a1473702bb8e8a037ed3da2e053221d6c')}
 MENU_SHA = '24e6b14d4b621890d83373598edba504105a6e8d1c24ac3dbe9234a2943d668e'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-9c9a56cc80bc'
+BUILD = 'vc-801ee943deba'
 ARRAY_COUNTS = {'contextual_touch_contract':76, 'contextual_touch_phone':26}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}
-STATUS_SHA = '3d858e112dc953e3365003b535df0843751d3238ad80ffa9b0f25069a7c80d3b'
-GAME_SHA = '2207b24c60428cc9764a68a47f9ae2315f3c526c3c8efd3a46fa822d92adc7e5'
+STATUS_SHA = '9354c81601f5cf668fc2412a1d9f40aca0d05354fe4173d319602f5c0a92bf8a'
+GAME_SHA = 'bd0a276cbbb7751dea216f104f1b219024c47c6c6d6269ef84f21d46055bd074'
 FILE_SUITE = 'stance_target_cancel_phone'
 FILE_REPORT = 'stance-target-cancel-phone.json'
 STOP_COUNTS = {'mobile_stop_control_contract':22, 'mobile_stop_control_phone':64,
