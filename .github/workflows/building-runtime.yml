@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-2a34660346e1
+  group: building-runtime-vc-08e7cfdf004a
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 5270156aa0825ec605313bfbaa531f02aa5c034d
+      BUILDING_RUNTIME_SOURCE_COMMIT: 4165e0348c55e01bcb925046c5c25610b34e2299
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -39,7 +39,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '2a7dd072c4b3dd51a6708550eba4767e775836e39af51aa53cc3f8b8faf04756  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'ddb44b947cbeaee48ec431fb7053c939ecc026bb747eef122844b92afe2a0873  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -154,6 +154,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/wide_click_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/skirmish_policy_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/skirmish_policy_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/resource_polish_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/resource_polish_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/normal_probe/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/normal_probe/godot.log
             ${{ env.RTS_WORK }}/product/building-contracts/building-contracts-receipt.json
             ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/receipt.json
             ${{ env.RTS_WORK }}/product/building-contracts/advanced_building_visuals/godot.log

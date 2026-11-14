@@ -5,6 +5,7 @@ from validate_building_contracts import require,parse_json,validate_monitor,vali
 COUNTS={'material_contract':13,'continuous_training_contract':16,'resource_visual_contract':27,'compact_click_contract':19,'compact_move_runtime':4}
 COUNTS.update({'hold_box_contract': 24, 'hold_box_phone': 26, 'contextual_routed_touch': 22, 'wide_click_contract': 19})
 COUNTS['skirmish_policy_contract']=17
+COUNTS.update({'resource_polish_contract':24,'normal_probe':3})
 SUITES=tuple(COUNTS)
 EXTERNAL=()
 REPORT='not-used.json'
@@ -28,13 +29,18 @@ def read_report(stage,suite):
   require(rows==['RESOURCE_CONTRACT_PASS 27'],'Wrong resource summary')
   metrics=[l for l in log.splitlines() if l.startswith('RESOURCE_METRIC ')]
   require(len(metrics)==3,'Missing/duplicate resource metrics')
-  for line,kind,count in zip(metrics,('stone','iron','berry'),(945,1365,3174)):
+  for line,kind,count in zip(metrics,('stone','iron','berry'),(1344,1344,3378)):
    require(line.startswith('RESOURCE_METRIC '+kind+' vertices='+str(count)+' surfaces=1 bounds='),'Wrong resource geometry')
   return {'summary':rows[0],'assertions':27,'metrics':metrics}
  if suite=='skirmish_policy_contract':
   rows=[l for l in log.splitlines() if l.startswith('SKIRMISH ')]
   require(rows==['SKIRMISH 17/17'],'Wrong/failed skirmish summary')
   return {'summary':rows[0],'assertions':17}
+ if suite in ('resource_polish_contract','normal_probe'):
+  prefix='RESOURCE_POLISH_PASS ' if suite=='resource_polish_contract' else 'NORMALS_PASS '
+  rows=[l for l in log.splitlines() if l.startswith(prefix)]
+  require(rows==[prefix+str(COUNTS[suite])],'Wrong/failed geometry summary')
+  return {'summary':rows[0],'assertions':COUNTS[suite]}
  if suite=='material_contract':
   rows=[l for l in log.splitlines() if l.startswith('FOG_MATERIAL_CONTRACT ')]
   require(rows==['FOG_MATERIAL_CONTRACT checks=13 failures=0'],'Wrong material summary')
