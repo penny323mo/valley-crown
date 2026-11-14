@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-d2576a6b683b
+  group: building-runtime-vc-d70eac07471f
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: cbf5d9fc929fcb076a91d6a7844d74b33c3ff587
+      BUILDING_RUNTIME_SOURCE_COMMIT: 1f7530a4bf9f15f7a1b3b1709efc0e9e516e1a71
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'f4be3d2fa0431ec412acbcf85e62e3b8e817ba9ee46ffdfe6444e0dd25381cb4  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'ff910c37fd262c66102e5fd032a549798cf6175516c28956b3c2d684157e76f9  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -168,6 +168,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_integration/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/army_formation_integration/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_cargo_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_cargo_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/military_technology_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/military_technology_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_worker_recovery_contract/receipt.json
