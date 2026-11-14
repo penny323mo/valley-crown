@@ -172,10 +172,27 @@ func run():
 	check(not shell.transition_busy, "distant release without drag sample cannot start")
 	# Exercise the same deliberate public button as a player, never a QA bypass.
 	shell.buttons.get_node("StartMatchButton").pressed.emit()
+	check(shell.page=="setup" and not is_instance_valid(shell.match_node), "start opens setup without world")
+	await check_layout_matrix(shell, "skirmish setup")
+	var saved_size=root.size
+	root.size=Vector2i(568,320);shell._layout()
+	await process_frame
+	await process_frame
+	var setup_start=shell.scroll.get_global_rect().get_center()
+	help_touch(shell,setup_start,true)
+	help_drag(shell,setup_start-Vector2(0,200))
+	check(shell.scroll.scroll_vertical>0 and shell.page=="setup", "setup prose scrolls on short touch viewport")
+	help_touch(shell,setup_start-Vector2(0,200),false)
+	root.size=saved_size;shell._layout()
+	await process_frame
+	shell._choose_mode("pressure")
+	check(shell.selected_mode=="pressure" and shell.description.text.contains("60"), "setup pressure describes actual policy")
+	shell.buttons.get_node("LaunchMatchButton").pressed.emit()
 	await process_frame
 	await process_frame
 	var game = shell.match_node
 	check(is_instance_valid(game) and not shell.menu_layer.visible, "start enters match")
+	check(game.skirmish_mode=="pressure", "policy installed before match ready")
 	game._request_main_menu()
 	check(game.paused and not game.ui.visible and shell.menu_layer.visible, "return pauses and hides HUD")
 	await check_layout_matrix(shell, "paused home")
@@ -197,9 +214,20 @@ func run():
 	shell._show_page("home")
 	check(not shell.buttons.has_node("ResumeMatchButton"), "terminal match cannot resume")
 	shell.buttons.get_node("NewMatchButton").pressed.emit()
+	check(shell.page=="setup", "terminal new opens setup")
+	shell._choose_mode("practice")
+	shell.buttons.get_node("LaunchMatchButton").pressed.emit()
 	await process_frame
 	await process_frame
 	check(shell.match_node != game and not shell.match_node.game_over, "new match replaces terminal game")
+	check(shell.match_node.skirmish_mode=="practice", "new match uses new policy")
+	shell._open_menu(); shell._show_page("setup"); shell._choose_mode("standard")
+	shell.buttons.get_node("BackButton").pressed.emit()
+	check(shell.match_node.skirmish_mode=="practice", "cancel setup never mutates current match")
+	shell._restart_match()
+	await process_frame
+	await process_frame
+	check(shell.match_node.skirmish_mode=="practice", "restart retains active policy not canceled selection")
 	shell.queue_free()
 	await process_frame
 	for failure in failures: push_error(failure)

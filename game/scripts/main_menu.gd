@@ -2,6 +2,8 @@ extends Node
 ## Product entry point. The battlefield does not exist until Start is chosen.
 ## main.tscn remains the explicit battle fixture for simulation tests.
 const MATCH_SCENE = preload("res://main.tscn")
+const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
+var selected_mode="standard"
 var match_node
 var menu_layer: CanvasLayer
 var menu_root: Control
@@ -262,10 +264,16 @@ func _show_page(next_page: String):
 		heading.text = "教學"
 		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取，再點空地移動或敵軍攻擊；右擊亦可指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
 		_add_button("返回", "BackButton", func(): _show_page("home"))
+	elif page == "setup":
+		heading.text = "戰役設定"
+		description.text = "霧谷 · 1 對 1 電腦戰\n\n"+SkirmishPolicy.title(selected_mode)+"\n"+SkirmishPolicy.details(selected_mode)
+		_add_button("模式："+SkirmishPolicy.title(selected_mode)+" >", "CycleModeButton", func(): _choose_mode(SkirmishPolicy.IDS[(SkirmishPolicy.IDS.find(selected_mode)+1)%SkirmishPolicy.IDS.size()]))
+		_add_button("出征", "LaunchMatchButton", _start_match)
+		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "confirm":
 		heading.text = "開始新戰役？"
 		description.text = "目前戰役與教學會重新開始。關閉遊戲不會保留戰役。"
-		_add_button("開始新戰役", "ConfirmNewMatchButton", _start_match)
+		_add_button("設定新戰役", "ConfirmNewMatchButton", func(): _show_page("setup"))
 		_add_button("保留目前戰役", "CancelNewMatchButton", func(): _show_page("home"))
 	else:
 		heading.text = "霧谷王旗"
@@ -277,9 +285,9 @@ func _show_page(next_page: String):
 			else:
 				description.text = "戰役已結束。\n查看總結，或再開一局。"
 				_add_button("戰役總結", "MatchReportButton", _review_finished_match)
-			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _start_match())
+			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _show_page("setup"))
 		else:
-			_add_button("開始戰役", "StartMatchButton", _start_match)
+			_add_button("開始戰役", "StartMatchButton", func(): _show_page("setup"))
 		_add_button("教學", "HelpButton", func(): _show_page("help"))
 	_layout()
 	call_deferred("_focus_first_button")
@@ -287,6 +295,14 @@ func _show_page(next_page: String):
 func _focus_first_button():
 	if menu_layer.visible and buttons.get_child_count() > 0:
 		buttons.get_child(0).grab_focus()
+
+func _choose_mode(mode: String):
+	selected_mode=SkirmishPolicy.valid(mode)
+	_show_page("setup")
+
+func _restart_match():
+	if is_instance_valid(match_node): selected_mode=match_node.skirmish_mode
+	_start_match()
 
 func _start_match():
 	if transition_busy: return
@@ -299,8 +315,9 @@ func _replace_match():
 		remove_child(match_node)
 		match_node.queue_free()
 	match_node = MATCH_SCENE.instantiate()
+	match_node.skirmish_mode=selected_mode
 	match_node.main_menu_requested.connect(_open_menu)
-	match_node.restart_requested.connect(_start_match)
+	match_node.restart_requested.connect(_restart_match)
 	add_child(match_node)
 	_release_menu_focus()
 	menu_layer.hide()
@@ -409,7 +426,7 @@ func _cancel_menu_touches():
 func _help_touch(event: InputEvent) -> bool:
 	# Native ScrollContainer dragging uses mouse events. Keep the game's
 	# mouse-from-touch emulation disabled and own only this reading area.
-	if page != "help": return false
+	if page not in ["help","setup"]: return false
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			if event.canceled or touch_blocked or active_touches.size() != 1: return false

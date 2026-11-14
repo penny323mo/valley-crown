@@ -10,14 +10,14 @@ class MenuSourceContract(unittest.TestCase):
         ready = menu.split('func _ready():', 1)[1].split('func _layout', 1)[0]
         self.assertNotIn('instantiate()', ready)
         self.assertEqual(menu.count('MATCH_SCENE.instantiate()'), 1)
-        self.assertIn('"StartMatchButton", _start_match', menu)
+        self.assertIn('"StartMatchButton", func(): _show_page("setup")', menu)
         self.assertIn('call_deferred("_replace_match")', menu)
     def test_pause_and_terminal_wiring(self):
         menu = (ROOT / 'scripts/main_menu.gd').read_text()
         game = (ROOT / 'scripts/game.gd').read_text()
         for token in ['match_node.paused = true', 'Node.PROCESS_MODE_DISABLED', 'match_node.ui.hide()', 'match_node._toggle_pause()', '"CancelNewMatchButton"', 'match_node.game_over: return']:
             self.assertIn(token, menu)
-        for token in ['signal main_menu_requested', 'signal restart_requested', '_button("主選單", _request_main_menu', '_button("再開一局", _request_restart)']:
+        for token in ['signal main_menu_requested', 'signal restart_requested', '_button("主選單", _request_main_menu', '_button("再開一局",_request_restart,110)']:
             self.assertIn(token, game)
     def test_small_viewport_geometry_and_scroll(self):
         menu = (ROOT / 'scripts/main_menu.gd').read_text()
@@ -50,7 +50,7 @@ class MenuSourceContract(unittest.TestCase):
         self.assertIn('maxf(bar.min_value, bar.max_value - bar.page)',menu)
         self.assertIn('if _help_touch(event): get_viewport().set_input_as_handled()',menu)
         self.assertIn('prose_touch = -1',menu)
-        self.assertIn('if page != "help": return false',menu)
+        self.assertIn('if page not in ["help","setup"]: return false',menu)
         self.assertIn('pointing/emulate_mouse_from_touch=false',(ROOT / 'project.godot').read_text())
         self.assertIn('snapshot["help_scroll"]',menu)
         self.assertIn('help_tail.get_global_rect()',menu)

@@ -1,5 +1,5 @@
 {
-  "build": "vc-082afef9b546",
+  "build": "vc-2a34660346e1",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -29,7 +29,7 @@
     "assets/fonts/menu_title_tc.otf.import": "c367b16fef41c41b4fd92804611683295d31c7c1064be22f011edce2954ab4c9",
     "assets/fonts/title.ttf": "8cb29f7db250ebb2551a6ce2c1e0bfd5a0eb520e9e233370db0493e82e1f36f7",
     "assets/fonts/title.ttf.import": "8a2281e6016912982b268a31ecd179e7c0918500bfddd5d7bd7e9e16b9800b3c",
-    "assets/fonts/ui_tc.otf": "0ea1b70d548d5e63d839aeedd56eb6a1c348f9b0653f30b2b31d8608cee4fb05",
+    "assets/fonts/ui_tc.otf": "c3ae87db66d8fc6a796df7201689416dc96b162f80187d59e0170f9269370c69",
     "assets/fonts/ui_tc.otf.import": "6c6eadb81e995f7d386286402e41759ed2c50267bf9932fe0a8e45a2807a52d1",
     "assets/mature/menu/menu_backdrop.gdshader": "a68c2f95c5e362585e9aca3a1402fdd84c2bb93ba8a858e2c06a16776bd50cf8",
     "assets/mature/menu/valley_crown_mark.svg": "5f5882dfb8542d687992308f504e318f55667c66c56141c6aead717c475ab957",
@@ -140,13 +140,13 @@
     "scripts/faction_view.gd.uid": "adb9a1738643106ae9a9aee52e124cea5e0ac6aa180fd2af1c9fc5a57d9e5247",
     "scripts/faction_work_memory.gd": "a223ca640285a950e0a1524fb00b100e3c9b022aec5ec8d65fc9a20e99a51100",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
-    "scripts/game.gd": "84ff59ff027906ce68ee72a47cbd76a8d568b870289194d3c9db9f94c3a8b9ac",
+    "scripts/game.gd": "39b36993ec5d9cf0309aa48bdcce7706e149f4b69888624e065f9e58d01a7fbf",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/idle_worker_selection.gd": "aa7c8b804c7449409ec852bf290c7240321d3f2174b8d65bc6d75f1d7133c619",
-    "scripts/main_menu.gd": "d6b1b08f62b59774e366ffd78c236e32873c583c0a36fdbfa8c265670c304be8",
+    "scripts/main_menu.gd": "6df5f5f520d8b5b2837077a57b257f696196c605c9b8954b2d9231573df73869",
     "scripts/map_routes.gd": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
     "scripts/map_routes.gd.uid": "f4e1cdbff702603f0496ccad8079b45832556bce365f5d59c6b8668058499f3c",
-    "scripts/match_report.gd": "1fbf753eb792a23cff75f5c4d54124aaeb0e48b8888384c85488da7a2d3a5f2a",
+    "scripts/match_report.gd": "2b59d7d5db75ad88c8e968e79f1e337f39f862a837a7d00daa153484b258586c",
     "scripts/mature_world_visuals.gd": "12097d9ef1d316834da3a687b70621d371db111979fc0add6641a5ab86f052c5",
     "scripts/mature_world_visuals.gd.uid": "4129f1ef603ef8a0925ed5388bcc4d6cade6fe489ac15454abcabcd40108201a",
     "scripts/minimap.gd": "1aae8d34717bc7c6106910a42e7c6f620d3c49d621a820d03a0661b6634efcda",
@@ -160,8 +160,9 @@
     "scripts/remembered_material.gd": "e8260500484e9222cf4475c3d353f5e27f07955ca5293f64cb0afa42177abd6e",
     "scripts/resource_visuals.gd": "6b984c91e1a7277b6544fc80a01886a7f42161d7441e43493f32800a2fc91e29",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "6f04f2304c935ffd95508a857320c02393339c0bfef22389c7fa8f977102dcc5",
+    "scripts/rules.gd": "3698e167df76865496e41c822cfaf08f71caee9e86518cb7de39f975b1ffec9c",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
+    "scripts/skirmish_policy.gd": "ba4fe7d2661de3b3749ef51d603a98409876965289a1a3d5d77df7aca0345cc5",
     "scripts/squad_selection.gd": "82e1e197d4135d37852771935d185105f1674091a667188696960be77c7387b1",
     "scripts/worker_idle_status.gd": "d99bf87d3d86c48df14813a47f0ad9d1cc2baf473d0fbf36c53d5b0554b4d236"
   }

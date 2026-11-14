@@ -76,6 +76,7 @@ static func page_text(report: Dictionary,page: String) -> String:
 			lines.append("%s　%d／%d" % [Rules.NAMES[kind],report.completed.get(kind,0),report.building_losses.get(kind,0)])
 		lines.append("完工不含開局建築；戰損含遭摧毀的工地，不含取消或自行拆除。")
 	else:
+		lines.append("戰役模式　"+preload("res://scripts/skirmish_policy.gd").title(report.get("skirmish_mode","standard")))
 		lines.append("戰役歷時　"+time_label(report.tick))
 		lines.append("城防時代　"+(time_label(report.age_tick) if report.age_tick>=0 else "未完成研究"))
 		var production=0

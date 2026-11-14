@@ -275,7 +275,11 @@ var traffic_priority_order=[]
 var traffic_tick_segments={}
 
 
+const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
+var skirmish_mode="standard"
+
 func _ready():
+	skirmish_mode=SkirmishPolicy.valid(skirmish_mode)
 	_sync_web_display_scale()
 	audio_cues=preload("res://scripts/audio_cues.gd").new(); add_child(audio_cues)
 	_reset_economy(INITIAL_STOCKS)
@@ -2475,6 +2479,7 @@ func _check_end():
 	outcome="draw" if player_lost==enemy_lost else ("defeat" if player_lost else "victory")
 	victory=outcome=="victory"
 	last_match_report=match_report.make_report(outcome,end_reason,tick_count,age_completed_tick[0],economy.stats_view(0),economy.bank_milli(0))
+	last_match_report.skirmish_mode=skirmish_mode
 	commands.clear(); _cancel_mode()
 	if is_instance_valid(end_panel):
 		end_title.text={"victory":"王旗再起","defeat":"聚落失守","draw":"戰事暫歇"}[outcome]
@@ -2825,6 +2830,9 @@ func _ai_army(records,castle):
 			if ent.state!="attack" or ent.target!=threat.id: _submit("order",{"ids":[ent.id],"target":threat.id,"position":threat.pos},1)
 		if not ai_raid_members.is_empty(): ai_raid_retreating=true
 		ai_status.army="home_defense"; return
+	if not SkirmishPolicy.offensive(skirmish_mode):
+		_ai_move_home(army,castle)
+		ai_status.army="defensive_practice"; return
 	if not ai_raid_members.is_empty():
 		var near_keep=false
 		for ent in survivors:
@@ -2856,7 +2864,7 @@ func _ai_army(records,castle):
 	var mustered=[]
 	for ent in army:
 		if ent.state=="idle" and _attack_distance(ent.pos,castle)<=3.0: mustered.append(ent)
-	if mustered.size()>=5 and not enemy_keep.is_empty() and tick_count-ai_last_raid_tick>=AI_RAID_INTERVAL_TICKS:
+	if mustered.size()>=SkirmishPolicy.muster(skirmish_mode) and not enemy_keep.is_empty() and tick_count-ai_last_raid_tick>=SkirmishPolicy.interval(skirmish_mode):
 		ai_raid_members.clear()
 		for ent in mustered: ai_raid_members.append(ent.id)
 		ai_raid_departure_count=mustered.size(); ai_raid_keep=enemy_keep.duplicate(true); ai_last_raid_tick=tick_count; ai_raids+=1
@@ -2865,7 +2873,7 @@ func _ai_army(records,castle):
 	for ent in army:
 		if ent.kind=="scout" and enemy_keep.is_empty(): _ai_scout(ent)
 		else: _ai_move_home([ent],castle)
-	ai_status.army="unknown_enemy_keep" if enemy_keep.is_empty() else ("muster_below_five" if mustered.size()<5 else "raid_cooldown")
+	ai_status.army="unknown_enemy_keep" if enemy_keep.is_empty() else ("muster_below_five" if mustered.size()<SkirmishPolicy.muster(skirmish_mode) else "raid_cooldown")
 
 func _ai_terminal_site_owner(owner,site):
 	# A completed STATIC frontier for this exact current build command only.
@@ -3280,7 +3288,7 @@ func _create_ui():
 	hud_top=PanelContainer.new(); hud_top.name="CompactResourceBar"; ui.add_child(hud_top); hud_top.add_theme_stylebox_override("panel",_compact_panel_style())
 	compact_top_stack=VBoxContainer.new(); compact_top_stack.add_theme_constant_override("separation",3); hud_top.add_child(compact_top_stack)
 	compact_top_line=HBoxContainer.new(); compact_top_line.add_theme_constant_override("separation",10); compact_top_stack.add_child(compact_top_line)
-	compact_brand=_label("霧谷王旗",13,GOLD); compact_brand.tooltip_text=Rules.BUILD_ID; compact_top_line.add_child(compact_brand)
+	compact_brand=_label(SkirmishPolicy.title(skirmish_mode),13,GOLD); compact_brand.tooltip_text=Rules.BUILD_ID+" · "+SkirmishPolicy.title(skirmish_mode); compact_top_line.add_child(compact_brand)
 	top_resources=_label("",16); top_resources.size_flags_horizontal=Control.SIZE_EXPAND_FILL; compact_top_line.add_child(top_resources)
 	time_label=_label("",14); compact_top_line.add_child(time_label)
 	pause_button=_button("暫停",func(): _toggle_pause(),60); compact_top_line.add_child(pause_button)
@@ -3490,6 +3498,7 @@ func _update_hud():
 	if compact_ui and get_viewport().get_visible_rect().size.x<480:
 		top_resources.text="食 %d  木 %d  人口 %d/%d\n石 %d  鐵 %d  %s" % [display_bank.food,display_bank.wood,_population(0),_capacity(0),display_bank.stone,display_bank.iron,"城防時代" if _age2(0) else "聚落時代"]
 	time_label.text="%02d:%02d" % [floori(game_time/60),int(game_time)%60]
+	time_label.tooltip_text=SkirmishPolicy.title(skirmish_mode)
 	pause_button.text="繼續" if paused else "暫停"
 	mission_label.text=("城防時代：建馬廄出騎兵，建工坊出攻城車，摧毀敵方主堡。" if _age2(0) else "聚落時代：採鐵，於主堡研究城防時代，解鎖騎兵與攻城車。")
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
