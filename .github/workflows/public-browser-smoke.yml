@@ -26,7 +26,7 @@ jobs:
           import {chromium} from 'playwright';
           import fs from 'node:fs/promises';
           const out=process.env.WORK+'/evidence';
-          const target='https://penny323mo.github.io/valley-crown/builds/vc-c06b349e87da/';
+          const target='https://penny323mo.github.io/valley-crown/builds/vc-35ac50658b60/';
           const report={target,started:new Date().toISOString(),sandbox:true,passed:false,interacted:false};
           let browser;
           const timer=setTimeout(()=>process.exit(124),75000);
@@ -53,6 +53,9 @@ jobs:
             await page.screenshot({path:out+'/pressure-mode.png'});
             await page.mouse.click(640,609); await page.waitForTimeout(8000);
             await page.screenshot({path:out+'/battlefield.png'});
+            await page.mouse.click(314,763); await page.waitForTimeout(500);
+            await page.mouse.click(754,410); await page.waitForTimeout(2000);
+            await page.screenshot({path:out+'/scout-actions.png'});
             report.interacted=true;report.actions=['Start campaign','Cycle mode once','Launch match'];
             report.passed=report.webgl.available&&report.status===200&&!report.body.includes('WebGL2');
           } catch(e) {report.error=String(e);} finally {
