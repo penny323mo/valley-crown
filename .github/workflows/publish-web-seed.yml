@@ -22,18 +22,31 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - name: Restore exact site from durable Release archives, never Actions
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: python3 scripts/verify_archived_pages.py | tee seed-restore.log
-      - name: Preserve selected raw seed and independently verify all files
+      - name: Restore pinned current candidate from durable archive and seed it
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          work="$(sed -n 's/^Site data preserved at: //p' seed-restore.log)"
-          test -d "$work/site/builds/vc-e34dd7caadc3"
-          python3 scripts/publish_web_seed.py --build vc-e34dd7caadc3 --directory "$work/site/builds/vc-e34dd7caadc3"
+          python3 - <<'PY'
+          import sys,json,pathlib,hashlib,os
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          build='vc-f1e2c2c574da'
+          row=next(r for r in json.loads(pathlib.Path('release-history/VERIFIED_CANDIDATE_ARCHIVES.json').read_text())['artifacts'] if r['build']==build)
+          if os.environ.get('LOCAL_ZIP'):
+           data=pathlib.Path(os.environ['LOCAL_ZIP']).read_bytes(); files=verified_members(data,row)
+          else:
+           _,data,files=GitHub(os.environ['GITHUB_REPOSITORY']).ensure(row,create=False)
+          m=json.loads(files['candidate-metadata.json']); root=pathlib.Path('seed-current'); root.mkdir(exist_ok=True)
+          for name,data in files.items():
+           for prefix in ('artifacts/clean-a/','notices/'):
+            if name.startswith(prefix):
+             p=root/name[len(prefix):]; p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+          manifest={'build':build,'source_commit':m['source_commit'],'export_run':m['export_run'],'files_sha256':{p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()},'browser_acceptance':'not performed; owner requested immediate deployment','single_threaded':True}
+          (root/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n'); (root/'.nojekyll').touch()
+          catalog={'files':{'builds/'+build+'/'+p.relative_to(root).as_posix():{'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in root.rglob('*') if p.is_file()}}
+          pathlib.Path('seed-current-catalog.json').write_text(json.dumps(catalog,indent=2)+'\n')
+          PY
+          python3 scripts/publish_web_seed.py --build vc-f1e2c2c574da --directory seed-current --catalog seed-current-catalog.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: verified-raw-web-seed-${{ github.run_id }}
