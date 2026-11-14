@@ -118,6 +118,7 @@ class PackageTests(unittest.TestCase):
             if suite=='normal_probe':line='NORMALS_PASS 3'
             if suite=='skirmish_policy_contract':line='SKIRMISH 17/17'
             if suite in latest.ARMY_CONTRACTS:line=json.dumps({'suite':latest.ARMY_CONTRACTS[suite]['suite'],'checks':[{'name':n,'passed':True} for n in latest.ARMY_CONTRACTS[suite]['names']],'failed':0})
+            if 'identity' in latest.ARMY_CONTRACTS.get(suite,{}):d=json.loads(line);d.update(latest.ARMY_CONTRACTS[suite]['identity']);line=json.dumps(d)
             if 'scope' in latest.ARMY_CONTRACTS.get(suite,{}):d=json.loads(line);d['scope']=latest.ARMY_CONTRACTS[suite]['scope'];line=json.dumps(d)
             if suite=='army_formation_integration':d=json.loads(line);d['scope']='Controlled actual game handlers; not natural battle or rendered acceptance';line=json.dumps(d)
             if suite in latest.INPUT_CONTRACTS:line=latest.INPUT_CONTRACTS[suite]['prefix']+' '+json.dumps([{'name':n,'passed':True} for n in latest.INPUT_CONTRACTS[suite]['names']])
