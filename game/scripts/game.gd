@@ -88,6 +88,8 @@ var repair_dispatch_button: Button
 const ProductionOverview=preload("res://scripts/production_overview.gd")
 var production_buttons={}
 var production_cursor={}
+const IdleGatherDispatch=preload("res://scripts/idle_gather_dispatch.gd")
+var idle_dispatch_buttons={}
 const WorkforceOverview=preload("res://scripts/workforce_overview.gd")
 var workforce_buttons={}
 var workforce_label: Label
@@ -699,6 +701,12 @@ func _execute(command):
 				if retreat_orders.size()!=1 or retreat_orders[0].retreat_base!=command.get("retreat_base",-1) or retreat_orders[0].position!=command.get("position",Vector3.INF):return
 				var wounded=_get_entity(command.ids[0]);var home=_get_entity(command.retreat_base)
 				if wounded.is_empty() or not wounded.alive or wounded.team!=0 or wounded.hp>=wounded.max_hp or home.is_empty() or not home.alive or not home.built or home.team!=0:return
+			if command.has("idle_gather"):
+				if typeof(command.idle_gather)!=TYPE_STRING or command.idle_gather not in ["food","wood","stone","iron"] or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
+				var gather_worker=_get_entity(command.ids[0])
+				if gather_worker.is_empty() or gather_worker.team!=0 or not gather_worker.alive or gather_worker.kind!="villager" or gather_worker.state!="idle" or not gather_worker.path.is_empty() or gather_worker.get("path_pending",false) or _cargo_amount(gather_worker)>0:return
+				if target.is_empty() or target.category!="resource" or IdleGatherDispatch.TYPES.get(target.kind,"")!=command.idle_gather or economy.node_view(target.id).remaining_milli<=0:return
+				if IdleGatherDispatch.threatened(target.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(gather_worker.pos,faction_views[0].records()):return
 			# A deliberate work retry must not steal a new job or degrade to MOVE.
 			if command.has("retry_gather"):
 				if typeof(command.retry_gather)!=TYPE_BOOL or not command.retry_gather or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
@@ -3479,6 +3487,14 @@ func _create_ui():
 		var resource_button=_button("",func(): _select_workforce(resource_kind),112)
 		resource_button.name="Workforce_"+resource; resource_button.tooltip_text="選取分配於此資源的村民（包括來回運送），再點其他資源即可改派。人數不是每秒產量。"
 		workforce_row.add_child(resource_button); workforce_buttons[resource]=resource_button
+	var dispatch_help=_label("快捷派工 · 每次最多 3 名空手閒置村民",13)
+	dispatch_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(dispatch_help)
+	var dispatch_row=HFlowContainer.new();dispatch_row.add_theme_constant_override("h_separation",6);dispatch_row.add_theme_constant_override("v_separation",6);menu_box.add_child(dispatch_row)
+	for resource in WorkforceOverview.RESOURCES:
+		var kind=resource
+		var dispatch=_button("",func():_dispatch_idle_gather(kind),140)
+		dispatch.name="IdleDispatch_"+resource;dispatch.tooltip_text="只派空手待命村民到最近可見、沒有已知敵人附近的資源點。不搶工作或搬運；路線仍可能受阻。"
+		dispatch_row.add_child(dispatch);idle_dispatch_buttons[resource]=dispatch
 	var production_help=_label("生產總覽 · 點按輪流前往同類建築",13)
 	production_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(production_help)
 	for production_kind in ProductionOverview.KINDS:
@@ -5261,6 +5277,7 @@ func _bind_squad_button(button,ids,blocked):
 func _refresh_squad_buttons():
 	_refresh_production_buttons()
 	_refresh_workforce_buttons()
+	_refresh_idle_dispatch_buttons()
 	_refresh_idle_army_button()
 	if squad_buttons.size()!=SquadSelection.SLOT_COUNT: return
 	var records=faction_views[0].records()
@@ -5992,3 +6009,23 @@ func _clear_build_site():
 	_cancel_pointer_streams()
 	for order in plan:_submit("order",order)
 	_refresh_clear_site_button()
+
+func _refresh_idle_dispatch_buttons():
+	# Resource/threat scans are needed only while this menu is visible.
+	if not is_instance_valid(compact_menu) or not compact_menu.visible:return
+	for resource in idle_dispatch_buttons:
+		var button=idle_dispatch_buttons[resource]
+		var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource)
+		_bind_squad_button(button,orders,not _squad_actions_available())
+		button.text="派 %d 人採%s" % [orders.size(),Rules.RESOURCE_NAMES[resource]]
+func _dispatch_idle_gather(resource):
+	if not _squad_actions_available() or not compact_menu.visible or not idle_dispatch_buttons.has(resource):return
+	var button=idle_dispatch_buttons[resource]
+	var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource)
+	if button.disabled or orders.is_empty() or orders!=button.get_meta("squad_ids",[]):
+		_refresh_idle_dispatch_buttons();return
+	_cancel_pointer_streams()
+	for order in orders:_submit("order",order)
+	compact_menu.hide();compact_menu_dismiss.hide()
+	_refresh_idle_dispatch_buttons()
+	_message("已下達 %d 名閒置村民採%s指令；需沿可通行路線前往。" % [orders.size(),Rules.RESOURCE_NAMES[resource]],3)
