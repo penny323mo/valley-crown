@@ -31,7 +31,7 @@ jobs:
           let browser;
           const timer=setTimeout(()=>process.exit(124),330000);
           try {
-            browser=await chromium.launch({executablePath:'/opt/google/chrome/chrome',headless:true,chromiumSandbox:true,timeout:15000,ignoreDefaultArgs:['--enable-unsafe-swiftshader','--unsafely-disable-devtools-self-xss-warnings','--disable-ipc-flooding-protection']});
+            browser=await chromium.launch({executablePath:'/opt/google/chrome/chrome',headless:true,chromiumSandbox:true,timeout:30000,ignoreDefaultArgs:['--enable-unsafe-swiftshader','--unsafely-disable-devtools-self-xss-warnings','--disable-ipc-flooding-protection']});
             report.version=browser.version();
             const session=await browser.newBrowserCDPSession();
             report.commandLine=await session.send('Browser.getBrowserCommandLine');
