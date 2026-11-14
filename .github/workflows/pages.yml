@@ -433,6 +433,46 @@ jobs:
           pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-08e7cfdf004a/"><a href="../builds/vc-08e7cfdf004a/">進入遊戲</a>')
           print('Verified current build and all preserved historical routes')
           PYNEW
+      - name: Download exact vc-c06b349e87da product artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '14096485100'
+          run-id: '43550600477'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: army-product
+          merge-multiple: true
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('army-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='8416a410da3c62280e3e2aafd9879df654b176257e66fb7e7205c9fc061b8af4'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-c06b349e87da' and m['source_commit']=='84721b66ad19c7739383b15502bb60e2a8e4e11b'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-c06b349e87da')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-c06b349e87da/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-c06b349e87da/"><a href="../builds/vc-c06b349e87da/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         with:
