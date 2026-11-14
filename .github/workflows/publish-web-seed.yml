@@ -30,7 +30,7 @@ jobs:
           import sys,json,pathlib,hashlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,verified_members
-          build='vc-801ee943deba'
+          build='vc-e8b25174bddf'
           row=next(r for r in json.loads(pathlib.Path('release-history/VERIFIED_CANDIDATE_ARCHIVES.json').read_text())['artifacts'] if r['build']==build)
           if os.environ.get('LOCAL_ZIP'):
            data=pathlib.Path(os.environ['LOCAL_ZIP']).read_bytes(); files=verified_members(data,row)
@@ -46,7 +46,7 @@ jobs:
           catalog={'files':{'builds/'+build+'/'+p.relative_to(root).as_posix():{'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.rglob('*')) if p.is_file()}}
           pathlib.Path('seed-current-catalog.json').write_text(json.dumps(catalog,indent=2)+'\n')
           PY
-          python3 scripts/publish_web_seed.py --build vc-801ee943deba --directory seed-current --catalog seed-current-catalog.json
+          python3 scripts/publish_web_seed.py --build vc-e8b25174bddf --directory seed-current --catalog seed-current-catalog.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: verified-raw-web-seed-${{ github.run_id }}
