@@ -659,6 +659,7 @@ func _tick(dt):
 		var target=_get_entity(id)
 		if not target.is_empty() and target.alive:
 			_record_damage_feedback(target,pending_damage[id])
+			if target.team==1 and pending_damage[id]>0 and _visible_to(target,0): demo_tutorial.record("combat")
 			target.hp-=pending_damage[id]; target.last_damage_tick=tick_count
 			battle_alerts.record_hit(target,pending_damage[id],tick_count)
 			match_report.record_settled_loss(target,pending_damage[id])
@@ -1195,6 +1196,7 @@ func _try_ready_production(ent):
 		ent.queue.pop_front(); progress_serial+=1
 		if order.kind=="age2":
 			age_completed_tick[ent.team]=tick_count
+			if ent.team==0: demo_tutorial.record("age2")
 			if ent.team==0: _message("城防時代研究完成。下一步可建馬廄與工坊。",6)
 		elif order.kind in Rules.MILITARY_TECHS:
 			military_tech_completed[ent.team][order.kind]=tick_count
@@ -1220,6 +1222,7 @@ func _try_ready_production(ent):
 	if ent.has("rally_point"): _apply_newborn_rally(unit,ent)
 	trained_total[ent.team]+=1
 	match_report.record_training(unit)
+	if ent.team==0 and order.kind in ["cavalry","siege"]: demo_tutorial.record("advanced_unit")
 	if ent.team==0 and order.kind in ["spearman","archer"]: demo_tutorial.record("soldier")
 	if ent.team==0: _message(Rules.NAMES[order.kind]+"已準備好。",2.5)
 	if ent.team==1 and unit.kind=="villager" and not ent.has("rally_point"): _assign_worker(unit)
@@ -2514,6 +2517,7 @@ func _update_unit(ent,dt):
 						# An earlier player command already replaced build before here.
 						if registered.ok: _order(ent,"gather",target.id)
 					if target.team==0 and not receipt_id.is_empty() and target.kind in ["house","barracks"]: demo_tutorial.record(target.kind)
+					if target.team==0 and not receipt_id.is_empty() and target.kind in ["stable","workshop"]: demo_tutorial.record("advanced_building")
 					if ent.team==0: _message(Rules.NAMES[target.kind]+"建造完成。",3)
 
 func _kill(ent):
@@ -5478,7 +5482,7 @@ func _refresh_tutorial():
 	if not is_instance_valid(tutorial_panel): return
 	tutorial_panel.visible=not demo_tutorial.skipped and not game_over and not compact_menu.visible
 	tutorial_label.text=demo_tutorial.text(paused)
-	tutorial_skip.text="收起" if demo_tutorial.step()==6 else "跳過"
+	tutorial_skip.text="收起" if demo_tutorial.step()==demo_tutorial.KEYS.size() else "跳過"
 
 func _layout_tutorial():
 	if not is_instance_valid(tutorial_panel): return
