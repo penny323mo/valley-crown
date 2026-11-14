@@ -121,7 +121,7 @@
   "tests/economy_ledger_contract.gd": "d923b646c9188533b814548b4ade48c64c9b0b35bafbb87ae82f438b5bfc8d0c",
   "tests/army_formation_integration.gd": "f638b41d55530a9c112d43116c660c8699dd903026d9ec1a12e556b221055d50",
   "tests/archer_site_inspection_contract.gd": "715bdf63cc0ba5d3184272b3ed8e38dd723a747ee93c5b7d2cb97ca6102c52e5",
-  "tests/placement_sight_contract.gd": "99a466fc2065b93d25a9d9507be03cc98c5a8a6b97021a90879b342b64592b4e",
+  "tests/placement_sight_contract.gd": "7dcaa68c31f0c75bc14d0ce116bb365d98e02c0b1e33ab6a4c6151b89a8f17dd",
   "tests/stance_target_cancel_contract.gd": "11389c635380c1ce6b06253a88ed15232ad8e8731dc8e6a7f9901da8299a271d",
   "tests/army_recruitment_integration.gd": "5c57c3b51b965e6c824ee0632c0e6a09bfc8c5bb674ced2d768a92bf2e4b356f",
   "tests/bounded_work_routes.gd.uid": "d6e4b98c0ed6535fc2896768cc646b2f3d0752bc85dee1633bedb8dcb9d5437f",
