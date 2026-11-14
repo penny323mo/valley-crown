@@ -58,6 +58,7 @@ class ModalInputBridge:
 		game._track_pointer_input(event,get_viewport())
 	func _exit_tree():
 		if is_instance_valid(game) and game.is_inside_tree(): game._cancel_pointer_streams()
+const SiegeEffect=preload("res://scripts/siege_effect.gd")
 const ATTACK_EFFECT_SECONDS = 0.12
 const MAX_ATTACK_EFFECTS = 2 * Rules.POP_LIMIT # At most one cue per unit inside the 0.12s lifetime.
 const DamageFeedback=preload("res://scripts/damage_feedback.gd")
@@ -3402,13 +3403,22 @@ func visual_evidence_snapshot() -> Dictionary:
 	return character_presenter.visual_evidence_snapshot()
 
 func _attack_effect(ent,target):
-	if ent.kind not in ["archer","tower"]: return
+	if ent.kind not in ["archer","tower","siege"]: return
 	if not _visible_to(ent,0) or not _visible_to(target,0): return
 	if game_over: return
 	if attack_effects.size()>=MAX_ATTACK_EFFECTS:
 		_discard_attack_effect(0)
-	var beam=Node3D.new(); add_child(beam)
 	var start=ent.pos+Vector3(0,1,0); var finish=target.pos+Vector3(0,0.8,0)
+	if ent.kind=="siege":
+		# Witnessed contact edge, not the occluded center of a building.
+		if target.category=="building":
+			var half=Rules.FOOTPRINT.get(target.kind,3)/2.0+0.15
+			finish=Vector3(clampf(start.x,target.pos.x-half,target.pos.x+half),0.8,clampf(start.z,target.pos.z-half,target.pos.z+half))
+		var cue=SiegeEffect.make(start,finish);add_child(cue)
+		attack_effects.append({"node":cue,"origin":ent.pos,"endpoint":target.pos,
+			"origin_owned":ent.team==0,"endpoint_owned":target.team==0,"age":0.0,"siege":true})
+		return
+	var beam=Node3D.new(); add_child(beam)
 	var direction=finish-start
 	var mesh=BoxMesh.new(); mesh.size=Vector3(0.045,0.045,direction.length())
 	_mesh(beam,mesh,Vector3.ZERO,GOLD if ent.team==0 else RED)
@@ -3438,7 +3448,9 @@ func _update_attack_effects(delta: float,running: bool):
 		if not is_instance_valid(cue.node) or not origin_seen or not endpoint_seen:
 			_discard_attack_effect(i); continue
 		if running: cue.age+=elapsed
-		if cue.age>=ATTACK_EFFECT_SECONDS: _discard_attack_effect(i)
+		var lifetime=SiegeEffect.LIFETIME if cue.get("siege",false) else ATTACK_EFFECT_SECONDS
+		if cue.age>=lifetime: _discard_attack_effect(i)
+		elif cue.get("siege",false): SiegeEffect.present(cue.node,cue.age)
 
 # --- Responsive UI and input. Buttons never mutate economy directly. ---
 func _style(color,border=Color("656653"),radius=5):
