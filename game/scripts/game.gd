@@ -8,6 +8,7 @@ const BattleAlerts = preload("res://scripts/battle_alerts.gd")
 const MatchReport = preload("res://scripts/match_report.gd")
 const SquadSelection = preload("res://scripts/squad_selection.gd")
 const RaidTactics = preload("res://scripts/raid_tactics.gd")
+const ArmyComposition = preload("res://scripts/army_composition.gd")
 const ConstructionStatus = preload("res://scripts/construction_status.gd")
 const MAP_LIMIT = Rules.MAP_WORLD_LIMIT
 const BLUE = Color("435d6c")
@@ -5213,7 +5214,9 @@ func _ai_progression_goal(records: Array,workers: int,capacity: int,committed: i
 	if counts.get("barracks",0)==0: return "barracks"
 	if counts.get("range",0)==0: return "range"
 	if counts.get("spearman",0)+counts.get("archer",0)<4:
-		return "spearman" if counts.get("spearman",0)<=counts.get("archer",0) else "archer"
+		var opening=ArmyComposition.plan(records,["spearman","archer"])
+		ai_status.recruitment=opening
+		return opening.kind
 	# Restore reconnaissance before expensive age progression, after a viable
 	# economy and four defenders. Queued scouts and remembered keeps count.
 	if counts.get("scout",0)==0 and not known_enemy_keep: return "scout"
@@ -5225,12 +5228,9 @@ func _ai_progression_goal(records: Array,workers: int,capacity: int,committed: i
 	if counts.get("siege",0)<2: return "siege"
 	if counts.get("cavalry",0)<4: return "cavalry"
 	if counts.get("scout",0)==0: return "scout"
-	var chosen="spearman"; var lowest=INF
-	for kind in ["spearman","archer","cavalry","siege"]:
-		var target=2.0 if kind=="siege" else 5.0
-		var ratio=counts.get(kind,0)/target
-		if ratio<lowest: lowest=ratio; chosen=kind
-	return chosen
+	var composition=ArmyComposition.plan(records)
+	ai_status.recruitment=composition
+	return composition.kind
 
 func _route_grid(ent: Dictionary) -> AStarGrid2D:
 	var memory=work_memory[ent.team]
