@@ -9,6 +9,7 @@ const BattleAlerts = preload("res://scripts/battle_alerts.gd")
 const MatchReport = preload("res://scripts/match_report.gd")
 const SquadSelection = preload("res://scripts/squad_selection.gd")
 const RaidTactics = preload("res://scripts/raid_tactics.gd")
+const HomeDefense = preload("res://scripts/home_defense.gd")
 const ArmyComposition = preload("res://scripts/army_composition.gd")
 const ConstructionStatus = preload("res://scripts/construction_status.gd")
 const MAP_LIMIT = Rules.MAP_WORLD_LIMIT
@@ -2525,6 +2526,7 @@ const AI_HOME_THREAT_DISTANCE=6.0
 var ai_opening_assigned=false
 var ai_last_raid_tick=-AI_RAID_INTERVAL_TICKS
 var ai_raid_members=[]
+var ai_home_defense_targets={}
 var ai_raid_departure_count=0
 var ai_raid_keep={}
 var ai_raid_retreating=false
@@ -2818,25 +2820,36 @@ func _ai_raid_static_blocked(survivors,records):
 	return true
 
 func _ai_army(records,castle):
-	var army=[]; var enemy_keep={}; var threat={}; var threat_distance=INF
+	var army=[]; var enemy_keep={}
 	for ent in records:
-		if ent.owned and ent.category=="unit" and ent.kind!="villager": army.append(ent)
+		if ent.owned and ent.alive and ent.category=="unit" and ent.kind!="villager": army.append(ent)
 		if ent.team==0 and ent.kind=="town_center" and enemy_keep.is_empty(): enemy_keep=ent
-		if ent.team!=0 or ent.remembered or ent.category!="unit": continue
-		for home in records:
-			if not home.owned or home.category!="building": continue
-			var distance=_attack_distance(ent.pos,home)
-			if distance<=AI_HOME_THREAT_DISTANCE and distance<threat_distance: threat=ent; threat_distance=distance
+	var threats=HomeDefense.threats(records,AI_HOME_THREAT_DISTANCE)
 	var survivors=[]
 	for ent in army:
 		if ent.id in ai_raid_members: survivors.append(ent)
 	if not ai_raid_members.is_empty() and survivors.is_empty(): ai_raid_members.clear(); ai_raid_retreating=false
 	# Visible home defense takes priority over an ongoing offensive order.
-	if not threat.is_empty():
+	if not threats.is_empty():
+		var assignments={}
 		for ent in army:
+			var threat=HomeDefense.choose(ent,threats)
+			if threat.is_empty(): continue
+			assignments[ent.id]=threat.id
 			if ent.state!="attack" or ent.target!=threat.id: _submit("order",{"ids":[ent.id],"target":threat.id,"position":threat.pos},1)
+		ai_home_defense_targets=assignments
 		if not ai_raid_members.is_empty(): ai_raid_retreating=true
 		ai_status.army="home_defense"; return
+	# Cancel only an unchanged defensive target we previously assigned. Once
+	# it leaves the observed home threat zone, do not pursue it across the map.
+	# Retire via ordinary Stop; the next AI turn resumes existing muster/retreat.
+	var released=false
+	for ent in army:
+		if ai_home_defense_targets.get(ent.id,-1)==ent.get("target",-2) and ent.state=="attack" and ent.get("mode","")=="ATTACK":
+			_submit("stop",{"ids":[ent.id]},1); released=true
+	ai_home_defense_targets.clear()
+	if released:
+		ai_status.army="home_defense_released"; return
 	if not SkirmishPolicy.offensive(skirmish_mode):
 		_ai_move_home(army,castle)
 		ai_status.army="defensive_practice"; return
@@ -4665,7 +4678,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 	recovery_ticks=[0,0]; no_progress_ticks=0; progress_serial=0; inactivity_paused=false; future_recovery_events.clear(); end_reason=""
 	_surrender_intent.clear()
 	ai_opening_assigned=false; ai_last_raid_tick=-AI_RAID_INTERVAL_TICKS; ai_raids=0
-	ai_raid_members.clear(); ai_raid_departure_count=0; ai_raid_keep.clear(); ai_raid_retreating=false
+	ai_home_defense_targets.clear(); ai_raid_members.clear(); ai_raid_departure_count=0; ai_raid_keep.clear(); ai_raid_retreating=false
 	ai_scout_attempts.clear(); ai_scout_moves.clear(); ai_claimed_workers.clear(); ai_build_submitted=false; ai_budget.clear(); ai_status.clear(); ai_site_recovery.clear(); owned_motion_witness_tick=-1
 	application_focused=true; application_suspended=false; background_paused=false; discard_return_delta=false; tick_accumulator=0.0
 	for team in 2:
