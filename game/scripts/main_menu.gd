@@ -2,6 +2,9 @@ extends Node
 ## Product entry point. The battlefield does not exist until Start is chosen.
 ## main.tscn remains the explicit battle fixture for simulation tests.
 const MATCH_SCENE = preload("res://main.tscn")
+const FieldManual=preload("res://scripts/field_manual.gd")
+var manual_section=0
+var manual_index=0
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var selected_mode="standard"
 var selected_victory_mode="conquest"
@@ -173,7 +176,7 @@ func _layout():
 	heading.visible = not home
 	mode_title.visible = page == "setup"
 	mode_title.text = "中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode)
-	eyebrow.text = "THE BORDERLANDS  /  01" if home else ("SKIRMISH  /  01" if page == "setup" else "FIELD MANUAL" if page == "help" else "NEW CAMPAIGN")
+	eyebrow.text = "THE BORDERLANDS  /  01" if home else ("SKIRMISH  /  01" if page == "setup" else "FIELD MANUAL" if page in ["help","manual"] else "NEW CAMPAIGN")
 	section_rule.visible = true
 	help_tail.visible = page == "help"
 	footer.visible = home
@@ -295,7 +298,15 @@ func _show_page(next_page: String):
 	if page == "help":
 		heading.text = "教學"
 		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取，再點空地移動或敵軍攻擊；右擊亦可指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
+		_add_button("戰場手冊", "FieldManualButton", func(): _show_page("manual"))
 		_add_button("返回", "BackButton", func(): _show_page("home"))
+	elif page == "manual":
+		var item=FieldManual.entry(manual_section,manual_index)
+		heading.text="%s · %s  %d/%d" % [FieldManual.SECTIONS[manual_section],item.title,item.index+1,item.count]
+		description.text=item.body
+		_add_button("分類："+FieldManual.SECTIONS[manual_section]+" >", "ManualSectionButton", func(): manual_section=(manual_section+1)%3;manual_index=0;_show_page("manual"))
+		_add_button("下一項 >", "ManualNextButton", func(): manual_index=(manual_index+1)%FieldManual.entries(manual_section).size();_show_page("manual"))
+		_add_button("返回教學", "ManualBackButton", func(): _show_page("help"))
 	elif page == "setup":
 		heading.text = "戰役設定"
 		description.text = "霧谷 · 1 對 1 電腦戰\n\n"+SkirmishPolicy.details(selected_mode)
@@ -463,7 +474,7 @@ func _cancel_menu_touches():
 func _help_touch(event: InputEvent) -> bool:
 	# Native ScrollContainer dragging uses mouse events. Keep the game's
 	# mouse-from-touch emulation disabled and own only this reading area.
-	if page not in ["help","setup"]: return false
+	if page not in ["help","setup","manual"]: return false
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			if event.canceled or touch_blocked or active_touches.size() != 1: return false

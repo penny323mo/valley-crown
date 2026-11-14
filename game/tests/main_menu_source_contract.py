@@ -51,7 +51,7 @@ class MenuSourceContract(unittest.TestCase):
         self.assertIn('maxf(bar.min_value, bar.max_value - bar.page)',menu)
         self.assertIn('if _help_touch(event): get_viewport().set_input_as_handled()',menu)
         self.assertIn('prose_touch = -1',menu)
-        self.assertIn('if page not in ["help","setup"]: return false',menu)
+        self.assertIn('if page not in ["help","setup","manual"]: return false',menu)
         self.assertIn('pointing/emulate_mouse_from_touch=false',(ROOT / 'project.godot').read_text())
         self.assertIn('snapshot["help_scroll"]',menu)
         self.assertIn('help_tail.get_global_rect()',menu)
