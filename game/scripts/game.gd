@@ -28,6 +28,11 @@ const ProgressionVisuals = preload("res://scripts/progression_visuals.gd")
 const AdvancedBuildingVisuals = preload("res://scripts/advanced_building_visuals.gd")
 var age_completed_tick=[-1,-1]
 var military_tech_completed=[{},{}]
+const WorkerSafety=preload("res://scripts/worker_safety.gd")
+var worker_safety_enabled=true
+var worker_evacuations={}
+var worker_manual_until={}
+var worker_safety_hits={}
 var large_route_cache=[{},{}]
 const BoundedPath = preload("res://scripts/bounded_grid_pathfinder.gd")
 const WorkPath = preload("res://scripts/bounded_work_routes.gd")
@@ -608,6 +613,7 @@ func _tick(dt):
 	for ent in entities:
 		if ent.alive and ((ent.category=="resource" and economy.node_view(ent.id).remaining_milli<=0) or (ent.category!="resource" and ent.hp<=0)): _kill(ent)
 	_publish_faction_views()
+	_update_worker_safety()
 	_sync_audio()
 	audio_cues.observe(faction_views[0].records(),tick_count,Time.get_ticks_msec())
 	for team in 2:
@@ -1417,6 +1423,11 @@ func _path_state(ent):
 	ent.traffic_replans=0; ent.traffic_last_replan=tick_count; ent.traffic_route=false; ent.work_slot_wait=-1; ent.traffic_path_length=0; ent.traffic_command_origin=ent.pos; ent.traffic_gate_since=-1
 
 func _path_new_command(ent):
+	# Accepted explicit player intents win over evacuation and its old job.
+	if ent.get("kind","")=="villager":
+		worker_evacuations.erase(ent.id)
+		worker_manual_until[ent.id]=tick_count+WorkerSafety.MANUAL_GRACE_TICKS
+		worker_safety_hits[ent.id]=ent.get("last_damage_tick",-1000)
 	_path_state(ent)
 	path_requests.erase(ent.id)
 	ent.path_pending=false; ent.path_status="IDLE"; ent.path_reason=""; ent.path_resolved_goal=Vector3.INF
@@ -2130,7 +2141,12 @@ func _move_unit_phase(ent,dt):
 			return
 		if _move(ent,ent.dest,dt):
 			if ent.mode=="PATROL": _patrol_next_leg(ent)
-			else: _set_stance(ent,"STOP")
+			else:
+				var evacuating=worker_evacuations.has(ent.id) and worker_evacuations[ent.id].epoch==ent.work_epoch
+				_set_stance(ent,"STOP")
+				if evacuating:
+					worker_evacuations[ent.id].epoch=ent.work_epoch
+					ent.mode="MOVE" # Shelter wait must not auto-chase the attacker.
 		return
 	if ent.state=="return":
 		if _move(ent,ent.anchor,dt): ent.state="idle"; ent.mode="DEFEND"
@@ -2408,6 +2424,7 @@ func _update_unit(ent,dt):
 
 func _kill(ent):
 	if not ent.alive: return
+	worker_evacuations.erase(ent.id); worker_manual_until.erase(ent.id); worker_safety_hits.erase(ent.id)
 	ai_scout_moves.erase(ent.id)
 	ent.death_observed_by=[_visible_to(ent,0),_visible_to(ent,1)]
 	if ent.category=="unit" and ent.kind in MatureVisuals.UNIT_KINDS and ent.death_observed_by[0]:
@@ -3573,6 +3590,7 @@ func _update_hud():
 		if not route_failure.is_empty(): status=route_failure
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
 		if ent.owned and _military_attack_bonus(ent.kind,0)>0: selection_detail.text+=" · 軍備攻擊 +%d" % _military_attack_bonus(ent.kind,0)
+		if worker_evacuations.has(ent.id): selection_detail.text+=" · "+_worker_safety_label(ent)
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
 		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / 10" % floori(ent.cargo_milli/1000.0)
 		if ent.built and Rules.PRODUCES.has(ent.kind):
@@ -3591,7 +3609,7 @@ func _update_hud():
 			selection_detail.text=(selection_detail.text+" · " if missing_workers>0 else "")+("%d 村民工作路線停止" % route_failed_workers)
 	var stance_summary=_selection_stance_summary(selection)
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
-	var key=str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
+	var key=str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
 	if key!=action_key: action_key=key; _rebuild_actions(selection)
 	_refresh_return_cargo_button()
@@ -3697,6 +3715,10 @@ func _rebuild_actions(selection):
 				repeat_train_button=_button(("自動訓練"+Rules.NAMES[repeat_product]+"\n每次 "+Rules.cost_label(repeat_product)) if repeat_next!="" else "關閉自動訓練\n保留已付款隊列",func(): _repeat_train_request(ent.id,repeat_generation,repeat_next),160)
 				repeat_train_button.name="RepeatTraining"; repeat_train_button.set_meta("building",ent.id); repeat_train_button.set_meta("generation",repeat_generation)
 				actions.add_child(repeat_train_button)
+			if ent.kind=="town_center":
+				var safety=_button("村民自動避難："+("開" if worker_safety_enabled else "關"),_toggle_worker_safety,200)
+				safety.tooltip_text="採集村民受可見敵人襲擊時撤向附近安全主堡／守望塔；原工作區重新可見且連續安全五秒後回工。新指令優先。"
+				safety.name="WorkerSafety"; actions.add_child(safety)
 			if ent.kind=="town_center" and not _age2(0):
 				var research=_button("城防時代\n"+Rules.cost_label("age2"),func(): _submit("research",{"building":ent.id}),160)
 				research.disabled=_research_pending(0); actions.add_child(research)
@@ -4702,6 +4724,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 		ent.node.queue_free()
 	path_requests.clear(); path_budget_tick=-1; last_path_queries=0; last_path_expansions=0; path_expansion_budget=4096
 	traffic_priority_order.clear(); traffic_tick_segments.clear()
+	worker_evacuations.clear(); worker_manual_until.clear(); worker_safety_hits.clear(); worker_safety_enabled=true
 	entities.clear(); selected.clear(); squad_selection.reset(); idle_worker_cursor=-1; repeat_train_cursor=[0,0]; commands.clear(); next_id=0; tick_count=0; game_time=0
 	attack_ledger=AttackLedger.new(); pending_damage.clear(); battle_alerts.reset(); match_report.reset(); last_match_report={}; end_report_page="overview"
 	command_sequence=0; processed_command_ids.clear(); next_queue_id=0; ready_cursor=-1; spawn_commit_order.clear(); game_over=false; victory=false; outcome=""; paused=false
@@ -5379,3 +5402,72 @@ func _ai_military_research(records: Array,castle: Dictionary,worker_count: int):
 		_submit("military_research",{"building":castle.id,"kind":tech},1)
 		_ai_reserve_budget(tech)
 		return
+
+func _toggle_worker_safety():
+	worker_safety_enabled=not worker_safety_enabled
+	if not worker_safety_enabled: worker_evacuations.clear()
+	action_key=""
+
+func _worker_pending_intent(id):
+	for command in commands:
+		if command.get("team",-1)==0 and (id in command.get("ids",[]) or command.get("builder",-1)==id): return true
+	return false
+
+func _update_worker_safety():
+	if not worker_safety_enabled or paused or game_over: return
+	var records=faction_views[0].records()
+	for record in records.values():
+		if not record.get("owned",false) or not record.get("alive",false) or record.kind!="villager": continue
+		var worker=_get_entity(record.id) # Owned authority only, after observation filter.
+		if _worker_pending_intent(worker.id): continue
+		if worker_evacuations.has(worker.id):
+			var saved=worker_evacuations[worker.id]
+			if worker.work_epoch!=saved.epoch:
+				worker_evacuations.erase(worker.id); continue
+			if worker.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]:
+				worker_evacuations.erase(worker.id); continue # Never reset terminal route budgets.
+			# Require five continuously observed safe seconds after arrival.
+			# Fog is not proof the raider left; it also resets the clear timer.
+			if worker.state!="idle" or worker.last_damage_tick==tick_count or visible_cells[0][_cell_index(saved.origin)]==0 or not WorkerSafety.threats(records,0,worker.pos).is_empty() or not WorkerSafety.threats(records,0,saved.origin).is_empty():
+				saved.safe_since_tick=-1; continue
+			if saved.get("safe_since_tick",-1)<0:
+				saved.safe_since_tick=tick_count; continue
+			if tick_count-saved.safe_since_tick<WorkerSafety.SAFE_TICKS: continue
+			worker_evacuations.erase(worker.id)
+			var resources=_gather_records(0)
+			if resources.has(saved.resource):
+				_order(worker,"gather",saved.resource)
+			elif _cargo_amount(worker)>0:
+				_route_to_dropoff(worker)
+			# A missing/depleted old resource is not permission to discover a
+			# hidden replacement or steal another worker's farm.
+			continue
+		if tick_count<worker_manual_until.get(worker.id,-1) or worker.state not in ["gather","deliver"]: continue
+		if worker.last_damage_tick<=worker_safety_hits.get(worker.id,-1000) or tick_count-worker.last_damage_tick>20: continue
+		worker_safety_hits[worker.id]=worker.last_damage_tick
+		if worker.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: continue
+		var threats=WorkerSafety.threats(records,0,worker.pos)
+		if threats.is_empty(): continue
+		var resource=worker.get("resource_target",-1)
+		if resource<0: continue
+		var resources=_gather_records(0)
+		if not resources.has(resource): continue
+		# Farming has exclusive occupancy; leave it to explicit player orders
+		# rather than release and later take somebody else's work slot.
+		if resources[resource].get("kind","")=="farm": continue
+		for refuge in WorkerSafety.refuges(records,record):
+			var away=(refuge.pos-worker.pos).normalized()
+			var destination=_nearest_free(refuge.pos+away*(refuge.radius+1.0),3,0,worker)
+			if destination==Vector3.INF or destination.distance_to(worker.pos)<1.0 or not WorkerSafety.threats(records,0,destination).is_empty(): continue
+			_order_move(worker,destination)
+			worker_evacuations[worker.id]={"epoch":worker.work_epoch,"resource":resource,"origin":resources[resource].pos}
+			_message("採集村民遇襲，正撤往安全據點；安全後自動回工。",3)
+			break
+
+func _worker_safety_label(record):
+	var saved=worker_evacuations.get(record.id,{})
+	if saved.is_empty(): return ""
+	if record.state=="move": return "自動避難中"
+	if visible_cells[0][_cell_index(saved.origin)]==0: return "等待原工作區重新可見"
+	if saved.get("safe_since_tick",-1)<0: return "等待威脅離開"
+	return "安全確認 %d / 5 秒" % mini(5,int((tick_count-saved.safe_since_tick)/20))
