@@ -1,0 +1,42 @@
+name: Preserve verified raw Web seed for independent host
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/publish_web_seed.py
+      - .github/workflows/publish-web-seed.yml
+permissions:
+  contents: read
+concurrency:
+  group: durable-web-seed
+  cancel-in-progress: false
+jobs:
+  seed:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Restore exact site from durable Release archives, never Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: python3 scripts/verify_archived_pages.py | tee seed-restore.log
+      - name: Preserve selected raw seed and independently verify all files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          work="$(sed -n 's/^Site data preserved at: //p' seed-restore.log)"
+          test -d "$work/site/builds/vc-e34dd7caadc3"
+          python3 scripts/publish_web_seed.py --build vc-e34dd7caadc3 --directory "$work/site/builds/vc-e34dd7caadc3"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: verified-raw-web-seed-${{ github.run_id }}
+          path: web-seed-report.json
+          retention-days: 30
+          if-no-files-found: error
