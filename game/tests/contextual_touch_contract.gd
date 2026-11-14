@@ -47,7 +47,8 @@ func _initialize():
 	g.build_mode=""; g.touch_command=true; g.picked=3; g._tap(Vector2.ZERO,true)
 	check("explicit targeting still targets friendly building",g.sent.size()==5 and g.sent[-1].target==3 and g.selected==[1])
 	g.touch_command=false; g.picked=-1; g._tap(Vector2.ZERO,false)
-	check("desktop empty left click remains selection",g.sent.size()==5 and g.selected.is_empty())
+	check("desktop empty left click issues contextual move",g.sent.size()==6 and g.selected==[1] and g.sent[-1].target==-1)
+	g.sent.pop_back(); g.selected=[]
 	for invalid in [{"alive":false},{"owned":false},{"team":1},{"category":"building"},{"remembered":true}]:
 		var record=worker.duplicate(); record.merge(invalid,true); g.faction_views[0].current[1]=record; g.selected=[1,999]
 		g._tap(Vector2.ZERO,true)

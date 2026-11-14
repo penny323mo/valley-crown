@@ -260,7 +260,7 @@ func _show_page(next_page: String):
 		child.queue_free()
 	if page == "help":
 		heading.text = "教學"
-		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指平移；雙指縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取、右擊指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
+		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取，再點空地移動或敵軍攻擊；右擊亦可指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
 		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "confirm":
 		heading.text = "開始新戰役？"

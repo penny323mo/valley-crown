@@ -106,6 +106,9 @@ var box_select_mode=false
 var touch_box_index=-1
 var touch_box_origin=Vector2.ZERO
 var touch_box_active=false
+const TOUCH_HOLD_MSEC=350
+var touch_hold={}
+var touch_box_automatic=false
 # Preserve raw crossing samples only while this mode owns pointer intent.
 var box_input_accumulation_owned=false
 var box_previous_input_accumulation=true
@@ -3294,7 +3297,7 @@ func _create_ui():
 	var action_line=HBoxContainer.new(); action_line.add_theme_constant_override("separation",10); action_scroll.add_child(action_line)
 	actions=HBoxContainer.new(); actions.add_theme_constant_override("separation",8); action_line.add_child(actions)
 	compact_unit_tools=HBoxContainer.new(); compact_unit_tools.add_theme_constant_override("separation",8); command_row.add_child(compact_unit_tools); command_row.move_child(compact_unit_tools,0)
-	touch_button=_button("指令",_toggle_unit_command,54); compact_unit_tools.add_child(touch_button)
+	touch_button=_button("指定",_toggle_unit_command,54); compact_unit_tools.add_child(touch_button)
 	compact_cancel_button=_button("取消",func(): _cancel_mode(),54); compact_unit_tools.add_child(compact_cancel_button)
 	compact_menu_dismiss=Control.new(); compact_menu_dismiss.name="MenuDismissShield"; compact_menu_dismiss.mouse_filter=Control.MOUSE_FILTER_STOP; compact_menu_dismiss.gui_input.connect(_dismiss_compact_menu_input); ui.add_child(compact_menu_dismiss); compact_menu_dismiss.hide()
 	compact_menu=PanelContainer.new(); compact_menu.name="ShortcutMenu"; ui.add_child(compact_menu); compact_menu.add_theme_stylebox_override("panel",_style(Color("1d241ef5")))
@@ -3493,7 +3496,7 @@ func _update_hud():
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: time_label.text+=" · 和局 %ds" % ceili(Rules.TIME_LIMIT-game_time)
-	touch_button.text=("巡邏中" if unit_command_kind=="patrol" else ("前進中" if unit_command_kind=="advance" else "指令中")) if touch_command else "指令"
+	touch_button.text=("巡邏中" if unit_command_kind=="patrol" else ("前進中" if unit_command_kind=="advance" else "指定中")) if touch_command else "指定"
 	var selection=[]
 	for id in selected:
 		var ent=faction_views[0].get_record(id)
@@ -3570,8 +3573,8 @@ func _update_hud():
 		elif has_unit and compact_ui:
 			selection_detail.text+=" · 點空地移動／敵軍攻擊／資源採集"
 	if build_mode.is_empty():
-		help_label.text="點選單位，再點空地移動、敵軍攻擊或資源採集。單指滑動平移，雙指縮放。窄畫面可左右滑動底列，查看全部行動。" if compact_ui else "左鍵選取／框選 · 右鍵落指令 · WASD／方向鍵平移 · 滾輪縮放 · 空白鍵返回主堡"
-		if touch_command: help_label.text="指令模式：點擊地面、資源或可見敵軍。取消可返回選取。"
+		help_label.text="點選單位，再點空地移動、敵軍攻擊或資源採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。窄畫面可左右滑動底列，查看全部行動。" if compact_ui else "左鍵選取／框選，再點目標落指令 · 右鍵亦可落指令 · WASD／方向鍵平移 · 滾輪縮放 · 空白鍵返回主堡"
+		if touch_command: help_label.text="指定目標：點擊地面、資源或可見敵軍；一般移動和攻擊毋須按此鈕。"
 	else:
 		var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
 		help_label.text=("位置已選，按確認建造；點空地可重選。" if build_preview_held else "點選空地作預覽，再按確認建造。") if reason.is_empty() else "不可建造："+reason
@@ -3923,7 +3926,19 @@ func _exit_tree():
 		JavaScriptBridge.eval("if(window.valleyTouchCancelHandler){window.removeEventListener('touchcancel',window.valleyTouchCancelHandler,true);delete window.valleyTouchCancelHandler;}delete window.valleyTouchCancel;")
 	web_touch_cancel_callback=null
 
+func _touch_hold_clock():
+	return Time.get_ticks_msec()
+
+func _clear_touch_hold():
+	if not touch_hold.is_empty(): _restore_box_input_accumulation()
+	touch_hold.clear()
+	if touch_box_automatic:
+		touch_box_index=-1; touch_box_active=false
+		if is_instance_valid(drag_rect): drag_rect.hide()
+	touch_box_automatic=false
+
 func _clear_box_select():
+	_clear_touch_hold()
 	_restore_box_input_accumulation()
 	box_select_mode=false; touch_box_index=-1; touch_box_active=false
 	if is_instance_valid(drag_rect): drag_rect.hide()
@@ -4179,9 +4194,9 @@ func _send_world_order(screen,contextual=false):
 	order_marker.position=p; marker_time=0.8; touch_command=false; rally_building=-1
 
 func _tap(screen,is_touch):
-	# Compact/mobile layouts use the same contextual tap contract even when
-	# a browser/webview delivers a primary click instead of ScreenTouch.
-	var contextual_pointer=is_touch or compact_ui or DisplayServer.is_touchscreen_available()
+	# Primary click and touch share contextual orders at every viewport size.
+	# Do not depend on a browser correctly reporting touch capabilities.
+	var contextual_pointer=true
 	if game_over: return
 	pointer_screen=screen; pointer_world=_point(_cell(_world_at(screen)))
 	if box_select_mode: return # A tap is not a completed box-selection drag.
@@ -4236,8 +4251,8 @@ func _track_pointer_input(event,viewport):
 		viewport.set_input_as_handled(); return
 	# GUI may ignore a release whose press began in the world. In explicit box
 	# mode, crossing a UI boundary cancels the whole attempt before dispatch.
-	if box_select_mode:
-		var outside_touch=(event is InputEventScreenDrag or (event is InputEventScreenTouch and not event.pressed)) and event.index==touch_box_index and not _box_point_in_world(event.position)
+	if box_select_mode or not touch_hold.is_empty() or touch_box_automatic:
+		var outside_touch=(event is InputEventScreenDrag or (event is InputEventScreenTouch and not event.pressed)) and (event.index==touch_box_index or event.index==touch_hold.get("index",-1)) and not _box_point_in_world(event.position)
 		var outside_mouse=dragging and (event is InputEventMouseMotion or (event is InputEventMouseButton and not event.pressed and event.button_index==MOUSE_BUTTON_LEFT)) and not _box_point_in_world(event.position)
 		if outside_touch or outside_mouse:
 			_cancel_mode()
@@ -4259,11 +4274,13 @@ func _track_pointer_input(event,viewport):
 			gui_touch_press.erase(event.index)
 			if event.index not in all_touch_ids: all_touch_ids.append(event.index)
 			if all_touch_ids.size()>1:
+				_clear_touch_hold()
 				if box_select_mode: _clear_box_select(); call_deferred("_update_hud")
 				touch_gesture=true; touch_command=false; rally_building=-1
 				for key in gui_touch_press: gui_touch_press[key].valid=false
 		else:
 			if event.canceled:
+				_clear_touch_hold()
 				if box_select_mode: _clear_box_select(); call_deferred("_update_hud")
 				touch_gesture=true; touch_command=false; rally_building=-1
 				if not build_mode.is_empty(): build_preview_held=false
@@ -4333,6 +4350,7 @@ func _cleanup_touch_release(index,press_epoch):
 	# A release consumed by HUD must not complete or retain a world rectangle.
 	if touch_box_index==index:
 		_clear_box_select(); _update_hud()
+	if touch_hold.get("index",-1)==index: _clear_touch_hold()
 	touch_points.erase(index); touch_world_epochs.erase(index)
 	_sync_touch_camera_pair()
 	if all_touch_ids.is_empty(): touch_gesture=false
@@ -4397,17 +4415,27 @@ func _unhandled_input(event):
 				touch_origin=event.position; touch_gesture=all_touch_ids.size()>1
 				if box_select_mode and not touch_gesture and not game_over:
 					touch_box_index=event.index; touch_box_origin=event.position; touch_box_active=false
+				elif not touch_gesture and not game_over and build_mode.is_empty() and not touch_command and rally_building<0:
+					box_previous_input_accumulation=Input.use_accumulated_input
+					box_input_accumulation_owned=true
+					Input.use_accumulated_input=false
+					touch_hold={"index":event.index,"epoch":touch_press_epochs.get(event.index,-1),"started":_touch_hold_clock(),"origin":event.position}
 			if active_world_ids.size()>=2:
 				touch_gesture=true; touch_command=false; rally_building=-1
 		else:
-			if box_select_mode and touch_box_index==event.index:
+			if (box_select_mode or touch_box_automatic) and touch_box_index==event.index:
 				var complete=touch_box_active and not touch_gesture and not event.canceled and touch_points.has(event.index) and not game_over
+				var rectangle=Rect2(touch_box_origin,event.position-touch_box_origin).abs()
+				if touch_box_automatic and not rectangle.has_area(): complete=false
 				touch_box_index=-1; touch_box_active=false; drag_rect.hide(); touch_points.erase(event.index); touch_world_epochs.erase(event.index)
-				if complete: _select(_box_selection_ids(Rect2(touch_box_origin,event.position-touch_box_origin).abs()))
+				_clear_touch_hold()
+				if complete: _select(_box_selection_ids(rectangle))
 				return
-			var should_tap=not event.canceled and touch_points.has(event.index) and touch_points.size()==1 and not touch_gesture and event.position.distance_to(touch_origin)<14
+			var held=touch_hold.get("index",-1)==event.index and _touch_hold_clock()-touch_hold.get("started",0)>=TOUCH_HOLD_MSEC
+			var should_tap=not held and not event.canceled and touch_points.has(event.index) and touch_points.size()==1 and not touch_gesture and event.position.distance_to(touch_origin)<14
 			touch_points.erase(event.index); touch_world_epochs.erase(event.index)
 			_sync_touch_camera_pair()
+			if touch_hold.get("index",-1)==event.index: _clear_touch_hold()
 			if should_tap: _tap(event.position,true)
 			if touch_points.is_empty(): touch_gesture=false
 	if event is InputEventScreenDrag:
@@ -4420,16 +4448,26 @@ func _unhandled_input(event):
 			_pan_camera(touch_previous_center-center)
 			if touch_previous_distance>0: camera_zoom=clampf(camera_zoom*touch_previous_distance/maxf(1,distance),15,46)
 			touch_previous_center=center; touch_previous_distance=distance
-		elif box_select_mode and touch_box_index==event.index:
+		elif (box_select_mode or touch_box_automatic) and touch_box_index==event.index:
 			if event.position.distance_to(touch_box_origin)>=14: touch_box_active=true
 			if touch_box_active:
 				var rect=Rect2(touch_box_origin,event.position-touch_box_origin).abs()
 				drag_rect.position=rect.position; drag_rect.size=rect.size; drag_rect.show()
-		# A camera gesture keeps ownership until every finger is released.
+		# A multi-finger gesture remains quarantined until all fingers release.
 		elif not build_mode.is_empty() and not touch_gesture:
 			pointer_world=_point(_cell(_world_at(event.position))); build_preview_held=true
-		elif touch_gesture or event.position.distance_to(touch_origin)>14:
-			touch_gesture=true; touch_command=false; rally_building=-1; _pan_camera(-event.relative)
+		elif not touch_gesture and touch_hold.get("index",-1)==event.index and touch_hold.get("epoch",-1)==touch_press_epochs.get(event.index,-2):
+			var distance=event.position.distance_to(touch_hold.origin)
+			if _touch_hold_clock()-touch_hold.started>=TOUCH_HOLD_MSEC:
+				if distance>=14:
+					touch_box_automatic=true; touch_box_index=event.index; touch_box_origin=touch_hold.origin; touch_box_active=true
+					var rect=Rect2(touch_box_origin,event.position-touch_box_origin).abs()
+					drag_rect.position=rect.position; drag_rect.size=rect.size; drag_rect.show()
+			elif distance>=14:
+				_clear_touch_hold(); touch_gesture=true
+		elif touch_gesture or event.position.distance_to(touch_origin)>=14:
+			# Single-finger movement never pans or becomes a late tap/order.
+			touch_gesture=true; touch_command=false; rally_building=-1
 
 func _start_build(kind):
 	if paused or game_over or _selected_builder()<0: return

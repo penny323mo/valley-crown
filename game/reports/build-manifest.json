@@ -1,5 +1,5 @@
 {
-  "build": "vc-51872ab8fa5f",
+  "build": "vc-082afef9b546",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -140,10 +140,10 @@
     "scripts/faction_view.gd.uid": "adb9a1738643106ae9a9aee52e124cea5e0ac6aa180fd2af1c9fc5a57d9e5247",
     "scripts/faction_work_memory.gd": "a223ca640285a950e0a1524fb00b100e3c9b022aec5ec8d65fc9a20e99a51100",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
-    "scripts/game.gd": "288991b22dc9d2903d3da20888ddeac206ea8bbdb801c29fe86302d5aa261a28",
+    "scripts/game.gd": "84ff59ff027906ce68ee72a47cbd76a8d568b870289194d3c9db9f94c3a8b9ac",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/idle_worker_selection.gd": "aa7c8b804c7449409ec852bf290c7240321d3f2174b8d65bc6d75f1d7133c619",
-    "scripts/main_menu.gd": "f492fb015a48206b4df37a9e6341295712d4f1ededb381fbc203c13dd490b947",
+    "scripts/main_menu.gd": "d6b1b08f62b59774e366ffd78c236e32873c583c0a36fdbfa8c265670c304be8",
     "scripts/map_routes.gd": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
     "scripts/map_routes.gd.uid": "f4e1cdbff702603f0496ccad8079b45832556bce365f5d59c6b8668058499f3c",
     "scripts/match_report.gd": "1fbf753eb792a23cff75f5c4d54124aaeb0e48b8888384c85488da7a2d3a5f2a",
@@ -160,7 +160,7 @@
     "scripts/remembered_material.gd": "e8260500484e9222cf4475c3d353f5e27f07955ca5293f64cb0afa42177abd6e",
     "scripts/resource_visuals.gd": "6b984c91e1a7277b6544fc80a01886a7f42161d7441e43493f32800a2fc91e29",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "3211d19a817e385cbb4ad51c4fab642027a0f1bd0849668247ca427b30b8a977",
+    "scripts/rules.gd": "6f04f2304c935ffd95508a857320c02393339c0bfef22389c7fa8f977102dcc5",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/squad_selection.gd": "82e1e197d4135d37852771935d185105f1674091a667188696960be77c7387b1",
     "scripts/worker_idle_status.gd": "d99bf87d3d86c48df14813a47f0ad9d1cc2baf473d0fbf36c53d5b0554b4d236"
