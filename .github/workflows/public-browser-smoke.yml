@@ -49,7 +49,11 @@ jobs:
             await page.screenshot({path:out+'/public.png'});
             await page.setViewportSize({width:390,height:844}); await page.waitForTimeout(3000);
             await page.screenshot({path:out+'/menu-mobile.png'});
-            report.interacted=false;report.actions=['Observe desktop and mobile viewport main menu'];
+            await page.mouse.click(185,550); await page.waitForTimeout(2500);
+            await page.screenshot({path:out+'/setup-mobile.png'});
+            await page.setViewportSize({width:1280,height:800}); await page.waitForTimeout(2000);
+            await page.screenshot({path:out+'/setup-desktop.png'});
+            report.interacted=true;report.actions=['Observe desktop and mobile viewport main menu','Click visible 開始戰役 at (185,550) in 390x844 viewport','Capture resulting mobile and desktop setup'];
             report.passed=report.webgl.available&&report.status===200&&!report.body.includes('WebGL2');
           } catch(e) {report.error=String(e);} finally {
             if(browser)await browser.close();clearTimeout(timer);report.finished=new Date().toISOString();await fs.writeFile(out+'/report.json',JSON.stringify(report,null,2));
