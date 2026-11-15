@@ -54,7 +54,7 @@ func run():
 	check("pending stop is not displayed as continuing work",game.selection_detail.text.contains("指令等待中") and not game.selection_detail.text.contains("建造中"))
 	game._execute(game.commands.pop_front()); publish()
 	check("actual stop explains missing builder despite old work cue",game.selection_detail.text.contains("無施工村民") and game.selection_detail.text.contains("派閒置村民續建"))
-	game._order(worker,"build",site.id); game._update_unit(worker,game.Rules.TICK); publish()
+	game._order(worker,"build",site.id); game.tick_count+=1; game._update_unit(worker,game.Rules.TICK); publish()
 	check("explicit reassignment resumes actual work feedback",game.selection_detail.text.contains("建造中"))
 	game._order_move(worker,worker.pos+Vector3(3,0,0)); publish()
 	check("actual move reassignment leaves site visibly without builder",game.selection_detail.text.contains("無施工村民"))

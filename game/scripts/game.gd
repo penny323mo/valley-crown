@@ -886,7 +886,7 @@ func _execute(command):
 		"military_research": _enqueue_military_research(command.get("building",-1),command.get("kind",""),team)
 		"cancel_train": _cancel_train(command.building,team)
 		"cancel_queue_item": _cancel_queue_item(command.get("building",-1),command.get("queue_id",-1),command.get("expected_refund",null),team)
-		"build": _place_building(command.kind,command.position,command.builder,team)
+		"build": _execute_group_build(command,team)
 		"cancel_build":
 			var ent=_get_entity(command.building)
 			if not ent.is_empty() and ent.alive and not ent.built and ent.team==team:
@@ -2054,6 +2054,44 @@ func _placement_access_reason(mock,footprint,team):
 		if touched and had_exit and not retains_exit: return "不可阻住生產建築最後出口"
 	return ""
 
+# Capture explicit selected helpers in the ordinary command; never recruit
+# unrelated villagers implicitly, and never debit if the captured crew is invalid.
+func _selected_construction_workers() -> Array:
+	var primary=_selected_builder()
+	var ids=[primary] if primary>=0 else []
+	for id in selected:
+		var record=faction_views[0].get_record(id)
+		if ids.size()>=4:break
+		if id not in ids and record.get("owned",false) and record.get("alive",false) and record.get("kind","")=="villager":ids.append(id)
+	return ids
+
+func _execute_group_build(command,team):
+	var ids=command.get("ids",[command.builder])
+	if typeof(ids)!=TYPE_ARRAY or ids.is_empty() or ids.size()>4 or command.builder not in ids:return
+	var seen={}
+	for id in ids:
+		if typeof(id)!=TYPE_INT or seen.has(id):return
+		var worker=_get_entity(id)
+		if worker.is_empty() or not worker.alive or worker.team!=team or worker.kind!="villager":return
+		seen[id]=true
+	var site=_place_building(command.kind,command.position,command.builder,team)
+	if site.is_empty():return
+	for id in ids:
+		if id==command.builder:continue
+		var worker=_get_entity(id)
+		if team==0:_path_new_command(worker)
+		_order(worker,"build",site.id)
+
+func _construction_crew(site) -> Array:
+	var crew=[]
+	for worker in entities:
+		if not worker.alive or worker.team!=site.team or worker.kind!="villager" or worker.state!="build" or worker.target!=site.id:continue
+		var slot=_free_adjacent(site,worker.pos,false,worker.team,worker)
+		if slot!=Vector3.INF and worker.pos.distance_to(slot)<0.3:crew.append(worker)
+	crew.sort_custom(func(a,b):return a.id<b.id)
+	if crew.size()>4:crew.resize(4)
+	return crew
+
 func _place_building(kind,p,builder_id,team):
 	p=_snap_build_position(kind,p)
 	var reason=_placement_reason(kind,p,team,builder_id)
@@ -2102,14 +2140,8 @@ func _order(ent,state,target_id,automatic=false):
 	if state=="build":
 		var site=_get_entity(target_id)
 		if ent.is_empty() or not ent.alive or ent.kind!="villager" or site.is_empty() or not site.alive or site.category!="building" or site.built or site.team!=ent.team: return false
-		# Ownership follows execution order, not entity ID. Commands execute by
-		# sequence; group members execute in ids array order (last valid wins).
-		# Repeated command IDs are rejected upstream; repeated members are safe.
-		for other in entities:
-			if other.id!=ent.id and other.alive and other.state=="build" and other.target==target_id:
-				_path_new_command(other)
-				_set_stance(other,"STOP")
-				other.dest=other.pos; other.stuck=0; other.work_ticks=0; other.last_repair_tick=-1
+		# Joining a site does not cancel another villager's construction order.
+
 	if ent.kind=="villager":
 		var requested=_get_entity(target_id)
 		if state=="gather" and not requested.is_empty() and requested.kind=="farm":
@@ -2580,12 +2612,17 @@ func _update_unit(ent,dt):
 			var adjacent=_free_adjacent(target,ent.pos,false,ent.team,ent)
 			if adjacent==Vector3.INF: ent.state="idle"; return
 			if ent.pos.distance_to(adjacent)<0.3:
-				# One builder per site in this Demo. No hidden multi-builder speed bonus.
-				for other in entities:
-					if other.alive and other.id<ent.id and other.state=="build" and other.target==target.id: return
+				# Shared work resolves once per site/tick, independent of entity order.
+				# Only villagers physically at a legal construction slot contribute.
+				if target.get("construction_work_tick",-1)==tick_count:return
+				var crew=_construction_crew(target)
+				if crew.is_empty():return
+				target.construction_work_tick=tick_count
+				var extra=crew.size()-1
+				var work=1+extra/2+(1 if extra%2==1 and tick_count%2==0 else 0)
 				var total_ticks=roundi(Rules.BUILD_TIME[target.kind]/Rules.TICK)
-				target.build_ticks=mini(total_ticks,target.build_ticks+1)
-				_note_unit_action(ent,"build",target.pos)
+				target.build_ticks=mini(total_ticks,target.build_ticks+work)
+				for helper in crew:_note_unit_action(helper,"build",target.pos)
 				progress_serial+=1
 				target.progress=float(target.build_ticks)/total_ticks
 				var initial_hp=ceili(target.max_hp*0.1)
@@ -5013,7 +5050,7 @@ func _confirm_build():
 	if build_mode.is_empty() or paused or not build_preview_held or touch_gesture: return
 	var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
 	if not reason.is_empty(): _message(reason); return
-	_submit("build",{"kind":build_mode,"position":pointer_world,"builder":_selected_builder()})
+	_submit("build",{"kind":build_mode,"position":pointer_world,"builder":_selected_builder(),"ids":_selected_construction_workers()})
 	_cancel_mode()
 
 func _cancel_mode():

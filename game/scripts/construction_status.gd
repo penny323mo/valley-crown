@@ -7,6 +7,7 @@ static func detail(site: Dictionary, records: Dictionary, pending=false, paused=
 	if paused: return prefix+"已暫停；按繼續返回戰場"
 	# Do not display the old assignment as the outcome of a queued own command.
 	if pending: return prefix+"指令等待中"
+	var working=0
 	var assigned=false
 	var walking=false
 	var searching=false
@@ -18,10 +19,11 @@ static func detail(site: Dictionary, records: Dictionary, pending=false, paused=
 		assigned=true
 		# This cue is published only after a successful construction work tick.
 		# An assigned order or an empty path alone is not evidence of building.
-		if worker.get("visual_action","")=="build": return prefix+"建造中"
+		if worker.get("visual_action","")=="build":working+=1
 		searching=searching or worker.get("path_pending",false)
 		walking=walking or not worker.get("path",[]).is_empty()
 		stopped=stopped or worker.get("path_status","") in ["NO_PATH","LIMIT_REACHED","NO_WORK"]
+	if working>0:return prefix+("建造中" if working==1 else "建造中 · 合作 %d 人（最多四人加速）" % mini(working,4))
 	if walking: return prefix+"村民移動到工地"
 	if searching: return prefix+"村民已接單，尋路中"
 	if stopped: return prefix+"村民尋路停止；選村民後直接點工地"
