@@ -156,7 +156,7 @@ class CurrentObjectiveMenuContractTests(unittest.TestCase):
             def read(value):
                 (stage/'godot.log').write_text(json.dumps(value)+'\n')
                 return validator.read_report(stage,'control_point_menu_contract')
-            self.assertEqual(validator.COUNTS['control_point_menu_contract'],28)
+            self.assertEqual(validator.COUNTS['control_point_menu_contract'],29)
             self.assertEqual(validator.ARMY_CONTRACTS['control_point_menu_contract']['names'],[r['name'] for r in report['checks']])
             self.assertEqual(read(report),report)
             for i in range(28):

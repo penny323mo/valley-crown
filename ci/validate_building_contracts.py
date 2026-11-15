@@ -4,8 +4,8 @@ import json
 import re
 from pathlib import Path
 BUILD = 'vc-6cf3a7363114'
-GAME_TREE = 'bf8d86446db04927e20d452f4f9f6f95b9cfce59'
-INVENTORY_SHA = '62a203a33c48a1470593c31963fe673b4aaae871c475dc7015c75e586892c2a9'
+GAME_TREE = '4ca8cf6840280039d73597fc45a892eb78dcc082'
+INVENTORY_SHA = '41e5b4ba1657904da3baf7dd75a6525c4e9529d66439f2781ffa6eb00b255f25'
 COUNTS = {'advanced_building_visuals':175, 'advanced_building_observation':52,
           'construction_visual':203, 'building_damage_component':100,
           'building_damage_projection':17, 'map80_sparse_memory':10}
