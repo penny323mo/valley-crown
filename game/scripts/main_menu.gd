@@ -1,6 +1,11 @@
 extends Node
 ## Product entry point. The battlefield does not exist until Start is chosen.
 ## main.tscn remains the explicit battle fixture for simulation tests.
+const CheckpointStore=preload("res://scripts/checkpoint_store.gd")
+const CheckpointRestore=preload("res://scripts/checkpoint_restore.gd")
+const Rules=preload("res://scripts/rules.gd")
+var checkpoint_path=CheckpointStore.PATH
+var checkpoint_status=""
 const MATCH_SCENE = preload("res://main.tscn")
 const FieldManual=preload("res://scripts/field_manual.gd")
 const BattleHistory=preload("res://scripts/battle_history.gd")
@@ -196,11 +201,15 @@ func _layout():
 	if latin_name.visible:
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
-	var actions_height = 54.0 * buttons.get_child_count() + 10.0 * max(0, buttons.get_child_count() - 1)
+	var button_height=54.0
+	var button_gap=10
+	buttons.add_theme_constant_override("separation",button_gap)
+	for button in buttons.get_children():button.custom_minimum_size.y=button_height
+	var actions_height = button_height * buttons.get_child_count() + button_gap * max(0, buttons.get_child_count() - 1)
 	var height: float
 	var y: float
 	if home:
-		height = actions_height + (104.0 if short_landscape else 144.0)
+		height = actions_height + (48.0 if short_landscape and buttons.get_child_count()>3 else (104.0 if short_landscape else 144.0))
 		y = minf(available.y - height - 28.0, available.y * 0.49) if not short_landscape else available.y - height - 16.0
 		y = maxf(16.0, y)
 		identity.position = Vector2(x, maxf(14.0, y - identity_height - 24.0))
@@ -338,9 +347,17 @@ func _show_page(next_page: String):
 			description.text="資源爭奪戰 · 1 對 1\n先實際送抵 600 糧食及 400 木材勝出。起始庫存、退款與尚在村民身上的負重不計；已送抵的資源用於建造後仍保留進度。\n雙方資源進度公開，敵軍位置仍受迷霧限制。可襲擊採集線或摧毀敵方主堡取勝；同回合達標為和局。使用標準電腦，雙方經濟規則相同。"
 		_add_button("出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("home"))
+	elif page == "checkpoint":
+		heading.text="本機戰役存檔"
+		description.text=checkpoint_status+"\n\n只保留一個本機存檔，再次儲存會取代舊存檔。只支援相同遊戲版本；更新後可能無法讀取。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
+		if is_instance_valid(match_node) and not match_node.game_over:
+			_add_button("儲存目前戰役", "SaveCheckpointButton", _save_checkpoint)
+		if FileAccess.file_exists(checkpoint_path):
+			_add_button("讀取存檔（取代目前戰役）", "LoadCheckpointButton", _load_checkpoint)
+		_add_button("返回", "CheckpointBackButton", func(): _show_page("home"))
 	elif page == "confirm":
 		heading.text = "開始新戰役？"
-		description.text = "目前戰役與教學會重新開始。關閉遊戲不會保留戰役。"
+		description.text = "目前未儲存的戰役與教學會重新開始。本機存檔不會被新戰役覆蓋。"
 		_add_button("設定新戰役", "ConfirmNewMatchButton", func(): _show_page("setup"))
 		_add_button("保留目前戰役", "CancelNewMatchButton", func(): _show_page("home"))
 	else:
@@ -356,6 +373,7 @@ func _show_page(next_page: String):
 			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _show_page("setup"))
 		else:
 			_add_button("開始戰役", "StartMatchButton", func(): _show_page("setup"))
+		_add_button("本機存檔", "CheckpointMenuButton", func(): _show_page("checkpoint"))
 		_add_button("教學", "HelpButton", func(): _show_page("help"))
 	_layout()
 	call_deferred("_focus_first_button")
@@ -551,3 +569,36 @@ func _cycle_victory_mode():
 	else:
 		selected_mode=SkirmishPolicy.IDS[(SkirmishPolicy.IDS.find(selected_mode)+1)%SkirmishPolicy.IDS.size()]
 	_show_page("setup")
+
+func _save_checkpoint():
+	if not is_instance_valid(match_node) or transition_busy:return
+	var result=CheckpointStore.save_slot(match_node,checkpoint_path)
+	checkpoint_status="已寫入本機存檔：%d 秒。" % int(result.tick/20) if result.ok else "未能儲存，原存檔不變："+str(result.get("reason","UNKNOWN"))
+	_show_page("checkpoint")
+
+func _load_checkpoint():
+	if transition_busy:return
+	transition_busy=true
+	call_deferred("_restore_checkpoint")
+
+func _restore_checkpoint():
+	var result=CheckpointStore.read_slot(Rules.BUILD_ID,checkpoint_path)
+	if not result.ok:
+		checkpoint_status="存檔版本不同，保留原檔；請開新戰役。" if result.get("reason")=="BUILD_MISMATCH" else "無法讀取存檔，未改動目前戰役："+str(result.get("reason","UNKNOWN"))
+		transition_busy=false;_show_page("checkpoint");return
+	# Build a disposable replacement before touching the player's current game.
+	var candidate=MATCH_SCENE.instantiate()
+	candidate.skirmish_mode=result.data.game.skirmish_mode
+	candidate.victory_mode=result.data.game.victory_mode
+	add_child(candidate);candidate.set_process(false);candidate.hide();candidate.ui.hide()
+	if not CheckpointRestore.apply(candidate,result.data):
+		candidate.queue_free();checkpoint_status="存檔無效，未改動目前戰役。"
+		transition_busy=false;_show_page("checkpoint");return
+	if is_instance_valid(match_node):remove_child(match_node);match_node.queue_free()
+	match_node=candidate
+	selected_mode=candidate.skirmish_mode;selected_victory_mode=candidate.victory_mode
+	candidate.main_menu_requested.connect(_open_menu);candidate.restart_requested.connect(_restart_match)
+	candidate.process_mode=Node.PROCESS_MODE_DISABLED
+	candidate.set_process(true)
+	checkpoint_status="已讀取存檔，戰役保持暫停。按繼續返回。"
+	transition_busy=false;_show_page("home")

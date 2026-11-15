@@ -4631,6 +4631,7 @@ func _cover_camera_ground():
 	camera_ground.scale=Vector3(required.x/half_size.x,1.0,required.y/half_size.y)
 
 func _ui_owns_camera_keys():
+	if not is_inside_tree():return false
 	if not is_instance_valid(ui): return false
 	if compact_menu.is_visible_in_tree(): return true
 	var focus=get_viewport().gui_get_focus_owner()
