@@ -22,5 +22,5 @@ func run():
  for word in ["三波守城挑戰","單人劇本挑戰","增援","準備","整備"]:
   for i in word.length():challenge_ok=challenge_ok and font.has_char(word.unicode_at(i))
  check("challenge labels have actual bundled glyphs",challenge_ok)
- print(JSON.stringify({"checks":checks,"missing_codepoints":missing.keys()}))
+ print(JSON.stringify({"suite":"ui_glyph_coverage_contract","checks":checks,"failed":checks.filter(func(c):return not c.passed).size(),"missing_codepoints":missing.keys()}))
  quit(0 if checks.all(func(c):return c.passed) else 1)
