@@ -78,6 +78,7 @@ var idle_worker_cursor=-1
 const WoundedRetreat=preload("res://scripts/wounded_retreat.gd")
 var wounded_retreat_button: Button
 const TrainingBatch=preload("res://scripts/training_batch.gd")
+var group_train_button: Button
 var training_batch_button: Button
 var clear_exit_button: Button
 const ContextManual=preload("res://scripts/context_manual.gd")
@@ -3918,6 +3919,7 @@ func _update_hud():
 	_refresh_unit_type_buttons()
 	_refresh_retry_gather_button()
 	_refresh_training_batch_button()
+	_refresh_group_training()
 	_refresh_wounded_retreat_button()
 	_refresh_clear_site_button()
 	_refresh_clear_exit_button()
@@ -3991,6 +3993,7 @@ func _rebuild_actions(selection):
 	unit_type_buttons.clear()
 	retry_gather_button=null
 	training_batch_button=null
+	group_train_button=null
 	clear_exit_button=null
 	wounded_retreat_button=null
 	if rally_building>=0:
@@ -4020,6 +4023,8 @@ func _rebuild_actions(selection):
 			filter_button.tooltip_text="只保留目前選取的此兵種，不會全地圖選兵，也不改動指令、姿態或鏡頭。"
 			actions.add_child(filter_button); unit_type_buttons[kind]=filter_button
 	if _group_rally_ids().size()>1:
+		group_train_button=_button("共同徵兵",_request_group_training,230)
+		group_train_button.name="GroupTraining"; actions.add_child(group_train_button)
 		actions.add_child(_button("共同集合點",func(): _start_group_rally("move"),150))
 		actions.add_child(_button("共同警戒集合點",func(): _start_group_rally("advance"),180))
 	if _selected_builder()>=0:
@@ -6145,6 +6150,45 @@ func _show_context_manual():
 	dialog.get_ok_button().gui_input.connect(func(event): _button_touch_input(dialog.get_ok_button(),event))
 	dialog.confirmed.connect(dialog.queue_free);dialog.canceled.connect(dialog.queue_free)
 	dialog.popup_centered(Vector2i(mini(430,int(viewport_size.x)-24),mini(430,int(viewport_size.y)-48)))
+
+# One ordinary paid troop per selected producer, with shared cost/population
+# reservations in the preview. Nothing is spent until normal commands execute.
+func _group_training_plan():
+	var result={"orders":[],"cost":{}}
+	var ids=_group_rally_ids()
+	if ids.size()<2:return result
+	var bank=economy.bank_milli(0).duplicate()
+	var slots=_capacity(0)-_population(0)
+	for id in ids:
+		var record=faction_views[0].get_record(id)
+		var kind=Rules.PRODUCES.get(record.get("kind",""),"")
+		var plan=TrainingBatch.plan(record,bank,slots,commands,_kind_unlocked(kind,0))
+		if plan.count<=0:continue
+		result.orders.append({"building":id,"kind":kind})
+		slots-=1
+		for resource in Rules.COSTS[kind]:
+			var cost=Rules.COSTS[kind][resource]
+			bank[resource]-=cost*1000
+			result.cost[resource]=result.cost.get(resource,0)+cost
+	return result
+
+func _refresh_group_training():
+	if not is_instance_valid(group_train_button):return
+	var plan=_group_training_plan()
+	_bind_squad_button(group_train_button,[plan] if not plan.orders.is_empty() else [],not _squad_actions_available())
+	if plan.orders.is_empty():group_train_button.text="共同徵兵暫不可用";return
+	var prices=PackedStringArray()
+	for resource in plan.cost:prices.append(Rules.RESOURCE_NAMES[resource]+str(plan.cost[resource]))
+	group_train_button.text="共同徵兵 %d 隊（每棟一兵）\n總計 %s" % [plan.orders.size()," · ".join(prices)]
+
+func _request_group_training():
+	if not _squad_actions_available() or not is_instance_valid(group_train_button) or group_train_button.disabled:return
+	var plan=_group_training_plan()
+	if plan.orders.is_empty() or [plan]!=group_train_button.get_meta("squad_ids",[]):
+		_refresh_group_training();return
+	_cancel_mode()
+	for order in plan.orders:_submit("train",order)
+	_refresh_group_training()
 
 func _training_batch_plan(building):
 	var record=faction_views[0].get_record(building)
