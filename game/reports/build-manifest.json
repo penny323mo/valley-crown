@@ -1,5 +1,5 @@
 {
-  "build": "vc-eba84a9c90c6",
+  "build": "vc-594b8eadcfdf",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -116,6 +116,7 @@
     "scripts/advanced_building_visuals.gd.uid": "97fe0328e5413215b9440f2e3d61b90da349447b9d5e868cea320b5763d3d66d",
     "scripts/army_composition.gd": "14bddfb9c3a6e84233431cdae69554752ba43d87b70b6659e807a048abc43ce9",
     "scripts/army_formation.gd": "d5f2be6b9ff4fa3fcfc6b1d95df061db23f3a3a5a5353b1715a7720e5fa636b5",
+    "scripts/army_roster.gd": "6fc94fe4965afe064f7a61b631386a131091dac26a6569de4496dc26b26e97e1",
     "scripts/attack_ledger.gd": "8dac4a771f3fa600c3b5a5a313d890e284c934203104b7c16e59d853daba2ed4",
     "scripts/attack_ledger.gd.uid": "82f6b16d4eec6ec9a5a077fdb8b029b877e0e20893cdc47e24edc8d83643fd4c",
     "scripts/audio_cue_policy.gd": "2d8eee52cd3d270d5bcbe4b98e70372c2ac0715d3e4838dfde55c119c18e20a8",
@@ -150,7 +151,7 @@
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
     "scripts/farm_dispatch.gd": "e61b36c2a89eeb8b4d9e95f3aac862e8e8332aaa4bd0d45393688817e0bb15de",
     "scripts/field_manual.gd": "ccf1567217505d011af28391a230db7025c0357ca5a8ed35f87e2e2f8ebd6963",
-    "scripts/game.gd": "9b1fa83390acacffdabdc028f79a0e195cbaa30b0748184100600dacb12c8ebe",
+    "scripts/game.gd": "470e54f61daff73736b104053c3cdefa29101b00171f977fa8984d454df290b4",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
     "scripts/idle_army_selection.gd": "1e65f91c328ef25ec2a6f6a4a06bad4aff2b2c78594dd81bfb9f073d477fe802",
@@ -178,7 +179,7 @@
     "scripts/rest_recovery.gd": "6c3b4c9387c0f8ab8443bde375b803775de40c698be42a4e26a3c57ec8a21917",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "204ee95b4358b1627ca6ba600e35999897113fe404da6625d9c0b63441b66c80",
+    "scripts/rules.gd": "fe4973cac5f0552eff83e9975c0b49dc76973487a4e8ad5bdf00cf8537941eda",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_effect.gd": "1b408e8b5b68f790cf6ac74f40c65d0bb33afd2ec4fde0309e224281080d111f",

@@ -94,6 +94,8 @@ var vacant_farm_button: Button
 var vacant_farm_cursor=-1
 const RepairDispatch=preload("res://scripts/repair_dispatch.gd")
 var repair_dispatch_button: Button
+const ArmyRoster=preload("res://scripts/army_roster.gd")
+var army_roster_buttons={}
 const ProductionOverview=preload("res://scripts/production_overview.gd")
 var production_buttons={}
 var production_cursor={}
@@ -3698,6 +3700,16 @@ func _create_ui():
 		dispatch_row.add_child(dispatch);idle_dispatch_buttons[resource]=dispatch
 	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row]
 	shortcut_sections.army=[idle_army_button]
+	var roster_help=_label("軍隊總覽 · 點兵種全選，或只選傷兵",13)
+	roster_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(roster_help);shortcut_sections.army.append(roster_help)
+	for troop_kind in ArmyRoster.KINDS:
+		var kind=troop_kind
+		var row=VBoxContainer.new();row.add_theme_constant_override("separation",3);menu_box.add_child(row);shortcut_sections.army.append(row)
+		var all_button=_button("",func():_select_roster(kind,false),160);all_button.name="ArmyRoster_"+kind
+		all_button.add_theme_font_size_override("font_size",12);all_button.tooltip_text="全選目前己方同兵種，不更改原有指令。隊列只計已付費訓練；待命不含處理中指令。";row.add_child(all_button)
+		var wounded_button=_button("",func():_select_roster(kind,true),160);wounded_button.name="ArmyWounded_"+kind
+		wounded_button.add_theme_font_size_override("font_size",12);wounded_button.tooltip_text="只選此兵種的受傷單位，不自動撤退或治療。選中後可使用原有回城／維修功能。";row.add_child(wounded_button)
+		army_roster_buttons[kind]={"all":all_button,"wounded":wounded_button}
 	var production_help=_label("生產總覽 · 點按輪流前往同類建築",13)
 	production_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(production_help)
 	shortcut_sections.production.append(production_help)
@@ -5551,6 +5563,7 @@ func _bind_squad_button(button,ids,blocked):
 	button.disabled=blocked or ids.is_empty()
 
 func _refresh_squad_buttons():
+	_refresh_army_roster()
 	_refresh_production_buttons()
 	_refresh_workforce_buttons()
 	_refresh_idle_dispatch_buttons()
@@ -6536,3 +6549,26 @@ func _record_damage_feedback(target,damage):
 	if game_over or paused or target.is_empty() or not target.alive or not _visible_to(target,0):return
 	var lost=mini(maxi(0,target.hp),maxi(0,damage))
 	if lost>0:damage_feedback.add(self,target.pos,lost,target.team==0,damage>=target.hp)
+
+
+func _refresh_army_roster():
+	if army_roster_buttons.is_empty():return
+	var status=ArmyRoster.snapshot(faction_views[0].records(),commands)
+	for kind in ArmyRoster.KINDS:
+		var group=status[kind];var pair=army_roster_buttons[kind]
+		_bind_squad_button(pair.all,group.ids,not _squad_actions_available())
+		_bind_squad_button(pair.wounded,group.wounded,not _squad_actions_available())
+		pair.all.text="%s · 現役 %d · 隊列 %d\n待命 %d · 傷兵 %d · 點按全選" % [Rules.NAMES[kind],group.ids.size(),group.queued,group.idle,group.wounded.size()]
+		pair.wounded.text="只選%s傷兵 · %d" % [Rules.NAMES[kind],group.wounded.size()]
+
+func _select_roster(kind,wounded):
+	if kind not in ArmyRoster.KINDS or not _squad_actions_available() or not compact_menu.visible:return
+	var records=faction_views[0].records()
+	var group=ArmyRoster.snapshot(records,commands)[kind]
+	var ids=group.wounded if wounded else group.ids
+	var button=army_roster_buttons[kind].wounded if wounded else army_roster_buttons[kind].all
+	if button.disabled or ids.is_empty() or ids!=button.get_meta("squad_ids",[]):
+		_refresh_army_roster();return
+	_cancel_mode();compact_menu.hide();compact_menu_dismiss.hide()
+	_select(ids);camera_focus=records[ids[0]].pos;_camera_update()
+	_refresh_army_roster();compact_menu_button.text=_shortcut_menu_caption()
