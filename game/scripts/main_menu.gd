@@ -330,7 +330,7 @@ func _show_page(next_page: String):
 		_add_button("返回教學", "ManualBackButton", func(): _show_page("help"))
 	elif page == "setup":
 		heading.text = "戰役設定"
-		description.text = "霧谷 · 1 對 1 電腦戰\n\n"+SkirmishPolicy.details(selected_mode)
+		description.text = ("霧谷 · 單人劇本挑戰\n\n" if selected_mode=="survival" else "霧谷 · 1 對 1 電腦戰\n\n")+SkirmishPolicy.details(selected_mode)
 		_add_button("模式："+("資源爭奪戰" if selected_victory_mode=="supply" else ("中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode)))+" >", "CycleModeButton", _cycle_victory_mode)
 		if selected_victory_mode=="control":
 			description.text="中央王旗爭奪戰 · 1 對 1\n至少兩名軍人進入中央圈，且圈內沒有敵軍，才累積控制時間。雙方同在圈內時停止計時；累積 180 秒勝利。主堡被毀仍會落敗。\n電腦從兩名軍人開始爭奪據點。雙方資源、戰鬥規則相同；據點狀態與分數公開，敵軍位置仍受迷霧限制。"
@@ -539,6 +539,8 @@ func _cycle_victory_mode():
 	if selected_mode=="battle":
 		selected_mode="fortress";selected_victory_mode="conquest";_show_page("setup");return
 	if selected_mode=="fortress":
+		selected_mode="survival";selected_victory_mode="conquest";_show_page("setup");return
+	if selected_mode=="survival":
 		selected_mode="practice";selected_victory_mode="conquest";_show_page("setup");return
 	if selected_victory_mode=="supply":
 		selected_victory_mode="conquest";selected_mode="battle";_show_page("setup");return

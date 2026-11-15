@@ -342,6 +342,8 @@ var traffic_tick_segments={}
 
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var skirmish_mode="standard"
+const SiegeChallenge=preload("res://scripts/siege_challenge.gd")
+var siege_challenge=SiegeChallenge.new()
 const ControlPoint=preload("res://scripts/control_point.gd")
 const SupplyRace=preload("res://scripts/supply_race.gd")
 const BattleHistory=preload("res://scripts/battle_history.gd")
@@ -375,7 +377,7 @@ func _ready():
 	_create_ui()
 	_create_tutorial_ui()
 	audio_cues.observe(faction_views[0].records(),tick_count,Time.get_ticks_msec())
-	if skirmish_mode in ["battle","fortress"] and victory_mode=="conquest":
+	if skirmish_mode in ["battle","fortress","survival"] and victory_mode=="conquest":
 		var army=[]
 		for unit in entities:
 			if unit.team==0 and unit.category=="unit" and unit.kind not in ["villager","scout"]:army.append(unit.id)
@@ -481,10 +483,12 @@ func _tree_visual(parent, p, kind, sc=1.0):
 	return root
 
 func _seed_match():
+	siege_challenge=SiegeChallenge.new()
 	# Mirrored resource fairness. No free military buildings or gifted AI income.
 	for team in 2:
 		var sign_team=1.0 if team==0 else -1.0
 		_spawn("town_center",team,MapRoutes.home(team))
+		if skirmish_mode=="survival" and team==1:continue
 		for i in 5: _spawn("villager",team,Vector3(-14.5+i*1.3,0,13.5)*sign_team+MapRoutes.home_offset(team))
 		_spawn("scout",team,Vector3(-7,0,8)*sign_team+MapRoutes.home_offset(team))
 		for c in [Vector3(-17,0,3),Vector3(-5,0,1)]:
@@ -510,16 +514,17 @@ func _seed_match():
 	for p in [Vector3(-3.5,0,-1.5),Vector3(-0.5,0,-1.5),Vector3(2.5,0,-1.5)]:
 		_spawn("berry",-1,p); _spawn("berry",-1,-p)
 
-	if skirmish_mode in ["battle","fortress"] and victory_mode=="conquest":
+	if skirmish_mode in ["battle","fortress","survival"] and victory_mode=="conquest":
 		# Explicit symmetric scenario start, never paid training/completion events.
 		for team in 2:
 			var sign_team=1.0 if team==0 else -1.0
+			if skirmish_mode=="survival" and team==1:continue
 			_spawn("house",team,Vector3(-29,0,23)*sign_team,true)
-			if skirmish_mode=="fortress":
+			if skirmish_mode in ["fortress","survival"]:
 				for item in [["house",Vector3(-21,0,29)],["house",Vector3(-25,0,32)],["barracks",Vector3(-18.5,0,24.5)],["range",Vector3(-18.5,0,30.5)],["stable",Vector3(-11.5,0,24.5)],["workshop",Vector3(-11.5,0,30.5)],["tower",Vector3(-16,0,19)],["tower",Vector3(-11,0,19)]]:
 					_spawn(item[0],team,item[1]*sign_team,true)
 			var kinds=["spearman","spearman","archer","archer","cavalry","siege"]
-			if skirmish_mode=="fortress":kinds=["spearman","spearman","spearman","spearman","archer","archer","archer","archer","cavalry","cavalry","siege","siege"]
+			if skirmish_mode in ["fortress","survival"]:kinds=["spearman","spearman","spearman","spearman","archer","archer","archer","archer","cavalry","cavalry","siege","siege"]
 			for index in kinds.size():
 				_spawn(kinds[index],team,Vector3(-26+2*(index%2),0,13-2*(index/2))*sign_team,true)
 			age_completed_tick[team]=0
@@ -717,13 +722,14 @@ func _tick(dt):
 	for team in 2:
 		recovery_ticks[team]=recovery_ticks[team]+1 if EndRules.irrecoverable(_recovery_view(team)) else 0
 	no_progress_ticks=no_progress_ticks+1 if progress_serial==previous_progress else 0
+	if skirmish_mode=="survival":_update_siege_challenge()
 	_check_end()
 	_sync_audio()
 	if not game_over and no_progress_ticks>=EndRules.NO_PROGRESS_TICKS:
 		paused=true; inactivity_paused=true; tick_accumulator=0; _cancel_mode()
 		_sync_audio()
 		_message("180 秒內沒有採集、建造或交戰進展，已暫停。按繼續可重設計時。",INF)
-	if ai_enabled and not game_over and not paused and tick_count%20==0: _ai_update()
+	if ai_enabled and skirmish_mode!="survival" and not game_over and not paused and tick_count%20==0: _ai_update()
 	_update_repeat_training()
 
 func _submit(type: String, data: Dictionary={}, team=0):
@@ -2771,7 +2777,9 @@ func _check_end():
 	var enemy_lost=_surrender_intent.has(1) if not _surrender_intent.is_empty() else not enemy_alive
 	end_reason="surrender" if not _surrender_intent.is_empty() else "keep_destroyed"
 	if _surrender_intent.is_empty() and player_alive and enemy_alive:
-		if victory_mode=="control" and control_point.winner()>=0:
+		if skirmish_mode=="survival" and siege_challenge.complete:
+			player_lost=false;enemy_lost=true;end_reason="waves_defended"
+		elif victory_mode=="control" and control_point.winner()>=0:
 			player_lost=control_point.winner()==1; enemy_lost=control_point.winner()==0; end_reason="control_point"
 		elif victory_mode=="supply" and (SupplyRace.complete(economy.stats_view(0)) or SupplyRace.complete(economy.stats_view(1))):
 			player_lost=SupplyRace.complete(economy.stats_view(1));enemy_lost=SupplyRace.complete(economy.stats_view(0));end_reason="supply_race"
@@ -2798,6 +2806,8 @@ func _check_end():
 		if end_reason=="surrender":
 			end_title.text={"victory":"敵方投降","defeat":"我方投降","draw":"雙方投降"}[outcome]
 			end_body.text={"victory":"敵方已確認投降。","defeat":"你已確認投降。這局判定為失敗。","draw":"雙方已確認投降。和局。"}[outcome]
+		elif end_reason=="waves_defended":
+			end_title.text="三波守城成功";end_body.text="三波固定增援全部被擊退，主堡仍然屹立。這是劇本挑戰勝利，非標準經濟對戰。"
 		elif end_reason=="supply_race":
 			end_title.text={"victory":"資源目標完成","defeat":"敵方資源目標完成","draw":"雙方資源目標同時完成"}[outcome]
 			end_body.text="先實際送抵 600 糧食及 400 木材的一方勝出；同一結算回合達標為和局。起始庫存與退款不計。"
@@ -3964,7 +3974,8 @@ func _update_hud():
 	mission_label.text=("城防時代：建馬廄出騎兵，建工坊出攻城車，摧毀敵方主堡。" if _age2(0) else "聚落時代：採鐵，於主堡研究城防時代，解鎖騎兵與攻城車。")
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
-	if victory_mode=="control": mission_label.text=control_point.caption()
+	if skirmish_mode=="survival":mission_label.text=siege_challenge.caption(tick_count)
+	elif victory_mode=="control": mission_label.text=control_point.caption()
 	elif victory_mode=="supply":mission_label.text="資源爭奪戰：實際送抵600糧＋400木；保護村民並截斷敵方資源。主堡被毀仍會落敗。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: time_label.text+=" · 和局 %ds" % ceili(Rules.TIME_LIMIT-game_time)
@@ -5767,7 +5778,7 @@ func _request_restart():
 
 # --- Integrated economy, age and military progression ---
 func _age2(team: int) -> bool:
-	return (skirmish_mode in ["battle","fortress"] and victory_mode=="conquest") or (age_completed_tick[team]>=0 and tick_count>age_completed_tick[team])
+	return (skirmish_mode in ["battle","fortress","survival"] and victory_mode=="conquest") or (age_completed_tick[team]>=0 and tick_count>age_completed_tick[team])
 
 func _kind_unlocked(kind: String,team: int) -> bool:
 	return kind not in Rules.AGE2_KINDS or _age2(team)
@@ -5803,6 +5814,31 @@ func _release_farm(ent: Dictionary) -> void:
 	economy_sequence+=1
 	economy.release_farm("farm_release:%d" % economy_sequence,ent.id,farm_id)
 	ent.farm_id=-1
+
+func _update_siege_challenge():
+	if skirmish_mode!="survival" or game_over:return
+	siege_challenge.observe(tick_count,func(id):return not _get_entity(id).is_empty() and _get_entity(id).alive)
+	if not siege_challenge.ready(tick_count) or tick_count%20!=0:return
+	var roster=siege_challenge.roster();var slots=[]
+	# Fixed 64 candidates; authoritative occupancy is permitted for scenario
+	# spawning, not exposed as an enemy observation or used to choose attacks.
+	for index in 64:
+		var point=Vector3(8.5+2*(index%8),0,-3.5-2*(index/8))
+		if navigation.is_point_solid(_cell(point)):continue
+		var occupied=false
+		for ent in entities:
+			if ent.alive and ent.category=="unit" and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
+		if occupied or not _static_unit_step_is_free({"pos":point,"radius":Rules.MAX_UNIT_RADIUS},point):continue
+		slots.append(point)
+		if slots.size()==roster.size():break
+	if slots.size()!=roster.size():return # Retry once per second, never overlap.
+	var ids=[]
+	for index in roster.size():ids.append(_spawn(roster[index],1,slots[index],true).id)
+	if not siege_challenge.launch(ids):return
+	progress_serial+=1
+	_update_vision()
+	_submit("advance",{"ids":ids,"position":MapRoutes.home(0)},1)
+	_message("守城挑戰：第 %d 波增援出發。" % siege_challenge.wave,6)
 
 func _set_tower_focus(ids,target_id,team):
 	if typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT or typeof(target_id)!=TYPE_INT:return false
