@@ -14,12 +14,12 @@ FIXTURES = {
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '4dfe17222274a38a71ff828f62dd357a1473702bb8e8a037ed3da2e053221d6c')}
 MENU_SHA = '0841107aa5946ea16de639e0b70ecd950b0f3357c83f47a9ac26948c61dee735'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-e85a6575f891'
+BUILD = 'vc-e251b67527eb'
 ARRAY_COUNTS = {'contextual_touch_contract':76, 'contextual_touch_phone':26}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}
 STATUS_SHA = '9354c81601f5cf668fc2412a1d9f40aca0d05354fe4173d319602f5c0a92bf8a'
-GAME_SHA = 'b58d5e9f01d64743313bc378ed1b49b6f813ea8ebdb77aafda460368dea894e4'
+GAME_SHA = 'bc8bbba96bfdebb1a5fe89cc6d9d2c411954f2d5fdca999fb3e01815bf3268e2'
 FILE_SUITE = 'stance_target_cancel_phone'
 FILE_REPORT = 'stance-target-cancel-phone.json'
 STOP_COUNTS = {'mobile_stop_control_contract':22, 'mobile_stop_control_phone':64,
