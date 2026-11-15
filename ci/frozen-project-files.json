@@ -340,7 +340,7 @@
   "tests/military_tech_worker_recovery_contract.gd": "e774539f357ad9384f599c8b550360ae75475871c89a75d0673bb33fbd35a999",
   "tests/military_technology_contract.gd": "3307b212f74a00c1638b835035a9529d5785082b225c395b29bd1618bc4d6ef2",
   "tests/minimap_touch_ownership_contract.gd": "5be54396da8f448b5d78a5ccf1c8d56276cd85ef2dadc8a5681f882b033a773c",
-  "tests/mobile_stop_control_contract.gd": "b00b82d5a66ab1b9c70e093d7e49d550cf1ecec578dd9e72bc80f210581aaaa8",
+  "tests/mobile_stop_control_contract.gd": "4fa32025332a42ee37b8072bc60ed11da667449711d9191676fb11091142962b",
   "tests/mobile_stop_control_phone.gd": "6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a",
   "tests/moving_attack_recovery_contract.gd": "1eb5e04060420db044f57d7cbb348458477ae6c8a3581398233eeb5754a44411",
   "tests/normal_probe.gd": "57b839fb0ce0bc38351690301a18e32c21f6c07bd8e931832f10207c0945e721",
