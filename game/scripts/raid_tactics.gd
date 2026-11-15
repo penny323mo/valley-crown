@@ -30,3 +30,20 @@ static func choose(attacker,records):
 		var score=[0 if distance<=Rules.RANGE[kind] else 1,-bonus,0 if current else 1,distance,target.id]
 		if _before(score,best): chosen=target; best=score
 	return chosen
+
+static func siege_target(attacker: Dictionary,records: Array,keep: Dictionary) -> Dictionary:
+	# Local visible fortifications only. Do not abandon a keep already within
+	# striking range, and never turn remembered towers into attack targets.
+	if not attacker.get("owned",false) or not attacker.get("alive",false) or attacker.get("remembered",false) or attacker.get("team",-1)!=1 or attacker.get("category","")!="unit" or attacker.get("kind","")!="siege":return {}
+	if not keep.is_empty() and not keep.get("remembered",true) and keep.get("alive",false) and keep.get("team",-1)==0:
+		if maxf(0,attacker.pos.distance_to(keep.pos)-keep.get("radius",0.0))<=Rules.RANGE.siege:return {}
+	var chosen={};var best=[]
+	for tower in records:
+		if tower.get("owned",false) or not tower.get("alive",false) or tower.get("remembered",true) or tower.get("team",-1)!=0 or tower.get("category","")!="building" or tower.get("kind","")!="tower" or not tower.get("built",false):continue
+		var center_distance=attacker.pos.distance_to(tower.pos)
+		if center_distance>Rules.SIGHT.siege:continue
+		var distance=maxf(0,center_distance-tower.get("radius",0.0))
+		var current=attacker.get("state","")=="attack" and attacker.get("target",-1)==tower.id
+		var score=[0 if distance<=Rules.RANGE.siege else 1,0 if current else 1,distance,tower.id]
+		if _before(score,best):chosen=tower;best=score
+	return chosen

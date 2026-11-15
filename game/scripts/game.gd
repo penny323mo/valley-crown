@@ -3075,8 +3075,9 @@ func _ai_move_home(members,castle):
 
 func _ai_raid_order(ent,records,enemy_keep):
 	# Escort combat uses current faction observations, never hidden authority.
-	# Siege keeps its strategic objective; other military can clear defenders.
-	var defender=RaidTactics.choose(ent,records)
+	# Siege clears nearby visible towers before approaching the keep; escorts
+	# intercept defenders. A keep already in striking range stays the objective.
+	var defender=RaidTactics.siege_target(ent,records,enemy_keep) if ent.kind=="siege" else RaidTactics.choose(ent,records)
 	if not defender.is_empty():
 		if ent.state!="attack" or ent.target!=defender.id:
 			_submit("order",{"ids":[ent.id],"target":defender.id,"position":defender.pos},1)
