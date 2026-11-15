@@ -1004,6 +1004,11 @@ func _cancel_construction(ent):
 
 # Producer-owned ground or natural-resource plan. Validate current faction
 # knowledge; no spawn override, path probe or pre-authorized harvest is stored.
+func _rally_work_target(target,team):
+	if target.is_empty() or not target.get("alive",false) or target.get("remembered",false): return false
+	if target.get("category","")=="resource": return not _resource_type(target).is_empty()
+	return target.get("category","")=="building" and target.get("kind","")=="farm" and target.get("team",-1)==team and target.get("built",false)
+
 func _set_ground_rally(id,p,team,clear=false,target_id=-1,mode="move"):
 	var building=_get_entity(id)
 	if building.is_empty() or not building.alive or building.team!=team or not building.built or not Rules.PRODUCES.has(building.kind):
@@ -1017,12 +1022,12 @@ func _set_ground_rally(id,p,team,clear=false,target_id=-1,mode="move"):
 	if mode=="advance" and ("villager" in Rules.products_for(building.kind) or target_id>=0): return _reject_command(team,"警戒集合點需要軍事生產建築與可見空地。")
 	if target_id>=0:
 		var target=_get_entity(target_id)
-		if "villager" not in Rules.products_for(building.kind) or target.is_empty() or not _visible_to(target,team) or not target.alive or target.category!="resource" or _resource_type(target).is_empty():
-			return _reject_command(team,"主堡採集集合點需要可見的自然資源。")
+		if "villager" not in Rules.products_for(building.kind) or target.is_empty() or not _visible_to(target,team) or not _rally_work_target(target,team):
+			return _reject_command(team,"主堡工作集合點需要可見資源或已完成的己方農田。")
 		# Store only this accepted observed resource, never the imprecise tap.
 		building.rally_point=target.pos; building.rally_target=target.id; building.rally_mode="move"
-		building.rally_resource_type=_resource_type(target)
-		if team==0: _message("採集集合點已設定；新村民自動採集。",4)
+		building.rally_resource_type=_resource_type(target) if target.category=="resource" else ""
+		if team==0: _message("工作集合點已設定；新村民自動採集或耕作，已有農夫則分派附近空田；沒有空田時待命。",4)
 		return true
 	if not p is Vector3 or not p.is_finite(): return _reject_command(team,"請點可見空地。")
 	# Reject outside points before _cell's clamping. Height carries no intent.
@@ -1035,6 +1040,24 @@ func _set_ground_rally(id,p,team,clear=false,target_id=-1,mode="move"):
 	building.rally_point=_point(cell); building.erase("rally_target"); building.erase("rally_resource_type"); building.rally_mode=mode
 	if team==0: _message("警戒集合點已設定；新軍隊警戒前進。" if mode=="advance" else "集合點已設定；新單位自動移動。",4)
 	return true
+
+# Bounded owned/observed farm cluster allocation. Pending accepted commands
+# reserve a destination before the next tick's ordinary farm ownership gate.
+func _farm_rally_destination(anchor,team):
+	var reserved={}
+	for command in commands:
+		if command.get("team",-1)==team and command.get("type","")=="order" and command.get("farm_gather",false):
+			reserved[command.get("target",-1)]=true
+	var candidates=[]
+	for record in faction_views[team].records().values():
+		if not _rally_work_target(record,team) or record.get("kind","")!="farm":continue
+		if record.pos.distance_squared_to(anchor.pos)>64.0 or reserved.has(record.id):continue
+		if economy.farm_view(record.id).get("worker_id",-1)>=0:continue
+		candidates.append(record)
+	candidates.sort_custom(func(a,b):
+		var da=a.pos.distance_squared_to(anchor.pos);var db=b.pos.distance_squared_to(anchor.pos)
+		return da<db or (da==db and a.id<b.id))
+	return {} if candidates.is_empty() else candidates[0]
 
 # Only an observed-empty original work site permits local replacement.
 # Never search hidden authority or move the original resource-cluster anchor.
@@ -1062,8 +1085,13 @@ func _apply_newborn_rally(unit,building):
 		# revalidates visibility/liveness next tick; never read hidden truth.
 		var known=faction_views[unit.team].get_record(building.rally_target)
 		if known.is_empty():known=_resource_rally_replacement(building,unit.team)
-		if not known.is_empty() and known.alive and not known.remembered and known.category=="resource" and not _resource_type(known).is_empty():
-			_submit("order",{"ids":[unit.id],"target":known.id,"position":known.pos},unit.team)
+		if _rally_work_target(known,unit.team):
+			if known.get("kind","")=="farm":
+				known=_farm_rally_destination(known,unit.team)
+				if known.is_empty(): return
+			var order={"ids":[unit.id],"target":known.id,"position":known.pos}
+			if known.get("kind","")=="farm": order.farm_gather=true
+			_submit("order",order,unit.team)
 			return
 	# Scouts, other troops, and resources without an observed local replacement
 	# retain ordinary ground routing to the last accepted point.
@@ -3790,7 +3818,7 @@ func _selection_stance_summary(selection: Array) -> String:
 func _rally_detail(record):
 	if record.get("rally_point",Vector3.INF)==Vector3.INF: return " · 可設定新單位集合點"
 	if record.get("rally_mode","move")=="advance": return " · 警戒集合點，新軍隊警戒前進"
-	return " · 採集集合點，新村民自動採集" if record.get("rally_target",-1)>=0 else " · 集合點已設定，新單位自動移動"
+	return " · 工作集合點，新村民採集／附近空田耕作" if record.get("rally_target",-1)>=0 else " · 集合點已設定，新單位自動移動"
 
 func _update_hud():
 	if not is_instance_valid(top_resources): return
@@ -4591,7 +4619,7 @@ func _send_world_order(screen,contextual=false):
 		var rally_order={"building":rally_building,"position":_world_at(screen),"mode":rally_mode}
 		var rally_record=faction_views[0].get_record(_pick(screen))
 		var rally_producer=faction_views[0].get_record(rally_building)
-		if rally_mode=="move" and "villager" in Rules.products_for(rally_producer.get("kind","")) and rally_record.get("category","")=="resource" and rally_record.get("alive",false) and not rally_record.get("remembered",false): rally_order.target=rally_record.id
+		if rally_mode=="move" and "villager" in Rules.products_for(rally_producer.get("kind","")) and _rally_work_target(rally_record,0): rally_order.target=rally_record.id
 		_submit("rally",rally_order)
 		_cancel_mode(); return
 
