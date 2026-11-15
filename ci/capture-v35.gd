@@ -11,20 +11,17 @@ func shot(g,name):
 func run():
  root.size=Vector2i(640,360)
  var g=load("res://main.tscn").instantiate();root.add_child(g);g.set_process(false);g.test_mode=true;g.ai_enabled=false;g._test_reset();g.set_process(false);g._skip_tutorial();await process_frame
- var own=g._spawn("archer",0,Vector3.ZERO,true)
- var near=g._spawn("archer",1,Vector3(1,0,0),true)
- var counter=g._spawn("spearman",1,Vector3(3,0,0),true)
- g._update_vision();g._order_advance([own.id],Vector3(8,0,0),0)
- var default_target=g._advance_target(own).id
- g._publish_faction_views();g._select([own.id]);g.camera_focus=Vector3(1.5,0,0);g.camera_zoom=15
- var ok=await shot(g,"native-default-nearest-policy")
- g.compact_menu.show();g._set_shortcut_category("army");var button=g.find_child("TargetPolicy_counter",true,false)
- await process_frame
- g.shortcut_scroll.ensure_control_visible(button)
- ok=await shot(g,"native-army-menu-target-policy-controls") and ok
- button.pressed.emit();g._tick(0.1);g._publish_faction_views();g._select([own.id])
- var opted_target=g._advance_target(own).id
- ok=await shot(g,"native-applied-counter-priority") and ok
- print(JSON.stringify({"build":g.Rules.BUILD_ID,"scope":"Controlled owned archer with enemy archer1m and enemy spearman3m; policy submitted then normal tick. Not natural match or phone acceptance","default_nearest":default_target==near.id,"counter_target":opted_target==counter.id,"policy":own.target_policy,"hud":g.selection_detail.text}))
- ok=ok and default_target==near.id and opted_target==counter.id and own.target_policy=="counter" and g.selection_detail.text.contains("克制優先 1")
+ var tower=g._spawn("tower",0,Vector3.ZERO,true)
+ var near=g._spawn("spearman",1,Vector3(3,0,0),true)
+ var ram=g._spawn("siege",1,Vector3(5,0,0),true)
+ g._update_vision();g._publish_faction_views();g._select([tower.id]);g.camera_focus=Vector3(2.5,0,0);g.camera_zoom=15;g._camera_update();g._update_visuals(0);await process_frame
+ g._tap(g.camera.unproject_position(ram.pos),true)
+ var queued=g.commands.size()==1 and g.commands[0].type=="tower_focus" and g.commands[0].target==ram.id
+ while not g.commands.is_empty():g._execute(g.commands.pop_front())
+ g.test_mode=false;tower.cooldown_ticks=0;g._update_tower(tower);g._update_attack_effects(0.175,true)
+ g._publish_faction_views();g._select([tower.id])
+ var ok=await shot(g,"native-contextual-tower-focus-siege")
+ var target=g.attack_ledger.event(1).target_id
+ print(JSON.stringify({"build":g.Rules.BUILD_ID,"scope":"Controlled tower, nearer spearman and farther siege; actual contextual tap and queued command then normal tower shot. Not natural siege or physical phone acceptance","tap_queued":queued,"focus":tower.get("focus_target",-1)==ram.id,"shot_target":target==ram.id,"hud":g.selection_detail.text}))
+ ok=ok and queued and target==ram.id and g.selection_detail.text.contains("集中射擊 攻城車")
  g.queue_free();quit(0 if ok else 1)
