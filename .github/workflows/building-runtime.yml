@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-fe9f889b063a
+  group: building-runtime-vc-e85a6575f891
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: c85275347b15f08c1e604f0000b2840e393efef0
+      BUILDING_RUNTIME_SOURCE_COMMIT: dee122d32e94b3438283ea2c16abfd662c6360bd
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '6c5c9fb0530b72fb365c4e962302171aee652bf4ffa3598fa56c46db73b62c77  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'b7c18b2e54d30dc337da50307d6d931c1616dcaab5b81d998a3d375dfe56fe13  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"

@@ -1,10 +1,10 @@
 {
-  "build": "vc-fe9f889b063a",
-  "game_sha256": "550ab21c02f5de6cdb19dfdaedfeb2a671ad037c88630fc5010934f948b07517",
+  "build": "vc-e85a6575f891",
+  "game_sha256": "b58d5e9f01d64743313bc378ed1b49b6f813ea8ebdb77aafda460368dea894e4",
   "fixtures": {
     "military_progression_contract": [
       "tests/military_progression_contract.gd",
-      "9cfb912188307cc8178a19676ecd0e4d8e79cc473a552c19c9f517a06314272d"
+      "4c5f8b52cc4259dd1a512ad1e13ead2b7d4835c7d6526cce8d09fafb71180432"
     ],
     "military_runtime_edges": [
       "tests/military_runtime_edges.gd",
@@ -70,7 +70,7 @@
       "tower prioritizes visible unit before building",
       "tower equal-distance ties use lower entity ID",
       "tower cannot target hidden enemies",
-      "tower cap counts unfinished sites",
+      "tower expansion permits more than two sites",
       "siege hit uses ordinary victory settlement",
       "town center UI exposes scout and age research",
       "builder mobile strip exposes all new structures",
