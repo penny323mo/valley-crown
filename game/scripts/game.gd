@@ -24,6 +24,9 @@ const EndRules = preload("res://scripts/end_rules.gd")
 const Economy = preload("res://scripts/economy_ledger.gd")
 const CombatVeterancy=preload("res://scripts/combat_veterancy.gd")
 var combat_veterancy=CombatVeterancy.new()
+const BATTLE_SPEEDS=[0.5,1.0,2.0]
+var battle_speed=1.0
+var battle_speed_button: Button
 const AttackLedger = preload("res://scripts/attack_ledger.gd")
 const INITIAL_STOCKS = [{"food":150,"wood":200,"stone":100,"iron":0},{"food":150,"wood":200,"stone":100,"iron":0}]
 const ResourceVisuals = preload("res://scripts/resource_visuals.gd")
@@ -635,7 +638,7 @@ func _process(delta):
 	if discard_return_delta:
 		elapsed=0.0; discard_return_delta=false
 	if not paused and not game_over and not test_mode and application_focused and not application_suspended:
-		tick_accumulator+=elapsed
+		tick_accumulator+=elapsed*battle_speed
 		var steps=0
 		while tick_accumulator+0.000000001>=Rules.TICK and steps<5 and not paused and not game_over:
 			tick_accumulator=maxf(0.0,tick_accumulator-Rules.TICK)
@@ -645,7 +648,7 @@ func _process(delta):
 	var visual_delta=minf(elapsed,0.1)
 	if not game_over and application_focused and not application_suspended: _camera_input(visual_delta)
 	_camera_update()
-	_update_visuals(visual_delta)
+	_update_visuals(minf(elapsed*battle_speed,0.1))
 	if frame_counter%4==0: _update_hud(); _refresh_fog()
 	if is_instance_valid(minimap): minimap.queue_redraw()
 	if toast_time>0:
@@ -3758,6 +3761,8 @@ func _create_ui():
 		save.name="SaveSquad%d" % (slot+1); row.add_child(save)
 		save.tooltip_text="以目前選取的軍隊取代本隊；不含村民，關閉戰役後不保留。"
 		squad_buttons.append({"recall":recall,"save":save})
+	battle_speed_button=_button("",_cycle_battle_speed,160);battle_speed_button.name="BattleSpeed";menu_box.add_child(battle_speed_button)
+	battle_speed_button.tooltip_text="0.5×慢速、1×標準、2×快速；雙方採集、移動、生產與戰鬥同速。鏡頭與觸控速度不變，暫停時不推進。";_refresh_battle_speed()
 	audio_button=_button("音效：關",_toggle_audio,110); audio_button.name="AudioToggle"; menu_box.add_child(audio_button)
 	audio_button.tooltip_text="點按開啟原創提示音；暫停及背景時靜音"
 	var nav3=HFlowContainer.new(); nav3.add_theme_constant_override("h_separation",6); nav3.add_theme_constant_override("v_separation",6); menu_box.add_child(nav3)
@@ -3766,7 +3771,7 @@ func _create_ui():
 	nav3.add_child(_button("投降",func(): _compact_menu_action(_confirm_surrender),78))
 	help_label=_label("",13,Color("c6cbbd")); help_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(help_label)
 	var main_menu_action=_button("主選單", _request_main_menu, 110);menu_box.add_child(main_menu_action)
-	shortcut_sections.settings=[audio_button,nav3,help_label,main_menu_action]
+	shortcut_sections.settings=[battle_speed_button,audio_button,nav3,help_label,main_menu_action]
 	_apply_shortcut_category()
 	compact_menu.hide()
 	toast_label=_label("",15,GOLD); ui.add_child(toast_label); toast_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -3921,7 +3926,9 @@ func _update_hud():
 	if compact_ui and get_viewport().get_visible_rect().size.x<480:
 		top_resources.text="食 %d  木 %d  人口 %d/%d\n石 %d  鐵 %d  %s" % [display_bank.food,display_bank.wood,_population(0),_capacity(0),display_bank.stone,display_bank.iron,"城防時代" if _age2(0) else "聚落時代"]
 	time_label.text="%02d:%02d" % [floori(game_time/60),int(game_time)%60]
-	time_label.tooltip_text=SkirmishPolicy.title(skirmish_mode)
+	if battle_speed!=1.0:time_label.text+=" · "+_battle_speed_text()
+	time_label.tooltip_text=SkirmishPolicy.title(skirmish_mode)+" · 戰役速度 "+_battle_speed_text()
+	_refresh_battle_speed()
 	pause_button.text="繼續" if paused else "暫停"
 	mission_label.text=("城防時代：建馬廄出騎兵，建工坊出攻城車，摧毀敵方主堡。" if _age2(0) else "聚落時代：採鐵，於主堡研究城防時代，解鎖騎兵與攻城車。")
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
@@ -5224,6 +5231,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 	control_point.reset();ai_control_targets.clear()
 	worker_evacuations.clear(); worker_manual_until.clear(); worker_safety_hits.clear(); worker_safety_enabled=true
 	entities.clear(); selected.clear(); squad_selection.reset(); idle_worker_cursor=-1; repeat_train_cursor=[0,0]; commands.clear(); next_id=0; tick_count=0; game_time=0
+	battle_speed=1.0
 	attack_ledger=AttackLedger.new(); combat_veterancy=CombatVeterancy.new(); pending_damage.clear(); battle_alerts.reset(); match_report.reset(); last_match_report={}; end_report_page="overview"
 	command_sequence=0; processed_command_ids.clear(); next_queue_id=0; ready_cursor=-1; spawn_commit_order.clear(); game_over=false; victory=false; outcome=""; paused=false
 	recovery_ticks=[0,0]; no_progress_ticks=0; progress_serial=0; inactivity_paused=false; future_recovery_events.clear(); end_reason=""
@@ -6584,3 +6592,17 @@ func _select_roster(kind,wounded):
 	_cancel_mode();compact_menu.hide();compact_menu_dismiss.hide()
 	_select(ids);camera_focus=records[ids[0]].pos;_camera_update()
 	_refresh_army_roster();compact_menu_button.text=_shortcut_menu_caption()
+
+func _battle_speed_text() -> String:
+	return "0.5×" if battle_speed==0.5 else ("2×" if battle_speed==2.0 else "1×")
+
+func _refresh_battle_speed():
+	if not is_instance_valid(battle_speed_button):return
+	battle_speed_button.text="戰役速度 "+_battle_speed_text()+" · 點按切換"
+	battle_speed_button.disabled=game_over or not application_focused or application_suspended
+
+func _cycle_battle_speed():
+	if not compact_menu.visible or game_over or not application_focused or application_suspended:return
+	_cancel_pointer_streams()
+	battle_speed=BATTLE_SPEEDS[(BATTLE_SPEEDS.find(battle_speed)+1)%BATTLE_SPEEDS.size()]
+	_refresh_battle_speed();_update_hud()
