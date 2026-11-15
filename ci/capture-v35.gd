@@ -21,11 +21,11 @@ func run():
  game.compact_menu.show();game._set_shortcut_category("army");game._refresh_army_roster()
  await process_frame
  scroll_to(game.army_roster_buttons.spearman.all)
- var ok=await shot("army-roster-native-top")
+ var ok=await shot("pinned-roster-native-top")
  scroll_to(game.army_roster_buttons.cavalry.wounded)
- ok=await shot("army-roster-native-cavalry-wounded") and ok
+ ok=await shot("pinned-roster-native-cavalry-wounded") and ok
  scroll_to(game.army_roster_buttons.siege.all)
- ok=await shot("army-roster-native-siege") and ok
+ ok=await shot("pinned-roster-native-siege") and ok
  var before=game.commands.duplicate(true);game._select_roster("cavalry",true)
  print(JSON.stringify({"build":game.Rules.BUILD_ID,"scope":"Native fortress fixture; one cavalry given 10 HP damage to demonstrate wounded selection, not natural combat or phone acceptance","wounded_selected":game.selected==[cavalry.id],"orders_unchanged":game.commands==before}))
  ok=ok and game.selected==[cavalry.id] and game.commands==before
