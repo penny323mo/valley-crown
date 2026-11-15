@@ -1,8 +1,8 @@
 extends SceneTree
 const OUT="/tmp/capture/"
 func _initialize():call_deferred("run")
-func shot(game,name):
- game._publish_faction_views();game._update_vision();game._update_visuals(0.0);game._update_hud();game._layout_ui();game._camera_update()
+func shot(g,name):
+ g._publish_faction_views();g._update_vision();g._update_visuals(0.0);g._update_hud();g._layout_ui();g._camera_update()
  await process_frame
  await RenderingServer.frame_post_draw
  var image=root.get_texture().get_image();var error=image.save_png(OUT+name+".png")
@@ -10,19 +10,21 @@ func shot(game,name):
  return error==OK
 func run():
  root.size=Vector2i(640,360)
- var game=load("res://main.tscn").instantiate();root.add_child(game);game.set_process(false);game.test_mode=true;game.ai_enabled=false
- game._test_reset();game.set_process(false);game._skip_tutorial();await process_frame
- var keep=game._first(0,"town_center")
- var archer=game._spawn("archer",0,keep.pos+Vector3(4,0,0),true)
- var target=game._spawn("spearman",1,archer.pos+Vector3(3,0,0),true)
- game._update_vision();game.test_mode=false
- var hp=target.hp;var released=game._release_attack(archer,target)
- game._update_attack_effects(0.175,true)
- game.camera_focus=(archer.pos+target.pos)*0.5;game.camera_zoom=15
- var ok=await shot(game,"native-archer-midflight-player-zoom")
- game.camera_zoom=4
- ok=await shot(game,"native-archer-midflight-diagnostic-closeup") and ok
- var cues=game.attack_effects.size()
- print(JSON.stringify({"build":game.Rules.BUILD_ID,"scope":"Controlled visible archer release, cosmetic cue frozen at0.175seconds. Player zoom15 and explicitly diagnostic zoom4; not natural combat, phone acceptance or hit timing evidence","release_applied":released.applied,"arrows":cues,"target_hp_unchanged_without_settlement":target.hp==hp}))
- ok=ok and released.applied and cues==1 and target.hp==hp
- game.queue_free();quit(0 if ok else 1)
+ var g=load("res://main.tscn").instantiate();root.add_child(g);g.set_process(false);g.test_mode=true;g.ai_enabled=false;g._test_reset();g.set_process(false);g._skip_tutorial();await process_frame
+ var own=g._spawn("archer",0,Vector3.ZERO,true)
+ var near=g._spawn("archer",1,Vector3(1,0,0),true)
+ var counter=g._spawn("spearman",1,Vector3(3,0,0),true)
+ g._update_vision();g._order_advance([own.id],Vector3(8,0,0),0)
+ var default_target=g._advance_target(own).id
+ g._publish_faction_views();g._select([own.id]);g.camera_focus=Vector3(1.5,0,0);g.camera_zoom=15
+ var ok=await shot(g,"native-default-nearest-policy")
+ g.compact_menu.show();g._set_shortcut_category("army");var button=g.find_child("TargetPolicy_counter",true,false)
+ await process_frame
+ g.shortcut_scroll.ensure_control_visible(button)
+ ok=await shot(g,"native-army-menu-target-policy-controls") and ok
+ button.pressed.emit();g._tick(0.1);g._publish_faction_views();g._select([own.id])
+ var opted_target=g._advance_target(own).id
+ ok=await shot(g,"native-applied-counter-priority") and ok
+ print(JSON.stringify({"build":g.Rules.BUILD_ID,"scope":"Controlled owned archer with enemy archer1m and enemy spearman3m; policy submitted then normal tick. Not natural match or phone acceptance","default_nearest":default_target==near.id,"counter_target":opted_target==counter.id,"policy":own.target_policy,"hud":g.selection_detail.text}))
+ ok=ok and default_target==near.id and opted_target==counter.id and own.target_policy=="counter" and g.selection_detail.text.contains("克制優先 1")
+ g.queue_free();quit(0 if ok else 1)
