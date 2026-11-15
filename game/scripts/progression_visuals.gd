@@ -16,6 +16,36 @@ static func _cylinder(parent: Node3D,pos: Vector3,radius: float,height: float,co
 	var instance=MeshInstance3D.new(); instance.mesh=mesh; instance.position=pos; parent.add_child(instance)
 	return instance
 
+# Rider limbs and equipment share rigid local frames. The lance shaft passes
+# through the hand origin; no root-space decorative weapon may float beside it.
+static func _limb(parent: Node3D,start: Vector3,finish: Vector3,radius: float,color: Color) -> MeshInstance3D:
+	var part=_cylinder(parent,(start+finish)*0.5,radius,start.distance_to(finish),color,8)
+	part.quaternion=Quaternion(Vector3.UP,(finish-start).normalized())
+	return part
+
+static func _rider_equipment(root: Node3D,team: Color,wood: Color,metal: Color):
+	var leather=Color("493b32")
+	for side in [-1,1]:
+		_limb(root,Vector3(side*0.09,1.02,0.04),Vector3(side*0.24,0.83,0.08),0.065,team)
+		_limb(root,Vector3(side*0.24,0.83,0.08),Vector3(side*0.25,0.60,0.02),0.055,leather)
+		_box(root,Vector3(side*0.25,0.58,-0.035),Vector3(0.12,0.09,0.22),leather)
+	var arm=Node3D.new();arm.name="LanceArm";root.add_child(arm);arm.position=Vector3(0.14,1.30,0.04)
+	var elbow=Vector3(0.12,-0.12,-0.04);var grip=Vector3(0.12,-0.19,-0.23)
+	_limb(arm,Vector3.ZERO,elbow,0.065,team)
+	_limb(arm,elbow,grip,0.05,leather)
+	var hand=Node3D.new();hand.name="Grip";arm.add_child(hand);hand.position=grip
+	_box(hand,Vector3.ZERO,Vector3(0.105,0.10,0.12),leather).name="Glove"
+	var weapon=Node3D.new();weapon.name="Lance";hand.add_child(weapon)
+	var shaft=_cylinder(weapon,Vector3(0,0,-0.30),0.023,1.50,wood,8);shaft.rotation.x=-PI/2;shaft.name="Shaft"
+	var point=_cylinder(weapon,Vector3(0,0,-1.175),0.065,0.25,metal,8);point.mesh.top_radius=0.0;point.rotation.x=-PI/2;point.name="Point"
+	var shield_arm=Node3D.new();shield_arm.name="ShieldArm";root.add_child(shield_arm);shield_arm.position=Vector3(-0.14,1.30,0.04)
+	var left_elbow=Vector3(-0.10,-0.13,0);var left_grip=Vector3(-0.10,-0.17,-0.18)
+	_limb(shield_arm,Vector3.ZERO,left_elbow,0.065,team);_limb(shield_arm,left_elbow,left_grip,0.05,leather)
+	var left_hand=Node3D.new();left_hand.name="Grip";shield_arm.add_child(left_hand);left_hand.position=left_grip
+	_box(left_hand,Vector3.ZERO,Vector3(0.10,0.10,0.12),leather).name="Glove"
+	var shield=_cylinder(left_hand,Vector3(-0.055,0,0),0.25,0.055,metal,12);shield.rotation.z=PI/2;shield.name="Shield"
+	var face=_cylinder(left_hand,Vector3(-0.087,0,0),0.215,0.012,team,12);face.rotation.z=PI/2
+
 static func build(parent: Node3D,kind: String,team: Color) -> Node3D:
 	var root=Node3D.new(); root.name="ProgressionCandidate"; root.set_meta("provisional_art",true); parent.add_child(root)
 	var wood=Color("654b35"); var stone=Color("9b9b8e"); var metal=Color("535e65")
@@ -65,7 +95,7 @@ static func build(parent: Node3D,kind: String,team: Color) -> Node3D:
 			_box(root,Vector3(0,0.88,0.04),Vector3(0.4,0.1,0.4),team)
 			_box(root,Vector3(0,1.16,0.04),Vector3(0.28,0.43,0.22),team)
 			_cylinder(root,Vector3(0,1.48,0.04),0.14,0.23,metal)
-			var lance=_cylinder(root,Vector3(0.24,1.22,-0.1),0.025,1.25,wood,6); lance.rotation.x=-0.45
+			_rider_equipment(root,team,wood,metal)
 		"siege":
 			_box(root,Vector3(0,0.5,0),Vector3(0.8,0.14,0.92),wood,"oak")
 			for x in [-1,1]:
@@ -94,5 +124,7 @@ static func present(record: Dictionary,body: Node3D,color: Color,delta: float,ru
 	var age=float(root.get_meta("attack_age",1.0))
 	if running: age+=delta
 	root.set_meta("attack_age",age)
+	var lance_arm=root.get_node_or_null("LanceArm") as Node3D
+	if lance_arm!=null: lance_arm.rotation.x=-sin(age*PI/0.35)*0.30 if age<0.35 else 0.0
 	var ram=root.get_node_or_null("Ram") as Node3D
 	if ram!=null: ram.position.z=-0.1-(sin(age*PI/0.25)*0.15 if age<0.25 else 0.0)

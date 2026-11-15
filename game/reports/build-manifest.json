@@ -1,5 +1,5 @@
 {
-  "build": "vc-1231c58eefbb",
+  "build": "vc-cf23bb7bc598",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -149,7 +149,7 @@
     "scripts/faction_work_memory.gd": "bf3e2e99754a949ad2282a8e79040485da4274bf3774327f7c8e229f589c2f29",
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
     "scripts/farm_dispatch.gd": "e61b36c2a89eeb8b4d9e95f3aac862e8e8332aaa4bd0d45393688817e0bb15de",
-    "scripts/field_manual.gd": "57d4e7b98a963bb9532d8a00d4cc4790bea0e90249b414688f3ed0d008142ccc",
+    "scripts/field_manual.gd": "ccf1567217505d011af28391a230db7025c0357ca5a8ed35f87e2e2f8ebd6963",
     "scripts/game.gd": "4632c102cbd5506fb80db4b7b5c02e5476142e1b2813136af018259474d62e2b",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
@@ -170,7 +170,7 @@
     "scripts/observed_occlusion.gd.uid": "0d078dece8aed1c6b4ccabf959f90900303650f9057a52d7394c76e553c46470",
     "scripts/order_routes.gd": "87796c340061328c3f4ed959243a2dc34afc4c94e034aca4b846cb4411389743",
     "scripts/production_overview.gd": "eb08fae4377fddf7fe73984c92d84a4077d7c153306bdba2d116ced13a42a095",
-    "scripts/progression_visuals.gd": "9727e75c84646f9e7daa2691cbb2e2a2405d73e46d4cc5180deee99ff189e675",
+    "scripts/progression_visuals.gd": "8cf984569ea7d75ef03dec6482b985dd916d59f3fb5cc0549d23c4896b16cd83",
     "scripts/raid_tactics.gd": "6f7a39119567ef38adf191bbd361494a85e5e93d907fd1a895800c4d4706d844",
     "scripts/remembered_material.gd": "e8260500484e9222cf4475c3d353f5e27f07955ca5293f64cb0afa42177abd6e",
     "scripts/repair_dispatch.gd": "667a74ed23f32fbc0e141d87a957589eb4960b6c42fbb3a562fd108eb39b7462",
@@ -178,7 +178,7 @@
     "scripts/rest_recovery.gd": "6c3b4c9387c0f8ab8443bde375b803775de40c698be42a4e26a3c57ec8a21917",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "764817a7c7655329b5e1150fcea3dfa8a1773605a632711be914ab37213f3926",
+    "scripts/rules.gd": "08bd6e3aae246dc6a91114d1db4999d270924206e9591b1b72a3e4a0b81a5236",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_effect.gd": "1b408e8b5b68f790cf6ac74f40c65d0bb33afd2ec4fde0309e224281080d111f",

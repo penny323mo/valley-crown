@@ -8,7 +8,7 @@ const ROLES={
 	"spearman":"近戰防線，對騎兵有額外傷害；小心敵方弓手。",
 	"archer":"遠距支援，適合對付長槍兵；保持距離，避免被騎兵近身。",
 	"cavalry":"快速突擊，適合追擊弓手；避開長槍兵的反騎兵傷害。",
-	"siege":"近距攻城，對所有建築有額外傷害；行動緩慢，需要其他兵種護送。"
+	"siege":"近距攻城，對所有建築有額外傷害；行動緩慢，需要其他兵種護送。停止後可派村民維修：每秒 1 木材回復 5 生命；受擊後等 5 秒，移動或攻擊會中止。"
 }
 const BUILDING_ROLES={
 	"town_center":"起始主堡，不能另建。接收資源、訓練村民與斥候、研究科技。主堡被毀會落敗。",
@@ -59,7 +59,7 @@ static func entry(section: int,index: int) -> Dictionary:
 		var products=PackedStringArray()
 		for product in Rules.products_for(kind):products.append(Rules.NAMES[product])
 		if not products.is_empty():lines.append("生產："+"、".join(products)+"。完成施工後才可訓練；排隊已付款，完成後才出生。")
-		if kind=="tower":lines.append("攻擊 %d · 射程 %.1f · 每隊最多 %d 座。" % [Rules.DAMAGE[kind],Rules.RANGE[kind],Rules.CONTENT.BUILDINGS.tower.limit])
+		if kind=="tower":lines.append("攻擊 %d · 射程 %.1f · 數量沒有兩座上限。" % [Rules.DAMAGE[kind],Rules.RANGE[kind]])
 		if kind!="town_center":lines.append("選村民建造；受損的已完成建築可由村民維修。拆除不退資源。")
 	else:
 		lines.append("研究場所：主堡。與訓練共用隊列，排隊不等於完成。")
