@@ -3,6 +3,10 @@ extends Node
 ## main.tscn remains the explicit battle fixture for simulation tests.
 const MATCH_SCENE = preload("res://main.tscn")
 const FieldManual=preload("res://scripts/field_manual.gd")
+const BattleHistory=preload("res://scripts/battle_history.gd")
+var history_path=BattleHistory.PATH
+var history_index=0
+var history_page=0
 var manual_section=0
 var manual_index=0
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
@@ -176,7 +180,7 @@ func _layout():
 	heading.visible = not home
 	mode_title.visible = page == "setup"
 	mode_title.text = "資源爭奪戰" if selected_victory_mode=="supply" else ("中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode))
-	eyebrow.text = "THE BORDERLANDS  /  01" if home else ("SKIRMISH  /  01" if page == "setup" else "FIELD MANUAL" if page in ["help","manual"] else "NEW CAMPAIGN")
+	eyebrow.text = "THE BORDERLANDS  /  01" if home else ("SKIRMISH  /  01" if page == "setup" else "FIELD MANUAL" if page in ["help","manual","history"] else "NEW CAMPAIGN")
 	section_rule.visible = true
 	help_tail.visible = page == "help"
 	footer.visible = home
@@ -299,7 +303,24 @@ func _show_page(next_page: String):
 		heading.text = "教學"
 		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取，再點空地移動或敵軍攻擊；右擊亦可指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
 		_add_button("戰場手冊", "FieldManualButton", func(): _show_page("manual"))
+		_add_button("本機戰績", "BattleHistoryButton", func(): _show_page("history"))
 		_add_button("返回", "BackButton", func(): _show_page("home"))
+	elif page == "history":
+		var stored=BattleHistory.read_history(history_path)
+		heading.text="本機戰績"
+		description.text="保留最近十場已完成戰役；只存於此裝置／瀏覽器。無痕模式或清除網站資料可能移除紀錄，不會跨裝置同步。未完成戰役不能讀檔續玩。\n\n"
+		if not stored.ok:description.text+=stored.get("reason","無法讀取戰績")
+		elif stored.entries.is_empty():description.text+="尚無已完成戰役。戰役結束後會自動記錄。"
+		else:
+			history_index=posmod(history_index,stored.entries.size())
+			var entry=stored.entries[history_index]
+			var titles=["總覽","經濟","軍隊","建設"]
+			var outcome_title={"victory":"勝利","defeat":"失敗","draw":"和局"}[entry.outcome]
+			heading.text="%s · %d/%d" % [outcome_title,history_index+1,stored.entries.size()]
+			description.text+=entry.saved_at+" · "+entry.build+"\n\n"+entry.pages[BattleHistory.PAGES[history_page]]
+			_add_button("分頁："+titles[history_page]+" >", "HistoryPageButton", func(): history_page=(history_page+1)%4;_show_page("history"))
+			_add_button("較早戰役 >", "HistoryNextButton", func(): history_index=(history_index+1)%stored.entries.size();history_page=0;_show_page("history"))
+		_add_button("返回教學", "HistoryBackButton", func(): _show_page("help"))
 	elif page == "manual":
 		var item=FieldManual.entry(manual_section,manual_index)
 		heading.text="%s · %s  %d/%d" % [FieldManual.SECTIONS[manual_section],item.title,item.index+1,item.count]

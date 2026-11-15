@@ -333,6 +333,9 @@ const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var skirmish_mode="standard"
 const ControlPoint=preload("res://scripts/control_point.gd")
 const SupplyRace=preload("res://scripts/supply_race.gd")
+const BattleHistory=preload("res://scripts/battle_history.gd")
+var history_path=BattleHistory.PATH
+var history_write_status={}
 var victory_mode="conquest"
 var control_point=ControlPoint.new()
 var control_point_marker: Node3D
@@ -2745,6 +2748,8 @@ func _check_end():
 	last_match_report.victory_mode=victory_mode
 	last_match_report.control_ticks=control_point.scores.duplicate()
 	if victory_mode=="supply":last_match_report.supply_progress=[SupplyRace.progress(economy.stats_view(0)),SupplyRace.progress(economy.stats_view(1))]
+	if not test_mode:
+		history_write_status=BattleHistory.append_report(last_match_report,str(Time.get_unix_time_from_system())+":"+str(Time.get_ticks_usec()),history_path)
 	commands.clear(); _cancel_mode()
 	if is_instance_valid(end_panel):
 		end_title.text={"victory":"王旗再起","defeat":"聚落失守","draw":"戰事暫歇"}[outcome]
@@ -2767,6 +2772,7 @@ func _show_match_report_page(page: String):
 	_cancel_pointer_streams()
 	end_report_page=page; end_scroll.scroll_vertical=0
 	end_report_label.text=MatchReport.page_text(last_match_report,page)
+	if not history_write_status.is_empty() and not history_write_status.get("ok",false):end_report_label.text+="\n\n"+history_write_status.get("reason","本機戰績未儲存")
 	for button in end_tabs.get_children():
 		button.disabled=button.get_meta("report_page")==page
 
