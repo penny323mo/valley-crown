@@ -25,7 +25,7 @@ jobs:
           curl -fL https://valley-crown-play.penny323tw.chatgpt.site/builds/vc-cf23bb7bc598/index.pck -o /tmp/capture/index.pck
           echo 'f0e4477033b0a4a739b6e20e20f55553a6ccab61711324456324670295e7a610  /tmp/capture/index.pck' | sha256sum -c -
           cp ci/capture-v35.gd /tmp/capture/capture.gd
-      - name: Resource guarded genuine native rendering
+      - name: Resource guarded genuine native rendering with low-memory softpipe
         run: python3 ci/capture-v35-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()

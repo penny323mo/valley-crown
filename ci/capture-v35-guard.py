@@ -13,9 +13,9 @@ while time.monotonic()-t<30:
  time.sleep(.25)
 def limits():
  os.setsid();resource.setrlimit(resource.RLIMIT_AS,(2147483648,2147483648));resource.setrlimit(resource.RLIMIT_CPU,(60,60));resource.setrlimit(resource.RLIMIT_CORE,(0,0));resource.setrlimit(resource.RLIMIT_FSIZE,(16777216,16777216))
-cmd=['xvfb-run','-a','-s','-screen 0 1280x720x24','/tmp/Godot_v4.6.3-stable_linux.x86_64','--main-pack','/tmp/capture/index.pck','--rendering-method','gl_compatibility','--single-threaded-scene','--script','/tmp/capture/capture.gd']
+cmd=['xvfb-run','-a','-s','-screen 0 1280x720x24','/tmp/Godot_v4.6.3-stable_linux.x86_64','--audio-driver','Dummy','--main-pack','/tmp/capture/index.pck','--rendering-method','gl_compatibility','--single-threaded-scene','--script','/tmp/capture/capture.gd']
 out=open(R/(name+'-stdout.txt'),'w');err=open(R/(name+'-stderr.txt'),'w');t=time.monotonic()
-p=subprocess.Popen(cmd,stdout=out,stderr=err,preexec_fn=limits,env={**os.environ,'HOME':str(R),'XDG_DATA_HOME':str(R/'userdata'),'XDG_CONFIG_HOME':str(R/'config'),'XDG_CACHE_HOME':str(R/'cache'),'GODOT_SILENCE_ROOT_WARNING':'1','LIBGL_ALWAYS_SOFTWARE':'1','LP_NUM_THREADS':'2'});r['pid']=p.pid;r['stop_reason']=None
+p=subprocess.Popen(cmd,stdout=out,stderr=err,preexec_fn=limits,env={**os.environ,'HOME':str(R),'XDG_DATA_HOME':str(R/'userdata'),'XDG_CONFIG_HOME':str(R/'config'),'XDG_CACHE_HOME':str(R/'cache'),'GODOT_SILENCE_ROOT_WARNING':'1','LIBGL_ALWAYS_SOFTWARE':'1','LP_NUM_THREADS':'1','GALLIUM_DRIVER':'softpipe','MESA_GL_VERSION_OVERRIDE':'3.3'});r['pid']=p.pid;r['stop_reason']=None
 try:
  while p.poll() is None:
   s=metrics();errors=(R/(name+'-stderr.txt')).read_text()
