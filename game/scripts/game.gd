@@ -151,6 +151,7 @@ var touch_command=false
 var unit_command_kind="order"
 var advance_formation=""
 var rally_building=-1
+var rally_group=[]
 var rally_mode="move"
 # UX01 selection intent only; no simulation command or world-state mutation.
 var box_select_mode=false
@@ -4007,7 +4008,8 @@ func _rebuild_actions(selection):
 		actions.add_child(clear_site_button); return
 	if selection.is_empty():
 		actions.add_child(_button("選取村民",func(): _select_group("villagers"),120))
-		actions.add_child(_button("探索霧谷",func(): _select_group("scout"),120)); return
+		actions.add_child(_button("探索霧谷",func(): _select_group("scout"),120))
+		actions.add_child(_button("選取軍事生產建築",_select_military_producers,190)); return
 	var type_groups=UnitTypeSelection.groups(faction_views[0].records(),selected)
 	if type_groups.size()>1:
 		for unit_kind in Rules.UNIT_KINDS:
@@ -4017,6 +4019,9 @@ func _rebuild_actions(selection):
 			filter_button.name="SelectType_"+kind; filter_button.set_meta("selection_source",selected.duplicate())
 			filter_button.tooltip_text="只保留目前選取的此兵種，不會全地圖選兵，也不改動指令、姿態或鏡頭。"
 			actions.add_child(filter_button); unit_type_buttons[kind]=filter_button
+	if _group_rally_ids().size()>1:
+		actions.add_child(_button("共同集合點",func(): _start_group_rally("move"),150))
+		actions.add_child(_button("共同警戒集合點",func(): _start_group_rally("advance"),180))
 	if _selected_builder()>=0:
 		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
@@ -4329,7 +4334,7 @@ func _select(ids):
 		if faction_views[0].get_record(id).kind=="villager": demo_tutorial.record("select")
 	_sync_audio()
 	audio_cues.selection(faction_views[0].records(),selected,Time.get_ticks_msec())
-	action_key=""; touch_command=false; rally_building=-1; _update_hud()
+	action_key=""; touch_command=false; rally_building=-1; rally_group.clear(); _update_hud()
 
 func _box_cancel_button_input(button,event):
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and event.pressed:
@@ -4616,6 +4621,37 @@ func _pick(screen,allow_enemy=true):
 	# A missed triangle keeps the existing resource-anchor touch tolerance.
 	return resource if resource>=0 else best
 
+# A visible explicit selection shortcut, not an automatic global rally order.
+func _select_military_producers():
+	if paused or game_over:return
+	var ids=[]
+	for record in faction_views[0].records().values():
+		if record.get("owned",false) and record.get("alive",false) and record.get("built",false) and Rules.PRODUCES.has(record.get("kind","")) and "villager" not in Rules.products_for(record.kind):ids.append(record.id)
+	ids.sort(); _select(ids)
+
+# Explicit selection only: never silently include all producers on the map.
+func _group_rally_ids():
+	var ids=[]
+	for id in selected:
+		var record=faction_views[0].get_record(id)
+		if record.is_empty() or not record.get("owned",false) or not record.get("alive",false) or not record.get("built",false) or not Rules.PRODUCES.has(record.get("kind","")) or "villager" in Rules.products_for(record.kind):return []
+		if id not in ids:ids.append(id)
+	ids.sort()
+	return ids
+
+func _start_group_rally(mode="move"):
+	if paused or game_over or mode not in ["move","advance"]:return
+	var ids=_group_rally_ids()
+	if ids.size()<2:return
+	_cancel_mode()
+	rally_group=ids; rally_building=ids[0]; rally_mode=mode; touch_command=true; action_key=""; _update_hud()
+
+func _submit_group_rally(position):
+	if rally_group.size()<2 or rally_building<0:return
+	# Each normal command rechecks owner, liveness, point and visibility.
+	for id in rally_group:_submit("rally",{"building":id,"position":position,"mode":rally_mode})
+	_cancel_mode()
+
 func _start_ground_rally(id,mode="move"):
 	if paused or game_over: return
 	var record=faction_views[0].get_record(id)
@@ -4626,6 +4662,8 @@ func _start_ground_rally(id,mode="move"):
 
 func _send_world_order(screen,contextual=false):
 	if rally_building>=0:
+		if rally_group.size()>1:
+			_submit_group_rally(_world_at(screen)); return
 		var rally_order={"building":rally_building,"position":_world_at(screen),"mode":rally_mode}
 		var rally_record=faction_views[0].get_record(_pick(screen))
 		var rally_producer=faction_views[0].get_record(rally_building)
@@ -4938,7 +4976,7 @@ func _start_build(kind):
 	if paused or game_over or _selected_builder()<0: return
 	_cancel_pointer_streams()
 	_clear_box_select()
-	build_mode=kind; touch_command=false; rally_building=-1; build_preview_held=false
+	build_mode=kind; touch_command=false; rally_building=-1; rally_group.clear(); build_preview_held=false
 	var builder=faction_views[0].get_record(_selected_builder())
 	pointer_world=_point(_cell(builder.pos+Vector3(3,0,0)))
 	# Offer a visible, currently legal public plot instead of an invariably
@@ -4978,7 +5016,7 @@ func _cancel_mode():
 	if toast_build_guidance:
 		toast_build_guidance=false; toast_time=0.0
 		if is_instance_valid(toast_label): toast_label.text=""; toast_label.visible=false
-	build_mode=""; build_preview_held=false; touch_command=false; unit_command_kind="order"; advance_formation=""; rally_building=-1; rally_mode="move"
+	build_mode=""; build_preview_held=false; touch_command=false; unit_command_kind="order"; advance_formation=""; rally_building=-1; rally_group.clear(); rally_mode="move"
 	_cancel_pointer_streams()
 	if is_instance_valid(ghost): ghost.queue_free(); ghost=null
 	action_key=""; _update_hud()
