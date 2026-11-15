@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 BUILD = 'vc-da21664e0540'
 GAME_TREE = '437b7c7509de2132ebb5ed71bbb8a2925be37754'
-INVENTORY_SHA = '3731d986e7de44e932ad342b4a0fff8eef77e75a9e4688580d6393bb97a002db'
+INVENTORY_SHA = '74c5d71b12b1c0123d802bc6dbbb238ca4915099cad436a59b23ab2f2fe7bfc6'
 COUNTS = {'advanced_building_visuals':175, 'advanced_building_observation':52,
           'construction_visual':203, 'building_damage_component':100,
           'building_damage_projection':17, 'map80_sparse_memory':10}
