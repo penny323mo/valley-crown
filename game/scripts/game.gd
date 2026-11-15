@@ -815,7 +815,7 @@ func _execute(command):
 						if target.is_empty() or not target.alive or not _visible_to(target,team):continue
 				var intent="gather" if farm_gather else _target_order_intent(ent,target,team)
 				if intent=="repair" and not _repair_order_allowed(ent,target):
-					_reject_command(team,"受傷後五秒內無法開始修理。")
+					_reject_command(team,"受傷後須等五秒；攻城車先停止才可維修。")
 					index+=1
 					continue
 				# Farm refusal must be atomic, before resetting a player route budget.
@@ -2133,12 +2133,17 @@ func _target_order_intent(ent,target,team):
 	if target.team==team:
 		if not target.built: return "build"
 		if target.kind in ["town_center","storehouse"] and _cargo_amount(ent)>0: return "deliver"
-		if target.category=="building" and target.hp<target.max_hp: return "repair"
+		if (target.category=="building" or target.kind=="siege") and target.hp<target.max_hp: return "repair"
 		if target.kind=="farm": return "gather"
 	return "move"
 
+func _repair_target_ready(target):
+	if target.is_empty() or not target.get("alive",false) or not target.get("built",false):return false
+	if target.get("category","")=="building":return true
+	return target.get("kind","")=="siege" and target.get("state","")=="idle" and target.get("path",[]).is_empty() and not target.get("path_pending",false)
+
 func _repair_order_allowed(ent,target):
-	return not target.is_empty() and target.alive and ent.kind=="villager" and target.team==ent.team and target.category=="building" and target.built and target.hp<target.max_hp and tick_count-target.last_damage_tick>=100
+	return not target.is_empty() and target.alive and ent.kind=="villager" and target.team==ent.team and _repair_target_ready(target) and target.hp<target.max_hp and tick_count-target.last_damage_tick>=100
 
 func _order(ent,state,target_id,automatic=false):
 	if ent.is_empty() or not ent.alive: return false
@@ -2593,7 +2598,7 @@ func _update_unit(ent,dt):
 			# REP01: insufficient wood stops on this authoritative work update,
 			# even en route or during a later damage lockout, not at payment due.
 			if economy.bank_milli(ent.team).wood<1000: ent.state="idle"; return
-			if ent.kind!="villager" or target.team!=ent.team or target.category!="building" or target.hp>=target.max_hp or not target.built: ent.state="idle"; return
+			if ent.kind!="villager" or target.team!=ent.team or not _repair_target_ready(target) or target.hp>=target.max_hp: ent.state="idle"; return
 			var adjacent=_free_adjacent(target,ent.pos,false,ent.team,ent)
 			if adjacent==Vector3.INF: ent.state="idle"; return
 			if ent.pos.distance_to(adjacent)>0.3: return
@@ -4139,10 +4144,10 @@ func _rebuild_actions(selection):
 			training_batch_button.name="TrainingBatch";training_batch_button.set_meta("building",ent.id)
 			training_batch_button.tooltip_text="按目前資源、隊列空位與人口，最多加訓3個。每個仍按普通訓練規則付款；執行時條件改變可能只接受部分。"
 			actions.add_child(training_batch_button)
-		if ent.owned and ent.category=="building" and ent.built and ent.hp<ent.max_hp:
+		if ent.owned and (ent.category=="building" or ent.kind=="siege") and ent.built and ent.hp<ent.max_hp:
 			repair_dispatch_button=_button("派閒置村民維修",func(): _request_repair_dispatch(ent.id),180)
 			repair_dispatch_button.name="RepairDispatch"; repair_dispatch_button.set_meta("building",ent.id)
-			repair_dispatch_button.tooltip_text="派最近的空手閒置村民；不搶採集工作。維修逐步消耗木材，不保證路線暢通。"
+			repair_dispatch_button.tooltip_text="派最近的空手閒置村民；不搶採集工作。維修逐步消耗木材，不保證路線暢通。攻城車必須先停止；移動或攻擊會中止維修。"
 			actions.add_child(repair_dispatch_button)
 		if ent.owned and ent.category=="building" and ent.built and ent.kind!="town_center":
 			actions.add_child(_button("拆除建築\n不退資源",func(): _confirm_demolish(ent.id),120))
@@ -4764,6 +4769,8 @@ func _tap(screen,is_touch):
 	var id=_pick(screen,contextual_pointer)
 	var tapped=faction_views[0].get_record(id)
 	if contextual_pointer and not paused and tapped.get("owned",false) and tapped.get("kind","")=="farm" and tapped.get("built",false) and _selected_builder()>=0:
+		_send_world_order(screen,true); _update_hud(); return
+	if contextual_pointer and not paused and tapped.get("owned",false) and tapped.get("kind","")=="siege" and tapped.get("hp",0)<tapped.get("max_hp",0) and _selected_builder()>=0:
 		_send_world_order(screen,true); _update_hud(); return
 	if id>=0 and faction_views[0].get_record(id).team==0:
 		if Input.is_physical_key_pressed(KEY_SHIFT) and not is_touch:

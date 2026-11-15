@@ -3,7 +3,8 @@ const IdleWorkers=preload("res://scripts/idle_worker_selection.gd")
 static func plan(records: Dictionary,commands: Array,building: int,tick: int) -> Dictionary:
 	var result={"worker":-1,"reason":"建築已失效"}
 	var b=records.get(building,{})
-	if not b.get("owned",false) or not b.get("alive",false) or b.get("remembered",false) or b.get("team",-1)!=0 or b.get("category","")!="building" or not b.get("built",false): return result
+	if not b.get("owned",false) or not b.get("alive",false) or b.get("remembered",false) or b.get("team",-1)!=0 or (b.get("category","")!="building" and b.get("kind","")!="siege") or not b.get("built",false): return result
+	if b.get("kind","")=="siege" and (b.get("state","")!="idle" or not b.get("path",[]).is_empty() or b.get("path_pending",false)): result.reason="攻城車先停止才可維修"; return result
 	if b.get("hp",0)>=b.get("max_hp",0): result.reason="建築毋須維修"; return result
 	if tick-b.get("last_damage_tick",tick)<100: result.reason="受襲後 5 秒才可維修"; return result
 	for r in records.values():
