@@ -14,12 +14,15 @@ func run():
  game.paused=true
  game._update_vision();game._update_visuals(0.0);game._update_hud();game._layout_ui();game._camera_update()
  var ok=await shot("fortress-native-overview")
- var cavalry=game._first(0,"cavalry")
- game._select([cavalry.id]);game.camera_focus=cavalry.pos;game.camera_zoom=15;game._camera_update();game._update_visuals(0.0);game._update_hud();game._layout_ui()
- ok=await shot("cavalry-native-player-zoom") and ok
+ var siege=game._first(0,"siege")
+ game._select([siege.id]);game.camera_focus=siege.pos;game.camera_zoom=15;game._camera_update();game._update_visuals(0.0);game._update_hud();game._layout_ui()
+ ok=await shot("siege-native-player-zoom") and ok
  # Explicit diagnostic closeup beyond the player's normal zoom. The same live
  # game model and materials, not a fabricated image or claimed browser capture.
- game.camera_zoom=4;game.camera_focus=cavalry.pos+Vector3(0,0.6,0);game._camera_update();game._update_visuals(0.0)
- ok=await shot("cavalry-native-diagnostic-closeup") and ok
+ game.camera_zoom=4;game.camera_focus=siege.pos+Vector3(0,0.6,0);game._camera_update();game._update_visuals(0.0)
+ ok=await shot("siege-native-diagnostic-closeup") and ok
+ var pose={"kind":"siege","remembered":false,"visual_moving":false,"visual_attack_tick":10}
+ game.ProgressionVisuals.present(pose,siege.body,game.BLUE,0.1,true)
+ ok=await shot("siege-native-diagnostic-thrust-pose") and ok
  print("SOURCE_BUILD ",game.Rules.BUILD_ID)
  game.queue_free();quit(0 if ok else 1)
