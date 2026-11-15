@@ -784,16 +784,26 @@ func _execute(command):
 			# Only ground group MOVE uses ID allocation. Build takeover intentionally
 			# retains submitted member order (the final valid builder owns the site).
 			var reserved_destinations={}
-			if target.is_empty(): order_ids.sort()
+			if target.is_empty() or farm_gather: order_ids.sort()
 			var applied_ids={}
+			var farm_anchor=target
 			for id in order_ids:
-				if target.is_empty() and applied_ids.has(id): continue
+				if (target.is_empty() or farm_gather) and applied_ids.has(id): continue
 				applied_ids[id]=true
 				var ent=_get_entity(id)
 				if ent.is_empty() or not ent.alive or ent.team!=team or ent.category!="unit": continue
 				# Resolve each unit independently: cargo delivery and construction win
 				# over repair. Rejected repair must not clear pending paths/retries.
 				if farm_gather and ent.kind!="villager": continue
+				if farm_gather:
+					target=farm_anchor
+					# Group tap fills nearby vacant fields without evicting a farmer.
+					# Resolve before touching prior orders so surplus workers keep jobs.
+					if order_ids.size()>1 and economy.farm_view(target.id).get("worker_id",-1) not in [-1,ent.id]:
+						var next_farm=_farm_rally_destination(farm_anchor,team)
+						if next_farm.is_empty(): continue
+						target=_get_entity(next_farm.id)
+						if target.is_empty() or not target.alive or not _visible_to(target,team):continue
 				var intent="gather" if farm_gather else _target_order_intent(ent,target,team)
 				if intent=="repair" and not _repair_order_allowed(ent,target):
 					_reject_command(team,"受傷後五秒內無法開始修理。")
