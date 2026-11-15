@@ -2467,7 +2467,7 @@ func _release_attack(ent: Dictionary,target: Dictionary) -> Dictionary:
 		return {"ok":false,"applied":false,"reason":"NOT_READY"}
 	var resolved=Rules.CONTENT.resolve_damage(ent.kind,target.kind)
 	if not resolved.ok: return {"ok":false,"applied":false,"reason":"INVALID_PROFILE"}
-	var damage=maxi(1,resolved.base+resolved.bonus+_military_attack_bonus(ent.kind,ent.team)-resolved.armor)
+	var damage=maxi(1,resolved.base+resolved.bonus+_military_attack_bonus(ent.kind,ent.team)-resolved.armor-_military_armor_bonus(target.kind,target.team))
 	var result=attack_ledger.issue(tick_count,ent.id,target.id,damage,ent.pos,target.pos)
 	if result.applied:
 		ent.last_attack_tick=tick_count
@@ -5811,7 +5811,15 @@ func _enqueue_military_research(id,kind,team):
 func _military_attack_bonus(kind: String,team: int) -> int:
 	if team not in [0,1]: return 0
 	for tech in Rules.MILITARY_TECHS:
+		if tech=="reinforced_armor": continue
 		if kind in Rules.TECH_UNITS[tech] and military_tech_completed[team].has(tech) and tick_count>military_tech_completed[team][tech]: return Rules.TECH_BONUS
+	return 0
+
+# Resolve defense at attack release, just like attack research: issued hits
+# retain their authoritative damage, and no enemy benefits from our research.
+func _military_armor_bonus(kind: String,team: int) -> int:
+	if team not in [0,1] or kind not in Rules.TECH_UNITS.reinforced_armor:return 0
+	if military_tech_completed[team].has("reinforced_armor") and tick_count>military_tech_completed[team].reinforced_armor:return Rules.TECH_ARMOR_BONUS
 	return 0
 
 func _ai_military_research(records: Array,castle: Dictionary,worker_count: int):
