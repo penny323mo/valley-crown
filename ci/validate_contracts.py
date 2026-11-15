@@ -12,14 +12,14 @@ FIXTURES = {
  'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '020e0ba0df41b0406fc29d27386ba2a4cdc327737d5129250d65c97de429d0ea'),
  'contextual_touch_phone': ('tests/contextual_touch_phone.gd', '5962568a2347360f8ed70cca4d3f026181b0c24a965c0f9b0a64b224143e7e5d'),
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '4dfe17222274a38a71ff828f62dd357a1473702bb8e8a037ed3da2e053221d6c')}
-MENU_SHA = '45e3bf770e8e719f7941e28ca821e7b0b61a111066693f8e4f1fd88c8573a93a'
+MENU_SHA = '56d9114a0faf9b230b888c93704eadede5379fab60875269b6d00399ac7b9807'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-e7a631f0abd1'
+BUILD = 'vc-7b98c580bdb6'
 ARRAY_COUNTS = {'contextual_touch_contract':76, 'contextual_touch_phone':26}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}
 STATUS_SHA = 'a0991d4b6e3e25bbd757d241efa3c971eff374e206e51e8999c0f862eee7f644'
-GAME_SHA = '327ee6788342597b8ba697da49317ddf9c5eb61bdd921ee9551c2d27db2a570f'
+GAME_SHA = '743fa8f2b5ab9a993d7b8355c3a113cde4a95b21b807a5c174ad4212d200d605'
 FILE_SUITE = 'stance_target_cancel_phone'
 FILE_REPORT = 'stance-target-cancel-phone.json'
 STOP_COUNTS = {'mobile_stop_control_contract':22, 'mobile_stop_control_phone':64,
@@ -109,7 +109,7 @@ def validate_menu(report, lock, contract):
     need(report['scope']==MENU_SCOPE, 'Wrong menu scope')
     need(type(report['failure_count']) is int and report['failure_count']==0, 'Menu report failure count')
     checks=report['checks']
-    need(type(checks) is list and len(checks)==502, 'Missing menu checks')
+    need(type(checks) is list and len(checks)==558, 'Missing menu checks')
     need(all(type(c) is dict and set(c)=={'name','passed'} and type(c['name']) is str and c['passed'] is True for c in checks), 'Failed/malformed menu check')
     need([c['name'] for c in checks]==contract['main_menu_flow_contract_names'], 'Menu check order/name mismatch')
     expected={'scripts/game.gd':GAME_SHA,'scripts/main_menu.gd':MENU_SHA}
