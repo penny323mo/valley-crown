@@ -102,6 +102,7 @@ var vacant_farm_cursor=-1
 const RepairDispatch=preload("res://scripts/repair_dispatch.gd")
 var repair_dispatch_button: Button
 const ArmyRoster=preload("res://scripts/army_roster.gd")
+const ArmyRecruitment=preload("res://scripts/army_recruitment.gd")
 var army_roster_buttons={}
 var shortcut_scroll: ScrollContainer
 var shortcut_header: VBoxContainer
@@ -3755,7 +3756,9 @@ func _create_ui():
 		all_button.add_theme_font_size_override("font_size",12);all_button.tooltip_text="全選目前己方同兵種，不更改原有指令。隊列只計已付費訓練；待命不含處理中指令。";row.add_child(all_button)
 		var wounded_button=_button("",func():_select_roster(kind,true),160);wounded_button.name="ArmyWounded_"+kind
 		wounded_button.add_theme_font_size_override("font_size",12);wounded_button.tooltip_text="只選此兵種的受傷單位，不自動撤退或治療。選中後可使用原有回城／維修功能。";row.add_child(wounded_button)
-		army_roster_buttons[kind]={"all":all_button,"wounded":wounded_button}
+		var recruit_button=_button("",func():_recruit_from_roster(kind),160);recruit_button.name="ArmyRecruit_"+kind
+		recruit_button.add_theme_font_size_override("font_size",12);recruit_button.tooltip_text="毋須選建築：最多補充 3 名，分配到可用的較短生產隊列。照常付款及佔人口；不會自動重複，也不改集結點。";row.add_child(recruit_button)
+		army_roster_buttons[kind]={"all":all_button,"wounded":wounded_button,"recruit":recruit_button}
 	var production_help=_label("生產總覽 · 點按輪流前往同類建築",13)
 	production_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(production_help)
 	shortcut_sections.production.append(production_help)
@@ -6692,6 +6695,16 @@ func _refresh_army_roster():
 		pair.all.text="%s · 現役 %d · 隊列 %d\n待命 %d · 傷兵 %d · 點按全選" % [Rules.NAMES[kind],group.ids.size(),group.queued,group.idle,group.wounded.size()]
 		pair.wounded.visible=not group.wounded.is_empty()
 		pair.wounded.text="只選%s傷兵 · %d" % [Rules.NAMES[kind],group.wounded.size()]
+		var plan=_army_recruitment_plan(kind)
+		_bind_squad_button(pair.recruit,[plan] if plan.count>0 else [],not _squad_actions_available())
+		pair.recruit.text="補充%s · %s" % [Rules.NAMES[kind],plan.reason]
+		if plan.count>0:
+			var prices=PackedStringArray()
+			for resource in plan.cost:prices.append(Rules.RESOURCE_NAMES[resource]+str(plan.cost[resource]))
+			var producers=[]
+			for order in plan.orders:
+				if order.building not in producers:producers.append(order.building)
+			pair.recruit.text="補充 %d 名%s · %d 座建築\n總計 %s" % [plan.count,Rules.NAMES[kind],producers.size()," · ".join(prices)]
 
 func _select_roster(kind,wounded):
 	if kind not in ArmyRoster.KINDS or not _squad_actions_available() or not compact_menu.visible:return
@@ -6718,3 +6731,16 @@ func _cycle_battle_speed():
 	_cancel_pointer_streams()
 	battle_speed=BATTLE_SPEEDS[(BATTLE_SPEEDS.find(battle_speed)+1)%BATTLE_SPEEDS.size()]
 	_refresh_battle_speed();_update_hud()
+
+func _army_recruitment_plan(kind):
+	return ArmyRecruitment.plan(faction_views[0].records(),kind,economy.bank_milli(0),_capacity(0)-_population(0),commands,_kind_unlocked(kind,0))
+
+func _recruit_from_roster(kind):
+	if kind not in ArmyRoster.KINDS or not _squad_actions_available() or not compact_menu.visible or shortcut_category not in ["army","all"]:return
+	var button=army_roster_buttons[kind].recruit
+	if button.disabled or not button.is_visible_in_tree():return
+	var plan=_army_recruitment_plan(kind)
+	if plan.count<=0 or [plan]!=button.get_meta("squad_ids",[]):
+		_refresh_army_roster();return
+	for order in plan.orders:_submit("train",order)
+	_refresh_army_roster()
