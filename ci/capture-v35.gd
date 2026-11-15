@@ -17,7 +17,7 @@ func run():
  var ok=await raw_shot("native-three-wave-challenge-setup")
  menu.queue_free();await process_frame
  var g=load("res://main.tscn").instantiate();g.skirmish_mode="survival";root.add_child(g);g.set_process(false);g.test_mode=true;g._skip_tutorial();await process_frame
- g.tick_count=900;g._update_siege_challenge()
+ g.tick_count=900;g.game_time=45.0;g._update_siege_challenge()
  var queued=g.commands.size()==1 and g.commands[0].type=="advance"
  while not g.commands.is_empty():g._execute(g.commands.pop_front())
  g.camera_focus=g._first(0,"town_center").pos;g.camera_zoom=24
