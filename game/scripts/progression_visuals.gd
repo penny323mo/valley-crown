@@ -98,14 +98,26 @@ static func build(parent: Node3D,kind: String,team: Color) -> Node3D:
 			_rider_equipment(root,team,wood,metal)
 		"siege":
 			_box(root,Vector3(0,0.5,0),Vector3(0.8,0.14,0.92),wood,"oak")
+			for z in [-1,1]:
+				var axle=_cylinder(root,Vector3(0,0.29,z*0.33),0.055,1.0,metal);axle.rotation.z=PI/2
 			for x in [-1,1]:
 				for z in [-1,1]:
-					var wheel=_cylinder(root,Vector3(x*0.42,0.29,z*0.33),0.25,0.11,metal)
-					wheel.rotation.z=PI/2; wheel.name="Wheel_%d_%d" % [x,z]
-			for x in [-1,1]: _box(root,Vector3(x*0.3,0.88,0),Vector3(0.1,0.75,0.8),wood,"oak")
-			var ram=_cylinder(root,Vector3(0,0.8,-0.1),0.13,1.0,wood); ram.rotation.x=PI/2; ram.name="Ram"
-			_box(root,Vector3(0,0.8,-0.61),Vector3(0.3,0.3,0.12),metal)
-			_box(root,Vector3(0,1.3,0),Vector3(0.85,0.15,1.0),team)
+					var wheel=Node3D.new();root.add_child(wheel);wheel.position=Vector3(x*0.46,0.29,z*0.33);wheel.name="Wheel_%d_%d" % [x,z]
+					var rim_mesh=TorusMesh.new();rim_mesh.inner_radius=0.19;rim_mesh.outer_radius=0.25;rim_mesh.rings=16;rim_mesh.ring_segments=6;rim_mesh.material=_material(wood)
+					var rim=MeshInstance3D.new();rim.mesh=rim_mesh;wheel.add_child(rim);rim.rotation.z=PI/2;rim.name="Rim"
+					var hub=_cylinder(wheel,Vector3.ZERO,0.07,0.13,metal);hub.rotation.z=PI/2;hub.name="Hub"
+					for spoke_index in 6:
+						var angle=spoke_index*TAU/6
+						_limb(wheel,Vector3.ZERO,Vector3(0,cos(angle)*0.22,sin(angle)*0.22),0.025,wood).name="Spoke_%d" % spoke_index
+			for x in [-1,1]:
+				for z in [-1,1]:_box(root,Vector3(x*0.3,0.90,z*0.34),Vector3(0.09,0.72,0.09),wood,"oak")
+			var ram=Node3D.new();root.add_child(ram);ram.name="Ram";ram.position=Vector3(0,0.8,-0.1)
+			var shaft=_cylinder(ram,Vector3.ZERO,0.13,1.0,wood);shaft.rotation.x=PI/2;shaft.name="Shaft"
+			_box(ram,Vector3(0,0,-0.51),Vector3(0.3,0.3,0.12),metal).name="Head"
+			for side in [-1,1]:
+				var roof=_box(root,Vector3(side*0.225,1.30,0),Vector3(0.51,0.065,1.08),team);roof.rotation.z=-side*0.34;roof.name="Roof_%d" % side
+			_box(root,Vector3(0,1.39,0),Vector3(0.07,0.07,1.12),metal).name="Ridge"
+
 	return root
 
 static func present(record: Dictionary,body: Node3D,color: Color,delta: float,running: bool) -> void:
