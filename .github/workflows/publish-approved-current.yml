@@ -1,0 +1,79 @@
+name: Publish owner-approved pinned current Web seed
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-approved-current.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: durable-web-seed
+  cancel-in-progress: false
+jobs:
+  seed:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Download and verify exact approved artifact with ordinary Actions token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import sys,json,pathlib,hashlib,os
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          row={'artifact_id':14164855804,'run_id':43720605031,'build':'vc-0609dc73aad2','metadata_sha256':'338a077d98e05904afc7965547bf45b586dff7620e4b89d6728b7386f7a5c033','zip_sha256':'c0dba3d97c4325a70e8c3a49a5595030caaa303d8e21954929d5b58aaa9ca9ff'}
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']=='d569280c0f619d1bcf956ad9df6e4d975b2d333c'
+          meta=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not meta['expired'] and meta['workflow_run']['id']==row['run_id']
+          data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
+          files=verified_members(data,row)
+          pathlib.Path('approved-product.zip').write_bytes(data)
+          pathlib.Path('approved-row.json').write_text(json.dumps(row))
+          m=json.loads(files['candidate-metadata.json']);root=pathlib.Path('seed-approved');root.mkdir()
+          for name,data in files.items():
+           for prefix in ('artifacts/clean-a/','notices/'):
+            if name.startswith(prefix):
+             p=root/name[len(prefix):];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+          manifest={'build':row['build'],'source_commit':m['source_commit'],'export_run':m['export_run'],'files_sha256':{p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()},'browser_acceptance':'not performed; owner requested immediate deployment','single_threaded':True}
+          (root/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n');(root/'.nojekyll').touch()
+          catalog={'files':{'builds/'+row['build']+'/'+p.relative_to(root).as_posix():{'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.rglob('*')) if p.is_file()}}
+          pathlib.Path('approved-catalog.json').write_text(json.dumps(catalog,indent=2)+'\n')
+          print('Verified exact artifact and prepared seed',row['build'])
+          PY
+      - name: Archive and publish verified seed using owner-authorized repository secret
+        env:
+          GH_TOKEN: ${{ secrets.RTS_RELEASE_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "RTS_RELEASE_TOKEN is missing"; exit 1; }
+          python3 - <<'PY'
+          import sys,json,pathlib,os
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          row=json.loads(pathlib.Path('approved-row.json').read_text());data=pathlib.Path('approved-product.zip').read_bytes()
+          verified_members(data,row);g=GitHub(os.environ['GITHUB_REPOSITORY']);release=g.release(row)
+          if release is None:
+           release=g.request('/releases',method='POST',body={'tag_name':'web-archive-artifact-'+str(row['artifact_id']),'target_commitish':'d569280c0f619d1bcf956ad9df6e4d975b2d333c','name':'Durable Web archive: '+row['build'],'body':'Exact owner-approved verified artifact. ZIP SHA-256: '+row['zip_sha256'],'draft':False,'prerelease':True,'make_latest':'false'})
+          asset=g.asset(release,row)
+          if asset is None:
+           asset=g.request(release['upload_url'].split('{')[0]+'?name='+str(row['artifact_id'])+'.zip',method='POST',body=data)
+          readback,files=g.read_asset(asset,row)
+          assert readback==data
+          print('Durable archive readback verified',row['artifact_id'])
+          PY
+          GITHUB_SHA=d569280c0f619d1bcf956ad9df6e4d975b2d333c python3 scripts/publish_web_seed.py --build vc-0609dc73aad2 --directory seed-approved --catalog approved-catalog.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: approved-current-seed-receipt
+          path: |
+            web-seed-report.json
+            approved-catalog.json
+          retention-days: 30
+          if-no-files-found: error
