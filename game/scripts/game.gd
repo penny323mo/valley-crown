@@ -1010,7 +1010,7 @@ func _set_ground_rally(id,p,team,clear=false,target_id=-1,mode="move"):
 		return _reject_command(team,"請選取自己的已完成生產建築。")
 	if typeof(mode)!=TYPE_STRING or mode not in ["move","advance"]: return _reject_command(team,"集合點指令已失效。")
 	if clear:
-		building.erase("rally_point"); building.erase("rally_target"); building.erase("rally_mode")
+		building.erase("rally_point"); building.erase("rally_target"); building.erase("rally_mode"); building.erase("rally_resource_type")
 		if team==0: _message("已取消集合點；新單位在出口待命。")
 		return true
 	if typeof(target_id)!=TYPE_INT or target_id < -1: return _reject_command(team,"集合目標已失效。")
@@ -1021,6 +1021,7 @@ func _set_ground_rally(id,p,team,clear=false,target_id=-1,mode="move"):
 			return _reject_command(team,"主堡採集集合點需要可見的自然資源。")
 		# Store only this accepted observed resource, never the imprecise tap.
 		building.rally_point=target.pos; building.rally_target=target.id; building.rally_mode="move"
+		building.rally_resource_type=_resource_type(target)
 		if team==0: _message("採集集合點已設定；新村民自動採集。",4)
 		return true
 	if not p is Vector3 or not p.is_finite(): return _reject_command(team,"請點可見空地。")
@@ -1031,9 +1032,23 @@ func _set_ground_rally(id,p,team,clear=false,target_id=-1,mode="move"):
 	if visible_cells[team][_cell_index(p)]==0: return _reject_command(team,"請點可見空地。")
 	_refresh_work_memory()
 	if work_memory[team].grid.is_point_solid(cell): return _reject_command(team,"集合點需要空地。")
-	building.rally_point=_point(cell); building.erase("rally_target"); building.rally_mode=mode
+	building.rally_point=_point(cell); building.erase("rally_target"); building.erase("rally_resource_type"); building.rally_mode=mode
 	if team==0: _message("警戒集合點已設定；新軍隊警戒前進。" if mode=="advance" else "集合點已設定；新單位自動移動。",4)
 	return true
+
+# Only an observed-empty original work site permits local replacement.
+# Never search hidden authority or move the original resource-cluster anchor.
+func _resource_rally_replacement(building,team):
+	var type=building.get("rally_resource_type","")
+	if type.is_empty() or visible_cells[team][_cell_index(building.rally_point)]==0:return {}
+	var best={};var best_distance=INF
+	for record in faction_views[team].records().values():
+		if not record.get("alive",false) or record.get("remembered",true) or record.get("category","")!="resource" or _resource_type(record)!=type:continue
+		var distance=record.pos.distance_squared_to(building.rally_point)
+		if distance>64.0:continue
+		if distance<best_distance or (distance==best_distance and (best.is_empty() or record.id<best.id)):
+			best=record;best_distance=distance
+	return best
 
 func _apply_newborn_rally(unit,building):
 	if not building.has("rally_point"): return
@@ -1046,11 +1061,12 @@ func _apply_newborn_rally(unit,building):
 		# Read only current faction knowledge. The ordinary queued command
 		# revalidates visibility/liveness next tick; never read hidden truth.
 		var known=faction_views[unit.team].get_record(building.rally_target)
+		if known.is_empty():known=_resource_rally_replacement(building,unit.team)
 		if not known.is_empty() and known.alive and not known.remembered and known.category=="resource" and not _resource_type(known).is_empty():
 			_submit("order",{"ids":[unit.id],"target":known.id,"position":known.pos},unit.team)
 			return
-	# Scouts, other troops, and unobserved/depleted resources retain ordinary
-	# ground routing to the last accepted point. No automatic target search.
+	# Scouts, other troops, and resources without an observed local replacement
+	# retain ordinary ground routing to the last accepted point.
 	_order_move(unit,building.rally_point)
 
 # Opt-in production policy. No payment or population reservation is made here.

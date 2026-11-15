@@ -1,5 +1,5 @@
 extends SceneTree
-# ENGINE_UNRUN. Controlled funded reset; actual paid training and newborn orders.
+# Controlled funded reset; actual paid training and newborn orders.
 # This is not a natural match, routed phone input or rendered acceptance.
 const Rules=preload("res://scripts/rules.gd")
 var game
@@ -59,12 +59,50 @@ func run():
 	var prior=newborn.duplicate(true)
 	for command in pending: game._execute(command)
 	check("target death before execution leaves prior unit intent",newborn.state==prior.state and newborn.target==prior.target and newborn.work_epoch==prior.work_epoch)
-	# Ordinary observation retires the depleted target; fallback uses only point.
+	# Observed depletion with a same-type cluster continues ordinary work.
 	game._update_vision(false); game._publish_faction_views(); game.commands.clear()
+	var bank_before=game.economy.bank_milli(0).duplicate()
+	var cargo_before=game.economy.worker_view(newborn.id).cargo_milli
+	game._apply_newborn_rally(newborn,keep)
+	check("observed depletion queues exactly one replacement gather",game.commands.size()==1 and newborn.state=="idle")
+	if game.commands.size()==1:
+		var command=game.commands[0]
+		var replacement=game.faction_views[0].get_record(command.target)
+		check("replacement is current visible live natural food within original cluster",not replacement.is_empty() and replacement.get("alive",false) and not replacement.get("remembered",true) and replacement.category=="resource" and game._resource_type(replacement)=="food" and replacement.pos.distance_to(keep.rally_point)<=8.0)
+		check("replacement order only addresses newborn and exact observed position",command.type=="order" and command.ids==[newborn.id] and command.position==replacement.pos)
+		consume()
+		check("replacement uses authoritative normal gather execution",newborn.state=="gather" and newborn.target==replacement.id and newborn.gather_type=="food")
+	else:
+		check("replacement is current visible live natural food within original cluster",false)
+		check("replacement order only addresses newborn and exact observed position",false)
+		check("replacement uses authoritative normal gather execution",false)
+	check("replacement neither pays again nor grants harvested cargo",game.economy.bank_milli(0)==bank_before and game.economy.worker_view(newborn.id).cargo_milli==cargo_before)
+	# Actual newborn-handler fallback, not merely the replacement helper.
+	game._set_stance(newborn,"STOP");game.commands.clear()
+	var origin_cell=game._cell_index(keep.rally_point)
+	var original_visibility=game.visible_cells[0][origin_cell]
+	game.visible_cells[0][origin_cell]=0
+	game._apply_newborn_rally(newborn,keep)
+	check("hidden original resource site retains bounded ground fallback",newborn.state=="move" and game.commands.is_empty() and newborn.target==-1)
+	game.visible_cells[0][origin_cell]=original_visibility
+	game._set_stance(newborn,"STOP");game.commands.clear()
+	var stored_type=keep.rally_resource_type
+	keep.erase("rally_resource_type")
+	game._apply_newborn_rally(newborn,keep)
+	check("legacy rally without type retains bounded ground fallback",newborn.state=="move" and game.commands.is_empty() and newborn.target==-1)
+	keep.rally_resource_type=stored_type
+	# Keep the original fallback assertion, now with its explicit condition:
+	# there is no same-type resource left for the local continuation policy.
+	for candidate in game.entities:
+		if candidate.alive and candidate.category=="resource" and game._resource_type(candidate)==stored_type:game._kill(candidate)
+	game._update_vision(false);game._publish_faction_views()
+	game._set_stance(newborn,"STOP");game.commands.clear()
+	check("no live local replacement remains",game._resource_rally_replacement(keep,0).is_empty())
 	game._apply_newborn_rally(newborn,keep)
 	check("retired resource gives bounded ground fallback",newborn.state=="move" and game.commands.is_empty() and newborn.target==-1)
+	check("all fallback paths conserve the economy",game.economy.audit().ok)
 	game._set_ground_rally(keep.id,Vector3.INF,0,true)
-	check("clear removes both plan fields",not keep.has("rally_target") and not keep.has("rally_point"))
+	check("clear removes both plan fields",not keep.has("rally_target") and not keep.has("rally_point") and not keep.has("rally_resource_type"))
 	var failed=checks.filter(func(item): return not item.passed).size()
-	print(JSON.stringify({"suite":"resource_rally_contract","build":Rules.BUILD_ID,"checks":checks,"failed":failed,"scope":"Controlled paid newborn/gather/depletion; ENGINE_UNRUN","source_sha256":FileAccess.get_sha256("res://scripts/game.gd")}))
+	print(JSON.stringify({"suite":"resource_rally_contract","build":Rules.BUILD_ID,"checks":checks,"failed":failed,"scope":"Controlled paid newborn/gather/depletion, local continuation and hidden/legacy/no-replacement fallback; not rendered acceptance","source_sha256":FileAccess.get_sha256("res://scripts/game.gd")}))
 	game.queue_free(); quit(1 if failed else 0)
