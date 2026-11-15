@@ -1,5 +1,5 @@
 {
-  "build": "vc-49a02593411f",
+  "build": "vc-da21664e0540",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -116,7 +116,7 @@
     "scripts/advanced_building_visuals.gd.uid": "97fe0328e5413215b9440f2e3d61b90da349447b9d5e868cea320b5763d3d66d",
     "scripts/army_composition.gd": "14bddfb9c3a6e84233431cdae69554752ba43d87b70b6659e807a048abc43ce9",
     "scripts/army_formation.gd": "d5f2be6b9ff4fa3fcfc6b1d95df061db23f3a3a5a5353b1715a7720e5fa636b5",
-    "scripts/army_recruitment.gd": "60c6dfeba3e9ab8e58e97a1c0be46bd5c2a712a2c0b91dcfc7edac9b4dbd238c",
+    "scripts/army_recruitment.gd": "214c41452e2d169f7422d1c5bf5effebe376d19ad9401c4b90d0e4ca0005480f",
     "scripts/army_roster.gd": "6fc94fe4965afe064f7a61b631386a131091dac26a6569de4496dc26b26e97e1",
     "scripts/arrow_effect.gd": "716049f3f65128874e6f26a71fceb72de3492c8cd1282a1c5f9e26b3a27b4575",
     "scripts/attack_ledger.gd": "8dac4a771f3fa600c3b5a5a313d890e284c934203104b7c16e59d853daba2ed4",
@@ -185,7 +185,7 @@
     "scripts/rest_recovery.gd": "6c3b4c9387c0f8ab8443bde375b803775de40c698be42a4e26a3c57ec8a21917",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "33073abb85a5e646dedc021c3af1c907297c560dd3f9108f2c3654ee9d1d2cc7",
+    "scripts/rules.gd": "1e74d8dee7be577dfd8064a6b6f38959ec8c76596072aa0fc39c49d85b43435b",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",
