@@ -38,7 +38,7 @@ func run():
 	root.size=Vector2i(320,568); game.compact_menu.show(); game._layout_ui()
 	await process_frame
 	await process_frame
-	var menu_scroll=game.compact_menu.get_child(0)
+	var menu_scroll=game.shortcut_scroll
 	var box=menu_scroll.get_child(0)
 	var bounds_ok=game.compact_menu.get_global_rect().end.x<=320.1
 	for row in box.get_children():

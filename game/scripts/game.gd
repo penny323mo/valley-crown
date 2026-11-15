@@ -96,6 +96,8 @@ const RepairDispatch=preload("res://scripts/repair_dispatch.gd")
 var repair_dispatch_button: Button
 const ArmyRoster=preload("res://scripts/army_roster.gd")
 var army_roster_buttons={}
+var shortcut_scroll: ScrollContainer
+var shortcut_header: VBoxContainer
 const ProductionOverview=preload("res://scripts/production_overview.gd")
 var production_buttons={}
 var production_cursor={}
@@ -3661,12 +3663,14 @@ func _create_ui():
 	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"]; compact_top_stack.add_child(objective_button)
 	compact_menu_dismiss=Control.new(); compact_menu_dismiss.name="MenuDismissShield"; compact_menu_dismiss.mouse_filter=Control.MOUSE_FILTER_STOP; compact_menu_dismiss.gui_input.connect(_dismiss_compact_menu_input); ui.add_child(compact_menu_dismiss); compact_menu_dismiss.hide()
 	compact_menu=PanelContainer.new(); compact_menu.name="ShortcutMenu"; ui.add_child(compact_menu); compact_menu.add_theme_stylebox_override("panel",_style(Color("1d241ef5")))
-	var menu_scroll=ScrollContainer.new(); menu_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; menu_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO; compact_menu.add_child(menu_scroll)
-	var menu_box=VBoxContainer.new(); menu_box.size_flags_horizontal=Control.SIZE_EXPAND_FILL; menu_box.add_theme_constant_override("separation",6); menu_scroll.add_child(menu_box)
-	var menu_title=HBoxContainer.new(); menu_box.add_child(menu_title)
+	var menu_stack=VBoxContainer.new();menu_stack.add_theme_constant_override("separation",6);compact_menu.add_child(menu_stack)
+	shortcut_header=VBoxContainer.new();shortcut_header.name="PinnedShortcutHeader";menu_stack.add_child(shortcut_header)
+	shortcut_scroll=ScrollContainer.new();shortcut_scroll.name="ShortcutContentScroll";shortcut_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;shortcut_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO;shortcut_scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;menu_stack.add_child(shortcut_scroll)
+	var menu_box=VBoxContainer.new(); menu_box.size_flags_horizontal=Control.SIZE_EXPAND_FILL; menu_box.add_theme_constant_override("separation",6); shortcut_scroll.add_child(menu_box)
+	var menu_title=HBoxContainer.new(); shortcut_header.add_child(menu_title)
 	var menu_heading=_label("霧谷王旗 · 快捷選單",17,GOLD); menu_heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL; menu_title.add_child(menu_heading)
 	menu_title.add_child(_button("關閉",func(): _toggle_compact_menu(),60))
-	var category_row=HFlowContainer.new();category_row.name="ShortcutCategories";category_row.add_theme_constant_override("h_separation",4);category_row.add_theme_constant_override("v_separation",4);menu_box.add_child(category_row)
+	var category_row=HFlowContainer.new();category_row.name="ShortcutCategories";category_row.add_theme_constant_override("h_separation",4);category_row.add_theme_constant_override("v_separation",4);shortcut_header.add_child(category_row)
 	var category_names={"all":"全部","economy":"經濟","army":"軍隊","production":"生產","settings":"設定"}
 	for category in category_names:
 		var page=category
@@ -4876,7 +4880,7 @@ func _track_action_scroll(event,viewport):
 			if all_touch_ids.size()!=1:
 				action_touch_scroll.clear(); return
 			var report_scroll=game_over and end_panel.visible
-			var scroll_control=end_scroll if report_scroll else (compact_menu.get_child(0) if compact_menu.visible else action_scroll)
+			var scroll_control=end_scroll if report_scroll else (shortcut_scroll if compact_menu.visible else action_scroll)
 			var horizontal=not report_scroll and not compact_menu.visible
 			if is_instance_valid(scroll_control) and scroll_control.is_visible_in_tree() and scroll_control.get_global_rect().has_point(event.position) and (not game_over or report_scroll):
 				var bar=scroll_control.get_h_scroll_bar() if horizontal else scroll_control.get_v_scroll_bar()
@@ -6390,7 +6394,7 @@ func _set_shortcut_category(category):
 	_cancel_pointer_streams()
 	shortcut_category=category
 	_apply_shortcut_category()
-	compact_menu.get_child(0).scroll_vertical=0
+	shortcut_scroll.scroll_vertical=0
 	_refresh_squad_buttons()
 	_layout_ui()
 
@@ -6559,6 +6563,7 @@ func _refresh_army_roster():
 		_bind_squad_button(pair.all,group.ids,not _squad_actions_available())
 		_bind_squad_button(pair.wounded,group.wounded,not _squad_actions_available())
 		pair.all.text="%s · 現役 %d · 隊列 %d\n待命 %d · 傷兵 %d · 點按全選" % [Rules.NAMES[kind],group.ids.size(),group.queued,group.idle,group.wounded.size()]
+		pair.wounded.visible=not group.wounded.is_empty()
 		pair.wounded.text="只選%s傷兵 · %d" % [Rules.NAMES[kind],group.wounded.size()]
 
 func _select_roster(kind,wounded):
