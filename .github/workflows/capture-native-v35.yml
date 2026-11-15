@@ -1,4 +1,4 @@
-name: Capture genuine pinned v39 controlled AI siege visuals
+name: Capture genuine pinned v39 controlled AI siege unobscured visuals
 on:
   push:
     branches: [main]

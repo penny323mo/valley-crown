@@ -12,10 +12,10 @@ func shot(game,name):
 func run():
  root.size=Vector2i(640,360)
  var game=load("res://main.tscn").instantiate();root.add_child(game);game.set_process(false);game.test_mode=true;game.ai_enabled=false
- game._test_reset();game.set_process(false);await process_frame
+ game._test_reset();game.set_process(false);game._skip_tutorial();await process_frame
  var keep=game._first(0,"town_center");var pos=keep.pos+Vector3(4.5,0,0)
  var siege=game._spawn("siege",1,pos);var tower=game._spawn("tower",0,pos+Vector3(1.8,0,0));tower.built=true;tower.hp=1
- game._update_vision();game._select([tower.id]);game.camera_focus=tower.pos;game.camera_zoom=9
+ game._update_vision();game._select([tower.id]);game.camera_focus=(tower.pos+siege.pos)*0.5;game.camera_zoom=11
  var ok=await shot(game,"controlled-one-hp-tower-before-attack")
  game._ai_raid_order(game.faction_views[1].get_record(siege.id),game._ai_records(),game.faction_views[1].get_record(keep.id))
  var tower_order=game.commands.any(func(c):return c.type=="order" and c.get("target",-1)==tower.id and siege.id in c.get("ids",[]))
