@@ -35,6 +35,19 @@ var _receipts: Dictionary = {}
 var _transactions: Dictionary = {}
 var _farms: Dictionary = {}
 var _worker_farms: Dictionary = {}
+var _wheelbarrow_completed: Dictionary = {}
+
+# One-time faction upgrade. Completion records no economic transaction.
+# Harvest uses its authority tick, so capacity only changes next tick.
+func complete_wheelbarrow(team: int, tick: int) -> Dictionary:
+	if not _valid_team(team) or tick < 0: return _failure("invalid_upgrade")
+	if _wheelbarrow_completed.has(team): return _failure("already_completed")
+	_wheelbarrow_completed[team] = tick
+	return _success()
+
+func cargo_capacity(team: int, tick: int = MAX_INT) -> int:
+	return 15000 if _wheelbarrow_completed.has(team) and tick > _wheelbarrow_completed[team] else CARGO_CAP
+
 
 func _init(resource_types: Array = RESOURCE_TYPES) -> void:
 	_configuration_valid = not resource_types.is_empty()
@@ -84,8 +97,8 @@ func gather_tick(worker_id: int, node_id: int, tick: int) -> Dictionary:
 	if tick <= worker.last_gather_tick: return _failure("tick_already_processed")
 	if worker.cargo_milli > 0 and worker.cargo_type != node.resource_type:
 		return _failure("cargo_type_mismatch")
-	var amount: int = mini(RESOURCE_GATHER_PER_TICK[node.resource_type], mini(CARGO_CAP - worker.cargo_milli, node.remaining_milli))
-	if amount <= 0: return _failure("cargo_full" if worker.cargo_milli >= CARGO_CAP else "node_empty")
+	var amount: int = mini(RESOURCE_GATHER_PER_TICK[node.resource_type], mini(cargo_capacity(worker.team, tick) - worker.cargo_milli, node.remaining_milli))
+	if amount <= 0: return _failure("cargo_full" if worker.cargo_milli >= cargo_capacity(worker.team, tick) else "node_empty")
 	var resource: String = node.resource_type
 	if not _can_add(_stats[worker.team].extracted[resource], amount) or worker.cargo_revision == MAX_INT:
 		return _failure("integer_overflow")
@@ -155,7 +168,7 @@ func farm_tick(worker_id: int, farm_id: int, tick: int) -> Dictionary:
 		return _failure("tick_already_processed")
 	if worker.cargo_milli > 0 and worker.cargo_type != "food":
 		return _failure("cargo_type_mismatch")
-	var amount: int = mini(FARM_PER_TICK, CARGO_CAP - worker.cargo_milli)
+	var amount: int = mini(FARM_PER_TICK, cargo_capacity(worker.team, tick) - worker.cargo_milli)
 	if amount <= 0: return _failure("cargo_full")
 	if not _can_add(_stats[worker.team].generated.food, amount) \
 		or not _can_add(farm.generated_milli, amount) or worker.cargo_revision == MAX_INT:
@@ -383,7 +396,7 @@ func audit() -> Dictionary:
 			errors.append("farm_team_generation_mismatch:%s" % team)
 		for worker_id in _workers:
 			var worker: Dictionary = _workers[worker_id]
-			if worker.cargo_milli < 0 or worker.cargo_milli > CARGO_CAP or (not worker.alive and worker.cargo_milli != 0):
+			if worker.cargo_milli < 0 or worker.cargo_milli > cargo_capacity(worker.team) or (not worker.alive and worker.cargo_milli != 0):
 				errors.append("invalid_cargo:%s" % worker_id)
 			if worker.team == team and worker.cargo_milli > 0:
 				if not _can_add(cargo[worker.cargo_type], worker.cargo_milli): errors.append("audit_overflow")

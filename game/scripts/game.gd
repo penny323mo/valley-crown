@@ -1272,8 +1272,9 @@ func _try_ready_production(ent):
 			age_completed_tick[ent.team]=tick_count
 			if ent.team==0: demo_tutorial.record("age2")
 			if ent.team==0: _message("城防時代研究完成。下一步可建馬廄與工坊。",6)
-		elif order.kind in Rules.MILITARY_TECHS:
+		elif order.kind in Rules.RESEARCH_TECHS:
 			military_tech_completed[ent.team][order.kind]=tick_count
+			if order.kind=="wheelbarrow": economy.complete_wheelbarrow(ent.team,tick_count)
 			if ent.team==0: _message(Rules.NAMES[order.kind]+"完成："+Rules.TECH_DETAILS[order.kind],6)
 		return
 	order.next_retry_tick=tick_count+20
@@ -1551,7 +1552,7 @@ func _update_work(ent):
 			else: _resume_gather(ent)
 			return
 		if ent.gather_type.is_empty(): ent.gather_type=_resource_type(known)
-		if _cargo_amount(ent)>=Economy.CARGO_CAP or (_cargo_amount(ent)>0 and _cargo_type(ent)!=_resource_type(known)):
+		if _cargo_amount(ent)>=economy.cargo_capacity(ent.team,tick_count) or (_cargo_amount(ent)>0 and _cargo_type(ent)!=_resource_type(known)):
 			_route_to_dropoff(ent); return
 	else:
 		if known.is_empty() or not known.built or known.kind not in ["town_center","storehouse"]:
@@ -2822,7 +2823,7 @@ func _assign_worker(ent,desired=""):
 	# full/foreign cargo handoff can leave NO_PATH for a deposit route.
 	var status=ent.get("path_status","")
 	var carried=ent.get("cargo_milli",0)
-	var delivery_handoff=not resource.remembered and (carried>=Economy.CARGO_CAP or (carried>0 and ent.get("carry_type","")!=_resource_type(resource)))
+	var delivery_handoff=not resource.remembered and (carried>=economy.cargo_capacity(ent.team,tick_count) or (carried>0 and ent.get("carry_type","")!=_resource_type(resource)))
 	if status in [BoundedPath.LIMIT_REACHED,"NO_WORK"] or (status==BoundedPath.NO_PATH and not delivery_handoff):
 		ai_status.worker="terminal_work_route"; return false
 	var order={"ids":[ent.id],"target":-1 if resource.remembered else resource.id,"position":resource.pos}
@@ -2937,7 +2938,7 @@ func _ai_recover_worker_funding(castle,workers,queued_workers,capacity,committed
 	# Military research can be behind another item. Cancel its exact receipt,
 	# never accidentally remove the queue head or assume the quoted money exists.
 	for queued in castle.queue:
-		if not queued.get("research",false) or queued.get("kind","") not in Rules.MILITARY_TECHS: continue
+		if not queued.get("research",false) or queued.get("kind","") not in Rules.RESEARCH_TECHS: continue
 		var quote=economy.quote_refund(queued.get("receipt_id",""),1)
 		if ai_budget.get("food",0)+quote.get("food",0)<COSTS.villager.food*Economy.SCALE: continue
 		var sequence=command_sequence
@@ -3887,7 +3888,7 @@ func _update_hud():
 		if ent.kind=="town_center": selection_detail.text+=" · 步兵／弓手／騎兵在堡旁安全待命 10 秒後，每 2 秒回 1 生命"
 		if worker_evacuations.has(ent.id): selection_detail.text+=" · "+_worker_safety_label(ent)
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
-		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / 10" % floori(ent.cargo_milli/1000.0)
+		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / %d" % [floori(ent.cargo_milli/1000.0),economy.cargo_capacity(0,tick_count)/1000]
 		if ent.built and Rules.PRODUCES.has(ent.kind):
 			selection_detail.text+=_rally_detail(ent)
 			if not ent.get("repeat_kind","").is_empty(): selection_detail.text+=" · 自動訓練每次 "+Rules.cost_label(ent.repeat_kind)+"；資源或人口不足會等待。關閉保留隊列，取消訓練會關閉。"
@@ -4063,7 +4064,7 @@ func _rebuild_actions(selection):
 				var research=_button("城防時代\n"+Rules.cost_label("age2"),func(): _submit("research",{"building":ent.id}),160)
 				research.disabled=_research_pending(0); actions.add_child(research)
 			if ent.kind=="town_center" and _age2(0):
-				for technology in Rules.MILITARY_TECHS:
+				for technology in Rules.RESEARCH_TECHS:
 					var tech=technology
 					var completed=military_tech_completed[0].has(tech)
 					var pending=_military_research_pending(tech,0)
@@ -5795,11 +5796,11 @@ func _military_research_pending(kind: String,team: int) -> bool:
 	return false
 
 func _enqueue_military_research(id,kind,team):
-	if team not in [0,1] or typeof(kind)!=TYPE_STRING or kind not in Rules.MILITARY_TECHS: return false
+	if team not in [0,1] or typeof(kind)!=TYPE_STRING or kind not in Rules.RESEARCH_TECHS: return false
 	var building=_get_entity(id)
 	if building.is_empty() or not building.alive or not building.built or building.team!=team or building.kind!="town_center": return _reject_command(team,"請選取自己的已完成主堡。")
-	if not _age2(team): return _reject_command(team,"軍備科技需要城防時代。")
-	if _military_research_pending(kind,team): return _reject_command(team,"這項軍備科技已在研究或已完成。")
+	if not _age2(team): return _reject_command(team,"進階科技需要城防時代。")
+	if _military_research_pending(kind,team): return _reject_command(team,"這項科技已在研究或已完成。")
 	if building.queue.size()>=5: return _reject_command(team,"生產隊列已滿。")
 	var payment=_pay(COSTS[kind],team)
 	if not payment.applied: return _reject_command(team,Rules.NAMES[kind]+"需要 "+Rules.cost_label(kind))
@@ -5823,7 +5824,7 @@ func _military_armor_bonus(kind: String,team: int) -> int:
 
 func _ai_military_research(records: Array,castle: Dictionary,worker_count: int):
 	if castle.is_empty() or not _age2(1) or worker_count<6 or castle.queue.size()>=2: return
-	for tech in Rules.MILITARY_TECHS:
+	for tech in Rules.RESEARCH_TECHS:
 		if _military_research_pending(tech,1) or not _ai_can_budget(tech): continue
 		if ai_budget.get("food",0)-COSTS[tech].get("food",0)*Economy.SCALE<150*Economy.SCALE: continue
 		var eligible=0

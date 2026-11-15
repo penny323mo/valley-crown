@@ -13,7 +13,7 @@ func frames():
 func run():
 	check("catalogue covers every current troop",Manual.entries(0)==Rules.UNIT_KINDS)
 	check("catalogue covers keep and every buildable",Manual.entries(1)==["town_center"]+Rules.BUILDABLE_KINDS)
-	check("catalogue covers all current technology",Manual.entries(2)==["age2"]+Rules.MILITARY_TECHS)
+	check("catalogue covers all current technology",Manual.entries(2)==["age2"]+Rules.RESEARCH_TECHS)
 	for section in 3:
 		for i in Manual.entries(section).size():
 			var item=Manual.entry(section,i)

@@ -25,7 +25,7 @@ static func entries(section: int) -> Array:
 	match posmod(section,3):
 		0:return Rules.UNIT_KINDS.duplicate()
 		1:return ["town_center"]+Rules.BUILDABLE_KINDS
-		_:return ["age2"]+Rules.MILITARY_TECHS
+		_:return ["age2"]+Rules.RESEARCH_TECHS
 static func producer(kind: String) -> String:
 	for building in ["town_center"]+Rules.BUILDABLE_KINDS:
 		if kind in Rules.products_for(building):return building
@@ -47,6 +47,7 @@ static func entry(section: int,index: int) -> Dictionary:
 		if kind=="siege":lines.append("對建築額外 +%d。對主堡未升級每次命中 %d 傷害（已扣護甲）。" % [Rules.CONTENT.SIEGE_BUILDING_BONUS,Rules.CONTENT.resolve_damage(kind,"town_center").damage])
 		for tech in Rules.MILITARY_TECHS:
 			if kind in Rules.TECH_UNITS[tech]:lines.append("可受益科技："+Rules.NAMES[tech]+("，護甲 +%d。" % Rules.TECH_ARMOR_BONUS if tech=="reinforced_armor" else "，攻擊 +%d。" % Rules.TECH_BONUS))
+		if kind=="villager":lines.append("可受益科技：手推車，負重 10 → 15；採集速度不變。")
 		if kind in ["scout","spearman","archer","cavalry"]:lines.append("可回己方主堡旁休整；安全待命 10 秒後，每 2 秒回 1 生命。")
 	elif section==1:
 		lines.append(BUILDING_ROLES[kind])
