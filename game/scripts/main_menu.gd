@@ -537,6 +537,8 @@ func _input(event):
 
 func _cycle_victory_mode():
 	if selected_mode=="battle":
+		selected_mode="fortress";selected_victory_mode="conquest";_show_page("setup");return
+	if selected_mode=="fortress":
 		selected_mode="practice";selected_victory_mode="conquest";_show_page("setup");return
 	if selected_victory_mode=="supply":
 		selected_victory_mode="conquest";selected_mode="battle";_show_page("setup");return

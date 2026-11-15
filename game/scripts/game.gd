@@ -364,7 +364,7 @@ func _ready():
 	_create_ui()
 	_create_tutorial_ui()
 	audio_cues.observe(faction_views[0].records(),tick_count,Time.get_ticks_msec())
-	if skirmish_mode=="battle" and victory_mode=="conquest":
+	if skirmish_mode in ["battle","fortress"] and victory_mode=="conquest":
 		var army=[]
 		for unit in entities:
 			if unit.team==0 and unit.category=="unit" and unit.kind not in ["villager","scout"]:army.append(unit.id)
@@ -499,12 +499,16 @@ func _seed_match():
 	for p in [Vector3(-3.5,0,-1.5),Vector3(-0.5,0,-1.5),Vector3(2.5,0,-1.5)]:
 		_spawn("berry",-1,p); _spawn("berry",-1,-p)
 
-	if skirmish_mode=="battle" and victory_mode=="conquest":
+	if skirmish_mode in ["battle","fortress"] and victory_mode=="conquest":
 		# Explicit symmetric scenario start, never paid training/completion events.
 		for team in 2:
 			var sign_team=1.0 if team==0 else -1.0
 			_spawn("house",team,Vector3(-29,0,23)*sign_team,true)
+			if skirmish_mode=="fortress":
+				for item in [["house",Vector3(-21,0,29)],["house",Vector3(-25,0,32)],["barracks",Vector3(-18.5,0,24.5)],["range",Vector3(-18.5,0,30.5)],["stable",Vector3(-11.5,0,24.5)],["workshop",Vector3(-11.5,0,30.5)],["tower",Vector3(-16,0,19)],["tower",Vector3(-11,0,19)]]:
+					_spawn(item[0],team,item[1]*sign_team,true)
 			var kinds=["spearman","spearman","archer","archer","cavalry","siege"]
+			if skirmish_mode=="fortress":kinds=["spearman","spearman","spearman","spearman","archer","archer","archer","archer","cavalry","cavalry","siege","siege"]
 			for index in kinds.size():
 				_spawn(kinds[index],team,Vector3(-26+2*(index%2),0,13-2*(index/2))*sign_team,true)
 			age_completed_tick[team]=0
@@ -5682,7 +5686,7 @@ func _request_restart():
 
 # --- Integrated economy, age and military progression ---
 func _age2(team: int) -> bool:
-	return (skirmish_mode=="battle" and victory_mode=="conquest") or (age_completed_tick[team]>=0 and tick_count>age_completed_tick[team])
+	return (skirmish_mode in ["battle","fortress"] and victory_mode=="conquest") or (age_completed_tick[team]>=0 and tick_count>age_completed_tick[team])
 
 func _kind_unlocked(kind: String,team: int) -> bool:
 	return kind not in Rules.AGE2_KINDS or _age2(team)

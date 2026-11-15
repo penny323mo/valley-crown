@@ -102,7 +102,7 @@ static func page_text(report: Dictionary,page: String) -> String:
 		else:
 			lines.append("戰役模式　"+preload("res://scripts/skirmish_policy.gd").title(report.get("skirmish_mode","standard")))
 		lines.append("戰役歷時　"+time_label(report.tick))
-		lines.append("城防時代　"+("開局已有" if report.get("skirmish_mode","")=="battle" else (time_label(report.age_tick) if report.age_tick>=0 else "未完成研究")))
+		lines.append("城防時代　"+("開局已有" if report.get("skirmish_mode","") in ["battle","fortress"] else (time_label(report.age_tick) if report.age_tick>=0 else "未完成研究")))
 		var production=0
 		for count in report.trained.values(): production+=count
 		var construction=0
@@ -113,7 +113,7 @@ static func page_text(report: Dictionary,page: String) -> String:
 		lines.append("")
 		lines.append("我方戰役紀錄（最近 12 項）")
 		var history=report.get("events",[]).duplicate(true)
-		if report.get("age_tick",-1)>=0 and report.get("skirmish_mode","")!="battle":history.append({"action":"research","kind":"age2","tick":report.age_tick,"sequence":-1})
+		if report.get("age_tick",-1)>=0 and report.get("skirmish_mode","") not in ["battle","fortress"]:history.append({"action":"research","kind":"age2","tick":report.age_tick,"sequence":-1})
 		history.sort_custom(func(a,b):return a.tick<b.tick if a.tick!=b.tick else a.sequence<b.sequence)
 		var hidden=int(report.get("omitted_events",0))+maxi(0,history.size()-12)
 		if hidden>0:lines.append("較早 %d 項未列出；總數仍完整。" % hidden)
