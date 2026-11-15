@@ -13,7 +13,7 @@ while time.monotonic()-t<30:
  time.sleep(.25)
 def limits():
  os.setsid();resource.setrlimit(resource.RLIMIT_AS,(2147483648,2147483648));resource.setrlimit(resource.RLIMIT_CPU,(60,60));resource.setrlimit(resource.RLIMIT_CORE,(0,0));resource.setrlimit(resource.RLIMIT_FSIZE,(16777216,16777216))
-cmd=['xvfb-run','-a','-s','-screen 0 1280x720x24','/tmp/Godot_v4.6.3-stable_linux.x86_64','--audio-driver','Dummy','--main-pack','/tmp/capture/index.pck','--rendering-method','gl_compatibility','--single-threaded-scene','--script','/tmp/capture/capture.gd']
+cmd=['xvfb-run','-a','-s','-screen 0 1280x720x24','/tmp/Godot_v4.6.3-stable_linux.x86_64','--resolution','640x360','--audio-driver','Dummy','--main-pack','/tmp/capture/index.pck','--rendering-method','gl_compatibility','--single-threaded-scene','--script','/tmp/capture/capture.gd']
 out=open(R/(name+'-stdout.txt'),'w');err=open(R/(name+'-stderr.txt'),'w');t=time.monotonic()
 p=subprocess.Popen(cmd,stdout=out,stderr=err,preexec_fn=limits,env={**os.environ,'HOME':str(R),'XDG_DATA_HOME':str(R/'userdata'),'XDG_CONFIG_HOME':str(R/'config'),'XDG_CACHE_HOME':str(R/'cache'),'GODOT_SILENCE_ROOT_WARNING':'1','LIBGL_ALWAYS_SOFTWARE':'1','LP_NUM_THREADS':'1','GALLIUM_DRIVER':'softpipe','MESA_GL_VERSION_OVERRIDE':'3.3'});r['pid']=p.pid;r['stop_reason']=None
 try:
@@ -23,7 +23,10 @@ try:
   time.sleep(.05)
 finally:
  if p.poll() is None:os.killpg(p.pid,signal.SIGKILL)
- r['returncode']=p.wait();r['wall_seconds']=time.monotonic()-t;r['after']=metrics()
+ r['returncode']=p.wait()
+ try:os.killpg(p.pid,signal.SIGKILL)
+ except ProcessLookupError:pass
+ r['wall_seconds']=time.monotonic()-t;r['after']=metrics()
  try:os.killpg(p.pid,0);r['process_group_gone']=False
  except ProcessLookupError:r['process_group_gone']=True
  out.close();err.close();r['status']='PROCESS_COMPLETED' if r['returncode']==0 and not r['stop_reason'] else 'PROCESS_FAILED';save()
