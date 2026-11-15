@@ -159,7 +159,8 @@ func test_military():
 	tower.cooldown_ticks=0; game.visible_cells[0].fill(0); next=game.attack_ledger.next_attack_id(); game._update_tower(tower)
 	check("tower cannot target hidden enemies",game.attack_ledger.next_attack_id()==next)
 	var worker=game._first(0,"villager"); game._spawn("tower",0,Vector3(-8,0,0),false)
-	check("tower cap counts unfinished sites",game._placement_reason("tower",Vector3.ZERO,0,worker.id)=="每方最多兩座守望塔")
+	game.visible_cells[0].fill(1); game._navigation_rebuild(); game._refresh_work_memory()
+	check("tower expansion permits more than two sites",game._placement_reason("tower",Vector3(14,0,14),0,worker.id).is_empty())
 	await reset(); var enemy_keep=game._first(1,"town_center"); ram=game._spawn("siege",0,enemy_keep.pos+Vector3(-2.7,0,0)); enemy_keep.hp=28
 	game._order(ram,"attack",enemy_keep.id); game._update_vision(false); game._tick(Rules.TICK)
 	check("siege hit uses ordinary victory settlement",game.game_over and game.victory and not enemy_keep.alive)

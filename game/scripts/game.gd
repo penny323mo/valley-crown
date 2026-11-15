@@ -2009,7 +2009,6 @@ func _placement_reason(kind,p,team,builder_id,check_resources=true):
 	if victory_mode=="control" and p.distance_to(ControlPoint.CENTER)<ControlPoint.RADIUS+Rules.FOOTPRINT.get(kind,1): return "中央據點範圍須留作爭奪，不可建造。"
 	if not Rules.BUILD_TIME.has(kind): return "未知建築"
 	if not _kind_unlocked(kind,team): return "需要城防時代"
-	if kind=="tower" and _count(team,"tower")>=2: return "每方最多兩座守望塔"
 	var mock={"pos":p,"kind":kind,"category":"building"}
 	var footprint=_occupied_cells(mock)
 	for c in footprint:
