@@ -748,6 +748,7 @@ func _execute(command):
 		if processed_command_ids.has(dedup_key): return
 		processed_command_ids[dedup_key]=true
 	match command.type:
+		"tower_focus": _set_tower_focus(command.get("ids",[]),command.get("target",-1),team)
 		"order":
 			var target_id=command.get("target",-1)
 			var target=_get_entity(target_id)
@@ -3471,6 +3472,9 @@ func _publish_faction_views():
 			var record={}
 			for key in ["id","kind","team","category","pos","hp","max_hp","progress","built","radius"]: record[key]=ent[key]
 			record.owned=ent.team==team; record.alive=true
+			if ent.kind=="tower" and record.owned:
+				var focused=_tower_focus_target(ent)
+				record.focus_kind=focused.get("kind","")
 			record.visual_yaw=ent.body.rotation.y
 			if ent.category=="unit":
 				record.combat_kills=combat_veterancy.count(ent.id);record.veterancy_rank=combat_veterancy.rank(ent.id)
@@ -3995,6 +3999,7 @@ func _update_hud():
 		if ent.owned and _military_attack_bonus(ent.kind,0)>0: selection_detail.text+=" · 軍備攻擊 +%d" % _military_attack_bonus(ent.kind,0)
 		var rest_label=RestRecovery.label(ent)
 		if not rest_label.is_empty(): selection_detail.text+=" · "+rest_label
+		if ent.kind=="tower" and ent.owned:selection_detail.text+=" · 集中射擊 "+Rules.NAMES.get(ent.focus_kind,ent.focus_kind) if not ent.get("focus_kind","").is_empty() else " · 自動射擊；點敵人可集中火力"
 		if ent.kind=="town_center": selection_detail.text+=" · 步兵／弓手／騎兵在堡旁安全待命 10 秒後，每 2 秒回 1 生命"
 		if worker_evacuations.has(ent.id): selection_detail.text+=" · "+_worker_safety_label(ent)
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
@@ -4204,6 +4209,8 @@ func _rebuild_actions(selection):
 			training_batch_button.name="TrainingBatch";training_batch_button.set_meta("building",ent.id)
 			training_batch_button.tooltip_text="按目前資源、隊列空位與人口，最多加訓3個。每個仍按普通訓練規則付款；執行時條件改變可能只接受部分。"
 			actions.add_child(training_batch_button)
+		if ent.owned and ent.kind=="tower" and ent.built:
+			actions.add_child(_button("恢復自動射擊",_clear_selected_tower_focus,150))
 		if ent.owned and (ent.category=="building" or ent.kind=="siege") and ent.built and ent.hp<ent.max_hp:
 			repair_dispatch_button=_button("派閒置村民維修",func(): _request_repair_dispatch(ent.id),180)
 			repair_dispatch_button.name="RepairDispatch"; repair_dispatch_button.set_meta("building",ent.id)
@@ -4801,6 +4808,11 @@ func _send_world_order(screen,contextual=false):
 	var target_id=_pick(screen)
 	var ids=selected.duplicate()
 	var tapped=faction_views[0].get_record(target_id)
+	var towers=_selected_towers()
+	if not towers.is_empty():
+		if tapped.get("team",-1)==1 and tapped.get("alive",false) and not tapped.get("remembered",false):_submit("tower_focus",{"ids":towers,"target":target_id})
+		ids=ids.filter(func(id):return faction_views[0].get_record(id).get("category","")=="unit")
+		if ids.is_empty():return
 	if contextual and (tapped.get("category","")=="resource" or (tapped.get("kind","")=="farm" and tapped.get("owned",false))):
 		# Resource taps task capable workers only; escorts keep their orders.
 		ids=ids.filter(func(id):
@@ -4843,7 +4855,7 @@ func _tap(screen,is_touch):
 		# Normal touch is contextual. Friendly taps above select; explicit
 		# targeting remains available for repair/delivery to friendly buildings.
 		# Use the ordinary order path: authority resolves each unit's capability.
-		if not paused and build_mode.is_empty() and _has_selected_unit():
+		if not paused and build_mode.is_empty() and (_has_selected_unit() or not _selected_towers().is_empty()):
 			_send_world_order(screen,true)
 		_update_hud()
 	else: _select([])
@@ -5792,9 +5804,43 @@ func _release_farm(ent: Dictionary) -> void:
 	economy.release_farm("farm_release:%d" % economy_sequence,ent.id,farm_id)
 	ent.farm_id=-1
 
+func _set_tower_focus(ids,target_id,team):
+	if typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT or typeof(target_id)!=TYPE_INT:return false
+	for id in ids:
+		if typeof(id)!=TYPE_INT:return false
+	var target=_get_entity(target_id)
+	if target_id!=-1 and (target.is_empty() or not target.alive or target.team!=1-team or target.category not in ["unit","building"] or not _visible_to(target,team)):return false
+	var applied=false
+	for id in ids:
+		var tower=_get_entity(id)
+		if tower.is_empty() or not tower.alive or tower.team!=team or tower.kind!="tower" or not tower.built:continue
+		if target_id==-1:tower.erase("focus_target");applied=true
+		elif _attack_distance(tower.pos,target)<=Rules.RANGE.tower:tower.focus_target=target_id;applied=true
+	if applied and team==0:_message("守望塔已恢復自動射擊。" if target_id==-1 else "守望塔集中射擊；目標離開射程或視野後恢復自動。",4)
+	return applied
+
+func _tower_focus_target(tower):
+	var target=_get_entity(tower.get("focus_target",-1))
+	if target.is_empty() or not target.alive or target.team!=1-tower.team or target.category not in ["unit","building"] or not _visible_to(target,tower.team) or _attack_distance(tower.pos,target)>Rules.RANGE.tower:return {}
+	return target
+
+func _selected_towers():
+	var ids=[]
+	for id in selected:
+		var record=faction_views[0].get_record(id)
+		if record.get("owned",false) and record.get("alive",false) and record.get("kind","")=="tower" and record.get("built",false):ids.append(id)
+	return ids
+
+func _clear_selected_tower_focus():
+	if not _squad_actions_available():return
+	_cancel_pointer_streams();_submit("tower_focus",{"ids":_selected_towers(),"target":-1})
+
 func _update_tower(ent: Dictionary) -> void:
+	var focused=_tower_focus_target(ent)
+	if focused.is_empty():ent.erase("focus_target")
 	ent.cooldown_ticks=maxi(0,ent.cooldown_ticks-1)
 	if ent.cooldown_ticks>0: return
+	if not focused.is_empty():_release_attack(ent,focused);return
 	# Candidate policy: visible hostile units before buildings; distance then ID.
 	var chosen={}; var best=Vector3(INF,INF,INF)
 	for target in entities:
