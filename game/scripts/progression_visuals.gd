@@ -16,6 +16,33 @@ static func _cylinder(parent: Node3D,pos: Vector3,radius: float,height: float,co
 	var instance=MeshInstance3D.new(); instance.mesh=mesh; instance.position=pos; parent.add_child(instance)
 	return instance
 
+# Low-poly anatomical mount; equipment remains bound to the existing rider rig.
+static func _ellipsoid(parent: Node3D,pos: Vector3,size: Vector3,color: Color,name: String) -> MeshInstance3D:
+	var mesh=SphereMesh.new();mesh.radius=0.5;mesh.height=1.0;mesh.radial_segments=12;mesh.rings=6;mesh.material=_material(color)
+	var part=MeshInstance3D.new();part.mesh=mesh;part.position=pos;part.scale=size;part.name=name;parent.add_child(part)
+	return part
+
+static func _horse(root: Node3D,team: Color) -> void:
+	var coat=Color("80543b");var dark=Color("312924");var hoof=Color("27282a")
+	_ellipsoid(root,Vector3(0,0.68,0.02),Vector3(0.43,0.44,0.88),coat,"HorseBody")
+	_ellipsoid(root,Vector3(0,0.73,-0.27),Vector3(0.38,0.46,0.34),coat,"Shoulder")
+	var neck=_ellipsoid(root,Vector3(0,0.94,-0.34),Vector3(0.24,0.62,0.30),coat,"Neck");neck.rotation.x=-0.37
+	var head=_ellipsoid(root,Vector3(0,1.15,-0.52),Vector3(0.23,0.28,0.39),coat,"HorseHead");head.rotation.x=-0.32
+	_ellipsoid(root,Vector3(0,1.06,-0.70),Vector3(0.22,0.17,0.22),Color("a57c60"),"Muzzle")
+	for side in [-1,1]:
+		var ear=_ellipsoid(root,Vector3(side*0.072,1.32,-0.46),Vector3(0.065,0.19,0.09),coat,"Ear_%d" % side);ear.rotation.z=-side*0.18
+		_ellipsoid(root,Vector3(side*0.112,1.19,-0.57),Vector3(0.025,0.032,0.035),dark,"Eye_%d" % side)
+		for end in [-1,1]:
+			var leg=Node3D.new();root.add_child(leg);leg.position=Vector3(side*0.145,0.64,end*0.28);leg.name="Leg_%d_%d" % [side,end]
+			_limb(leg,Vector3.ZERO,Vector3(0,-0.29,0.025*end),0.055,coat)
+			_limb(leg,Vector3(0,-0.29,0.025*end),Vector3(0,-0.54,-0.015),0.032,coat)
+			_ellipsoid(leg,Vector3(0,-0.575,-0.035),Vector3(0.105,0.105,0.14),hoof,"Hoof")
+	for i in 5:
+		_ellipsoid(root,Vector3(0,0.88+i*0.075,-0.22-i*0.035),Vector3(0.10,0.15,0.11),dark,"Mane_%d" % i)
+	var tail=_ellipsoid(root,Vector3(0,0.45,0.46),Vector3(0.12,0.52,0.15),dark,"Tail");tail.rotation.x=-0.28
+	_ellipsoid(root,Vector3(0,0.87,0.05),Vector3(0.47,0.10,0.49),team,"Saddlecloth")
+	_ellipsoid(root,Vector3(0,0.92,0.055),Vector3(0.29,0.10,0.32),dark,"Saddle")
+
 # Rider limbs and equipment share rigid local frames. The lance shaft passes
 # through the hand origin; no root-space decorative weapon may float beside it.
 static func _limb(parent: Node3D,start: Vector3,finish: Vector3,radius: float,color: Color) -> MeshInstance3D:
@@ -85,14 +112,7 @@ static func build(parent: Node3D,kind: String,team: Color) -> Node3D:
 				_box(root,Vector3(-0.45,0.55,-0.2),Vector3(1.3,0.2,0.65),wood,"oak")
 				_box(root,Vector3(-0.45,0.8,-0.2),Vector3(0.55,0.3,0.45),metal)
 		"cavalry":
-			_box(root,Vector3(0,0.68,0),Vector3(0.36,0.36,0.66),Color("7c563b"))
-			_box(root,Vector3(0,0.92,-0.32),Vector3(0.23,0.5,0.24),Color("7c563b"))
-			_box(root,Vector3(0,1.11,-0.43),Vector3(0.22,0.23,0.25),Color("7c563b"))
-			for x in [-1,1]:
-				for z in [-1,1]:
-					var leg=_box(root,Vector3(x*0.14,0.3,z*0.23),Vector3(0.09,0.5,0.1),wood)
-					leg.name="Leg_%d_%d" % [x,z]
-			_box(root,Vector3(0,0.88,0.04),Vector3(0.4,0.1,0.4),team)
+			_horse(root,team)
 			_box(root,Vector3(0,1.16,0.04),Vector3(0.28,0.43,0.22),team)
 			_cylinder(root,Vector3(0,1.48,0.04),0.14,0.23,metal)
 			_rider_equipment(root,team,wood,metal)
@@ -129,7 +149,7 @@ static func present(record: Dictionary,body: Node3D,color: Color,delta: float,ru
 	root.set_meta("phase",phase)
 	for child in root.get_children():
 		if str(child.name).begins_with("Leg_"):
-			child.rotation.x=sin(phase+(0 if str(child.name).ends_with("_1") else PI))*0.4 if record.get("visual_moving",false) else 0.0
+			child.rotation.x=sin(phase+(0 if str(child.name) in ["Leg_-1_-1","Leg_1_1"] else PI))*0.4 if record.get("visual_moving",false) else 0.0
 		elif str(child.name).begins_with("Wheel_"): child.rotation.x=phase
 	var tick=int(record.get("visual_attack_tick",-1))
 	if tick>=0 and tick!=root.get_meta("attack_tick",-1): root.set_meta("attack_tick",tick); root.set_meta("attack_age",0.0)
