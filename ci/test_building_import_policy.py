@@ -124,7 +124,17 @@ class PolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError): p.descriptors(self.root, self.entries)
 
     def test_source_inventory_remains_immutable(self):
-        self.plant(); adapter.inventory(self.root, self.entries)
+        self.plant()
+        # Current adapter accepts only tracked, hash-bound descriptors, never a
+        # dynamically created descriptor via the retired building-policy hook.
+        with self.assertRaises(RuntimeError): adapter.inventory(self.root, self.entries)
+        descriptor = p.PREFIX + 'stable.gltf.import'
+        self.entries[descriptor] = p.digest(self.root / descriptor)
+        adapter.inventory(self.root, self.entries)
+        original = (self.root / descriptor).read_bytes()
+        (self.root / descriptor).write_bytes(b'descriptor-drift')
+        with self.assertRaises(RuntimeError): adapter.inventory(self.root, self.entries)
+        (self.root / descriptor).write_bytes(original)
         path = self.root / 'unplanned.txt'; path.write_text('x')
         with self.assertRaises(RuntimeError): adapter.inventory(self.root, self.entries)
         path.unlink(); path = self.root / (p.PREFIX + 'stable.bin'); path.write_bytes(b'drift')
@@ -164,76 +174,72 @@ class PolicyTests(unittest.TestCase):
 
 
     def test_full_main_mocked_orchestration(self):
-        """Real main/inventory/finally, mocked engine; all evidence is synthetic."""
+        """Current hash-bound adapter; synthetic monitor, never engine evidence.
+
+        Supersedes retired dynamic-policy integration. Preserve success,
+        pre-import test rejection, incomplete evidence rejection, source drift
+        rejection, and untrusted adapter provenance rejection.
+        """
         for case in ('success', 'test-phase', 'retention-failure', 'source-drift', 'wrong-policy'):
-            with self.subTest(case=case), tempfile.TemporaryDirectory(prefix='mocked-orchestration-') as td:
-                work = Path(td); project = work / 'project'; project.mkdir()
-                for name in self.entries:
-                    target = project / name; target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_bytes((ROOT / 'game' / name).read_bytes())
-                old_root = self.root; self.root = project
-                engine = work / 'engine'; engine.write_bytes(b'synthetic-engine-never-launched')
-                archive = work / 'source.zip'; archive.write_bytes(b'synthetic-archive-not-opened')
-                manifest = work / 'manifest.json'; manifest.write_text('{}\n')
-                output = work / 'evidence'; xdg = work / 'xdg'
-                package = {'candidate': 'synthetic-build', 'runtime_manifest': {'sha256': 'a' * 64}}
-                argv = ['guarded_manifest_ci.py', 'test' if case == 'test-phase' else 'import',
-                        '--project', str(project), '--archive', str(archive), '--manifest', str(manifest),
-                        '--output', str(output), '--xdg', str(xdg), '--godot', str(engine),
-                        '--archive-sha256', p.digest(archive), '--manifest-sha256', p.digest(manifest), '--hosted-execution-approved']
-                launches = []
-
-                def synthetic_monitor(prefix, command, **kwargs):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as td:
+                work=Path(td); project=work/'project';project.mkdir()
+                entries=dict(self.entries)
+                for name in entries:
+                    target=project/name;target.parent.mkdir(parents=True,exist_ok=True)
+                    target.write_bytes((ROOT/'game'/name).read_bytes())
+                # Descriptors are immutable source now, not allowed generated files.
+                for kind in p.PAIRS:
+                    target=project/(p.PREFIX+kind+'.gltf.import')
+                    target.write_bytes(self.synthetic(kind));entries[target.relative_to(project).as_posix()]=p.digest(target)
+                engine=work/'engine';engine.write_bytes(b'synthetic-never-launched')
+                archive=work/'source.zip';archive.write_bytes(b'synthetic-not-opened')
+                manifest=work/'manifest.json';manifest.write_text('{}')
+                output=work/'evidence';xdg=work/'xdg';launches=[]
+                package={'candidate':'synthetic-build','runtime_manifest':{'sha256':'a'*64}}
+                argv=['guarded_manifest_ci.py','test' if case=='test-phase' else 'import',
+                      '--project',str(project),'--archive',str(archive),'--manifest',str(manifest),
+                      '--output',str(output),'--xdg',str(xdg),'--godot',str(engine),
+                      '--archive-sha256',p.digest(archive),'--manifest-sha256',p.digest(manifest),
+                      '--hosted-execution-approved']
+                def monitor_run(prefix,command,**kwargs):
                     launches.append(prefix)
-                    self.assertEqual(prefix, output / 'import')
-                    self.assertEqual(command[-1], '--import')
-                    self.assertEqual(kwargs['expected_artifact_hashes']['building-policy'], p.digest(Path(p.__file__)))
-                    for kind in p.PAIRS: self.plant(kind)
-                    invocation = {'test_dependencies': False, 'helper': {'load_sha256': adapter.MONITOR_SHA,
-                                  'invocation_sha256': adapter.MONITOR_SHA}, 'fixture': 'SYNTHETIC ONLY'}
-                    ipath = prefix.with_suffix('.invocation.json'); ipath.write_text(json.dumps(invocation))
-                    log = prefix.with_suffix('.log'); log.write_text('Synthetic parser test. No Godot ran.\n')
-                    result = {'passed': True, 'cleanup_complete': True, 'child_started': True, 'exit': 0,
-                              'log_sha256': p.digest(log), 'invocation_sha256': p.digest(ipath),
-                              'post_run_binding_matches': {'fixture': True}, 'stop_reason': None,
-                              'seconds': 0, 'sampled_peak_rss_kib': 0, 'fixture': 'SYNTHETIC ONLY'}
-                    prefix.with_suffix('.json').write_text(json.dumps(result))
-
-                original_retain = p.retain_actual
-
-                def mocked_retain(*args):
-                    result = original_retain(*args)
-                    if case == 'retention-failure':
-                        result['errors'].append({'source': 'fixture', 'reason': 'synthetic retention failure'})
-                    if case == 'source-drift':
-                        (project / (p.PREFIX + 'stable.bin')).write_bytes(b'synthetic-drift')
-                    return result
-
-                monitor = types.SimpleNamespace(Limits=lambda **kwargs: kwargs, run=synthetic_monitor)
-                env = {'GITHUB_ACTIONS': 'true', 'RUNNER_ENVIRONMENT': 'github-hosted',
-                       'BUILDING_IMPORT_POLICY_SHA256': '0' * 64 if case == 'wrong-policy' else p.digest(Path(p.__file__))}
-                with patch.object(adapter.sys, 'argv', argv), patch.dict(adapter.os.environ, env), \
-                     patch.object(adapter, 'ENGINE_SHA', p.digest(engine)), \
-                     patch.object(adapter.shutil, 'which', return_value=str(engine)), \
-                     patch.object(adapter, 'verify_source', return_value=(package, self.entries)), \
-                     patch.object(adapter, 'load_monitor', return_value=monitor), \
-                     patch.object(p, 'retain_actual', side_effect=mocked_retain):
-                    if case in ('test-phase', 'wrong-policy'):
-                        with self.assertRaises(RuntimeError): adapter.main()
-                        self.assertEqual(launches, [])
-                        self.assertFalse(output.exists())
-                    else:
-                        status = adapter.main()
-                        self.assertEqual(len(launches), 1)
-                        self.assertEqual(status, 0 if case == 'success' else 1)
-                        summary = json.loads((output / 'phase-summary.json').read_text())
-                        self.assertEqual(summary['passed'], case == 'success')
-                        self.assertEqual(summary['commands'][0]['receipt'], 'import.json')
-                        self.assertEqual(summary['commands'][0]['name'], 'import')
-                        self.assertTrue((xdg / 'import-complete.json').exists())
-                        self.assertFalse((output / 'approval.json').exists())
-                        self.assertEqual(summary['commands'][0]['receipt_sha256'], p.digest(output / 'import.json'))
-                self.root = old_root
+                    cache=project/'.godot/imported/synthetic.res';cache.parent.mkdir(parents=True);cache.write_bytes(b'SYNTHETIC NOT A GODOT RESOURCE')
+                    self.assertEqual(prefix,output/'import');self.assertEqual(command[-1],'--import')
+                    self.assertEqual(kwargs['expected_artifact_hashes']['adapter'],p.digest(Path(adapter.__file__)))
+                    for name,digest in entries.items():
+                        self.assertEqual(kwargs['expected_artifact_hashes']['source:'+name],digest)
+                    request={'test_dependencies':False,'helper':{'load_sha256':adapter.MONITOR_SHA,'invocation_sha256':adapter.MONITOR_SHA},'fixture':'SYNTHETIC ONLY'}
+                    ip=prefix.with_suffix('.invocation.json');ip.write_text(json.dumps(request))
+                    log=prefix.with_suffix('.log');log.write_text('Synthetic; no Godot ran.')
+                    receipt={'passed':True,'cleanup_complete':True,'child_started':True,'exit':0,
+                             'log_sha256':p.digest(log),'invocation_sha256':p.digest(ip),
+                             'post_run_binding_matches':{'fixture':True},'stop_reason':None,'seconds':0,'sampled_peak_rss_kib':0}
+                    if case=='retention-failure':receipt['output_errors']=['synthetic evidence retention failure']
+                    if case=='wrong-policy':request['helper']['invocation_sha256']='0'*64;ip.write_text(json.dumps(request));receipt['invocation_sha256']=p.digest(ip)
+                    prefix.with_suffix('.json').write_text(json.dumps(receipt))
+                    if case=='source-drift':(project/(p.PREFIX+'stable.bin')).write_bytes(b'drift')
+                monitor=types.SimpleNamespace(Limits=lambda **kw:kw,run=monitor_run)
+                with patch.object(adapter.sys,'argv',argv),patch.dict(adapter.os.environ,{'GITHUB_ACTIONS':'true','RUNNER_ENVIRONMENT':'github-hosted'}),patch.object(adapter,'ENGINE_SHA',p.digest(engine)),patch.object(adapter.shutil,'which',return_value=str(engine)),patch.object(adapter,'verify_source',return_value=(package,entries)),patch.object(adapter,'load_monitor',return_value=monitor):
+                    status=adapter.main()
+                self.assertEqual(status,0 if case=='success' else 1)
+                self.assertEqual(len(launches),0 if case=='test-phase' else 1)
+                summary=json.loads((output/'phase-summary.json').read_text())
+                self.assertEqual(summary['passed'],case=='success')
+                self.assertEqual((xdg/'import-complete.json').exists(),case=='success')
+                self.assertFalse((output/'approval.json').exists())
+                if case in ('success','source-drift'):
+                    self.assertEqual(summary['commands'][0]['receipt'],'import.json')
+                    self.assertEqual(summary['commands'][0]['name'],'import')
+                    self.assertEqual(summary['commands'][0]['receipt_sha256'],p.digest(output/'import.json'))
+                else:self.assertEqual(summary['commands'],[])
+                if case!='success':
+                    self.assertIn('error',summary)
+                    expected={'test-phase':'Guarded import certificate required','retention-failure':'Incomplete/failed monitor evidence','source-drift':'Source inventory mutated: assets/advanced_buildings/stable.bin','wrong-policy':'Monitor provenance mismatch'}
+                    self.assertEqual(summary['error']['message'],expected[case])
+                if launches:
+                    self.assertTrue((output/'import.json').exists())
+                    self.assertTrue((output/'import.invocation.json').exists())
+                    self.assertTrue((output/'import.log').exists())
 
 
 if __name__ == '__main__':
