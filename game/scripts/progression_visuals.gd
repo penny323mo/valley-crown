@@ -50,6 +50,25 @@ static func _limb(parent: Node3D,start: Vector3,finish: Vector3,radius: float,co
 	part.quaternion=Quaternion(Vector3.UP,(finish-start).normalized())
 	return part
 
+static func _rider_armour(root: Node3D,team: Color,metal: Color) -> void:
+	var leather=Color("493b32");var trim=Color("b5b3a1")
+	var rider=Node3D.new();rider.name="RiderArmour";root.add_child(rider)
+	_ellipsoid(rider,Vector3(0,1.16,0.04),Vector3(0.32,0.45,0.26),team,"Tabard")
+	_ellipsoid(rider,Vector3(0,1.20,-0.065),Vector3(0.28,0.30,0.10),metal,"Breastplate")
+	_box(rider,Vector3(0,1.02,-0.015),Vector3(0.31,0.055,0.26),leather).name="Belt"
+	_box(rider,Vector3(0,1.02,-0.15),Vector3(0.065,0.065,0.022),trim).name="Buckle"
+	for side in [-1,1]:
+		_ellipsoid(rider,Vector3(side*0.18,1.31,0.04),Vector3(0.20,0.14,0.22),metal,"Pauldron_%d" % side)
+		var skirt=_box(rider,Vector3(side*0.11,0.96,-0.03),Vector3(0.14,0.20,0.21),team);skirt.rotation.z=side*0.18;skirt.name="TabardSkirt_%d" % side
+	_ellipsoid(rider,Vector3(0,1.47,0.035),Vector3(0.25,0.30,0.24),Color("c49b78"),"Face")
+	_ellipsoid(rider,Vector3(0,1.56,0.055),Vector3(0.30,0.23,0.29),metal,"HelmetDome")
+	_box(rider,Vector3(0,1.51,-0.103),Vector3(0.26,0.055,0.045),trim).name="Brow"
+	_box(rider,Vector3(0,1.455,-0.099),Vector3(0.22,0.025,0.025),Color("252b30")).name="EyeSlit"
+	_box(rider,Vector3(0,1.435,-0.122),Vector3(0.035,0.14,0.035),metal).name="NoseGuard"
+	for side in [-1,1]:
+		var cheek=_box(rider,Vector3(side*0.105,1.43,-0.055),Vector3(0.065,0.17,0.12),metal);cheek.rotation.z=-side*0.13;cheek.name="CheekGuard_%d" % side
+	_ellipsoid(rider,Vector3(0,1.68,0.065),Vector3(0.085,0.16,0.24),team,"Crest")
+
 static func _rider_equipment(root: Node3D,team: Color,wood: Color,metal: Color):
 	var leather=Color("493b32")
 	for side in [-1,1]:
@@ -113,8 +132,7 @@ static func build(parent: Node3D,kind: String,team: Color) -> Node3D:
 				_box(root,Vector3(-0.45,0.8,-0.2),Vector3(0.55,0.3,0.45),metal)
 		"cavalry":
 			_horse(root,team)
-			_box(root,Vector3(0,1.16,0.04),Vector3(0.28,0.43,0.22),team)
-			_cylinder(root,Vector3(0,1.48,0.04),0.14,0.23,metal)
+			_rider_armour(root,team,metal)
 			_rider_equipment(root,team,wood,metal)
 		"siege":
 			_box(root,Vector3(0,0.5,0),Vector3(0.8,0.14,0.92),wood,"oak")
