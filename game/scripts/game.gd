@@ -2,6 +2,7 @@ extends Node3D
 signal main_menu_requested
 signal restart_requested
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
+const TargetPriority=preload("res://scripts/target_priority.gd")
 const ArmyFormation = preload("res://scripts/army_formation.gd")
 const WorkerIdleStatus = preload("res://scripts/worker_idle_status.gd")
 const IdleWorkerSelection = preload("res://scripts/idle_worker_selection.gd")
@@ -876,6 +877,7 @@ func _execute(command):
 						ai_scout_attempts[_cell_index(ent.dest)]=true
 				index+=1
 			if index==0: return _reject_command(team,"請選取自己的存活單位。")
+		"target_policy": _set_target_policy(command.get("ids",[]),command.get("policy",""),team)
 		"advance": _order_advance(command.get("ids",[]),command.get("position",Vector3.INF),team,command.get("formation",""))
 		"patrol": _order_patrol(command.get("ids",[]),command.get("position",Vector3.INF),team)
 		"stop":
@@ -2196,6 +2198,23 @@ func _order(ent,state,target_id,automatic=false):
 		if _cargo_amount(ent)>0 and not known.is_empty() and _cargo_type(ent)!=_resource_type(known): _route_to_dropoff(ent)
 	elif not target.is_empty(): ent.last_known=target.pos
 
+func _set_target_policy(ids,policy,team):
+	if team not in [0,1] or typeof(policy)!=TYPE_STRING or policy not in ["nearest","counter"] or typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT:return _reject_command(team,"攻擊優先設定已失效。")
+	for id in ids:
+		if typeof(id)!=TYPE_INT:return _reject_command(team,"部隊選取已失效。")
+	var applied=false
+	for id in ids:
+		var ent=_get_entity(id)
+		if ent.is_empty() or not ent.alive or ent.team!=team or ent.category!="unit" or ent.kind not in Rules.UNIT_KINDS or ent.kind=="villager":continue
+		ent.target_policy=policy;applied=true
+	if applied and team==0:_message("已設定克制優先；只影響自動迎擊，直接點敵人仍優先。" if policy=="counter" else "已恢復就近迎擊。",5)
+	return applied
+
+func _submit_target_policy(policy):
+	if not _squad_actions_available():return
+	_cancel_pointer_streams()
+	_submit("target_policy",{"ids":selected.duplicate(),"policy":policy})
+
 func _order_advance(ids,position,team,formation=""):
 	if typeof(formation)!=TYPE_STRING or formation not in ["","line","spread"]: return _reject_command(team,"陣形指令已失效。")
 	# Explicit military intent. Ordinary MOVE and workers keep their semantics.
@@ -2290,7 +2309,7 @@ func _advance_target(ent):
 		if not Rules.CONTENT.resolve_damage(ent.kind,record.kind).get("ok",false): continue
 		var d=_attack_distance(ent.pos,record)
 		if d>Rules.RANGE[ent.kind]: continue
-		if d<distance or (is_equal_approx(d,distance) and (best.is_empty() or record.id<best.id)):
+		if TargetPriority.better(ent.kind,ent.get("target_policy","nearest"),record,best,d,distance):
 			best=record; distance=d
 	return best
 
@@ -2351,7 +2370,7 @@ func _stance_target(ent):
 		if ent.mode=="STOP" and _attack_distance(ent.pos,enemy)>Rules.RANGE[ent.kind]: continue
 		if ent.mode=="DEFEND" and enemy.pos.distance_to(ent.anchor)>3.0: continue
 		var d=ent.pos.distance_squared_to(enemy.pos)
-		if d<distance or (is_equal_approx(d,distance) and (best.is_empty() or enemy.id<best.id)):
+		if TargetPriority.better(ent.kind,ent.get("target_policy","nearest"),enemy,best,d,distance):
 			distance=d; best=enemy
 	return best
 
@@ -3455,6 +3474,7 @@ func _publish_faction_views():
 			record.visual_yaw=ent.body.rotation.y
 			if ent.category=="unit":
 				record.combat_kills=combat_veterancy.count(ent.id);record.veterancy_rank=combat_veterancy.rank(ent.id)
+				if ent.team==team:record.target_policy=ent.get("target_policy","nearest")
 				# Public visible pose cues, never enemy command targets/path coordinates.
 				record.visual_moving=not ent.path.is_empty() and not ent.get("advance_engaged",false)
 				record.visual_working=ent.state in ["gather","build","repair"] and ent.path.is_empty()
@@ -3987,6 +4007,8 @@ func _update_hud():
 			selection_detail.text=(selection_detail.text+" · " if missing_workers>0 else "")+("%d 村民工作路線停止" % route_failed_workers)
 	var stance_summary=_selection_stance_summary(selection)
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
+	var counter_count=selection.filter(func(record):return record.get("owned",false) and record.get("target_policy","")=="counter").size()
+	if counter_count>0:selection_detail.text+=" · 克制優先 %d" % counter_count
 	var key=str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].hp<selection[0].max_hp)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
 	key+=":"+str(WoundedRetreat.injured(faction_views[0].records(),selected))
@@ -4196,6 +4218,8 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
+		actions.add_child(_button("克制優先",func(): _submit_target_policy("counter"),100))
+		actions.add_child(_button("就近迎擊",func(): _submit_target_policy("nearest"),100))
 	if not WoundedRetreat.injured(faction_views[0].records(),selected).is_empty():
 		wounded_retreat_button=_button("傷兵回城",_retreat_wounded,150)
 		wounded_retreat_button.name="WoundedRetreat";wounded_retreat_button.set_meta("selection_source",selected.duplicate())
