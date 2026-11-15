@@ -3768,6 +3768,14 @@ func _create_ui():
 	nav2.add_child(_button("所有村民",func(): _compact_menu_action(func(): _select_group("villagers")),96))
 	nav2.add_child(_button("斥候",func(): _compact_menu_action(func(): _select_group("scout")),78))
 	nav2.add_child(_button("小地圖",func(): compact_map_choice=0 if minimap.visible else 1; _layout_ui(),84))
+	var policy_help=_label("所選軍隊 · 自動迎擊目標優先",13)
+	menu_box.add_child(policy_help);shortcut_sections.army.append(policy_help)
+	for policy in ["counter","nearest"]:
+		var chosen=policy
+		var policy_button=_button("克制優先" if chosen=="counter" else "就近迎擊",func():_compact_menu_action(func():_submit_target_policy(chosen)),150)
+		policy_button.name="TargetPolicy_"+chosen
+		policy_button.tooltip_text="先選軍隊；只改自動迎擊優先次序。直接點敵人仍優先，不擴大射程或追擊範圍。"
+		menu_box.add_child(policy_button);shortcut_sections.army.append(policy_button)
 	var box_select=_button("框選單位",func(): _compact_menu_action(_start_box_select),110);menu_box.add_child(box_select);shortcut_sections.army.append(box_select)
 	var squad_help=_label("軍隊編組：先選部隊再存入；重選不會落指令。",13)
 	squad_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(squad_help);shortcut_sections.army.append(squad_help)
@@ -4218,8 +4226,6 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
-		actions.add_child(_button("克制優先",func(): _submit_target_policy("counter"),100))
-		actions.add_child(_button("就近迎擊",func(): _submit_target_policy("nearest"),100))
 	if not WoundedRetreat.injured(faction_views[0].records(),selected).is_empty():
 		wounded_retreat_button=_button("傷兵回城",_retreat_wounded,150)
 		wounded_retreat_button.name="WoundedRetreat";wounded_retreat_button.set_meta("selection_source",selected.duplicate())

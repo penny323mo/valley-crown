@@ -42,8 +42,8 @@ func run():
  check("policy can return to nearest",g._stance_target(own).id==near.id)
  g._set_target_policy([own.id],"counter",0);g._select([own.id]);g._publish_faction_views();g._update_hud()
  check("applied policy is visible in selected HUD",g.selection_detail.text.contains("克制優先 1"))
- var pending=g.commands.size();g._submit_target_policy("nearest")
- check("UI policy queues rather than immediately mutating",g.commands.size()==pending+1 and own.target_policy=="counter")
+ var pending=g.commands.size();g.compact_menu.show();g.find_child("TargetPolicy_nearest",true,false).pressed.emit()
+ check("army menu policy queues without immediately mutating",g.commands.size()==pending+1 and own.target_policy=="counter" and not g.compact_menu.visible)
  g._tick(0.1)
  check("queued policy commits through normal tick",own.target_policy=="nearest")
  g.queue_free();await process_frame
