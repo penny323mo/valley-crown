@@ -1,9 +1,10 @@
 extends SceneTree
 const OUT="/tmp/capture/"
-const Store=preload("res://scripts/checkpoint_store.gd")
-const Codec=preload("res://scripts/checkpoint_codec.gd")
 func _initialize():call_deferred("run")
-func shot(name):
+func shot(g,name):
+ g._publish_faction_views();g._update_vision();g._update_visuals(0);g._update_hud();g._layout_ui();g._camera_update();g._refresh_army_roster()
+ await process_frame
+ g.shortcut_scroll.ensure_control_visible(g.army_roster_buttons.spearman.recruit)
  await process_frame
  await RenderingServer.frame_post_draw
  var im=root.get_texture().get_image();var err=im.save_png(OUT+name+".png")
@@ -11,20 +12,19 @@ func shot(name):
  return err==OK
 func run():
  root.size=Vector2i(360,640)
- var shell=load("res://scripts/main_menu.gd").new();shell.checkpoint_path="user://native_capture_checkpoint.bin";root.add_child(shell);await process_frame
- shell.selected_mode="survival";shell._replace_match();var g=shell.match_node;g.set_process(false);g.test_mode=true
- for i in 100:g._tick(.05)
- shell._open_menu();shell._show_page("checkpoint");shell._save_checkpoint()
- var disk=Store.read_slot(g.Rules.BUILD_ID,shell.checkpoint_path)
- var before=Codec.capture(g)
- var ok=await shot("native-local-checkpoint-written")
- shell._restore_checkpoint();var restored=shell.match_node;restored.set_process(false)
- var exact=Codec.capture(restored)==before
- var paused=restored.paused and restored.tick_count==100
- shell._show_page("checkpoint")
- ok=(await shot("native-local-checkpoint-restored-menu")) and ok
- shell.menu_layer.hide();restored.show();restored.ui.show();restored._skip_tutorial();restored._publish_faction_views();restored._update_vision();restored._update_visuals(0);restored._update_hud();restored._layout_ui();restored._camera_update()
- ok=(await shot("native-restored-battle-stays-paused")) and ok
- print(JSON.stringify({"build":restored.Rules.BUILD_ID,"scope":"Native isolated local file save and read through real menu callbacks; 100 ordinary starting ticks. Not browser reload persistence, phone or cloud sync acceptance","disk_ok":disk.ok,"exact_snapshot":exact,"restored_paused":paused,"tick":restored.tick_count,"status":shell.checkpoint_status}))
- ok=ok and disk.ok and exact and paused
- shell.queue_free();quit(0 if ok else 1)
+ var g=load("res://main.tscn").instantiate();g.skirmish_mode="fortress";root.add_child(g);g.set_process(false);g.test_mode=true;g.ai_enabled=false
+ g._test_reset([{"food":2000,"wood":2000,"stone":1000,"iron":1000},{"food":150,"wood":200,"stone":100,"iron":0}]);g.set_process(false);await process_frame
+ g.paused=false;g.application_focused=true;g.application_suspended=false;g._skip_tutorial()
+ var first=g._first(0,"barracks");var second=g._spawn("barracks",0,Vector3(-3.5,0,24.5));g._update_vision();g._update_hud()
+ g.compact_menu.show();g._set_shortcut_category("army");g._refresh_army_roster()
+ var plan=g._army_recruitment_plan("spearman");var before=g.economy.bank_milli(0).duplicate()
+ var ok=await shot(g,"native-army-recruitment-cost-and-producers")
+ g.army_roster_buttons.spearman.recruit.pressed.emit()
+ var queued=g.commands.size()==3 and g.commands.all(func(c):return c.type=="train" and c.kind=="spearman")
+ while not g.commands.is_empty():g._execute(g.commands.pop_front())
+ var paid=g.economy.bank_milli(0).food==before.food-150000 and g.economy.bank_milli(0).wood==before.wood-60000
+ var split=first.queue.size()==2 and second.queue.size()==1
+ ok=(await shot(g,"native-army-three-paid-reinforcements-queued")) and ok
+ print(JSON.stringify({"build":g.Rules.BUILD_ID,"scope":"Controlled fortress with second barracks and supplied resources; actual menu button, ordinary queued train authority. No gifted completed troops, natural-match or phone acceptance","plan_count":plan.count,"queued":queued,"paid_exactly":paid,"queues_two_plus_one":split,"food_milli":g.economy.bank_milli(0).food,"wood_milli":g.economy.bank_milli(0).wood}))
+ ok=ok and queued and paid and split and plan.count==3
+ g.queue_free();quit(0 if ok else 1)
