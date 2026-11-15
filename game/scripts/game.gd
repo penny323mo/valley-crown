@@ -22,6 +22,8 @@ const DARK = Color("20261f")
 const Rules = preload("res://scripts/rules.gd")
 const EndRules = preload("res://scripts/end_rules.gd")
 const Economy = preload("res://scripts/economy_ledger.gd")
+const CombatVeterancy=preload("res://scripts/combat_veterancy.gd")
+var combat_veterancy=CombatVeterancy.new()
 const AttackLedger = preload("res://scripts/attack_ledger.gd")
 const INITIAL_STOCKS = [{"food":150,"wood":200,"stone":100,"iron":0},{"food":150,"wood":200,"stone":100,"iron":0}]
 const ResourceVisuals = preload("res://scripts/resource_visuals.gd")
@@ -685,6 +687,9 @@ func _tick(dt):
 		if ent.alive and ent.built and ent.kind=="tower": _update_tower(ent)
 	# Settle issued attack IDs once, after all work, then resolve deaths together.
 	pending_damage=attack_ledger.settle()
+	var settled_events=[]
+	for attack_id in range(combat_veterancy.settled_through+1,attack_ledger.next_attack_id()):settled_events.append(attack_ledger.event(attack_id))
+	combat_veterancy.settle(settled_events,pending_damage,Callable(self,"_get_entity"))
 	# Every attack on this tick observes the same live set. Resolve deaths together.
 	for id in pending_damage:
 		var target=_get_entity(id)
@@ -2515,7 +2520,7 @@ func _release_attack(ent: Dictionary,target: Dictionary) -> Dictionary:
 		return {"ok":false,"applied":false,"reason":"NOT_READY"}
 	var resolved=Rules.CONTENT.resolve_damage(ent.kind,target.kind)
 	if not resolved.ok: return {"ok":false,"applied":false,"reason":"INVALID_PROFILE"}
-	var damage=maxi(1,resolved.base+resolved.bonus+_military_attack_bonus(ent.kind,ent.team)-resolved.armor-_military_armor_bonus(target.kind,target.team))
+	var damage=maxi(1,resolved.base+resolved.bonus+_military_attack_bonus(ent.kind,ent.team)+(combat_veterancy.rank(ent.id) if ent.kind in CombatVeterancy.KINDS else 0)-resolved.armor-_military_armor_bonus(target.kind,target.team))
 	var result=attack_ledger.issue(tick_count,ent.id,target.id,damage,ent.pos,target.pos)
 	if result.applied:
 		ent.last_attack_tick=tick_count
@@ -3445,6 +3450,7 @@ func _publish_faction_views():
 			record.owned=ent.team==team; record.alive=true
 			record.visual_yaw=ent.body.rotation.y
 			if ent.category=="unit":
+				record.combat_kills=combat_veterancy.count(ent.id);record.veterancy_rank=combat_veterancy.rank(ent.id)
 				# Public visible pose cues, never enemy command targets/path coordinates.
 				record.visual_moving=not ent.path.is_empty() and not ent.get("advance_engaged",false)
 				record.visual_working=ent.state in ["gather","build","repair"] and ent.path.is_empty()
@@ -3951,6 +3957,7 @@ func _update_hud():
 		var route_failure=WorkerIdleStatus.route_failure(ent,own_command_pending)
 		if not route_failure.is_empty(): status=route_failure
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
+		if ent.kind in CombatVeterancy.KINDS:selection_detail.text+=" · "+CombatVeterancy.label(ent)
 		if ent.owned and _military_attack_bonus(ent.kind,0)>0: selection_detail.text+=" · 軍備攻擊 +%d" % _military_attack_bonus(ent.kind,0)
 		var rest_label=RestRecovery.label(ent)
 		if not rest_label.is_empty(): selection_detail.text+=" · "+rest_label
@@ -5217,7 +5224,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 	control_point.reset();ai_control_targets.clear()
 	worker_evacuations.clear(); worker_manual_until.clear(); worker_safety_hits.clear(); worker_safety_enabled=true
 	entities.clear(); selected.clear(); squad_selection.reset(); idle_worker_cursor=-1; repeat_train_cursor=[0,0]; commands.clear(); next_id=0; tick_count=0; game_time=0
-	attack_ledger=AttackLedger.new(); pending_damage.clear(); battle_alerts.reset(); match_report.reset(); last_match_report={}; end_report_page="overview"
+	attack_ledger=AttackLedger.new(); combat_veterancy=CombatVeterancy.new(); pending_damage.clear(); battle_alerts.reset(); match_report.reset(); last_match_report={}; end_report_page="overview"
 	command_sequence=0; processed_command_ids.clear(); next_queue_id=0; ready_cursor=-1; spawn_commit_order.clear(); game_over=false; victory=false; outcome=""; paused=false
 	recovery_ticks=[0,0]; no_progress_ticks=0; progress_serial=0; inactivity_paused=false; future_recovery_events.clear(); end_reason=""
 	_surrender_intent.clear()

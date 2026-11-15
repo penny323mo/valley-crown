@@ -47,6 +47,7 @@ static func entry(section: int,index: int) -> Dictionary:
 		if kind=="siege":lines.append("對建築額外 +%d。對主堡未升級每次命中 %d 傷害（已扣護甲）。" % [Rules.CONTENT.SIEGE_BUILDING_BONUS,Rules.CONTENT.resolve_damage(kind,"town_center").damage])
 		for tech in Rules.MILITARY_TECHS:
 			if kind in Rules.TECH_UNITS[tech]:lines.append("可受益科技："+Rules.NAMES[tech]+("，護甲 +%d。" % Rules.TECH_ARMOR_BONUS if tech=="reinforced_armor" else "，攻擊 +%d。" % Rules.TECH_BONUS))
+		if kind in ["scout","spearman","archer","cavalry","siege"]:lines.append("戰場晉升：存活並擊破敵方軍事單位 3 次成為老兵（攻擊 +1），6 次成為精銳（攻擊 +2，上限）。村民／建築不計；同輪合擊由造成最多傷害的存活軍隊取得，平手按單位次序。雙方相同，對局結束不保留。")
 		if kind=="villager":lines.append("可受益科技：手推車，負重 10 → 15；採集速度不變。")
 		if kind in ["scout","spearman","archer","cavalry"]:lines.append("可回己方主堡旁休整；安全待命 10 秒後，每 2 秒回 1 生命。")
 	elif section==1:
