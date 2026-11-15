@@ -16,11 +16,20 @@ static func plan(records: Dictionary,kind: String,bank_milli: Dictionary,free_po
   if record.get("category","")!="building" or not record.get("built",false) or kind not in Rules.products_for(record.get("kind","")):continue
   var queue=record.get("queue",[])
   if not queue is Array or queue.size()>=5:continue
-  producers.append({"id":id,"length":queue.size()})
+  var delay=0
+  for item in queue:
+   if item is Dictionary:
+    delay+=maxi(0,int(item.get("remaining_ticks",Rules.TRAIN_TICKS.get(item.get("kind",""),0))))
+  producers.append({"id":id,"length":queue.size(),"delay":delay})
  if producers.is_empty():result.reason="沒有可用生產建築";return result
  var budget=bank_milli.duplicate(true)
  for index in mini(3,free_population):
-  producers.sort_custom(func(a,b):return a.length<b.length or (a.length==b.length and a.id<b.id))
+  producers.sort_custom(func(a,b):
+   # Prefer the first available training slot, not merely fewer queue entries.
+   # Completed exit-blocked orders remain queued; do not bypass spawn authority.
+   if a.length>=5 or b.length>=5:return a.length<5 and b.length>=5
+   if a.delay!=b.delay:return a.delay<b.delay
+   return a.length<b.length or (a.length==b.length and a.id<b.id))
   if producers[0].length>=5:break
   var affordable=true
   for resource in Rules.COSTS[kind]:
@@ -31,6 +40,7 @@ static func plan(records: Dictionary,kind: String,bank_milli: Dictionary,free_po
    result.cost[resource]=result.cost.get(resource,0)+Rules.COSTS[kind][resource]
   result.orders.append({"building":producers[0].id,"kind":kind})
   producers[0].length+=1
+  producers[0].delay+=Rules.TRAIN_TICKS[kind]
  result.count=result.orders.size()
  result.reason="資源不足" if result.count==0 else "可徵兵"
  return result

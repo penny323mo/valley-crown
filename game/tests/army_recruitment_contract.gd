@@ -34,5 +34,27 @@ func _initialize():
  check("nonmilitary and unknown kinds rejected",Planner.plan(records,"villager",bank,10).count==0 and Planner.plan(records,"dragon",bank,10).count==0)
  check("scout uses town center products not primary product",Planner.plan({2:producer(2,"town_center")},"scout",bank,10).count==3)
  check("siege uses workshop and its ordinary costs",Planner.plan({2:producer(2,"workshop")},"siege",bank,10).cost=={"wood":480,"iron":210})
+ var slow=producer(2);slow.queue=[{"kind":"spearman","remaining_ticks":300}]
+ var fast=producer(9);fast.queue=[{"kind":"spearman","remaining_ticks":1},{"kind":"spearman","remaining_ticks":20}]
+ var timing_records={2:slow,9:fast};var timing_before=timing_records.duplicate(true)
+ check("shorter time wins despite more queue entries",Planner.plan(timing_records,"spearman",bank,1).orders[0].building==9)
+ check("timing observation remains unchanged",timing_records==timing_before)
+ slow.queue=[{"kind":"spearman","remaining_ticks":100}]
+ fast.queue=[{"kind":"spearman","remaining_ticks":100}]
+ check("equal times and counts use stable ID",Planner.plan({9:fast,2:slow},"spearman",bank,1).orders[0].building==2)
+ fast.queue=[{"kind":"spearman","remaining_ticks":50},{"kind":"spearman","remaining_ticks":50}]
+ check("equal time prefers fewer queued entries",Planner.plan({9:fast,2:slow},"spearman",bank,1).orders[0].building==2)
+ slow.queue=[{"kind":"spearman","remaining_ticks":300}]
+ fast.queue=[{"kind":"spearman","remaining_ticks":0}]
+ var timed=Planner.plan({2:slow,9:fast},"spearman",bank,3)
+ check("planned orders add their normal time before next choice",timed.orders[0].building==9 and timed.orders[1].building==2 and timed.orders[2].building==9)
+ var full=producer(1,"barracks",5)
+ for item in full.queue:item.remaining_ticks=0
+ check("full zero-time queue does not starve eligible producer",Planner.plan({1:full,2:slow},"spearman",bank,1).orders[0].building==2)
+ var waiting=producer(1);waiting.queue=[{"kind":"spearman","remaining_ticks":0}]
+ check("empty producer wins tie with blocked ready exit",Planner.plan({1:waiting,2:producer(2)},"spearman",bank,1).orders[0].building==2)
+ var tcslow=producer(2,"town_center");tcslow.queue=[{"kind":"age2","research":true,"remaining_ticks":1200}]
+ var tcfast=producer(9,"town_center");tcfast.queue=[{"kind":"villager","remaining_ticks":1},{"kind":"villager","remaining_ticks":20}]
+ check("research time included in shared producer workload",Planner.plan({2:tcslow,9:tcfast},"scout",bank,1).orders[0].building==9)
  var failed=checks.filter(func(c):return not c.passed).size()
  print(JSON.stringify({"suite":"army_recruitment_contract","checks":checks,"failed":failed,"scope":"Pure advisory planning from owned current observations; normal commands retain authority"}));quit(1 if failed else 0)
