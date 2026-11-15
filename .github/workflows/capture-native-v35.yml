@@ -1,4 +1,4 @@
-name: Capture genuine pinned v49 actual local save and paused resume
+name: Capture genuine pinned v49 portrait actual save and paused resume
 on:
   push:
     branches: [main]
@@ -30,7 +30,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v49-native-render
+          name: genuine-v49-portrait-native-render
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json

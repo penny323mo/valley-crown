@@ -10,7 +10,7 @@ func shot(name):
  print("CAPTURE ",name," ",im.get_width(),"x",im.get_height()," ",err)
  return err==OK
 func run():
- root.size=Vector2i(640,360)
+ root.size=Vector2i(360,640)
  var shell=load("res://scripts/main_menu.gd").new();shell.checkpoint_path="user://native_capture_checkpoint.bin";root.add_child(shell);await process_frame
  shell.selected_mode="survival";shell._replace_match();var g=shell.match_node;g.set_process(false);g.test_mode=true
  for i in 100:g._tick(.05)
