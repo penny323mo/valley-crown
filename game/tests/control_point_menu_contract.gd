@@ -36,6 +36,8 @@ func run():
 	shell._cycle_victory_mode()
 	check("sixth option selects quick battle",shell.selected_mode=="battle" and shell.selected_victory_mode=="conquest")
 	shell._cycle_victory_mode()
+	check("seventh option selects fortress battle",shell.selected_mode=="fortress" and shell.selected_victory_mode=="conquest")
+	shell._cycle_victory_mode()
 	check("mode cycle returns to ordinary practice",shell.selected_victory_mode=="conquest" and shell.selected_mode=="practice")
 	var failed=checks.filter(func(c):return not c.passed).size()
 	print(JSON.stringify({"suite":"control_point_menu_contract","checks":checks,"failed":failed,"scope":"native controls, viewport geometry and real menu transitions; no rendered or physical-device acceptance"}))
