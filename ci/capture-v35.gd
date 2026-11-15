@@ -1,28 +1,32 @@
 extends SceneTree
 const OUT="/tmp/capture/"
 func _initialize():call_deferred("run")
-func shot(game,name):
- game._update_vision();game._update_visuals(0.0);game._update_hud();game._layout_ui();game._camera_update()
+func shot(name):
  await process_frame
  await RenderingServer.frame_post_draw
- var image=root.get_texture().get_image()
- var error=image.save_png(OUT+name+".png")
- print("CAPTURE ",name," ",image.get_width(),"x",image.get_height()," ",error)
- return error==OK
+ var image=root.get_texture().get_image();var err=image.save_png(OUT+name+".png")
+ print("CAPTURE ",name," ",image.get_width(),"x",image.get_height()," ",err)
+ return err==OK
+func scroll_to(control):
+ var p=control.get_parent()
+ while p!=null and not p is ScrollContainer:p=p.get_parent()
+ if p is ScrollContainer:p.ensure_control_visible(control)
 func run():
  root.size=Vector2i(640,360)
- var game=load("res://main.tscn").instantiate();root.add_child(game);game.set_process(false);game.test_mode=true;game.ai_enabled=false
- game._test_reset();game.set_process(false);game._skip_tutorial();await process_frame
- var keep=game._first(0,"town_center");var pos=keep.pos+Vector3(4.5,0,0)
- var siege=game._spawn("siege",1,pos);var tower=game._spawn("tower",0,pos+Vector3(1.8,0,0));tower.built=true;tower.hp=1
- game._update_vision();game._select([tower.id]);game.camera_focus=(tower.pos+siege.pos)*0.5;game.camera_zoom=11
- var ok=await shot(game,"controlled-one-hp-tower-before-attack")
- game._ai_raid_order(game.faction_views[1].get_record(siege.id),game._ai_records(),game.faction_views[1].get_record(keep.id))
- var tower_order=game.commands.any(func(c):return c.type=="order" and c.get("target",-1)==tower.id and siege.id in c.get("ids",[]))
- game._tick(game.Rules.TICK)
- ok=await shot(game,"controlled-tower-destroyed-after-normal-ai-order") and ok
- game._ai_raid_order(game.faction_views[1].get_record(siege.id),game._ai_records(),game.faction_views[1].get_record(keep.id))
- var keep_order=game.commands.any(func(c):return c.type=="order" and c.get("target",-1)==keep.id and siege.id in c.get("ids",[]))
- print(JSON.stringify({"build":game.Rules.BUILD_ID,"scope":"Controlled spawned enemy siege and one HP player tower; actual AI command settlement, not natural battle or victory","tower_order":tower_order,"tower_destroyed":not tower.alive,"keep_order":keep_order,"ledger":game.economy.audit().ok}))
- ok=ok and tower_order and not tower.alive and keep_order and game.economy.audit().ok
+ var game=load("res://main.tscn").instantiate();game.skirmish_mode="fortress";root.add_child(game);game.set_process(false);game.ai_enabled=false
+ await process_frame
+ game.paused=false;game.application_focused=true;game.application_suspended=false
+ var cavalry=game._first(0,"cavalry");cavalry.hp-=10
+ game._update_vision();game._update_visuals(0.0);game._update_hud();game._layout_ui();game._camera_update()
+ game.compact_menu.show();game._set_shortcut_category("army");game._refresh_army_roster()
+ await process_frame
+ scroll_to(game.army_roster_buttons.spearman.all)
+ var ok=await shot("army-roster-native-top")
+ scroll_to(game.army_roster_buttons.cavalry.wounded)
+ ok=await shot("army-roster-native-cavalry-wounded") and ok
+ scroll_to(game.army_roster_buttons.siege.all)
+ ok=await shot("army-roster-native-siege") and ok
+ var before=game.commands.duplicate(true);game._select_roster("cavalry",true)
+ print(JSON.stringify({"build":game.Rules.BUILD_ID,"scope":"Native fortress fixture; one cavalry given 10 HP damage to demonstrate wounded selection, not natural combat or phone acceptance","wounded_selected":game.selected==[cavalry.id],"orders_unchanged":game.commands==before}))
+ ok=ok and game.selected==[cavalry.id] and game.commands==before
  game.queue_free();quit(0 if ok else 1)
