@@ -64,8 +64,9 @@ class ModalInputBridge:
 	func _exit_tree():
 		if is_instance_valid(game) and game.is_inside_tree(): game._cancel_pointer_streams()
 const SiegeEffect=preload("res://scripts/siege_effect.gd")
-const ATTACK_EFFECT_SECONDS = 0.12
-const MAX_ATTACK_EFFECTS = 2 * Rules.POP_LIMIT # At most one cue per unit inside the 0.12s lifetime.
+const ArrowEffect=preload("res://scripts/arrow_effect.gd")
+const ATTACK_EFFECT_SECONDS = ArrowEffect.LIFETIME
+const MAX_ATTACK_EFFECTS = 2 * Rules.POP_LIMIT # Hard bound on detached release cues; oldest are retired first.
 const DamageFeedback=preload("res://scripts/damage_feedback.gd")
 var damage_feedback=DamageFeedback.new()
 var attack_effects: Array = [] # Detached, witnessed release cues; never authoritative projectiles.
@@ -3581,11 +3582,8 @@ func _attack_effect(ent,target):
 		attack_effects.append({"node":cue,"origin":ent.pos,"endpoint":target.pos,
 			"origin_owned":ent.team==0,"endpoint_owned":target.team==0,"age":0.0,"siege":true})
 		return
-	var beam=Node3D.new(); add_child(beam)
-	var direction=finish-start
-	var mesh=BoxMesh.new(); mesh.size=Vector3(0.045,0.045,direction.length())
-	_mesh(beam,mesh,Vector3.ZERO,GOLD if ent.team==0 else RED)
-	beam.position=(start+finish)*0.5; beam.look_at(finish)
+	if ent.kind=="tower": start.y=3.2
+	var beam=ArrowEffect.make(start,finish,BLUE if ent.team==0 else RED); add_child(beam)
 	# Copy only release-time positions. Never follow the authority target through fog.
 	attack_effects.append({"node":beam,"origin":ent.pos,"endpoint":target.pos,
 		"origin_owned":ent.team==0,"endpoint_owned":target.team==0,"age":0.0})
@@ -3614,6 +3612,7 @@ func _update_attack_effects(delta: float,running: bool):
 		var lifetime=SiegeEffect.LIFETIME if cue.get("siege",false) else ATTACK_EFFECT_SECONDS
 		if cue.age>=lifetime: _discard_attack_effect(i)
 		elif cue.get("siege",false): SiegeEffect.present(cue.node,cue.age)
+		else: ArrowEffect.present(cue.node,cue.age)
 
 # --- Responsive UI and input. Buttons never mutate economy directly. ---
 func _style(color,border=Color("656653"),radius=5):
