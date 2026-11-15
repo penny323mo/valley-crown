@@ -2242,6 +2242,22 @@ func _stance_target(ent):
 			distance=d; best=enemy
 	return best
 
+func _refine_cavalry_contact(ent,target,dt):
+	# A successful grid route can end centimeters outside melee reach. Finish
+	# inside that SAME reached cell using normal swept collision and speed,
+	# instead of repeatedly searching back to the identical cell center.
+	if ent.kind!="cavalry" or target.category!="unit" or not target.alive or not _attack_target_observed(target,ent.team):return false
+	if ent.path_status!=BoundedPath.FOUND or ent.path_pending or not ent.path.is_empty() or ent.traffic_route:return false
+	var endpoint=ent.get("path_resolved_goal",Vector3.INF)
+	if not endpoint.is_finite() or _cell(endpoint)!=_cell(ent.pos):return false
+	if _attack_distance(ent.pos,target)>Rules.RANGE[ent.kind]+0.5:return false
+	var delta=target.pos-ent.pos
+	if delta.length()<0.001:return false
+	var next=ent.pos+delta.normalized()*minf(Rules.SPEED[ent.kind]*dt,delta.length())
+	if _cell(next)!=_cell(ent.pos) or not _path_step_is_free(ent.pos,next) or not _unit_step_is_free(ent,next):return false
+	_apply_unit_step(ent,next,dt)
+	return true
+
 func _move_unit_phase(ent,dt):
 	ent.advance_engaged=false
 	if ent.state=="move":
@@ -2278,6 +2294,7 @@ func _move_unit_phase(ent,dt):
 		var remembered={"category":target.category,"kind":target.kind,"pos":ent.last_known,"radius":target.radius}
 		if observed and _attack_distance(ent.pos,remembered)<=Rules.RANGE[ent.kind]: return
 		if not observed and _attack_distance(ent.pos,remembered)<0.6: return
+		if observed and _refine_cavalry_contact(ent,target,dt):return
 		var goal=_attack_approach(ent,remembered,not observed) if target.category!="unit" else ent.last_known
 		if goal==Vector3.INF: return
 		var before=ent.pos
