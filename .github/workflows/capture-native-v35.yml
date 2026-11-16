@@ -1,4 +1,4 @@
-name: Capture v73 cavalry harassment and withdrawal
+name: Capture v74 controlled reinforcement mechanism
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [cavalry]
+        scenario: [reinforcement]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,22 +32,23 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14220474195/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='816ded28836af84c73c3ee8f2651422362230f0e5481e84f7188fe0366174630'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14223278911/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='c37cef35e57c2c52c2f7b881857eb6744745b59e916f282694bc0fe95c125eda'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='fd0aa7b23d6ec77f30594f97b03a44fce5a65b96c64aa4dcb5a3391cb1110ce7'
+          assert hashlib.sha256(pck).hexdigest()=='08896678cc9adc4b4b44e9588d11dbf357dd2cfc0bff83f7298f839672fe2ee7'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-economic-raid-fortress.gd /tmp/capture/capture.gd
+          cp ci/capture-v74-reinforcement-controlled.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v73-cavalry-${{ matrix.scenario }}
+          name: genuine-v74-controlled-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
+            /tmp/capture/controlled-reinforcement-proof.json
             /tmp/capture/*stdout.txt
             /tmp/capture/*stderr.txt
           if-no-files-found: error
