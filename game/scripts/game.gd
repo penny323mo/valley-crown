@@ -4546,7 +4546,6 @@ func _rebuild_actions(selection):
 		retry_gather_button.tooltip_text="只重試所選空手閒置村民原本可見的採集點；不會自動循環重試，不保證路線已暢通。搬運資源請用交付資源。"
 		actions.add_child(retry_gather_button)
 	if _has_selected_military():
-		actions.add_child(_button("戰術路線",_start_tactical_route,100))
 		actions.add_child(_button("警戒前進",_start_advance_command,100))
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
@@ -4570,6 +4569,9 @@ func _rebuild_actions(selection):
 			actions.add_child(stop_button)
 			actions.add_child(_button("守備",func(): _submit_selected_stance("defend"),54))
 			break
+
+	if _has_selected_military():
+		actions.add_child(_button("戰術路線",_start_tactical_route,100))
 
 func _place_context_detail_action():
 	if not is_instance_valid(actions) or not is_instance_valid(context_detail_button):return
@@ -4678,7 +4680,10 @@ func _refresh_stop_button():
 		if stop_button.button_pressed: stop_button.disabled=true; stop_button.disabled=false
 		stop_button.reparent(parent)
 		# Keep desktop/targeting action order unchanged: Cargo, Stop, Defend.
-		if parent==actions: actions.move_child(stop_button,actions.get_child_count()-2)
+		if parent==actions:
+			for sibling in actions.get_children():
+				if sibling is Button and sibling.text=="守備":
+					actions.move_child(stop_button,sibling.get_index());break
 	# Desktop Stop is core, not an optional tail action that new tools can hide.
 	# Only reposition/scroll on a layout/order transition, never each HUD tick.
 	if not compact_ui and parent==actions and stop_button.get_index()!=0:
