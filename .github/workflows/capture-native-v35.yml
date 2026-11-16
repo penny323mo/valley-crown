@@ -1,4 +1,4 @@
-name: Capture v69 protected checkpoint and accurate restored mission
+name: Capture v70 local backup browser and protected restore
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [journey, menu]
+        scenario: [backup]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,19 +32,19 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14212194107/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='ac5aa59ad11774637780fdcc9fb31fa943a0c59d8843719d54381048fe679a4e'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14214332990/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='d8fdef7193005367b09205fb0456e0817ea7988957239177ba61718517636cf1'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='aa25764f352dd1ce70a4d389547cc77699793e16859eced7408c4fbd6ebc9066'
+          assert hashlib.sha256(pck).hexdigest()=='71e0b5879b72918f4ea33c90a3b52231f136e6e31628701174af29064c53b898'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          if [ "${{ matrix.scenario }}" = "journey" ]; then cp ci/capture-v68-checkpoint-journey.gd /tmp/capture/capture.gd; else cp ci/capture-v68-checkpoint-menu.gd /tmp/capture/capture.gd; fi
+          cp game/tests/checkpoint_backups_capture.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v69-checkpoint-${{ matrix.scenario }}
+          name: genuine-v70-checkpoint-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
