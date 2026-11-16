@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-a800cb9d221c-717f7643
+  group: building-runtime-vc-6c1eca550fbd-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 2dc50af6a91ff6bd5c51b633a7e610134b886f08
+      BUILDING_RUNTIME_SOURCE_COMMIT: 3ac4ac1c2ecf26ed1266f9c3adaddc65bda97305
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '64b7a809a546b04cfb85600ac1a29659cb1a4fa38eeda4f99c92eab77195d7aa  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '999d633d14d0476b3dab009f1ec51f580d981873a14b6cf3a22715ffdd60ebf7  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -317,6 +317,12 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/frontline_supply_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/frontline_supply_journey/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/frontline_supply_journey/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/garrison_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/garrison_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/garrison_checkpoint_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/garrison_checkpoint_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/garrison_natural_journey/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/garrison_natural_journey/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
