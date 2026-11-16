@@ -4569,11 +4569,12 @@ func _rebuild_actions(selection):
 	if _selected_builder()>=0:
 		var shelter_button=_button("入堡避難",_request_garrison_selected,130)
 		shelter_button.name="GarrisonSelected";shelter_button.tooltip_text="最多五名村民步行進入最近己方主堡；主堡被毀，堡內村民亦會死亡。"
-		actions.add_child(shelter_button)
 		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
 			var button=_button(Rules.NAMES[kind]+"\n"+Rules.cost_label(kind)+( "\n建成後自動耕作" if kind=="farm" else "")+( "\n需城防時代" if not _kind_unlocked(kind,0) else ""),func(): _start_build(choice),100)
 			button.disabled=not _kind_unlocked(kind,0); actions.add_child(button)
+			# Preserve the first build target in the small-phone viewport; shelter remains next in the scroll strip.
+			if kind==Rules.BUILDABLE_KINDS[0]:actions.add_child(shelter_button)
 	elif selection.size()==1:
 		var ent=selection[0]
 		if not ent.built:
