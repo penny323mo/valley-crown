@@ -269,7 +269,8 @@ static func decode(bytes:PackedByteArray,expected_build:String)->Dictionary:
  var envelope=bytes_to_var(bytes)
  if not exact_keys(envelope,["magic","schema","build","sha256","payload"]):return failure("ENVELOPE_KEYS")
  if envelope.magic!=MAGIC or envelope.schema!=SCHEMA:return failure("MAGIC_OR_SCHEMA")
- if envelope.build!=expected_build or expected_build.is_empty():return failure("BUILD_MISMATCH")
+ if not envelope.build is String or envelope.build.is_empty() or envelope.build.length()>128:return failure("BUILD")
+ if envelope.build!=expected_build or expected_build.is_empty():return {"ok":false,"reason":"BUILD_MISMATCH","source_build":envelope.build,"expected_build":expected_build}
  if not envelope.payload is PackedByteArray or envelope.payload.is_empty() or envelope.payload.size()>MAX_BYTES or not envelope.sha256 is String:return failure("PAYLOAD_TYPE")
  var digest=HashingContext.new();digest.start(HashingContext.HASH_SHA256);digest.update(envelope.payload)
  if digest.finish().hex_encode()!=envelope.sha256:return failure("CHECKSUM")

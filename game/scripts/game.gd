@@ -4700,6 +4700,16 @@ func _home():
 	var castle=_first(0,"town_center")
 	if not castle.is_empty(): camera_focus=castle.pos; _select([castle.id])
 
+func _checkpoint_restored_feedback():
+	# Disposable candidate _ready() emitted opening guidance before authority restore.
+	# Replace presentation only; never advance objectives or recompute explored fog.
+	toast_build_guidance=false
+	var text="已讀取，暫停中"
+	if skirmish_mode=="expedition":
+		text+=" · "+FrontierExpedition.TITLES[frontier_expedition.stage]
+	_message(text,3)
+	_update_hud()
+
 func _toggle_pause():
 	if game_over: return
 	if paused and (not application_focused or application_suspended):

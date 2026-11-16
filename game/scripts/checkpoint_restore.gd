@@ -47,4 +47,5 @@ static func apply(g,data:Dictionary)->bool:
  g.large_route_cache=[{},{}];g.pending_damage.clear();g.traffic_priority_order.clear();g.traffic_tick_segments.clear()
  g.paused=true;g.tick_accumulator=0;g.game_over=false;g.outcome="";g.end_reason=""
  g._camera_update()
+ g._checkpoint_restored_feedback()
  return true

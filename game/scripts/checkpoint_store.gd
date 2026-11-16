@@ -1,5 +1,6 @@
 extends RefCounted
 ## One local, exact-build slot. No network, account, offline progress or migration.
+const Preservation=preload("res://scripts/checkpoint_preservation.gd")
 const Codec=preload("res://scripts/checkpoint_codec.gd")
 const PATH="user://battle_checkpoint_v1.bin"
 static func read_slot(build:String,path:String=PATH)->Dictionary:
@@ -18,6 +19,8 @@ static func save_slot(game:Node,path:String=PATH)->Dictionary:
  var data=Codec.capture(game)
  var encoded=Codec.encode(data,game.Rules.BUILD_ID)
  if not encoded.ok:return encoded
+ var preserved=Preservation.preserve(path,game.Rules.BUILD_ID)
+ if not preserved.ok:return preserved
  var temp=path+".tmp"
  var f=FileAccess.open(temp,FileAccess.WRITE)
  if f==null:return {"ok":false,"reason":"WRITE"}
@@ -26,4 +29,4 @@ static func save_slot(game:Node,path:String=PATH)->Dictionary:
  var verify=read_slot(game.Rules.BUILD_ID,temp)
  if not verify.ok:return {"ok":false,"reason":"VERIFY"}
  if DirAccess.rename_absolute(ProjectSettings.globalize_path(temp),ProjectSettings.globalize_path(path))!=OK:return {"ok":false,"reason":"RENAME"}
- return {"ok":true,"tick":data.game.tick_count}
+ return {"ok":true,"tick":data.game.tick_count,"preserved":preserved.preserved}

@@ -378,7 +378,7 @@ func _show_page(next_page: String):
 		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "checkpoint":
 		heading.text="本機戰役存檔"
-		description.text=checkpoint_status+"\n\n普通戰役與遠征各保留一個本機存檔，再次儲存只取代同類存檔。只支援相同遊戲版本；更新後可能無法讀取。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
+		description.text=checkpoint_status+"\n\n普通戰役與遠征各保留一個本機存檔，再次儲存只取代同類存檔。不相容的舊存檔會先保留本機備存，備存失敗就不會覆寫。備存不等於跨版本可讀，仍只支援相同遊戲版本。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
 		if is_instance_valid(match_node) and match_node.skirmish_mode=="expedition":
 			description.text="遠征使用分開存檔，普通戰役存檔不變。\n\n"+description.text
 		if is_instance_valid(match_node) and not match_node.game_over :
@@ -625,6 +625,7 @@ func _save_checkpoint():
 	if not is_instance_valid(match_node) or transition_busy:return
 	var result=ExpeditionCheckpointStore.save_slot(match_node,expedition_checkpoint_path) if match_node.skirmish_mode=="expedition" else CheckpointStore.save_slot(match_node,checkpoint_path)
 	checkpoint_status=("已寫入遠征存檔：%d 秒。" if match_node.skirmish_mode=="expedition" else "已寫入本機存檔：%d 秒。") % int(result.tick/20) if result.ok else "未能儲存，原存檔不變："+str(result.get("reason","UNKNOWN"))
+	if result.ok and result.get("preserved",false):checkpoint_status+=" 舊版本或無效存檔已保留本機備存，不能在此版讀取；未作跨版本轉換。"
 	_show_page("checkpoint")
 
 func _load_checkpoint(expedition=false):
@@ -635,7 +636,7 @@ func _load_checkpoint(expedition=false):
 func _restore_checkpoint(expedition=false):
 	var result=ExpeditionCheckpointStore.read_slot(Rules.BUILD_ID,expedition_checkpoint_path) if expedition else CheckpointStore.read_slot(Rules.BUILD_ID,checkpoint_path)
 	if not result.ok:
-		checkpoint_status="存檔版本不同，保留原檔；請開新戰役。" if result.get("reason")=="BUILD_MISMATCH" else "無法讀取存檔，未改動目前戰役："+str(result.get("reason","UNKNOWN"))
+		checkpoint_status=("存檔版本 %s 與目前 %s 不同，原檔未改動；不會自行轉換。" % [result.get("source_build","未知"),Rules.BUILD_ID]) if result.get("reason")=="BUILD_MISMATCH" else "無法讀取存檔，未改動目前戰役："+str(result.get("reason","UNKNOWN"))
 		transition_busy=false;_show_page("checkpoint");return
 	# Build a disposable replacement before touching the player's current game.
 	var candidate=MATCH_SCENE.instantiate()
