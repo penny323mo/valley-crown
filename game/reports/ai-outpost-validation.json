@@ -1,0 +1,44 @@
+{
+  "build": "vc-6e7e2438907c",
+  "base_source": "b1602bd29e2393b084c0ffd55194c3d2d6df668a",
+  "scope": "Observed AI cluster policy plus controlled full AI turn, real payment, physical construction and next miner delivery; not natural-match balance or rendered/phone acceptance.",
+  "results": [
+    {
+      "suite": "ai_resource_outpost_contract",
+      "checks": 23,
+      "failed": 0
+    },
+    {
+      "suite": "ai_keep_recovery_contract",
+      "checks": 8,
+      "failed": 0
+    },
+    {
+      "suite": "ai_worker_recovery_contract",
+      "checks": 17,
+      "failed": 0
+    },
+    {
+      "suite": "ai_worker_slot_contract",
+      "checks": 10,
+      "failed": 0
+    },
+    {
+      "suite": "ai_research_recovery_contract",
+      "checks": 15,
+      "failed": 0
+    },
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "failed": 0
+    }
+  ],
+  "resource_guard": "Unchanged hardened_monitored_run 768000KiB RSS cap; public preimport cache reused, no new conversion.",
+  "persistence": "No save files or schema changes.",
+  "limitations": [
+    "At most8 candidate plots; not optimal placement or guaranteed accessible route.",
+    "Threat checking uses only current observations, not guaranteed route safety.",
+    "Feature not yet verified published."
+  ]
+}

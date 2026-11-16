@@ -11,6 +11,7 @@ const BattleAlerts = preload("res://scripts/battle_alerts.gd")
 const MatchReport = preload("res://scripts/match_report.gd")
 const SquadSelection = preload("res://scripts/squad_selection.gd")
 const RaidTactics = preload("res://scripts/raid_tactics.gd")
+const AIResourceOutpost=preload("res://scripts/ai_resource_outpost.gd")
 const ScoutFrontier=preload("res://scripts/scout_frontier.gd")
 const HomeDefense = preload("res://scripts/home_defense.gd")
 const ArmyComposition = preload("res://scripts/army_composition.gd")
@@ -3389,6 +3390,7 @@ func _ai_update():
 	if workers.size()<2: ai_status.food_floor="fewer_than_two_workers"
 	elif _ai_food_count(records)<2: ai_status.food_floor="no_feasible_spare_worker_or_known_food"
 	else: ai_status.food_floor="two_or_more_assigned"
+	_ai_resource_outpost(records)
 	var goal=_ai_progression_goal(records,workers.size()+queued_workers,capacity,living+reserved)
 	ai_status.progression_goal=goal; ai_status.age=2 if _age2(1) else 1
 	if Rules.BUILD_TIME.has(goal):
@@ -6885,3 +6887,16 @@ func _reassign_selected_workforce(resource):
 	for order in plan:_submit("order",order)
 	compact_menu.hide();compact_menu_dismiss.hide()
 	_message("已改派 %d 名所選村民採%s；保留負重，不同資源先交付再換工作。" % [plan.size(),Rules.RESOURCE_NAMES[resource]],4)
+
+func _ai_resource_outpost(records):
+	if ai_build_submitted or not _ai_can_budget("storehouse"):return false
+	var plan=AIResourceOutpost.plan(records,ai_claimed_workers,commands,ai_budget.get("wood",0))
+	if plan.is_empty():return false
+	for point in plan.plots:
+		var position=_snap_build_position("storehouse",point)
+		if AIResourceOutpost.threatened(records,position):continue
+		if not _placement_reason("storehouse",position,1,plan.builder).is_empty():continue
+		_submit("build",{"kind":"storehouse","position":position,"builder":plan.builder},1)
+		ai_claimed_workers[plan.builder]="build";ai_build_submitted=true;_ai_reserve_budget("storehouse")
+		ai_status.build="remote_resource_outpost";return true
+	return false
