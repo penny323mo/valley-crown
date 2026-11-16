@@ -38,6 +38,8 @@ func target()->Vector3:
  if stage in [1,2]:return OUTPOST
  if stage==3:return HOME
  return ENEMY_HOME
+func transition_text()->String:
+ return ["建立軍隊","軍隊已建立，探索前線","已發現前哨，準備攻擊","前哨已攻破，30秒後反攻","反攻已擊退，攻下敵堡","遠征完成"][clampi(stage,0,5)]
 func caption(tick:int)->String:
  var prefix="前線遠征 %d/5 · %s" % [mini(stage+1,5),TITLES[stage]]
  match stage:

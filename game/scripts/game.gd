@@ -7071,7 +7071,7 @@ func _update_frontier_expedition():
 	var scouted=explored_cells[0][_cell_index(FrontierExpedition.OUTPOST)]!=0
 	var counter_alive=frontier_expedition.counter_ids.any(func(id):return not _get_entity(id).is_empty() and _get_entity(id).alive)
 	if frontier_expedition.advance(tick_count,trained,int(economy.stats_view(0).get("delivered",{}).get("food",0)),scouted,not post.is_empty() and post.alive,counter_alive,not _first(1,"town_center").is_empty()):
-		progress_serial+=1;_message(frontier_expedition.caption(tick_count),8)
+		progress_serial+=1;_message(frontier_expedition.transition_text(),3)
 	if not frontier_expedition.ready(tick_count) or tick_count%20!=0:return
 	var slots=[]
 	for index in 64:
@@ -7089,4 +7089,4 @@ func _update_frontier_expedition():
 	if not frontier_expedition.launch(ids):return
 	progress_serial+=1;_update_vision()
 	_submit("advance",{"ids":ids,"position":MapRoutes.home(0)},1)
-	_message("前線遠征：敵方六名劇本增援出發，保護主堡。",8)
+	_message("六名反攻增援出發，保護主堡。",3)

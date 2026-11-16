@@ -70,6 +70,7 @@ func run():
  # Death manipulation below is explicit state-machine fixture, not a full-play claim.
  g._kill(g._get_entity(g.frontier_expedition.outpost_id));g._update_frontier_expedition()
  check("destroyed authored outpost starts retaliation",g.frontier_expedition.stage==3 and not g.frontier_expedition.counter_launched)
+ check("actual stage transition emits brief three second toast",g.toast_time==3 and g.toast_label.text=="前哨已攻破，30秒後反攻")
  g.tick_count=ceili(g.frontier_expedition.counter_due/20.0)*20
  g._update_frontier_expedition()
  check("real reinforcement entities and normal command created",g.frontier_expedition.counter_ids.size()==6 and g.commands.any(func(c):return c.type=="advance" and c.team==1 and c.ids==g.frontier_expedition.counter_ids))
@@ -122,6 +123,31 @@ func run():
   g._refresh_control_point_marker()
   check("touch objective shows remaining attackers "+tag,g.objective_button.text.contains("反攻餘下 1/6"))
   check("counter objective text fits without clipping "+tag,font.get_string_size(g.objective_button.text.split("\n")[1],HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x<=width)
+ for size in [Vector2i(390,844),Vector2i(640,360)]:
+  root.size=size;await process_frame
+  g._layout_ui();g.compact_menu.hide();g.compact_menu_dismiss.hide()
+  var tag="%dx%d" % [size.x,size.y]
+  g.frontier_expedition.stage=2
+  var explored=g.explored_cells[0].duplicate();var pending=g.commands.duplicate(true)
+  g.objective_button.pressed.emit()
+  check("objective remains pure location without overlay "+tag,g.camera_focus==Mission.OUTPOST and not g.compact_menu.visible and g.explored_cells[0]==explored and g.commands==pending)
+  g._update_hud();g._toggle_compact_menu()
+  await process_frame;await process_frame
+  g.shortcut_scroll.ensure_control_visible(g.mission_label)
+  await process_frame
+  check("menu offers full touch readable mission instructions "+tag,g.compact_menu.visible and g.mission_label.text==g.frontier_expedition.caption(g.tick_count) and g.mission_label.is_visible_in_tree())
+  var screen=Rect2(Vector2.ZERO,Vector2(size))
+  check("mission menu remains inside viewport "+tag,screen.encloses(g.compact_menu.get_global_rect()))
+  check("full instruction label fits scroll width "+tag,g.mission_label.size.x<=g.shortcut_scroll.size.x and g.shortcut_scroll.get_global_rect().intersects(g.mission_label.get_global_rect()))
+  g._toggle_compact_menu()
+  check("existing close restores battlefield "+tag,not g.compact_menu.visible and not g.compact_menu_dismiss.visible)
+  var font=g.toast_label.get_theme_font("font");var font_size=g.toast_label.get_theme_font_size("font_size")
+  var all_fit=true
+  for stage in range(1,6):
+   g.frontier_expedition.stage=stage
+   var notice=g.frontier_expedition.transition_text()
+   all_fit=all_fit and not notice.contains("\n") and font.get_string_size(notice,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x<=g.toast_label.size.x
+  check("every transition notice fits one line "+tag,all_fit)
  g.queue_free();await process_frame
  var failed=checks.filter(func(c):return not c.passed).size()
  print(JSON.stringify({"suite":"frontier_expedition_contract","checks":checks,"failed":failed,"scope":"Authored mission lifecycle plus real paid training and food delivery; scouting position and combat deaths controlled, not natural full mission/balance/mobile acceptance"}));quit(1 if failed else 0)
