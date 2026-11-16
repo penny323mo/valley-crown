@@ -1,4 +1,4 @@
-name: Capture v79 synchronized paid supply and combat recovery
+name: Capture v79 complete visible injury and recovery sequence
 on:
   push:
     branches: [main]

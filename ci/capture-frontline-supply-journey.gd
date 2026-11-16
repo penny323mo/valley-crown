@@ -43,7 +43,7 @@ func run():
  g._submit("advance",{"ids":army,"position":Vector3(-14,0,17)})
  g._submit("order",{"ids":[rider.id],"position":Vector3(-8,0,10)})
  var wounded=false;var safe=0;var start=Time.get_ticks_msec()
- var station={};var upgrade_sent=false;var arrival_hp=-1;var recovery_base=-1;var low_hp=110;var ready_shot=false
+ var station={};var upgrade_sent=false;var arrival_hp=-1;var recovery_base=-1;var low_hp=110;var ready_shot=false;var resting_shot=false
  for i in 5000:
   if Time.get_ticks_msec()-start>285000 or g.game_over:break
   g._tick(g.Rules.TICK)
@@ -73,6 +73,8 @@ func run():
    if arrival_hp<0:
     arrival_hp=rider.hp;result.arrival_hp=arrival_hp;result.arrival_tick=g.tick_count
     await shot("arrival",rider.pos)
+   if not resting_shot and rider.get("rest_base",-1)==station.get("id",-2) and rider.get("rest_ticks",0)>0:
+    resting_shot=true;g._select([rider.id]);await shot("resting",station.pos)
    if rider.get("rest_base",-1)==station.get("id",-2) and rider.hp>=low_hp+3:
     result.recovered=true;result.low_hp=low_hp;result.recovered_hp=rider.hp;result.rest_base=rider.rest_base;result.station_id=station.id
     result.safe_tick=g.tick_count;result.safe_pos=str(rider.pos)
@@ -95,7 +97,7 @@ func run():
  check("rest uses completed supply station outside keep radius",station.get("supply_station",false) and rider.get("rest_base",-1)==station.get("id",-2) and rider.pos.distance_to(sitepos)<=7 and result.keep_distance>7)
  check("journey completes within tick and wall bounds",result.get("recovered",false) and g.tick_count<=5000 and result.elapsed_ms<=285000)
  check("test mode and isolated history remain untouched",result.test_mode and result.history_untouched)
- check("all five actual journey stages are recorded",result.stages.size()==5 and result.stages.map(func(stage):return stage.stage)==["building","wounded","arrival","ready","recovered"])
+ check("all six actual journey stages are recorded",result.stages.size()==6 and result.stages.map(func(stage):return stage.stage)==["building","wounded","arrival","ready","resting","recovered"])
  check("captured command stages follow executed commands",result.stages.size()>=2 and result.stages[0].tick>result.get("upgrade_submit_tick",0) and result.stages[1].tick>result.get("hit_tick",0))
  check("native screenshot writes all succeed or headless is explicit",capture_errors.is_empty())
  result.rendered=DisplayServer.get_name()!="headless"
