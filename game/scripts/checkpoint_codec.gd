@@ -2,6 +2,7 @@ extends RefCounted
 ## Exact-build local checkpoint transport; never deserializes executable Objects.
 ## Decoding never enables Godot Object deserialization. Integrity is accidental-
 ## corruption detection, not authentication or protection from a local cheater.
+const TacticalRoute=preload("res://scripts/tactical_route.gd")
 const Rules=preload("res://scripts/rules.gd")
 const Layout=preload("res://scripts/battlefield_layout.gd")
 const MAGIC="VALLEY_CROWN_CHECKPOINT"
@@ -210,6 +211,7 @@ static func validation_result(data)->Dictionary:
   for key in ["hp","max_hp"]:
    if typeof(entity[key]) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(entity[key])):return failure("ENTITY_HP_TYPE")
   if entity.max_hp!=Rules.HP[entity.kind] or entity.hp>entity.max_hp or (entity.alive and entity.hp<=0):return failure("ENTITY_HP")
+  if not TacticalRoute.valid_entity(entity):return failure("ENTITY_TACTICAL_ROUTE")
   if entity.has("escort_target"):
    if not entity.escort_target is int or entity.escort_target<0:return failure("ENTITY_ESCORT_TARGET")
    if not entity.get("escort_next_tick",0) is int or entity.get("escort_next_tick",0)<0:return failure("ENTITY_ESCORT_TICK")

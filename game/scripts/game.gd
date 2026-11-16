@@ -1,4 +1,8 @@
 extends Node3D
+const TacticalRoute=preload("res://scripts/tactical_route.gd")
+var tactical_draft=[]
+var tactical_ids=[]
+var tactical_final_advance=false
 signal main_menu_requested
 signal restart_requested
 signal setup_requested
@@ -406,6 +410,10 @@ func _ready():
 	_update_vision()
 	_create_ui()
 	_create_tutorial_ui()
+	if not ui.has_node("TacticalRouteOverlay"):
+		var overlay=preload("res://scripts/tactical_route_overlay.gd").new()
+		overlay.name="TacticalRouteOverlay";overlay.game=self;overlay.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		ui.add_child(overlay);ui.move_child(overlay,0);overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	audio_cues.observe(faction_views[0].records(),tick_count,Time.get_ticks_msec())
 	if skirmish_mode in ["battle","fortress","survival"] and victory_mode=="conquest":
 		var army=[]
@@ -787,6 +795,7 @@ func _execute(command):
 		if processed_command_ids.has(dedup_key): return
 		processed_command_ids[dedup_key]=true
 	match command.type:
+		"tactical_route": _order_tactical_route(command.get("ids",[]),command.get("points",[]),team,command.get("final_advance",false))
 		"tower_focus": _set_tower_focus(command.get("ids",[]),command.get("target",-1),team)
 		"order":
 			var target_id=command.get("target",-1)
@@ -1682,6 +1691,7 @@ func _path_state(ent):
 	ent.traffic_replans=0; ent.traffic_last_replan=tick_count; ent.traffic_route=false; ent.work_slot_wait=-1; ent.traffic_path_length=0; ent.traffic_command_origin=ent.pos; ent.traffic_gate_since=-1
 
 func _path_new_command(ent):
+	TacticalRoute.clear(ent)
 	# Accepted explicit player intents win over evacuation and its old job.
 	if ent.get("kind","")=="villager":
 		worker_evacuations.erase(ent.id)
@@ -1717,6 +1727,8 @@ func _path_navigation_changed(ent,changed_cells):
 	else: ent.path_version=work_memory[ent.team].revision
 
 func _path_stop(ent,status,reason):
+	if ent.has("tactical_points"):
+		TacticalRoute.clear(ent);ent.state="idle";ent.mode="STOP";ent.target=-1
 	ent.path_status=status; ent.path_reason=reason; ent.path_pending=false
 	ent.path=PackedVector3Array(); ent.path_version=work_memory[ent.team].revision
 	if _is_work_path(ent):
@@ -2312,6 +2324,48 @@ func _order_advance(ids,position,team,formation=""):
 			reserved[_cell(ent.dest)]=true
 	return true
 
+func _order_tactical_route(ids,points,team,final_advance=false):
+	if team not in [0,1] or not ids is Array or ids.size()>Rules.POP_LIMIT or not TacticalRoute.valid_points(points) or not final_advance is bool:return false
+	var members=[]
+	for id in ids:
+		if not id is int:return false
+		var ent=_get_entity(id)
+		if not ent.is_empty() and ent.alive and ent.team==team and ent.category=="unit" and ent.kind!="villager" and id not in members:members.append(id)
+	if members.is_empty():return false
+	members.sort()
+	var reserved={}
+	for id in members:
+		var ent=_get_entity(id)
+		_path_new_command(ent)
+		_order_move(ent,points[0],reserved,members)
+		if ent.state!="move":continue
+		ent.tactical_points=points.duplicate();ent.tactical_index=0;ent.tactical_advance=final_advance
+		if points.size()==1 and final_advance:ent.mode="ADVANCE"
+		reserved[_cell(ent.dest)]=true
+	return true
+
+func _tactical_next(ent):
+	var points=ent.tactical_points.duplicate();var index=ent.tactical_index+1;var advance=ent.tactical_advance
+	if index>=points.size():return false
+	# A new leg is not a fresh player command: preserve bounded retry history.
+	_order_move(ent,points[index])
+	if ent.state!="move":return false
+	ent.tactical_points=points;ent.tactical_index=index;ent.tactical_advance=advance
+	if advance and index==points.size()-1:ent.mode="ADVANCE"
+	return true
+
+func _start_tactical_route():
+	_cancel_mode()
+	tactical_ids=selected.duplicate();tactical_draft=[];tactical_final_advance=false
+	touch_command=true;unit_command_kind="route";action_key="";_update_hud()
+	action_scroll.scroll_horizontal=0
+	_message("點選最多5個路點，再按出發；路線不保證安全。",4)
+
+func _confirm_tactical_route():
+	if not touch_command or unit_command_kind!="route" or not TacticalRoute.valid_points(tactical_draft):return
+	_submit("tactical_route",{"ids":tactical_ids.duplicate(),"points":tactical_draft.duplicate(),"final_advance":tactical_final_advance})
+	_cancel_mode()
+
 func _order_patrol(ids,position,team):
 	# Patrol is explicit military intent, never inferred from a normal ground tap.
 	if team not in [0,1] or typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT or not position is Vector3 or not position.is_finite(): return _reject_command(team,"請選取軍隊並點選巡邏目的地。")
@@ -2394,6 +2448,7 @@ func _advance_combat(ent):
 	if ent.cooldown_ticks<=0: _release_attack(ent,target)
 
 func _order_move(ent,p,reserved={},ignore_orders=[]):
+	TacticalRoute.clear(ent)
 	_clear_escort(ent)
 	ent.rest_ticks=0; ent.rest_base=-1
 	# Resolve once with the ordinary owned/observed geometry and reservations.
@@ -2407,6 +2462,7 @@ func _order_move(ent,p,reserved={},ignore_orders=[]):
 	if ent.dest==Vector3.INF: ent.dest=ent.pos; _set_stance(ent,"STOP")
 
 func _set_stance(ent,mode):
+	TacticalRoute.clear(ent)
 	_clear_escort(ent)
 	ent.rest_ticks=0; ent.rest_base=-1
 	_release_farm(ent)
@@ -2469,6 +2525,10 @@ func _refine_cavalry_contact(ent,target,dt):
 func _move_unit_phase(ent,dt):
 	ent.advance_engaged=false
 	if ent.state=="move":
+		if ent.has("tactical_points") and ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]:
+			_set_stance(ent,"STOP")
+			if ent.team==0:_message("戰術路線受阻，已停止。",3)
+			return
 		if ent.mode=="PATROL" and ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: return
 		if not _advance_target(ent).is_empty():
 			ent.advance_engaged=true
@@ -2478,6 +2538,7 @@ func _move_unit_phase(ent,dt):
 			if ent.traffic_gate_since>=0: ent.traffic_gate_since=mini(tick_count,ent.traffic_gate_since+1)
 			return
 		if _move(ent,ent.dest,dt):
+			if ent.has("tactical_points") and _tactical_next(ent):return
 			if ent.mode=="ESCORT" and ent.has("escort_target"):
 				var ally=ent.escort_target
 				_set_stance(ent,"ESCORT");ent.escort_target=ally;ent.escort_next_tick=tick_count
@@ -2777,6 +2838,7 @@ func _update_unit(ent,dt):
 
 func _kill(ent):
 	if not ent.alive: return
+	TacticalRoute.clear(ent)
 	worker_evacuations.erase(ent.id); worker_manual_until.erase(ent.id); worker_safety_hits.erase(ent.id)
 	ai_scout_moves.erase(ent.id)
 	ent.death_observed_by=[_visible_to(ent,0),_visible_to(ent,1)]
@@ -4300,6 +4362,11 @@ func _update_hud():
 	if build_mode.is_empty():
 		help_label.text="點選單位，再點空地移動、敵軍攻擊或資源採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。窄畫面可左右滑動底列，查看全部行動。" if compact_ui else "左鍵選取／框選，再點目標落指令 · 右鍵亦可落指令 · WASD／方向鍵平移 · 滾輪縮放 · 空白鍵返回主堡"
 		if touch_command: help_label.text="指定目標：點擊地面、資源或可見敵軍；一般移動和攻擊毋須按此鈕。"
+		if touch_command and unit_command_kind=="route":
+			selection_summary.text="規劃路線 %d / 5" % tactical_draft.size()
+			selection_detail.text="點地面加入路點，再按出發。末段可警戒前進；路線不保證安全。"
+			help_label.text=selection_detail.text
+			touch_button.text="規劃中"
 	else:
 		var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
 		help_label.text=("位置已選，按確認建造；點空地可重選。" if build_preview_held else "點選空地作預覽，再按確認建造。") if reason.is_empty() else "不可建造："+reason
@@ -4354,6 +4421,15 @@ func _rebuild_actions(selection):
 	group_train_button=null
 	clear_exit_button=null
 	wounded_retreat_button=null
+	if touch_command and unit_command_kind=="route":
+		actions.add_child(_button("出發 %d / 5" % tactical_draft.size(),_confirm_tactical_route,110))
+		actions.add_child(_button("撤銷末點",func():
+			if not tactical_draft.is_empty():tactical_draft.pop_back()
+			action_key="";_update_hud(),110))
+		actions.add_child(_button("終點警戒："+("開" if tactical_final_advance else "關"),func():
+			tactical_final_advance=not tactical_final_advance;action_key="";_update_hud(),150))
+		actions.add_child(_button("取消路線",_cancel_mode,110))
+		return
 	if rally_building>=0:
 		actions.add_child(_button("取消集合點",_cancel_mode,120)); return
 	if box_select_mode:
@@ -4470,6 +4546,7 @@ func _rebuild_actions(selection):
 		retry_gather_button.tooltip_text="只重試所選空手閒置村民原本可見的採集點；不會自動循環重試，不保證路線已暢通。搬運資源請用交付資源。"
 		actions.add_child(retry_gather_button)
 	if _has_selected_military():
+		actions.add_child(_button("戰術路線",_start_tactical_route,100))
 		actions.add_child(_button("警戒前進",_start_advance_command,100))
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
@@ -4700,7 +4777,7 @@ func _message(text,duration=4.0,build_guidance=false):
 func _select(ids):
 	# Choosing a different group/building ends the previous builder preview.
 	# Menu selection is also available while a held build preview is active.
-	if not build_mode.is_empty(): _cancel_mode()
+	if not build_mode.is_empty() or (touch_command and unit_command_kind=="route"): _cancel_mode()
 	box_cancel_repeat.clear()
 	# A selection replacement retires any held world/UI press. Its release
 	# must never order the newly selected group.
@@ -5053,6 +5130,11 @@ func _start_ground_rally(id,mode="move"):
 	rally_building=id; rally_mode=mode; touch_command=true; action_key=""; _update_hud()
 
 func _send_world_order(screen,contextual=false):
+	if touch_command and unit_command_kind=="route":
+		var points=tactical_draft.duplicate();var point=_world_at(screen);point.y=0
+		points.append(point)
+		if TacticalRoute.valid_points(points):tactical_draft=points;action_key="";_update_hud()
+		return
 	if rally_building>=0:
 		if rally_group.size()>1:
 			_submit_group_rally(_world_at(screen)); return
@@ -5413,6 +5495,7 @@ func _confirm_build():
 	_cancel_mode()
 
 func _cancel_mode():
+	tactical_draft.clear();tactical_ids.clear();tactical_final_advance=false
 	# Retire only mode-owned instructions, never later order/error feedback.
 	if toast_build_guidance:
 		toast_build_guidance=false; toast_time=0.0
