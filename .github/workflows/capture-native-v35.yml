@@ -1,4 +1,4 @@
-name: Capture v79 paid frontline supply and actual combat recovery
+name: Capture v79 synchronized paid supply and combat recovery
 on:
   push:
     branches: [main]

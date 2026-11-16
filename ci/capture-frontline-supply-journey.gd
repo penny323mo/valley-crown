@@ -12,7 +12,7 @@ func receipt_matches(id,cost,paid):
 var result={"scope":"Ordinary survival scenario; preplaced era and troops, paid storehouse and upgrade, real combat wounds and normal retreat; no HP/position/resource mutation or reveal","stages":[]}
 func shot(stage,focus):
  result.stages.append({"stage":stage,"tick":g.tick_count})
- g.camera_focus=focus;g.camera_zoom=21;g._camera_update();g._update_hud()
+ g.camera_focus=focus;g.camera_zoom=14;g._camera_update();g._update_visuals(0);g._update_hud()
  if DisplayServer.get_name()=="headless":return
  for frame in 3:await process_frame
  await RenderingServer.frame_post_draw
