@@ -1,4 +1,4 @@
-name: Capture genuine candidate v63 resource art at actual game scale
+name: Capture genuine candidate v64 real model catalogue interface
 on:
   push:
     branches: [main]
@@ -32,19 +32,19 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14201739785/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='16302ed37b0106c30f9d0aea6bc65e7c0baf8126af4377b063c86c3fa3e545f6'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14203214795/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='c9c87c965eeb127664e3e2adf81a1b3f0b0ea70af13a7267f0f7fda27c83bb31'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='a549718fb51e2e43d0897d40d0cb680894cb804087478a7c527102fbaa5c893a'
+          assert hashlib.sha256(pck).hexdigest()=='c4ccce5156cd59896758d81e154874556c05b855c8a8bd544d1005702130e030'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-v63-resource-art.gd /tmp/capture/capture.gd
+          cp ci/capture-v64-catalogue.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-v35-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v63-resource-art-native-render
+          name: genuine-v64-catalogue-native-render
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
