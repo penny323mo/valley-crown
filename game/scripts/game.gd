@@ -84,6 +84,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const PlayerScoutDispatch=preload("res://scripts/player_scout_dispatch.gd")
+var scout_dispatch_button: Button
 const BatchConstructionDispatch=preload("res://scripts/batch_construction_dispatch.gd")
 var batch_construction_button: Button
 const BatchRepairDispatch=preload("res://scripts/batch_repair_dispatch.gd")
@@ -774,6 +776,14 @@ func _execute(command):
 			# invalid before execution must leave prior orders/paths unchanged.
 			if target_id>=0 and (target.is_empty() or not _visible_to(target,team) or not target.alive):
 				return _reject_command(team,"目標已失效或不在視野內，請重新落指令。")
+			if command.has("scout_dispatch"):
+				if typeof(command.scout_dispatch)!=TYPE_BOOL or not command.scout_dispatch or team!=0 or target_id!=-1 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT or typeof(command.get("source_work_epoch",null))!=TYPE_INT or typeof(command.get("scout_cell",null))!=TYPE_INT:return
+				var scout=_get_entity(command.ids[0]);var point=command.get("position",Vector3.INF);var cell=command.scout_cell
+				if scout.is_empty() or not scout.alive or scout.team!=0 or scout.kind!="scout" or scout.state!="idle" or not scout.path.is_empty() or scout.get("path_pending",false) or scout.get("work_epoch",-1)!=command.source_work_epoch or scout.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:return
+				if typeof(point)!=TYPE_VECTOR3 or not point.is_finite() or cell<0 or cell>=Rules.MAP_SIZE*Rules.MAP_SIZE or explored_cells[0][cell]!=0:return
+				var x=cell%Rules.MAP_SIZE;var y=cell/Rules.MAP_SIZE
+				if x<Rules.MAP_BORDER or x>Rules.MAP_LAST_PLAYABLE or y<Rules.MAP_BORDER or y>Rules.MAP_LAST_PLAYABLE or point!=Vector3(x-Rules.MAP_HALF+.5,0,y-Rules.MAP_HALF+.5) or scout.pos.distance_to(point)>PlayerScoutDispatch.MAX_DISTANCE:return
+				if IdleGatherDispatch.threatened(scout.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(point,faction_views[0].records()):return
 			if command.has("wounded_retreat"):
 				if typeof(command.wounded_retreat)!=TYPE_BOOL or not command.wounded_retreat or team!=0 or target_id!=-1 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
 				var retreat_orders=WoundedRetreat.orders(faction_views[0].records(),command.ids,[])
@@ -3824,7 +3834,9 @@ func _create_ui():
 		button.name="WorkforceReassign_"+resource;button.tooltip_text="只改派所選正採集或運送其他資源的村民。保留負重，不同資源先送回再換工作；不搶建造、維修或新指令。目的地須可見且沒有已知威脅，路線仍可能受阻。"
 		reassign_row.add_child(button);workforce_reassign_buttons[resource]=button
 	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row,batch_construction_button,batch_repair_button,reassign_help,reassign_row]
-	shortcut_sections.army=[idle_army_button]
+	scout_dispatch_button=_button("派斥候探索",_dispatch_player_scout,160);scout_dispatch_button.name="PlayerScoutDispatch";menu_box.add_child(scout_dispatch_button)
+	scout_dispatch_button.tooltip_text="派一名空閒斥候前往附近未知地圖，沿路開啟視野。每次只下一個目的地，不搶現有指令，不自動重試；避開已知敵人，但路線仍可能受阻。"
+	shortcut_sections.army=[idle_army_button,scout_dispatch_button]
 	var roster_help=_label("軍隊總覽 · 點兵種全選，或只選傷兵",13)
 	roster_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(roster_help);shortcut_sections.army.append(roster_help)
 	for troop_kind in ArmyRoster.KINDS:
@@ -6583,6 +6595,9 @@ func _clear_build_site():
 func _refresh_idle_dispatch_buttons():
 	# Resource/threat scans are needed only while this menu is visible.
 	if not is_instance_valid(compact_menu) or not compact_menu.visible:return
+	if is_instance_valid(scout_dispatch_button) and scout_dispatch_button.is_visible_in_tree():
+		var scout_plan=PlayerScoutDispatch.plan(faction_views[0].records(),commands,explored_cells[0])
+		_bind_squad_button(scout_dispatch_button,[] if scout_plan.is_empty() else [scout_plan],not _squad_actions_available())
 	if is_instance_valid(batch_construction_button):
 		var sites=BatchConstructionDispatch.orders(faction_views[0].records(),commands)
 		_bind_squad_button(batch_construction_button,sites,not _squad_actions_available())
@@ -7004,3 +7019,12 @@ func _dispatch_batch_construction():
 	for order in orders:_submit("order",order)
 	compact_menu.hide();compact_menu_dismiss.hide()
 	_message("已下達 %d 名閒置村民續建指令；保留原進度，不重收建築費。" % orders.size(),3)
+
+func _dispatch_player_scout():
+	if not _squad_actions_available() or not compact_menu.visible or not is_instance_valid(scout_dispatch_button) or not scout_dispatch_button.is_visible_in_tree():return
+	var plan=PlayerScoutDispatch.plan(faction_views[0].records(),commands,explored_cells[0])
+	if scout_dispatch_button.disabled or plan.is_empty() or scout_dispatch_button.get_meta("squad_ids",[])!=[plan]:
+		_refresh_idle_dispatch_buttons();return
+	_cancel_mode();_submit("order",plan)
+	compact_menu.hide();compact_menu_dismiss.hide()
+	_message("斥候正前往未知地圖；到達後等待新指令。",3)

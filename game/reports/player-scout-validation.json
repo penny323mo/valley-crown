@@ -1,0 +1,53 @@
+{
+  "build": "vc-05f27d011c99",
+  "source_base": "444a1c07bec3431fffa89638f0ba3c8f5e83663c",
+  "source_checks": 1016,
+  "native_checks": 108,
+  "suites": [
+    {
+      "suite": "player_scout_dispatch_contract",
+      "checks": 22,
+      "passed": true,
+      "sampled_peak_rss_kib": 196696,
+      "log_sha256": "11ff3fbab5df75a6277e9c6df093ae9847e9dcc4e150f57947cd1cb91f85fc11"
+    },
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "passed": true,
+      "sampled_peak_rss_kib": 62344,
+      "log_sha256": "0142bec1ed8c63ac85448d4ef7f8b356f91dc1762be43aa0ab2e0a48620cb8af"
+    },
+    {
+      "suite": "shortcut_categories_contract",
+      "checks": 33,
+      "passed": true,
+      "sampled_peak_rss_kib": 196608,
+      "log_sha256": "5add6c6309108c3976b4fb9aaba742a2c57ad976c185a9edea568f797f9ed1ee"
+    },
+    {
+      "suite": "batch_construction_dispatch_contract",
+      "checks": 20,
+      "passed": true,
+      "sampled_peak_rss_kib": 196780,
+      "log_sha256": "dd2ddaec46d3795437a615e881eddc19e1c7c873b1f648a206711350bfa2f929"
+    },
+    {
+      "suite": "batch_repair_dispatch_contract",
+      "checks": 23,
+      "passed": true,
+      "sampled_peak_rss_kib": 196696,
+      "log_sha256": "3b5fe639847cf7bddaa5beaa01527196e5f74a89d0828d398e52a55e4da347ed"
+    },
+    {
+      "suite": "scout_frontier_contract",
+      "checks": 7,
+      "passed": true,
+      "sampled_peak_rss_kib": 58332,
+      "log_sha256": "b7c5c96c116e92a11b44f4558ba0251ebe74731b0f0c0d9a59f6f1845021e901"
+    }
+  ],
+  "scope": "Observed exploration mask and idle scout, actual native movement and vision. Terminal failed paths excluded; accepted action uses ordinary player command semantics. Endpoint threat avoidance does not guarantee safe route. No saves or phone/rendered acceptance.",
+  "performance": "Visible Army menu only; first eligible scout with a nearby frontier; known-threat cell mask prepared once. Local50scouts/50threat sample8032microseconds, not a phoneFPS claim.",
+  "review": "No hidden state; idle/epoch/current unexplored cell/exact point/range validation. Stale held plan and mismatched cell rejected. New copy uses bundled glyphs with unchanged gate."
+}
