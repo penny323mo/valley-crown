@@ -1,4 +1,4 @@
-name: Capture genuine pinned v61 AI gathering load distribution
+name: Capture genuine pinned v62 resource lifecycle normal and close zoom
 on:
   push:
     branches: [main]
@@ -7,6 +7,9 @@ permissions:
   contents: read
 jobs:
   capture:
+    strategy:
+      matrix:
+        scenario: [close, normal]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -22,15 +25,15 @@ jobs:
           unzip /tmp/engine.zip -d /tmp
           echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum -c -
           chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
-          curl -fL https://valley-crown-play.penny323tw.chatgpt.site/builds/vc-2db628c09392/index.pck -o /tmp/capture/index.pck
-          echo 'f1d54e6ab7a32281084f7a5a101c24478bc00cf1b3d12380d5079cc98502bafa  /tmp/capture/index.pck' | sha256sum -c -
-          cp ci/capture-v35.gd /tmp/capture/capture.gd
+          curl -fL https://valley-crown-play.penny323tw.chatgpt.site/builds/vc-19bf58c498f1/index.pck -o /tmp/capture/index.pck
+          echo 'f65bde9a9945206ea1b4a6a15995f165535e3888421aef9574dcaa6d89d70aaf  /tmp/capture/index.pck' | sha256sum -c -
+          cp ci/capture-v62-${{ matrix.scenario }}.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-v35-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v61-native-render
+          name: genuine-v62-${{ matrix.scenario }}-native-render
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
