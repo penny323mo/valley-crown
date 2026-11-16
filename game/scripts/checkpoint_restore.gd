@@ -23,7 +23,7 @@ static func apply(g,data:Dictionary)->bool:
   for key in saved:
    if key!="checkpoint_body_rotation":e[key]=bytes_to_var(var_to_bytes(saved[key]))
   e.body.rotation=saved.checkpoint_body_rotation
-  e.node.position=e.pos;e.node.visible=e.alive
+  e.node.position=e.pos;e.node.visible=e.alive and not e.has("garrison_host")
  g._navigation_rebuild()
  for saved in data.entities:
   var e=g._get_entity(saved.id)

@@ -729,7 +729,7 @@ func _tick(dt):
 	_update_vision(false)
 	pending_damage.clear()
 	for ent in entities:
-		if ent.alive and ent.category=="unit": _update_unit(ent,dt)
+		if ent.alive and not _garrisoned(ent) and ent.category=="unit": _update_unit(ent,dt)
 	for ent in entities:
 		if ent.alive and ent.category=="building": _update_production(ent,dt,false)
 	_process_ready_production()
@@ -753,6 +753,8 @@ func _tick(dt):
 			if pending_damage[id]>0: progress_serial+=1
 	for ent in entities:
 		if ent.alive and ((ent.category=="resource" and economy.node_view(ent.id).remaining_milli<=0) or (ent.category!="resource" and ent.hp<=0)): _kill(ent)
+	# Arrivals follow issued damage/deaths. Only new shelter transitions invalidate vision.
+	if _update_garrison_arrivals():_update_vision(false)
 	_update_rest_recovery()
 	if victory_mode=="control" and control_point.advance(entities,tick_count): progress_serial+=1
 	_publish_faction_views()
@@ -796,6 +798,8 @@ func _execute(command):
 		if processed_command_ids.has(dedup_key): return
 		processed_command_ids[dedup_key]=true
 	match command.type:
+		"garrison": _order_garrison(command.get("ids",[]),command.get("building",-1),team)
+		"ungarrison": _ungarrison(command.get("building",-1),command.get("count",5),team)
 		"tactical_route": _order_tactical_route(command.get("ids",[]),command.get("points",[]),team,command.get("final_advance",false))
 		"tower_focus": _set_tower_focus(command.get("ids",[]),command.get("target",-1),team)
 		"order":
@@ -892,7 +896,7 @@ func _execute(command):
 				if (target.is_empty() or farm_gather) and applied_ids.has(id): continue
 				applied_ids[id]=true
 				var ent=_get_entity(id)
-				if ent.is_empty() or not ent.alive or ent.team!=team or ent.category!="unit": continue
+				if ent.is_empty() or not ent.alive or _garrisoned(ent) or ent.team!=team or ent.category!="unit": continue
 				# Resolve each unit independently: cargo delivery and construction win
 				# over repair. Rejected repair must not clear pending paths/retries.
 				if farm_gather and ent.kind!="villager": continue
@@ -1298,7 +1302,7 @@ func _spawn_exit(building,order):
 		if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or navigation.is_point_solid(cell): continue
 		var point=_point(cell); var blocked=false
 		for unit in entities:
-			if unit.alive and unit.category=="unit" and unit.pos.distance_to(point)<unit.radius+Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS): blocked=true; break
+			if unit.alive and unit.category=="unit" and not _garrisoned(unit) and unit.pos.distance_to(point)<unit.radius+Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS): blocked=true; break
 		if not blocked and _static_unit_step_is_free({"pos":point,"radius":Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS)},point): return point
 	return Vector3.INF
 
@@ -1390,7 +1394,7 @@ func _try_ready_production(ent):
 	# This is the commit point. Prior commits are already in entities/population.
 	if _population(ent.team,false)>=_capacity(ent.team) or navigation.is_point_solid(_cell(spawn_point)): return
 	for unit in entities:
-		if unit.alive and unit.category=="unit" and unit.pos.distance_to(spawn_point)<unit.radius+Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS): return
+		if unit.alive and unit.category=="unit" and not _garrisoned(unit) and unit.pos.distance_to(spawn_point)<unit.radius+Rules.UNIT_RADII.get(order.kind,Rules.UNIT_RADIUS): return
 	var receipt_id=order.get("receipt_id","")
 	var fulfilled=economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,ent.team)
 	if not fulfilled.applied: return
@@ -1475,7 +1479,7 @@ func _known_destination_clear(ent,point,reserved={},ignore_orders=[]):
 	if ent.radius>0.5 and _route_grid(ent).is_point_solid(_cell(point)): return false
 	if reserved.has(_cell(point)): return false
 	for other in entities:
-		if other.team!=ent.team or other.category!="unit" or not other.alive or other.id==ent.id: continue
+		if other.team!=ent.team or other.category!="unit" or not other.alive or other.id==ent.id or _garrisoned(other): continue
 		var clearance=ent.radius+other.radius
 		if point.distance_squared_to(other.pos)<clearance*clearance: return false
 		if other.id in ignore_orders: continue
@@ -1498,7 +1502,7 @@ func _free_adjacent(target,from,avoid_units=false,team=-1,mover={}):
 		if avoid_units:
 			var occupied=false
 			for unit in entities:
-				if unit.alive and unit.category=="unit" and unit.pos.distance_to(world)<0.7: occupied=true; break
+				if unit.alive and unit.category=="unit" and not _garrisoned(unit) and unit.pos.distance_to(world)<0.7: occupied=true; break
 			if occupied: continue
 		if dist<best_dist: best=world; best_dist=dist
 	return best
@@ -1530,7 +1534,7 @@ func _refresh_work_memory():
 		var change=work_memory[team].observe(observed,own,owned_cells,tick_count)
 		if change.records_changed or not change.cells.is_empty():
 			for ent in entities:
-				if ent.alive and ent.team==team and ent.category=="unit":
+				if ent.alive and ent.team==team and ent.category=="unit" and not _garrisoned(ent):
 					if _is_work_path(ent): _work_navigation_changed(ent,change)
 					else: _path_navigation_changed(ent,change.cells)
 
@@ -1696,6 +1700,8 @@ func _path_state(ent):
 	ent.traffic_replans=0; ent.traffic_last_replan=tick_count; ent.traffic_route=false; ent.work_slot_wait=-1; ent.traffic_path_length=0; ent.traffic_command_origin=ent.pos; ent.traffic_gate_since=-1
 
 func _path_new_command(ent):
+	if _garrisoned(ent):return
+	ent.erase("garrison_pending")
 	ent.erase("construction_return")
 	TacticalRoute.clear(ent)
 	# Accepted explicit player intents win over evacuation and its old job.
@@ -1733,6 +1739,7 @@ func _path_navigation_changed(ent,changed_cells):
 	else: ent.path_version=work_memory[ent.team].revision
 
 func _path_stop(ent,status,reason):
+	ent.erase("garrison_pending")
 	ent.erase("construction_return")
 	if ent.has("tactical_points"):
 		TacticalRoute.clear(ent);ent.state="idle";ent.mode="STOP";ent.target=-1
@@ -1763,7 +1770,7 @@ func _known_opposing_flow_costs(ent,goal):
 	if ent.state!="move": return costs
 	var direction=(goal-ent.pos).normalized()
 	for other in entities:
-		if other.team!=ent.team or not other.alive or other.category!="unit" or other.id==ent.id or other.state!="move" or other.path.is_empty(): continue
+		if other.team!=ent.team or not other.alive or other.category!="unit" or other.id==ent.id or other.state!="move" or other.path.is_empty() or _garrisoned(other): continue
 		if direction.dot((other.dest-other.pos).normalized())>-0.5: continue
 		for point in other.path: costs[_cell(point)]=20
 	return costs
@@ -1776,7 +1783,7 @@ func _process_path_requests():
 	var deferred=[]; var retries=[]
 	for id in batch:
 		var ent=_get_entity(id)
-		if ent.is_empty() or not ent.alive or not ent.get("path_pending",false): continue
+		if ent.is_empty() or not ent.alive or not ent.get("path_pending",false) or _garrisoned(ent): continue
 		if ent.state!=ent.path_request_state or ent.target!=ent.path_request_target or ent.work_epoch!=ent.path_request_epoch:
 			_path_cancel_pending(ent); ent.path_reason="request_superseded"; continue
 		var work=ent.path_request_kind=="work"
@@ -1874,7 +1881,7 @@ func _begin_unit_motion():
 	for offset in 2:
 		var team=(epoch+offset)%2; var members=[]
 		for ent in entities:
-			if ent.team==team and ent.alive and ent.category=="unit": members.append(ent)
+			if ent.team==team and ent.alive and not _garrisoned(ent) and ent.category=="unit": members.append(ent)
 		members.sort_custom(func(a,b): return a.id<b.id)
 		if members.is_empty(): continue
 		var first=epoch%members.size()
@@ -1885,6 +1892,7 @@ func _reset_traffic(ent):
 	ent.traffic_replans=0; ent.traffic_last_replan=tick_count; ent.traffic_route=false; ent.work_slot_wait=-1; ent.traffic_path_length=0; ent.traffic_command_origin=ent.pos; ent.traffic_gate_since=-1
 
 func _traffic_stop(ent,reason):
+	ent.erase("garrison_pending")
 	_release_farm(ent)
 	_path_stop(ent,BoundedPath.LIMIT_REACHED,reason)
 	path_requests.erase(ent.id)
@@ -1942,7 +1950,7 @@ func _unit_step_is_free(ent,to):
 	# Authoritative collision is deliberately LOCAL to the swept segment. No
 	# result is consulted by remote destination selection or faction A* grids.
 	for other in entities:
-		if not other.alive or other.category!="unit" or other.id==ent.id: continue
+		if not other.alive or other.category!="unit" or other.id==ent.id or _garrisoned(other): continue
 		var clearance=ent.radius+other.radius
 		if _segment_distance_squared(other.pos,ent.pos,to)<clearance*clearance-0.000001: return false
 		# Conservative same-tick swept reservation prevents crossing a segment
@@ -1959,7 +1967,7 @@ func _local_traffic_edges(ent,start,origin):
 	# untouched; hidden enemy positions and orders never enter this query.
 	var obstacles=[]
 	for other in entities:
-		if other.team==ent.team and other.alive and other.category=="unit" and other.id!=ent.id and other.pos.distance_squared_to(ent.pos)<=6.25:
+		if other.team==ent.team and other.alive and other.category=="unit" and other.id!=ent.id and not _garrisoned(other) and other.pos.distance_squared_to(ent.pos)<=6.25:
 			obstacles.append({"pos":other.pos,"radius":ent.radius+other.radius})
 	for other in faction_views[ent.team].records().values():
 		if not other.owned and not other.remembered and other.category=="unit" and other.pos.distance_squared_to(ent.pos)<=6.25:
@@ -2035,7 +2043,7 @@ func _path_step_is_free(from,to):
 func _settling_unit_at(team,cell,exclude_id):
 	var point=_point(cell)
 	for other in entities:
-		if other.team!=team or not other.alive or other.category!="unit" or other.id==exclude_id: continue
+		if other.team!=team or not other.alive or other.category!="unit" or other.id==exclude_id or _garrisoned(other): continue
 		if other.pos.distance_to(point)>0.5: continue
 		if other.state=="idle" or (other.state=="move" and _cell(other.dest)==cell and other.pos.distance_to(other.dest)<0.5): return true
 	for other in faction_views[team].records().values():
@@ -2062,7 +2070,7 @@ func _yield_before_closing_lane(ent):
 		if not wall: return false
 	var crossing=false
 	for other in entities:
-		if other.team!=ent.team or not other.alive or other.category!="unit" or other.id==ent.id or other.state!="move" or other.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: continue
+		if other.team!=ent.team or not other.alive or other.category!="unit" or other.id==ent.id or _garrisoned(other) or other.state!="move" or other.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: continue
 		var past=(other.dest-ent.dest).dot(axis)*sign_dir
 		var behind=(other.pos-ent.dest).dot(axis)*sign_dir
 		var lateral=absf(other.pos.z-ent.dest.z) if horizontal else absf(other.pos.x-ent.dest.x)
@@ -2130,14 +2138,14 @@ func _placement_reason(kind,p,team,builder_id,check_resources=true):
 		if c.x<0 or c.y<0 or c.x>=Rules.MAP_SIZE or c.y>=Rules.MAP_SIZE: continue
 		if visible_cells[team][c.y*Rules.MAP_SIZE+c.x]==0: return "先派村民探索建築範圍"
 	var builder=_get_entity(builder_id)
-	if builder.is_empty() or not builder.alive or builder.team!=team or builder.kind!="villager": return "請先選取村民"
+	if builder.is_empty() or not builder.alive or _garrisoned(builder) or builder.team!=team or builder.kind!="villager": return "請先選取村民"
 	if check_resources and not _can_pay(COSTS[kind],team): return "資源不足"
 	for c in footprint:
 		if navigation.is_point_solid(c): return "與建築或資源重疊"
 		for unit in entities:
 			# Physical disk penetration, with the static movement tolerance.
 			# Tangency is legal; placement never pushes or permits escape contact.
-			if unit.alive and unit.category=="unit" and _box_distance_squared(unit.pos,c)<unit.radius*unit.radius-0.0000001: return "地點有單位"
+			if unit.alive and unit.category=="unit" and not _garrisoned(unit) and _box_distance_squared(unit.pos,c)<unit.radius*unit.radius-0.0000001: return "地點有單位"
 
 	return _placement_access_reason(mock,footprint,team)
 
@@ -2249,6 +2257,7 @@ func _repair_order_allowed(ent,target):
 	return not target.is_empty() and target.alive and ent.kind=="villager" and target.team==ent.team and _repair_target_ready(target) and target.hp<target.max_hp and tick_count-target.last_damage_tick>=100
 
 func _order(ent,state,target_id,automatic=false):
+	if _garrisoned(ent):return false
 	if ent.is_empty() or not ent.alive: return false
 	# Internal callers obey the same preflight, before any unit mutation.
 	if state=="repair" and not _repair_order_allowed(ent,_get_entity(target_id)): return false
@@ -2271,7 +2280,7 @@ func _order(ent,state,target_id,automatic=false):
 			economy_sequence+=1
 			if not economy.assign_farm("farm_assign:%d" % economy_sequence,ent.id,target_id).applied: return false
 			ent.farm_id=target_id
-	ent.erase("construction_return")
+	ent.erase("construction_return");ent.erase("garrison_pending")
 	if not return_work.is_empty():ent.construction_return=return_work
 	_path_cancel_pending(ent)
 	if not automatic:_clear_escort(ent)
@@ -2460,6 +2469,8 @@ func _advance_combat(ent):
 	if ent.cooldown_ticks<=0: _release_attack(ent,target)
 
 func _order_move(ent,p,reserved={},ignore_orders=[]):
+	if _garrisoned(ent):return
+	ent.erase("garrison_pending")
 	ent.erase("construction_return")
 	TacticalRoute.clear(ent)
 	_clear_escort(ent)
@@ -2475,6 +2486,8 @@ func _order_move(ent,p,reserved={},ignore_orders=[]):
 	if ent.dest==Vector3.INF: ent.dest=ent.pos; _set_stance(ent,"STOP")
 
 func _set_stance(ent,mode):
+	if _garrisoned(ent):return
+	ent.erase("garrison_pending")
 	ent.erase("construction_return")
 	TacticalRoute.clear(ent)
 	_clear_escort(ent)
@@ -2558,8 +2571,10 @@ func _move_unit_phase(ent,dt):
 				_set_stance(ent,"ESCORT");ent.escort_target=ally;ent.escort_next_tick=tick_count
 			elif ent.mode=="PATROL": _patrol_next_leg(ent)
 			else:
+				var shelter_host=ent.get("garrison_pending",-1)
 				var evacuating=worker_evacuations.has(ent.id) and worker_evacuations[ent.id].epoch==ent.work_epoch
 				_set_stance(ent,"STOP")
+				if shelter_host>=0:ent.garrison_pending=shelter_host
 				if evacuating:
 					worker_evacuations[ent.id].epoch=ent.work_epoch
 					ent.mode="MOVE" # Shelter wait must not auto-chase the attacker.
@@ -2689,7 +2704,7 @@ func _release_attack(ent: Dictionary,target: Dictionary) -> Dictionary:
 	# not touch cooldown, resources, pending damage, presentation or audio.
 	if paused or game_over or ent.is_empty() or target.is_empty():
 		return {"ok":false,"applied":false,"reason":"INVALID_RELEASE"}
-	if not ent.alive or (ent.category!="unit" and (ent.kind!="tower" or not ent.built)) or not Rules.DAMAGE.has(ent.kind) or ent.team not in [0,1]:
+	if not ent.alive or _garrisoned(ent) or (ent.category!="unit" and (ent.kind!="tower" or not ent.built)) or not Rules.DAMAGE.has(ent.kind) or ent.team not in [0,1]:
 		return {"ok":false,"applied":false,"reason":"INVALID_ATTACKER"}
 	if not target.alive or target.team!=1-ent.team or not _visible_to(target,ent.team):
 		return {"ok":false,"applied":false,"reason":"INVALID_TARGET"}
@@ -2736,6 +2751,7 @@ func _recover_observed_attack_goal(ent,target):
 	return true
 
 func _update_unit(ent,dt):
+	if _garrisoned(ent) or ent.has("garrison_pending"):return
 	ent.cooldown_ticks=maxi(0,ent.cooldown_ticks-1)
 	if ent.state=="idle":
 		if ent.mode in ["STOP","DEFEND"]:
@@ -2902,6 +2918,10 @@ func _construction_return_work(worker,site):
 
 func _kill(ent):
 	if not ent.alive: return
+	if ent.kind=="town_center":
+		for resident in _garrison_members(ent.id,false):_kill(resident)
+		for pending in _garrison_members(ent.id,true):
+			pending.erase("garrison_pending");_set_stance(pending,"STOP")
 	ent.erase("construction_return")
 	if ent.category=="building":
 		for worker in entities:
@@ -2923,6 +2943,7 @@ func _kill(ent):
 	var site_receipt=ent.get("cost_receipt_id","")
 	if not site_receipt.is_empty() and not ent.built:
 		economy.destroy_cost("destroyed:"+site_receipt,site_receipt,ent.team)
+	ent.erase("garrison_host");ent.erase("garrison_pending")
 	ent.alive=false; ent.queue.clear(); ent.node.visible=false; ent.path=PackedVector3Array()
 	# Unrelated deaths must not replace a button beneath a held GUI press.
 	# Selected deaths still invalidate controls before any stale release.
@@ -3684,7 +3705,7 @@ func _update_vision(refresh_render=true):
 	if visible_cells[0].is_empty(): return
 	for team in 2: visible_cells[team].fill(0)
 	for ent in entities:
-		if not ent.alive or ent.team<0: continue
+		if not ent.alive or ent.team<0 or _garrisoned(ent): continue
 		var radius: int = Rules.SIGHT[ent.kind]
 		var c=_cell(ent.pos)
 		for y in range(maxi(0,c.y-radius),mini(Rules.MAP_SIZE,c.y+radius+1)):
@@ -3707,6 +3728,7 @@ func _refresh_fog():
 			fog.multimesh.set_instance_color(i,Color(0.055,0.12,0.12,0.0 if state==2 else (0.65 if state==1 else 0.94)))
 
 func _visible_to(ent,team):
+	if _garrisoned(ent):return false
 	if ent.team==team: return true
 	if visible_cells[team].is_empty(): return false
 	if visible_cells[team][_cell_index(ent.pos)]!=0: return true
@@ -3748,6 +3770,10 @@ func _publish_faction_views():
 			var record={}
 			for key in ["id","kind","team","category","pos","hp","max_hp","progress","built","radius"]: record[key]=ent[key]
 			record.owned=ent.team==team; record.alive=true
+			if record.owned and ent.kind=="town_center":
+				record.garrison_count=_garrison_members(ent.id,false).size()
+				record.garrison_pending_count=_garrison_members(ent.id,true).size()-record.garrison_count
+			if record.owned and ent.has("garrison_pending"):record.garrison_pending=ent.garrison_pending
 			if ent.kind=="storehouse":record.supply_station=ent.get("supply_station",false)
 			if ent.kind=="tower" and record.owned:
 				var focused=_tower_focus_target(ent)
@@ -4360,6 +4386,8 @@ func _update_hud():
 		if not rest_label.is_empty(): selection_detail.text+=" · "+rest_label
 		if ent.kind=="tower" and ent.owned:selection_detail.text+=" · 集中射擊 "+Rules.NAMES.get(ent.focus_kind,ent.focus_kind) if not ent.get("focus_kind","").is_empty() else " · 自動射擊；點敵人可集中火力"
 		if ent.kind=="storehouse" and ent.get("supply_station",false):selection_detail.text+=" · 7 距離內安全待命 10 秒，每 2 秒回 1 生命；不疊加，資源交付不變"
+		if ent.kind=="town_center" and ent.owned:selection_detail.text+=" · 避難 %d/5 · 途中 %d；主堡被毀，堡內村民亦會死亡；出堡後需重新指派工作" % [ent.get("garrison_count",0),ent.get("garrison_pending_count",0)]
+		if ent.has("garrison_pending"):selection_detail.text+=" · 正步行入堡避難"
 		if ent.kind=="town_center": selection_detail.text+=" · 步兵／弓手／騎兵在堡旁安全待命 10 秒後，每 2 秒回 1 生命"
 		if worker_evacuations.has(ent.id): selection_detail.text+=" · "+_worker_safety_label(ent)
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
@@ -4392,7 +4420,8 @@ func _update_hud():
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
 	var counter_count=selection.filter(func(record):return record.get("owned",false) and record.get("target_policy","")=="counter").size()
 	if counter_count>0:selection_detail.text+=" · 克制優先 %d" % counter_count
-	var key=str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
+	if selection.size()==1 and selection[0].kind=="town_center" and selection[0].owned:selection_summary.text+=" · 避難 %d/5（途中 %d）" % [selection[0].get("garrison_count",0),selection[0].get("garrison_pending_count",0)]
+	var key=str(_garrison_ui_key())+str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].hp<selection[0].max_hp)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
 	key+=":"+str(WoundedRetreat.injured(faction_views[0].records(),selected))
 	if selection.size()==1 and not selection[0].get("queue",[]).is_empty():key+=":"+str(selection[0].queue[0].remaining_ticks<=0)
@@ -4538,6 +4567,9 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("共同集合點",func(): _start_group_rally("move"),150))
 		actions.add_child(_button("共同警戒集合點",func(): _start_group_rally("advance"),180))
 	if _selected_builder()>=0:
+		var shelter_button=_button("入堡避難",_request_garrison_selected,130)
+		shelter_button.name="GarrisonSelected";shelter_button.tooltip_text="最多五名村民步行進入最近己方主堡；主堡被毀，堡內村民亦會死亡。"
+		actions.add_child(shelter_button)
 		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
 			var button=_button(Rules.NAMES[kind]+"\n"+Rules.cost_label(kind)+( "\n建成後自動耕作" if kind=="farm" else "")+( "\n需城防時代" if not _kind_unlocked(kind,0) else ""),func(): _start_build(choice),100)
@@ -4567,6 +4599,11 @@ func _rebuild_actions(selection):
 				repeat_train_button.name="RepeatTraining"; repeat_train_button.set_meta("building",ent.id); repeat_train_button.set_meta("generation",repeat_generation)
 				actions.add_child(repeat_train_button)
 			if ent.kind=="town_center":
+				var shelter=_button("附近村民入堡",func():_request_garrison_near(ent.id),160);shelter.name="GarrisonNearby";actions.add_child(shelter)
+				for batch_count in [1,5]:
+					var amount=batch_count
+					var leave=_button("一人出堡" if amount==1 else "全部出堡",func():_submit("ungarrison",{"building":ent.id,"count":amount}),130)
+					leave.name="UngarrisonOne" if amount==1 else "UngarrisonAll";leave.disabled=ent.get("garrison_count",0)==0;actions.add_child(leave)
 				var safety=_button("村民自動避難："+("開" if worker_safety_enabled else "關"),_toggle_worker_safety,200)
 				safety.tooltip_text="採集村民受可見敵人襲擊時撤向附近安全主堡／守望塔；原工作區重新可見且連續安全五秒後回工。新指令優先。"
 				safety.name="WorkerSafety"; actions.add_child(safety)
@@ -4877,7 +4914,7 @@ func _select(ids):
 	selected=[]
 	for id in ids:
 		var ent=faction_views[0].get_record(id)
-		if not ent.is_empty() and ent.alive and ent.team==0: selected.append(id)
+		if not ent.is_empty() and ent.alive and ent.team==0 and not _garrisoned(ent): selected.append(id)
 	for id in selected:
 		if faction_views[0].get_record(id).kind=="villager": demo_tutorial.record("select")
 	_sync_audio()
@@ -4980,7 +5017,7 @@ func _selected_builder():
 func _select_group(kind):
 	var ids=[]
 	for ent in faction_views[0].records().values():
-		if not ent.alive or ent.team!=0 or ent.category!="unit": continue
+		if not ent.alive or ent.team!=0 or ent.category!="unit" or _garrisoned(ent): continue
 		if (kind=="idle" and ent.kind=="villager" and ent.state=="idle") or (kind=="army" and ent.kind!="villager") or (kind=="villagers" and ent.kind=="villager") or (kind=="scout" and ent.kind=="scout"): ids.append(ent.id)
 	_select(ids)
 	if not ids.is_empty(): camera_focus=faction_views[0].get_record(ids[0]).pos
@@ -6283,7 +6320,7 @@ func _update_siege_challenge():
 		if navigation.is_point_solid(_cell(point)):continue
 		var occupied=false
 		for ent in entities:
-			if ent.alive and ent.category=="unit" and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
+			if ent.alive and ent.category=="unit" and not _garrisoned(ent) and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
 		if occupied or not _static_unit_step_is_free({"pos":point,"radius":Rules.MAX_UNIT_RADIUS},point):continue
 		slots.append(point)
 		if slots.size()==roster.size():break
@@ -7238,7 +7275,7 @@ func _clear_escort(ent):
 func _order_escort(ids,target_id,team):
 	if team not in [0,1] or typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT or typeof(target_id)!=TYPE_INT:return false
 	var ally=_get_entity(target_id)
-	if ally.is_empty() or not ally.alive or ally.team!=team or ally.category!="unit" or ally.kind not in EscortPolicy.PROTECTED:return false
+	if ally.is_empty() or not ally.alive or _garrisoned(ally) or ally.team!=team or ally.category!="unit" or ally.kind not in EscortPolicy.PROTECTED:return false
 	var chosen=[]
 	for id in ids:
 		if typeof(id)!=TYPE_INT:return false
@@ -7415,7 +7452,7 @@ func _update_frontier_expedition():
 		if navigation.is_point_solid(_cell(point)):continue
 		var occupied=false
 		for ent in entities:
-			if ent.alive and ent.category=="unit" and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
+			if ent.alive and ent.category=="unit" and not _garrisoned(ent) and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
 		if occupied or not _static_unit_step_is_free({"pos":point,"radius":Rules.MAX_UNIT_RADIUS},point):continue
 		slots.append(point)
 		if slots.size()==FrontierExpedition.COUNTER_ROSTER.size():break
@@ -7438,7 +7475,7 @@ func _update_frontier_escort():
 		if navigation.is_point_solid(_cell(point)):continue
 		var occupied=false
 		for ent in entities:
-			if ent.alive and ent.category=="unit" and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
+			if ent.alive and ent.category=="unit" and not _garrisoned(ent) and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
 		if occupied or not _static_unit_step_is_free({"pos":point,"radius":Rules.MAX_UNIT_RADIUS},point):continue
 		slots.append(point)
 		if slots.size()==FrontierEscort.ROSTER.size():break
@@ -7457,3 +7494,95 @@ func _select_escort_party():
 	for id in frontier_escort.villagers:
 		if records.has(id) and records[id].get("owned",false) and records[id].get("alive",false):ids.append(id)
 	_select(ids);compact_menu.hide();compact_menu_dismiss.hide()
+
+# --- Explicit, bounded civilian keep shelter. No automatic job restoration. ---
+func _garrisoned(ent):
+	return ent.has("garrison_host")
+
+func _garrison_members(host,include_pending=false):
+	var result=[]
+	for worker in entities:
+		if worker.alive and worker.kind=="villager" and (worker.get("garrison_host",-1)==host or (include_pending and worker.get("garrison_pending",-1)==host)):result.append(worker)
+	result.sort_custom(func(a,b):return a.id<b.id)
+	return result
+
+func _garrison_ui_key():
+	var key=[]
+	for id in selected:
+		var e=faction_views[0].get_record(id)
+		if e.get("kind","")=="town_center":key.append([e.get("garrison_count",0),e.get("garrison_pending_count",0)])
+	return key
+
+func _order_garrison(ids,host_id,team):
+	if not ids is Array or ids.size()>200 or not host_id is int:return false
+	var host=_get_entity(host_id)
+	if host.is_empty() or not host.alive or not host.built or host.team!=team or host.kind!="town_center":return false
+	var accepted=0;var seen={}
+	for id in ids:
+		if not id is int or seen.has(id):continue
+		seen[id]=true
+		var w=_get_entity(id)
+		if w.is_empty() or not w.alive or w.kind!="villager" or w.team!=team or _garrisoned(w) or w.get("garrison_pending",-1)==host_id:continue
+		if _garrison_members(host_id,true).size()>=5:break
+		var entrance=_free_adjacent(host,w.pos,false,team,w)
+		if entrance==Vector3.INF:continue
+		_path_new_command(w);_order_move(w,entrance)
+		if w.state!="move":continue
+		w.garrison_pending=host_id;accepted+=1
+	if team==0:_message("%d 名村民正步行入堡避難；主堡被毀，堡內村民亦會死亡。" % accepted,5)
+	return accepted>0
+
+func _update_garrison_arrivals():
+	var changed=false
+	for w in entities:
+		if not w.has("garrison_pending"):continue
+		var host=_get_entity(w.garrison_pending)
+		if not w.alive or host.is_empty() or not host.alive or not host.built or host.team!=w.team or w.state not in ["move","idle"] or w.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:
+			w.erase("garrison_pending");continue
+		if not w.path.is_empty() or w.get("path_pending",false) or w.pos.distance_to(w.dest)>.2 or _attack_distance(w.pos,host)>1.1:continue
+		var host_id=host.id
+		_set_stance(w,"STOP") # releases farm slot, pending path and old task, never cargo.
+		w.garrison_host=host_id;w.node.hide();w.ring.hide()
+		selected.erase(w.id);action_key="";progress_serial+=1;changed=true
+	return changed
+
+func _ungarrison(host_id,count,team):
+	if not host_id is int or not count is int or count not in [1,5]:return false
+	var host=_get_entity(host_id)
+	if host.is_empty() or not host.alive or not host.built or host.kind!="town_center" or host.team!=team:return false
+	var exited=0
+	for w in _garrison_members(host_id,false):
+		if exited>=count:break
+		# Use the ordinary bounded producer perimeter and physical disk checks.
+		var point=_spawn_exit(host,{"kind":"villager"})
+		if point==Vector3.INF:break
+		w.erase("garrison_host");w.pos=point;w.node.position=point;w.dest=point;w.anchor=point
+		_set_stance(w,"STOP");exited+=1;progress_serial+=1
+	if team==0:_message("%d 名村民已出堡，請重新指派工作。" % exited if exited>0 else "主堡出口受阻，村民仍安全留在堡內。",4)
+	action_key=""
+	return exited>0
+
+func _request_garrison_selected():
+	var ids=[];var origin=Vector3.ZERO
+	for id in selected:
+		var w=faction_views[0].get_record(id)
+		if w.get("owned",false) and w.kind=="villager":ids.append(id);origin+=w.pos
+	if ids.is_empty():return
+	origin/=ids.size();var host={}
+	for e in faction_views[0].records().values():
+		if not e.owned or e.kind!="town_center" or not e.built:continue
+		if host.is_empty() or e.pos.distance_squared_to(origin)<host.pos.distance_squared_to(origin):host=e
+	if not host.is_empty():_submit("garrison",{"ids":ids,"building":host.id})
+
+func _request_garrison_near(host_id):
+	var host=faction_views[0].get_record(host_id)
+	if host.is_empty() or not host.owned:return
+	var workers=[]
+	for w in faction_views[0].records().values():
+		if w.owned and w.kind=="villager" and not w.has("garrison_pending") and w.pos.distance_to(host.pos)<=18:workers.append(w)
+	workers.sort_custom(func(a,b):
+		var da=a.pos.distance_squared_to(host.pos);var db=b.pos.distance_squared_to(host.pos)
+		return a.id<b.id if da==db else da<db)
+	var ids=[]
+	for w in workers:ids.append(w.id)
+	_submit("garrison",{"ids":ids,"building":host_id})
