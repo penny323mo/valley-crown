@@ -18,6 +18,10 @@ func shot(label,keep):
  shots.append({"stage":label,"tick":g.tick_count,"bank":g.economy.bank_milli(0)})
  if DisplayServer.get_name()=="headless":return
  for i in 4:await process_frame
+ # Scroll the real panel, do not resize runtime UI or imply all four recipes fit.
+ if label=="trade-in-progress":
+  g.context_details_scroll.ensure_control_visible(g.trade_buttons.trade_wood_food)
+  for i in 4:await process_frame
  await RenderingServer.frame_post_draw
  var image=root.get_texture().get_image()
  var error=ERR_INVALID_DATA if image==null or image.is_empty() else image.save_png("/tmp/capture/resource-trade-"+label+".png")
