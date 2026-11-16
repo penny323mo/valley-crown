@@ -13,3 +13,9 @@ This is automated simulation, not manual playing, physical-phone acceptance, gen
 ci/capture-v66-natural-expedition.gd preserves this decision algorithm and captures real current state at phase transitions and victory. Its final explicit test_mode/history-nonexistence assertions were added after the recorded headless process had loaded its script, so the receipt is not evidence that those later assertions ran. The native capture workflow runs the final assertions. All native screenshots must be checked against its actual receipt before claiming completion.
 
 Resource guard:2GiB address space,300 CPU seconds,330 wall seconds,3GiB host reserve. The driver itself stops after285 seconds if no outcome has occurred. Failed or incomplete attempts remain failures and are never labelled a win.
+
+## Native renderer confirmation
+
+Actions run43830207798 at commit fbdcabdbee7c0d05e13609c8a0a27fbc36629875 succeeded against the exact published PCK above. Artifact14208323074 contains stage-0 through stage-5 plus final-5 genuine PNGs, the resource receipt and raw stdout/stderr. Native result matches headless: victory at11157 ticks with identical phase transitions, training, construction and losses. The final test_mode_enabled and isolated_history_untouched assertions both returned true; economy audit true. Renderer wall186.49 seconds, no OOM increment, empty stderr, process group gone.
+
+All stage1–5 images were inspected. The victory screen reads 前線遠征完成 and identifies the scripted scenario. These are automated ordinary-command gameplay progression frames, not hand-play or physical-device evidence. Small-screen phase message text can obscure the battlefield; this remains an observed presentation issue, not silently declared fixed.
