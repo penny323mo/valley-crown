@@ -2,6 +2,7 @@ extends Node3D
 signal main_menu_requested
 signal restart_requested
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
+const EscortPolicy=preload("res://scripts/escort_policy.gd")
 const TargetPriority=preload("res://scripts/target_priority.gd")
 const ArmyFormation = preload("res://scripts/army_formation.gd")
 const WorkerIdleStatus = preload("res://scripts/worker_idle_status.gd")
@@ -683,6 +684,7 @@ func _tick(dt):
 	var batch=commands.duplicate(); commands.clear()
 	batch.sort_custom(func(a,b): return a.get("sequence",0)<b.get("sequence",0))
 	for command in batch: _execute(command)
+	_update_escorts()
 	_process_path_requests()
 	_begin_unit_motion()
 	owned_motion_witness_tick=tick_count # Projection freshness only; movement authority is unchanged.
@@ -887,6 +889,7 @@ func _execute(command):
 			if index==0: return _reject_command(team,"請選取自己的存活單位。")
 		"target_policy": _set_target_policy(command.get("ids",[]),command.get("policy",""),team)
 		"advance": _order_advance(command.get("ids",[]),command.get("position",Vector3.INF),team,command.get("formation",""))
+		"escort": _order_escort(command.get("ids",[]),command.get("target",-1),team)
 		"patrol": _order_patrol(command.get("ids",[]),command.get("position",Vector3.INF),team)
 		"stop":
 			var applied=false
@@ -2189,6 +2192,7 @@ func _order(ent,state,target_id,automatic=false):
 			if not economy.assign_farm("farm_assign:%d" % economy_sequence,ent.id,target_id).applied: return false
 			ent.farm_id=target_id
 	_path_cancel_pending(ent)
+	if not automatic:_clear_escort(ent)
 	ent.erase("patrol_points"); ent.erase("patrol_index")
 	ent.advance_engaged=false
 	ent.auto_target=automatic
@@ -2332,6 +2336,7 @@ func _advance_combat(ent):
 	if ent.cooldown_ticks<=0: _release_attack(ent,target)
 
 func _order_move(ent,p,reserved={},ignore_orders=[]):
+	_clear_escort(ent)
 	ent.rest_ticks=0; ent.rest_base=-1
 	# Resolve once with the ordinary owned/observed geometry and reservations.
 	var destination=_nearest_free(p,8,ent.team,ent,reserved,ignore_orders)
@@ -2344,6 +2349,7 @@ func _order_move(ent,p,reserved={},ignore_orders=[]):
 	if ent.dest==Vector3.INF: ent.dest=ent.pos; _set_stance(ent,"STOP")
 
 func _set_stance(ent,mode):
+	_clear_escort(ent)
 	ent.rest_ticks=0; ent.rest_base=-1
 	_release_farm(ent)
 	_path_cancel_pending(ent)
@@ -2353,6 +2359,10 @@ func _set_stance(ent,mode):
 	ent.target=-1; ent.path=PackedVector3Array(); ent.path_version=-1
 
 func _finish_attack(ent):
+	if ent.mode=="ESCORT" and ent.has("escort_target"):
+		var ally=ent.escort_target
+		_set_stance(ent,"ESCORT");ent.escort_target=ally;ent.escort_next_tick=tick_count
+		return
 	if ent.auto_target and ent.mode=="DEFEND":
 		ent.target=-1; ent.auto_target=false
 		# Retire the completed pursuit even when already at the anchor.
@@ -2410,7 +2420,10 @@ func _move_unit_phase(ent,dt):
 			if ent.traffic_gate_since>=0: ent.traffic_gate_since=mini(tick_count,ent.traffic_gate_since+1)
 			return
 		if _move(ent,ent.dest,dt):
-			if ent.mode=="PATROL": _patrol_next_leg(ent)
+			if ent.mode=="ESCORT" and ent.has("escort_target"):
+				var ally=ent.escort_target
+				_set_stance(ent,"ESCORT");ent.escort_target=ally;ent.escort_next_tick=tick_count
+			elif ent.mode=="PATROL": _patrol_next_leg(ent)
 			else:
 				var evacuating=worker_evacuations.has(ent.id) and worker_evacuations[ent.id].epoch==ent.work_epoch
 				_set_stance(ent,"STOP")
@@ -2619,6 +2632,10 @@ func _update_unit(ent,dt):
 		ent.state="idle"; return
 	match ent.state:
 		"attack":
+			if ent.mode=="ESCORT" and ent.has("escort_target"):
+				var protected=_get_entity(ent.escort_target)
+				if protected.is_empty() or not protected.alive or target.pos.distance_to(protected.pos)>EscortPolicy.THREAT_RADIUS or ent.pos.distance_to(protected.pos)>EscortPolicy.LEASH_RADIUS:
+					_finish_attack(ent);return
 			if ent.auto_target and ent.mode=="DEFEND" and target.pos.distance_to(ent.anchor)>3.0:
 				_finish_attack(ent); return
 			ent.last_known=target.pos
@@ -3933,6 +3950,7 @@ func _selection_stance_summary(selection: Array) -> String:
 	var stopped=0
 	var advancing=0
 	var patrolling=0
+	var escorting=0
 	var owned_units=0
 	for ent in selection:
 		if not ent.get("owned",false) or not ent.get("alive",false) or ent.get("category","")!="unit": continue
@@ -3941,14 +3959,17 @@ func _selection_stance_summary(selection: Array) -> String:
 		elif ent.get("mode","")=="STOP": stopped+=1
 		elif ent.get("mode","")=="ADVANCE": advancing+=1
 		elif ent.get("mode","")=="PATROL": patrolling+=1
+		elif ent.get("mode","")=="ESCORT": escorting+=1
 	if owned_units==1:
 		if patrolling==1: return "巡邏"
+		if escorting==1:return "護送"
 		return "警戒前進" if advancing==1 else ("守備" if defending==1 else ("停止" if stopped==1 else ""))
 	var parts=PackedStringArray()
 	if defending>0: parts.append("守備 %d" % defending)
 	if stopped>0: parts.append("停止 %d" % stopped)
 	if advancing>0: parts.append("警戒前進 %d" % advancing)
 	if patrolling>0: parts.append("巡邏 %d" % patrolling)
+	if escorting>0:parts.append("護送 %d" % escorting)
 	return " · ".join(parts)
 
 func _rally_detail(record):
@@ -3982,7 +4003,7 @@ func _update_hud():
 	elif victory_mode=="supply":mission_label.text="資源爭奪戰：實際送抵600糧＋400木；保護村民並截斷敵方資源。主堡被毀仍會落敗。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: time_label.text+=" · 和局 %ds" % ceili(Rules.TIME_LIMIT-game_time)
-	touch_button.text=("巡邏中" if unit_command_kind=="patrol" else ("前進中" if unit_command_kind=="advance" else "指定中")) if touch_command else "指定"
+	touch_button.text=("護送中" if unit_command_kind=="escort" else "巡邏中" if unit_command_kind=="patrol" else ("前進中" if unit_command_kind=="advance" else "指定中")) if touch_command else "指定"
 	var selection=[]
 	for id in selected:
 		var ent=faction_views[0].get_record(id)
@@ -4098,6 +4119,9 @@ func _update_hud():
 		help_label.text=selection_detail.text
 	if touch_command and unit_command_kind=="patrol":
 		selection_detail.text="巡邏：點另一端，在原位與目的地來回；射程內迎擊，不追擊。停止或新指令可結束。"
+		help_label.text=selection_detail.text
+	if touch_command and unit_command_kind=="escort":
+		selection_detail.text="護送：點自己的村民或攻城車。自動移動，迎擊附近敵軍；停止或新指令結束。"
 		help_label.text=selection_detail.text
 	if box_select_mode:
 		selection_title.text="框選單位"
@@ -4247,6 +4271,7 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
+		actions.add_child(_button("護送",_start_escort_command,100))
 	if not WoundedRetreat.injured(faction_views[0].records(),selected).is_empty():
 		wounded_retreat_button=_button("傷兵回城",_retreat_wounded,150)
 		wounded_retreat_button.name="WoundedRetreat";wounded_retreat_button.set_meta("selection_source",selected.duplicate())
@@ -4810,6 +4835,8 @@ func _send_world_order(screen,contextual=false):
 		_submit("rally",rally_order)
 		_cancel_mode(); return
 
+	if touch_command and unit_command_kind=="escort":
+		_submit_escort_target(_pick(screen));return
 	if touch_command and unit_command_kind in ["advance","patrol"]:
 		var destination=_world_at(screen)
 		var payload={"ids":selected.duplicate(),"position":destination}
@@ -6744,3 +6771,83 @@ func _recruit_from_roster(kind):
 		_refresh_army_roster();return
 	for order in plan.orders:_submit("train",order)
 	_refresh_army_roster()
+
+
+# Explicit escort intent survives only automatic follow/interception.
+func _clear_escort(ent):
+	ent.erase("escort_target");ent.erase("escort_next_tick");ent.erase("escort_follow_origin")
+
+func _order_escort(ids,target_id,team):
+	if team not in [0,1] or typeof(ids)!=TYPE_ARRAY or ids.size()>Rules.POP_LIMIT or typeof(target_id)!=TYPE_INT:return false
+	var ally=_get_entity(target_id)
+	if ally.is_empty() or not ally.alive or ally.team!=team or ally.category!="unit" or ally.kind not in EscortPolicy.PROTECTED:return false
+	var chosen=[]
+	for id in ids:
+		if typeof(id)!=TYPE_INT:return false
+		var guard=_get_entity(id)
+		if id!=target_id and id not in chosen and not guard.is_empty() and guard.alive and guard.team==team and guard.category=="unit" and guard.kind in EscortPolicy.GUARDS:chosen.append(id)
+	chosen.sort()
+	for id in chosen:
+		var guard=_get_entity(id)
+		if team==0:_path_new_command(guard)
+		_set_stance(guard,"ESCORT")
+		guard.escort_target=target_id;guard.escort_next_tick=tick_count
+	return not chosen.is_empty()
+
+func _update_escorts():
+	for guard in entities:
+		if not guard.alive or guard.category!="unit" or not guard.has("escort_target"):continue
+		if guard.mode!="ESCORT":_clear_escort(guard);continue
+		if guard.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]:
+			_set_stance(guard,"STOP")
+			continue
+		if typeof(guard.escort_target)!=TYPE_INT or typeof(guard.get("escort_next_tick",0))!=TYPE_INT:
+			_set_stance(guard,"STOP");continue
+		if tick_count<guard.get("escort_next_tick",0):continue
+		var ally_id=guard.escort_target
+		var decision=EscortPolicy.decide(faction_views[guard.team].records(),guard.id,ally_id,guard.team)
+		guard.escort_next_tick=tick_count+20
+		if decision.action=="cancel":_set_stance(guard,"STOP");continue
+		if decision.action=="intercept":
+			var enemy=_get_entity(decision.target)
+			if enemy.is_empty() or not enemy.alive or not _attack_target_observed(enemy,guard.team):continue
+			if guard.state!="attack" or guard.target!=enemy.id:
+				_order(guard,"attack",enemy.id,true)
+			continue
+		# Retire pursuit when the ally moves beyond the leash or the threat leaves.
+		if guard.state=="attack":
+			_finish_attack(guard)
+			guard.escort_target=ally_id;guard.escort_next_tick=tick_count+20;guard.mode="ESCORT"
+		if decision.action=="follow":
+			# Moving goals are refreshed at most once/second without granting a new
+			# command's initial path allowance or clearing retry/failure history.
+			if guard.state=="move":
+				if guard.dest.distance_to(decision.observed_position)<=2.0:continue
+				# A stuck follower cannot refresh away its traffic deadline.
+				if guard.pos.distance_to(guard.get("escort_follow_origin",guard.pos))<0.5:continue
+			var goal=_nearest_free(decision.observed_position,2,guard.team,guard)
+			if goal==Vector3.INF:continue
+			_order_move(guard,goal)
+			if guard.state=="move":
+				guard.mode="ESCORT";guard.escort_target=ally_id;guard.escort_next_tick=tick_count+20;guard.escort_follow_origin=guard.pos
+		elif guard.state=="move":
+			_set_stance(guard,"ESCORT");guard.escort_target=ally_id;guard.escort_next_tick=tick_count+20
+
+func _start_escort_command():
+	if not _squad_actions_available():return
+	var eligible=false
+	for id in selected:
+		var r=faction_views[0].get_record(id)
+		if r.get("owned",false) and r.get("alive",false) and r.get("kind","") in EscortPolicy.GUARDS:eligible=true
+	if not eligible:return
+	_cancel_mode();unit_command_kind="escort";touch_command=true
+	_update_hud()
+	_message("護送：點自己的村民或攻城車。移動並迎擊附近敵軍；新指令或停止可結束。",6)
+
+func _submit_escort_target(target_id):
+	var ally=faction_views[0].get_record(target_id)
+	if not ally.get("owned",false) or not ally.get("alive",false) or ally.get("remembered",false) or ally.get("kind","") not in EscortPolicy.PROTECTED:
+		_message("請點自己的村民或攻城車。",4);return false
+	_submit("escort",{"ids":selected.duplicate(),"target":target_id})
+	_cancel_mode()
+	return true

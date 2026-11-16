@@ -190,6 +190,10 @@ static func validation_result(data)->Dictionary:
   for key in ["hp","max_hp"]:
    if typeof(entity[key]) not in [TYPE_INT,TYPE_FLOAT] or not is_finite(float(entity[key])):return failure("ENTITY_HP_TYPE")
   if entity.max_hp!=Rules.HP[entity.kind] or entity.hp>entity.max_hp or (entity.alive and entity.hp<=0):return failure("ENTITY_HP")
+  if entity.has("escort_target"):
+   if not entity.escort_target is int or entity.escort_target<0:return failure("ENTITY_ESCORT_TARGET")
+   if not entity.get("escort_next_tick",0) is int or entity.get("escort_next_tick",0)<0:return failure("ENTITY_ESCORT_TICK")
+   if entity.has("escort_follow_origin") and (not entity.escort_follow_origin is Vector3 or not finite_position(entity.escort_follow_origin)):return failure("ENTITY_ESCORT_ORIGIN")
   if not entity.state is String or not entity.mode is String or entity.state.length()>64 or entity.mode.length()>64:return failure("ENTITY_STATE")
  var attack=data.modules.attack_ledger
  if attack._records.size()%80!=0:return failure("ATTACK_RECORD_ALIGNMENT")

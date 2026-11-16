@@ -1,0 +1,26 @@
+{
+  "build": "vc-0e930f239fdb",
+  "scope": "Controlled native/headless authoritative escort, memory-only snapshots, shared touch-tap handler; not physical phone, browser persistence, natural-match balance or deployment acceptance",
+  "base_source": "1e662da0dc127cb437f857f0638f29f4feec71e1",
+  "preimported_public_package": {
+    "build": "vc-da21664e0540",
+    "pck_sha256": "0f0a7c2636a747676af9c6e9b6457e8d8aa2f535396a10e7740634d84e5ddb52",
+    "reuse": "23 imported assets and published UID cache only; no scripts copied from package"
+  },
+  "checks": {
+    "escort_policy": 18,
+    "escort_integration": 28,
+    "patrol": 11,
+    "advance": 8,
+    "checkpoint_codec": 20,
+    "checkpoint_continuation": 24,
+    "checkpoint_menu": 12,
+    "army_recruitment": 25,
+    "source_consistency": 965
+  },
+  "runtime_failures": 0,
+  "resource_guard_max_rss_kib": 768000,
+  "sampled_runtime_peak_rss_kib": 194660,
+  "full_import_attempt": "Stopped and reaped by unchanged RSS guard; runtime reused existing matching public imported assets instead of repeating conversion",
+  "saved_player_data": "No player saves accessed or modified; no denied fixtures used; cross-build compatibility unchanged"
+}
