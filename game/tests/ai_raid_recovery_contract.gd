@@ -36,7 +36,11 @@ func run():
 	game.ai_raid_departure_count=5; game.ai_raid_retreating=false
 	game.ai_raid_keep={"category":"building","kind":"town_center","pos":enemy.pos}
 	game.ai_last_raid_tick=0; game.commands.clear()
-	game._update_vision(false); game._publish_faction_views()
+	game._update_vision(false)
+	# Seed the declared synthetic failure after visibility refresh has applied
+	# its navigation revision; otherwise that refresh retires the fake proof.
+	game._path_stop(survivor,"NO_PATH","frontier_exhausted")
+	game._publish_faction_views()
 	var before=[survivor.path_status,survivor.path_searches,survivor.path_failures,survivor.path_retry_ticks.duplicate(),survivor.path_next_attempt_tick,survivor.work_epoch]
 	var records=game._ai_records()
 	var enemy_record=game.faction_views[1].get_record(enemy.id)

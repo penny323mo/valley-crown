@@ -1,0 +1,80 @@
+{
+  "build": "vc-4f78d9fd92d7",
+  "source_base": "75f93235b4827bce7b316682ddec6676d1b0dddc",
+  "source_checks": 985,
+  "native_checks": 211,
+  "suites": [
+    {
+      "suite": "ai_army_recovery_contract",
+      "checks": 21,
+      "passed": true,
+      "sampled_peak_rss_kib": 193852,
+      "log_sha256": "a4c9bb975bd7d4236441d0770daa367a3f8edf074419f827f7323fe4f279f681"
+    },
+    {
+      "suite": "ai_retreat_completion_contract",
+      "checks": 23,
+      "passed": true,
+      "sampled_peak_rss_kib": 171436,
+      "log_sha256": "caf1627bf100518c84a1a9d3daf1f85bb5f94954d871c7cb3924fa5f8d88f858"
+    },
+    {
+      "suite": "ai_retreat_route_contract",
+      "checks": 35,
+      "passed": true,
+      "sampled_peak_rss_kib": 172308,
+      "log_sha256": "c0d6b5ad1c0ae5c70caf9a07fd4403c2f96463b44163701a2495c16bb0718057"
+    },
+    {
+      "suite": "ai_raid_recovery_contract",
+      "checks": 7,
+      "passed": true,
+      "sampled_peak_rss_kib": 193784,
+      "log_sha256": "7fc06626565467099aeddfd6e472765b99854748cb0dcba1a1dc8dbfd2a786c8"
+    },
+    {
+      "suite": "ai_attack_handoff_contract",
+      "checks": 33,
+      "passed": true,
+      "sampled_peak_rss_kib": 172288,
+      "log_sha256": "d7a57645ba4d8cfe830d7671cad8526fbb5c6982d105cb823b5dacdb5c086427"
+    },
+    {
+      "suite": "raid_tactics_contract",
+      "checks": 6,
+      "passed": true,
+      "sampled_peak_rss_kib": 193816,
+      "log_sha256": "89280f764fe1d7b8bb91c821b5d547f9009bff2ec9667702c3c0b41e4be9e9ac"
+    },
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "passed": true,
+      "sampled_peak_rss_kib": 62292,
+      "log_sha256": "0142bec1ed8c63ac85448d4ef7f8b356f91dc1762be43aa0ab2e0a48620cb8af"
+    },
+    {
+      "suite": "home_defense_contract",
+      "checks": 21,
+      "passed": true,
+      "sampled_peak_rss_kib": 60228,
+      "log_sha256": "a7cb9c0da359390f9daf0bdb752efb9fa96ae1443f194a4db8f76c94a9123aae"
+    },
+    {
+      "suite": "home_defense_integration",
+      "checks": 15,
+      "passed": true,
+      "sampled_peak_rss_kib": 193856,
+      "log_sha256": "d4b2c1177c2238cd4ee7d2c17274b80c75fdec1febbac1f8b286aed11069f7e1"
+    },
+    {
+      "suite": "rest_recovery_contract",
+      "checks": 47,
+      "passed": true,
+      "sampled_peak_rss_kib": 193920,
+      "log_sha256": "1220ee4dee4f1778fb30872abc809ea00eb469559181f1b0390c289084b701cc"
+    }
+  ],
+  "scope": "Controlled native policy, physical retreat and timed ordinary healing. No natural-match balance, screenshots or phone acceptance. Terminal path failures retain all bounded retry limits; return is not guaranteed. No user saves touched.",
+  "review": "Safe rest checks both base and nearby resting soldier threats; repeated recall preserves active route; home defense wins. Two older synthetic fixtures corrected to valid observation/setup ordering, assertions unchanged."
+}

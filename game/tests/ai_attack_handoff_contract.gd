@@ -43,7 +43,7 @@ func order(game):
 	game._execute({"type":"order","team":game.entities[0].team,"ids":[0],"target":target.id,"position":target.pos})
 func _initialize():
 	var game=setup(); var ent=game.entities[0]; var budget=history(ent); var epoch=ent.work_epoch
-	var home={"id":3,"team":1,"category":"building","kind":"town_center","owned":true,"pos":Vector3(-3.5,0,-6.5)}
+	var home={"id":3,"team":1,"category":"building","kind":"town_center","owned":true,"alive":true,"remembered":false,"built":true,"pos":Vector3(-3.5,0,-6.5)}
 	game._ai_army([ent.duplicate(true),game.entities[2].duplicate(true),home],home)
 	check("actual AI policy submits visible new home threat",game.commands.size()==1 and game.commands[0].target==2 and game.ai_status.army=="home_defense")
 	var queued=game.commands[0].duplicate(true); game.commands.clear(); game._execute(queued)

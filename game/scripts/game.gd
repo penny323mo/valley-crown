@@ -84,6 +84,7 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const AIArmyRecovery=preload("res://scripts/ai_army_recovery.gd")
 const WoundedRetreat=preload("res://scripts/wounded_retreat.gd")
 var wounded_retreat_button: Button
 const TrainingBatch=preload("res://scripts/training_batch.gd")
@@ -3214,6 +3215,23 @@ func _ai_army(records,castle):
 	ai_home_defense_targets.clear()
 	if released:
 		ai_status.army="home_defense_released"; return
+	# Home defense above remains first priority. Recovery reserves are excluded
+	# from strategic orders, but use ordinary motion/Stop and ordinary healing.
+	var ready=[]
+	for ent in army:
+		var rest_base=AIArmyRecovery.base_for(ent,records)
+		if rest_base.is_empty(): ready.append(ent); continue
+		ai_raid_members.erase(ent.id)
+		ai_control_targets.erase(ent.id)
+		if ent.pos.distance_to(rest_base.pos)>RestRecovery.RADIUS:
+			_ai_move_home([ent],rest_base)
+		elif ent.state!="idle":
+			_submit("stop",{"ids":[ent.id]},1)
+	army=ready
+	survivors=[]
+	for ent in army:
+		if ent.id in ai_raid_members: survivors.append(ent)
+	if ai_raid_members.is_empty(): ai_raid_retreating=false
 	if victory_mode=="control":
 		_ai_control_point_orders(army,records)
 		return
