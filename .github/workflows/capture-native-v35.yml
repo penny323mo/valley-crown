@@ -1,15 +1,16 @@
-name: Capture genuine pinned v62 resource lifecycle normal and close zoom
+name: Capture genuine candidate v63 resource art at actual game scale
 on:
   push:
     branches: [main]
     paths: [.github/workflows/capture-native-v35.yml]
 permissions:
   contents: read
+  actions: read
 jobs:
   capture:
     strategy:
       matrix:
-        scenario: [close, normal]
+        scenario: [normal]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -18,22 +19,32 @@ jobs:
           persist-credentials: false
       - name: Install official distribution display dependencies
         run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
-      - name: Download and verify exact engine and deployed PCK
+      - name: Download and verify exact engine and candidate PCK
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/capture
           curl -fL https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/engine.zip
           unzip /tmp/engine.zip -d /tmp
           echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum -c -
           chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
-          curl -fL https://valley-crown-play.penny323tw.chatgpt.site/builds/vc-19bf58c498f1/index.pck -o /tmp/capture/index.pck
-          echo 'f65bde9a9945206ea1b4a6a15995f165535e3888421aef9574dcaa6d89d70aaf  /tmp/capture/index.pck' | sha256sum -c -
-          cp ci/capture-v62-${{ matrix.scenario }}.gd /tmp/capture/capture.gd
+          python3 - <<'PYCODE'
+          import sys,io,zipfile,hashlib,pathlib,os
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14201739785/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='16302ed37b0106c30f9d0aea6bc65e7c0baf8126af4377b063c86c3fa3e545f6'
+          pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
+          assert hashlib.sha256(pck).hexdigest()=='a549718fb51e2e43d0897d40d0cb680894cb804087478a7c527102fbaa5c893a'
+          pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
+          PYCODE
+          cp ci/capture-v63-resource-art.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-v35-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v62-${{ matrix.scenario }}-native-render
+          name: genuine-v63-resource-art-native-render
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
