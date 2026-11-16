@@ -8,7 +8,7 @@ func check(value, message):
 func check_visible_controls(shell, phase: String):
 	var viewport: Rect2 = shell.get_viewport().get_visible_rect()
 	var card_rect: Rect2 = shell.card.get_global_rect()
-	var previous_bottom = -1.0
+	var previous_rects = []
 	for button in shell.buttons.get_children():
 		var rect: Rect2 = button.get_global_rect()
 		check(button.is_visible_in_tree(), phase + ": " + button.name + " visible")
@@ -16,8 +16,8 @@ func check_visible_controls(shell, phase: String):
 		check(viewport.encloses(rect) and card_rect.encloses(rect), phase + ": " + button.name + " inside viewport and panel")
 		if not viewport.encloses(rect) or not card_rect.encloses(rect):
 			push_error("MENU_LAYOUT " + JSON.stringify({"phase": phase, "button": str(rect), "card": str(card_rect), "card_minimum": str(shell.card.get_combined_minimum_size()), "scroll": str(shell.scroll.get_global_rect()), "actions": str(shell.buttons.get_global_rect()), "footer": str(shell.footer.get_global_rect())}))
-		check(rect.position.y >= previous_bottom, phase + ": " + button.name + " nonoverlapping")
-		previous_bottom = rect.end.y
+		check(previous_rects.all(func(other):return not rect.intersects(other)), phase + ": " + button.name + " nonoverlapping")
+		previous_rects.append(rect)
 	check(shell.scroll.get_global_rect().end.y <= shell.buttons.get_global_rect().position.y, phase + ": prose cannot push or overlap actions")
 	if shell.footer.visible:
 		if viewport.size.y >= viewport.size.x or viewport.size.y >= 500.0:

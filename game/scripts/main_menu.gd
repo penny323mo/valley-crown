@@ -7,6 +7,8 @@ const Rules=preload("res://scripts/rules.gd")
 var checkpoint_path=CheckpointStore.PATH
 var checkpoint_status=""
 const MATCH_SCENE = preload("res://main.tscn")
+const ModelCatalogue=preload("res://scripts/model_catalogue.gd")
+var manual_preview
 const FieldManual=preload("res://scripts/field_manual.gd")
 const BattleHistory=preload("res://scripts/battle_history.gd")
 var history_path=BattleHistory.PATH
@@ -14,6 +16,7 @@ var history_index=0
 var history_page=0
 var manual_section=0
 var manual_index=0
+var manual_back_page="help"
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var selected_mode="standard"
 var selected_victory_mode="conquest"
@@ -24,7 +27,7 @@ var card: Panel
 var heading: Label
 var description: Label
 var help_tail: Label
-var buttons: VBoxContainer
+var buttons: GridContainer
 var crest: TextureRect
 var identity: VBoxContainer
 var wordmark: Label
@@ -138,6 +141,9 @@ func _ready():
 	mode_title.add_theme_color_override("font_color", Color("f2e9d7"))
 	mode_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(mode_title)
+	manual_preview=ModelCatalogue.new()
+	box.add_child(manual_preview)
+	manual_preview.hide()
 	description = Label.new()
 	description.add_theme_color_override("font_color", Color("ded9ce"))
 	description.add_theme_constant_override("line_spacing", 5)
@@ -149,7 +155,7 @@ func _ready():
 	help_tail.add_theme_constant_override("line_spacing", 5)
 	help_tail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(help_tail)
-	buttons = VBoxContainer.new()
+	buttons = GridContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
 	card.add_child(buttons)
 	footer = Label.new()
@@ -201,15 +207,19 @@ func _layout():
 	if latin_name.visible:
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
+	buttons.columns=3 if page=="manual" else (2 if home and short_landscape and buttons.get_child_count()>3 else 1)
 	var button_height=54.0
+	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0
 	var button_gap=10
-	buttons.add_theme_constant_override("separation",button_gap)
+	buttons.add_theme_constant_override("v_separation",button_gap)
+	buttons.add_theme_constant_override("h_separation",6)
 	for button in buttons.get_children():button.custom_minimum_size.y=button_height
-	var actions_height = button_height * buttons.get_child_count() + button_gap * max(0, buttons.get_child_count() - 1)
+	var action_rows=ceili(float(buttons.get_child_count())/buttons.columns)
+	var actions_height = button_height * action_rows + button_gap * max(0, action_rows - 1)
 	var height: float
 	var y: float
 	if home:
-		height = actions_height + (48.0 if short_landscape and buttons.get_child_count()>3 else (104.0 if short_landscape else 144.0))
+		height = actions_height + (48.0 if short_landscape and buttons.get_child_count()>3 else (104.0 if short_landscape else (100.0 if buttons.get_child_count()>4 else 144.0)))
 		y = minf(available.y - height - 28.0, available.y * 0.49) if not short_landscape else available.y - height - 16.0
 		y = maxf(16.0, y)
 		identity.position = Vector2(x, maxf(14.0, y - identity_height - 24.0))
@@ -238,6 +248,10 @@ func _layout():
 	buttons.size = Vector2(content_width, actions_height)
 	scroll.position = Vector2(inset, inset)
 	scroll.size = Vector2(content_width, maxf(1.0, actions_y - inset - 14.0))
+	if page=="manual" and short_landscape:
+		heading.add_theme_font_size_override("font_size",22)
+		manual_preview.custom_minimum_size.y=maxf(100.0,minf(160.0,scroll.size.y-64.0))
+	else:heading.add_theme_font_size_override("font_size",28)
 	footer.position = Vector2(inset, height - 20.0)
 	footer.size = Vector2(content_width, 20.0)
 
@@ -285,6 +299,14 @@ func _add_button(label: String, id: String, action: Callable):
 	button.pressed.connect(action)
 	# Keep tested cancellation, drag, resize and multi-touch handling unchanged.
 	button.gui_input.connect(func(event): _button_touch(button, event))
+	if page=="manual":
+		button.add_theme_font_size_override("font_size",14)
+		button.alignment=HORIZONTAL_ALIGNMENT_CENTER
+		button.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		for state in ["normal","hover","pressed"]:
+			var style=button.get_theme_stylebox(state).duplicate()
+			style.content_margin_left=8;style.content_margin_right=8
+			button.add_theme_stylebox_override(state,style)
 	buttons.add_child(button)
 
 func _button_touch(button: Button, event: InputEvent):
@@ -302,6 +324,8 @@ func _button_touch(button: Button, event: InputEvent):
 			touch_presses.erase(event.index)
 
 func _show_page(next_page: String):
+	if next_page=="manual" and page!="manual":manual_back_page="home" if page=="home" else "help"
+	if is_instance_valid(manual_preview):manual_preview.clear_model();manual_preview.hide()
 	page = next_page
 	_cancel_menu_touches()
 	scroll.scroll_vertical = 0
@@ -334,9 +358,12 @@ func _show_page(next_page: String):
 		var item=FieldManual.entry(manual_section,manual_index)
 		heading.text="%s · %s  %d/%d" % [FieldManual.SECTIONS[manual_section],item.title,item.index+1,item.count]
 		description.text=item.body
-		_add_button("分類："+FieldManual.SECTIONS[manual_section]+" >", "ManualSectionButton", func(): manual_section=(manual_section+1)%3;manual_index=0;_show_page("manual"))
+		if manual_section in [0,1]:
+			manual_preview.show()
+			manual_preview.show_model(item.kind)
+		_add_button(FieldManual.SECTIONS[manual_section]+" >", "ManualSectionButton", func(): manual_section=(manual_section+1)%3;manual_index=0;_show_page("manual"))
 		_add_button("下一項 >", "ManualNextButton", func(): manual_index=(manual_index+1)%FieldManual.entries(manual_section).size();_show_page("manual"))
-		_add_button("返回教學", "ManualBackButton", func(): _show_page("help"))
+		_add_button("返回", "ManualBackButton", func(): _show_page(manual_back_page))
 	elif page == "setup":
 		heading.text = "戰役設定"
 		description.text = ("霧谷 · 單人劇本挑戰\n\n" if selected_mode=="survival" else "霧谷 · 1 對 1 電腦戰\n\n")+SkirmishPolicy.details(selected_mode)
@@ -373,6 +400,7 @@ func _show_page(next_page: String):
 			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _show_page("setup"))
 		else:
 			_add_button("開始戰役", "StartMatchButton", func(): _show_page("setup"))
+		_add_button("兵種與建築圖鑑", "CatalogueMenuButton", func(): manual_section=0;manual_index=0;_show_page("manual"))
 		_add_button("本機存檔", "CheckpointMenuButton", func(): _show_page("checkpoint"))
 		_add_button("教學", "HelpButton", func(): _show_page("help"))
 	_layout()
@@ -409,6 +437,7 @@ func _replace_match():
 	match_node.restart_requested.connect(_restart_match)
 	add_child(match_node)
 	_release_menu_focus()
+	manual_preview.clear_model()
 	menu_layer.hide()
 	touch_presses.clear()
 	transition_busy = false
@@ -445,6 +474,7 @@ func _finish_report_review():
 	match_node.end_panel.show()
 	match_node._layout_ui()
 	_release_menu_focus()
+	manual_preview.clear_model()
 	menu_layer.hide()
 	touch_presses.clear()
 	transition_busy = false
@@ -462,6 +492,7 @@ func _finish_resume():
 	# Retain the game's focus/background resume guard and clear its tick debt.
 	match_node._toggle_pause()
 	_release_menu_focus()
+	manual_preview.clear_model()
 	menu_layer.hide()
 	touch_presses.clear()
 	transition_busy = false
@@ -508,6 +539,7 @@ func _web_menu_snapshot(_args):
 	JavaScriptBridge.eval("window.valleyMenuState=" + JSON.stringify(snapshot) + ";")
 
 func _cancel_menu_touches():
+	if is_instance_valid(manual_preview):manual_preview.cancel_input()
 	touch_presses.clear()
 	prose_touch = -1
 	touch_blocked = not active_touches.is_empty()
@@ -551,6 +583,16 @@ func _input(event):
 			active_touches.erase(event.index)
 			if event.canceled: touch_presses.erase(event.index)
 			if active_touches.is_empty(): touch_blocked = false
+	if touch_blocked and is_instance_valid(manual_preview):manual_preview.cancel_input();manual_preview.blocked=true
+	if page=="manual" and manual_preview.visible:
+		var captured=manual_preview.handle_touch(event,scroll.get_global_rect())
+		if not manual_preview.scroll_request.is_empty():
+			prose_touch=manual_preview.scroll_request.index
+			prose_origin=manual_preview.scroll_request.origin
+			prose_scroll_origin=scroll.scroll_vertical
+			manual_preview.scroll_request.clear()
+		elif captured:
+			prose_touch=-1;get_viewport().set_input_as_handled();return
 	if _help_touch(event): get_viewport().set_input_as_handled()
 
 func _cycle_victory_mode():
