@@ -27,7 +27,24 @@ finally:
  try:os.killpg(p.pid,signal.SIGKILL)
  except ProcessLookupError:pass
  r['wall_seconds']=time.monotonic()-t;r['after']=metrics()
- try:os.killpg(p.pid,0);r['process_group_gone']=False
- except ProcessLookupError:r['process_group_gone']=True
+ # Xvfb can leave a short-lived zombie after process-group kill. Distinguish
+ # an unreaped zombie from a running leftover rather than accepting either.
+ def group_members():
+  members=[]
+  for proc in pathlib.Path('/proc').iterdir():
+   if not proc.name.isdigit():continue
+   try:
+    raw=(proc/'stat').read_text();fields=raw[raw.rfind(')')+2:].split()
+    if int(fields[2])==p.pid:members.append({'pid':int(proc.name),'state':fields[0]})
+   except (FileNotFoundError,ProcessLookupError,PermissionError,ValueError,IndexError):pass
+  return members
+ cleanup_deadline=time.monotonic()+2
+ remaining=group_members()
+ while remaining and time.monotonic()<cleanup_deadline:
+  time.sleep(.05);remaining=group_members()
+ r['remaining_process_group']=remaining
+ r['process_group_gone']=not remaining
+ r['live_process_group_gone']=not any(x['state'] not in ['Z','X'] for x in remaining)
+ if not r['live_process_group_gone']:r['stop_reason']='live_process_group_cleanup_failed'
  out.close();err.close();r['status']='PROCESS_COMPLETED' if r['returncode']==0 and not r['stop_reason'] else 'PROCESS_FAILED';save()
 print(json.dumps({k:v for k,v in r.items() if k!='inputs'}));sys.exit(0 if r['status']=='PROCESS_COMPLETED' else 1)
