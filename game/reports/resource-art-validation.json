@@ -1,0 +1,58 @@
+{
+  "build": "vc-959fff7a3003",
+  "source_base": "ce98dec719e44648b9c41d38dd9ec0e171dcfd93",
+  "native_checks": 204,
+  "suites": [
+    {
+      "suite": "resource_lifecycle_contract",
+      "checks": 71,
+      "passed": true,
+      "sampled_peak_rss_kib": 198284,
+      "log_sha256": "120e6c32d58b4956b56b21580202159cdfc781c2f2d5d64d998a9a88330fd66e"
+    },
+    {
+      "suite": "resource_visual_contract",
+      "checks": 27,
+      "passed": true,
+      "sampled_peak_rss_kib": 61840,
+      "log_sha256": "7ba246b0389b59de71de3be07b51490e6de209a8fd58a6393823fd7c187ee047"
+    },
+    {
+      "suite": "resource_polish_contract",
+      "checks": 24,
+      "passed": true,
+      "sampled_peak_rss_kib": 60468,
+      "log_sha256": "f10926d76a75ed014ebd7ee90b309bc7198b1b1019118a55ce2a674613c25332"
+    },
+    {
+      "suite": "advanced_building_observation",
+      "checks": 52,
+      "passed": true,
+      "sampled_peak_rss_kib": 197120,
+      "log_sha256": "b1849e4c3256f4d0d8dac45619fad54ba0e6d34181253252bfe303dc35d8c039"
+    },
+    {
+      "suite": "occlusion_observation_lifecycle",
+      "checks": 27,
+      "passed": true,
+      "sampled_peak_rss_kib": 197172,
+      "log_sha256": "a9912b85473f126d3f4f63ec824170c828df3473a292f866dde86cafda5b66da"
+    },
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "passed": true,
+      "sampled_peak_rss_kib": 62316,
+      "log_sha256": "0142bec1ed8c63ac85448d4ef7f8b356f91dc1762be43aa0ab2e0a48620cb8af"
+    }
+  ],
+  "scope": "Angular stratified quarry stone and iron plus volumetric berry canopy. Same ~1.0world footprint inside existing1.1 collision diameter; heights0.918/0.779. One opaque surface, finite shared fourstage cache. No gameplay/economy/save changes. Rendered visual review required before publication.",
+  "guard_unchanged": true,
+  "capture_preflight": {
+    "rendered": false,
+    "seconds": 1.658216,
+    "sampled_peak_rss_kib": 197376,
+    "scope": "Actual initial map, defaultzoom30/playablezoom18, no resource modification or gameplay loop."
+  },
+  "source_checks": 1030
+}

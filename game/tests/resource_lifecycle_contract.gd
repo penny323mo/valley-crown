@@ -14,6 +14,10 @@ func run():
    Visuals.present(holder,record);meshes.append(visual.mesh);heights.append(visual.mesh.get_aabb().size.y);counts.append(visual.mesh.surface_get_array_len(0))
    check(kind+" stage "+str(level)+" finite one surface",visual.mesh.get_surface_count()==1 and visual.mesh.get_aabb().is_finite() and counts[-1]<6000)
    check(kind+" footprint preserved "+str(level),visual.mesh.get_aabb().size.x<1.2 and visual.mesh.get_aabb().size.z<1.2)
+   var arrays=visual.mesh.surface_get_arrays(0);var verts=arrays[Mesh.ARRAY_VERTEX];var clean=true
+   for i in range(0,verts.size(),3):
+    if (verts[i+1]-verts[i]).cross(verts[i+2]-verts[i]).length_squared()<=0.000000000001:clean=false
+   check(kind+" stage geometry remains nondegenerate "+str(level),clean)
    var same=visual.mesh;Visuals.present(holder,record);check(kind+" repeated frame reuses mesh "+str(level),same==visual.mesh)
   check(kind+" four distinct stage meshes",meshes[0]!=meshes[1] and meshes[1]!=meshes[2] and meshes[2]!=meshes[3])
   check(kind+" visible depletion geometry",counts[3]<counts[0] if kind=="berry" else heights[3]<heights[0]*0.6)
