@@ -3215,6 +3215,7 @@ func _ai_move_home(members,castle):
 		if _attack_distance(ent.pos,castle)>3.0 and (ent.state!="move" or ent.dest.distance_to(castle.pos)>6.0): ids.append(ent.id)
 	if not ids.is_empty(): _submit("order",{"ids":ids,"target":-1,"position":castle.pos},1)
 
+const AIRaidReinforcement=preload("res://scripts/ai_raid_reinforcement.gd")
 const AIEconomicRaid=preload("res://scripts/ai_economic_raid.gd")
 func _ai_raid_order(ent,records,enemy_keep):
 	var worker=AIEconomicRaid.choose(ent,records,enemy_keep)
@@ -3344,7 +3345,18 @@ func _ai_army(records,castle):
 			# policy turn may send a fresh normally-mustered cohort instead.
 			ai_raid_members.clear(); ai_raid_retreating=false
 			ai_status.army="raid_static_frontier_retired"; return
-		ai_status.army="raid_active"; return
+		# Reinforcement is a whole home-mustered cohort, never a stream of
+		# isolated recruits. Defense/recovery/retreat above retain precedence.
+		var reserves=army.filter(func(ent):return not ent.id in ai_raid_members)
+		var reinforcement=AIRaidReinforcement.batch(reserves,ai_raid_members,castle,skirmish_mode,tick_count,ai_last_raid_tick)
+		if not reinforcement.is_empty():
+			ai_raid_members.append_array(reinforcement)
+			ai_raid_departure_count+=reinforcement.size()
+			ai_last_raid_tick=tick_count
+			_submit("order",{"ids":reinforcement,"target":-1 if enemy_keep.remembered else enemy_keep.id,"position":enemy_keep.pos},1)
+		for ent in reserves:
+			if ent.id not in reinforcement:_ai_move_home([ent],castle)
+		ai_status.army="raid_reinforcement" if not reinforcement.is_empty() else "raid_active"; return
 	# Only a finished scouting unit physically returned to muster can count.
 	var mustered=[]
 	for ent in army:
