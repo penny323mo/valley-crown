@@ -1,4 +1,4 @@
-name: Capture v79 complete visible injury and recovery sequence
+name: Capture v80 villager keep refuge and ordinary return to work
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [frontline_supply]
+        scenario: [garrison]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,24 +32,24 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14238413986/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='91b012ed4655cd63ea12745b7208f49b9e6ea6890524408448efb144250a282a'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14245108984/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='d40d08dc178081fbbf55523e04b909ff8ef4e12463629ed7c4f17fc8556b39b5'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='8c43904b6ca9334926b9355c3bec86d08aaa33082cb7fe1fa74f42c575df4a82'
+          assert hashlib.sha256(pck).hexdigest()=='f48e133d70c284d52bab3a1e6be169120a995c5909489c21b08c5ae95dfc5899'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-frontline-supply-journey.gd /tmp/capture/capture.gd
+          cp ci/capture-garrison-natural-journey.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v79-frontline-supply-${{ matrix.scenario }}
+          name: genuine-v80-garrison-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
-            /tmp/capture/frontline-supply-proof.json
-            /tmp/capture/frontline-supply-contract.json
+            /tmp/capture/garrison-natural-proof.json
+            /tmp/capture/garrison-natural-contract.json
             /tmp/capture/*stdout.txt
             /tmp/capture/*stderr.txt
           if-no-files-found: error

@@ -8,7 +8,7 @@ func check(n,v):
  checks.append({"name":n,"passed":bool(v)})
  if not v:push_error(n)
 func shot(label,focus,ids):
- g._select(ids);g.camera_focus=focus;g.camera_zoom=21;g._camera_update();g._update_visuals(0);g._update_hud()
+ g._select(ids);g.camera_focus=focus;g.camera_zoom=14;g._camera_update();g._update_visuals(0);g._update_hud()
  shots.append({"stage":label,"tick":g.tick_count})
  if DisplayServer.get_name()=="headless":return
  for i in 3:await process_frame
