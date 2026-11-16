@@ -3,6 +3,7 @@ signal main_menu_requested
 signal restart_requested
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
 const EscortPolicy=preload("res://scripts/escort_policy.gd")
+const AIGatherLoad=preload("res://scripts/ai_gather_load.gd")
 const TargetPriority=preload("res://scripts/target_priority.gd")
 const ArmyFormation = preload("res://scripts/army_formation.gd")
 const WorkerIdleStatus = preload("res://scripts/worker_idle_status.gd")
@@ -2963,11 +2964,14 @@ func _ai_reserve_budget(kind):
 func _assign_worker(ent,desired=""):
 	if desired.is_empty(): desired="food"
 	var resource={}; var distance=INF
-	for known in faction_views[ent.team].records().values():
+	var observations=faction_views[ent.team].records()
+	var loads=AIGatherLoad.assignments(observations,commands,ent.team,ent.id)
+	for known in observations.values():
+		if not known.get("alive",false): continue
 		if _resource_type(known)!=desired: continue
 		if known.category!="resource" and not (known.owned and known.built and known.kind=="farm"): continue
 		if known.kind=="farm" and economy.farm_view(known.id).get("worker_id",-1) not in [-1,ent.id]: continue
-		var d=known.pos.distance_squared_to(ent.pos)
+		var d=AIGatherLoad.score(ent.pos,known,loads)
 		if d<distance or (d==distance and (resource.is_empty() or known.id<resource.id)): resource=known; distance=d
 	if resource.is_empty():
 		ai_status.worker="no_known_"+desired; return false
@@ -3587,7 +3591,7 @@ func _publish_faction_views():
 				record.rally_mode=ent.get("rally_mode","move")
 				record.repeat_kind=ent.get("repeat_kind","")
 				record.repeat_generation=ent.get("repeat_generation",0)
-				for key in ["state","queue","carry","carry_type","path","target","dest","gather_type","mode"]: record[key]=ent[key].duplicate(true) if ent[key] is Array or ent[key] is Dictionary else ent[key]
+				for key in ["state","queue","carry","carry_type","path","target","resource_target","dest","gather_type","mode"]: record[key]=ent[key].duplicate(true) if ent[key] is Array or ent[key] is Dictionary else ent[key]
 				if ent.category=="unit":
 					for key in ["path_status","path_reason","path_pending","path_request_kind","path_request_state","path_request_target","path_request_epoch","work_epoch","traffic_route"]:
 						var fallback=false if key in ["path_pending","traffic_route"] else (-1 if key in ["path_request_target","work_epoch"] else (-2 if key=="path_request_epoch" else ""))

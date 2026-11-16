@@ -1,0 +1,62 @@
+{
+  "build": "vc-2db628c09392",
+  "source_base": "e0a93cb84235c96b8dbe4b7a3cdab768aee50ca9",
+  "suites": [
+    {
+      "suite": "ai_gather_load_contract",
+      "checks": 23,
+      "passed": true,
+      "sampled_peak_rss_kib": 196856,
+      "log_sha256": "e984f249e42c8eba55a8923733d55cb1bb051ada27b7705b276464e6164eb99b"
+    },
+    {
+      "suite": "ai_infrastructure_repair_contract",
+      "checks": 19,
+      "passed": true,
+      "sampled_peak_rss_kib": 196852,
+      "log_sha256": "ae3bf65aaa462d0ed00c74436913e369d42a0940b0aef29a6f06aed01a2af3aa"
+    },
+    {
+      "suite": "ai_resource_outpost_contract",
+      "checks": 23,
+      "passed": true,
+      "sampled_peak_rss_kib": 197004,
+      "log_sha256": "d2373d0d84b50e4e75d80917d4523a8d8163467fe26600ed476e674751fa4cb9"
+    },
+    {
+      "suite": "ai_worker_recovery_contract",
+      "checks": 17,
+      "passed": true,
+      "sampled_peak_rss_kib": 196848,
+      "log_sha256": "3488fd4e6933fe56742543878cfa502d00aa66e93815d8aceb0d367b0363d3f1"
+    },
+    {
+      "suite": "idle_gather_dispatch_contract",
+      "checks": 27,
+      "passed": true,
+      "sampled_peak_rss_kib": 196872,
+      "log_sha256": "7e1cb23d7230750e09119904a20be052430f59c2ea12250ea235517fb1772c44"
+    },
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "passed": true,
+      "sampled_peak_rss_kib": 62328,
+      "log_sha256": "0142bec1ed8c63ac85448d4ef7f8b356f91dc1762be43aa0ab2e0a48620cb8af"
+    }
+  ],
+  "native_checks": 112,
+  "scope": "Owned-observation AI resource load balancing, ordinary dispatch and real harvesting/deposit. No throughput, path-safety, browser or phone acceptance claim. No save changes.",
+  "guard_unchanged": true,
+  "review": "No blocker; pending construction retires old load. Cargo and terminal-route regressions added.",
+  "source_checks": 1022,
+  "capture_preflight": {
+    "rendered": false,
+    "ticks": 343,
+    "workers": 3,
+    "distinct_nodes": 2,
+    "wood_bank_before_milli": 200000,
+    "wood_bank_after_milli": 210000,
+    "sampled_peak_rss_kib": 197268
+  }
+}
