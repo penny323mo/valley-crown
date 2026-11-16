@@ -1,4 +1,4 @@
-name: Capture v76 actual compact battle HUD
+name: Capture v77 actual tactical route progression
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [battle_hud]
+        scenario: [tactical_route]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,19 +32,19 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14229397026/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='e023541fd9a0f34098308cf59b53987848a94f684078d5630d423d057a5a2822'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14232461645/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='80e2ffb08181eca06d5fa3be0cb2637b1fd10fb511ada4213e9b745eb4d1eeea'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='a8ea3c8f9922b91dfc27a582a1d29aa9ae2d4c2fa09b086adcda7fb5d6cd1004'
+          assert hashlib.sha256(pck).hexdigest()=='e71bb5b62993daeb74efd78310e261ca86b55430abd12d6159e585a1660f1392'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-v76-battle-hud.gd /tmp/capture/capture.gd
+          cp ci/capture-tactical-route-natural.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v76-battle-hud-${{ matrix.scenario }}
+          name: genuine-v77-tactical-route-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
