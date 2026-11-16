@@ -1,5 +1,6 @@
 extends SceneTree
 const Policy=preload("res://scripts/skirmish_policy.gd")
+const Layout=preload("res://scripts/battlefield_layout.gd")
 const Catalogue=preload("res://scripts/battle_selection.gd")
 class MatchStub:
  extends Node
@@ -28,7 +29,7 @@ func run():
   check(str(size)+" escort entry fits touch viewport",Rect2(Vector2.ZERO,Vector2(size)).encloses(button.get_global_rect()) and button.size.y>=44)
   button.pressed.emit();await process_frame;await process_frame
   check(str(size)+" selection opens escort briefing without battlefield",shell.page=="setup" and shell.selected_mode=="escort" and not is_instance_valid(shell.match_node))
-  check(str(size)+" briefing retains scroll and launch",shell.description.text==brief and is_instance_valid(shell.buttons.get_node("LaunchMatchButton")) and shell.scroll.size.y>0)
+  check(str(size)+" briefing retains scroll and launch",shell.description.text=="戰場："+Layout.title("valley")+"\n"+Layout.details("valley")+"\n\n"+brief and is_instance_valid(shell.buttons.get_node("LaunchMatchButton")) and shell.scroll.size.y>0)
  var stub=MatchStub.new();shell.add_child(stub);shell.match_node=stub
  shell._show_page("checkpoint");await process_frame
  check("escort checkpoint page discloses unsupported",shell.description.text.contains("護送拓荒隊暫不支援存檔"))
