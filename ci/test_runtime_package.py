@@ -113,7 +113,7 @@ class PackageTests(unittest.TestCase):
             stage=self.root/'latest-contracts'/suite;stage.mkdir(parents=True)
             raw={'suite':suite,'build':lock['build'],'failed':0,'checks':[{'name':n,'passed':True} for n in latest.TRAINING_NAMES]}
             line='FOG_MATERIAL_CONTRACT checks=13 failures=0' if suite=='material_contract' else json.dumps(raw)
-            if suite=='resource_visual_contract':line='\n'.join('RESOURCE_METRIC '+k+' vertices='+str(n)+' surfaces=1 bounds=(synthetic schema fixture)' for k,n in [('stone',1344),('iron',1344),('berry',3378)])+'\nRESOURCE_CONTRACT_PASS 27'
+            if suite=='resource_visual_contract':line='\n'.join('RESOURCE_METRIC '+k+' vertices='+str(n)+' surfaces=1 bounds=(synthetic schema fixture)' for k,n in [('stone',1008),('iron',1008),('berry',3402)])+'\nRESOURCE_CONTRACT_PASS 27'
             if suite=='resource_polish_contract':line='RESOURCE_POLISH_PASS 24'
             if suite=='normal_probe':line='NORMALS_PASS 3'
             if suite=='skirmish_policy_contract':line='SKIRMISH 17/17'

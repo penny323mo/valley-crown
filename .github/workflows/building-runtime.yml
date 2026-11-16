@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'cc86e75bf89177ba3d5ad270c2c37406a57499cadad3b2dd936a2025ed053688  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '1d307cdebb43e00eaa6d5c81f47b2d8b06f19b98f7da1c72212c81d3a7f24758  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
