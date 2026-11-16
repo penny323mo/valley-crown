@@ -7,7 +7,7 @@ BUILD = 'vc-f1aeb1af04e8'
 GAME_TREE = 'a97b169880f40d987c0b290cfe541ec615cb750a'
 INVENTORY_SHA = '947efd7323b7cb3ead5dc899f1d7082fbbf003fc206842ac209bd4e6743ba7fc'
 COUNTS = {'advanced_building_visuals':175, 'advanced_building_observation':52,
-          'construction_visual':203, 'building_damage_component':100,
+          'construction_visual':203, 'building_damage_component':106,
           'building_damage_projection':17, 'map80_sparse_memory':10}
 SUITES = tuple(COUNTS)
 EXTERNAL = ('building_damage_component','building_damage_projection')
