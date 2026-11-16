@@ -1,0 +1,34 @@
+{
+  "build": "vc-484157408059",
+  "base_source": "3c0efc940c7423e611460547ea32ec49fef4fc87",
+  "scope": "Native headless observed planning and controlled actual gather/delivery. Not rendered browser or physical phone acceptance.",
+  "results": [
+    {
+      "suite": "gather_assignment_contract",
+      "checks": 19,
+      "failed": 0
+    },
+    {
+      "suite": "idle_gather_dispatch_contract",
+      "checks": 27,
+      "failed": 0
+    },
+    {
+      "suite": "mobile_stop_control_contract",
+      "checks": 22,
+      "failed": 0
+    },
+    {
+      "suite": "escort_integration_contract",
+      "checks": 28,
+      "failed": 0
+    }
+  ],
+  "monitor": "Unchanged hardened_monitored_run default 768000 KiB RSS cap; v51 published import cache reused without runtime scripts.",
+  "saves": "No save-state files read, changed or uploaded; no schema changes.",
+  "limitations": [
+    "Current gathering load excludes workers returning cargo.",
+    "Distance score is advisory and does not guarantee shortest actual path.",
+    "No new runtime screenshot."
+  ]
+}

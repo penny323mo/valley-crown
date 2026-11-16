@@ -3760,7 +3760,7 @@ func _create_ui():
 	for resource in WorkforceOverview.RESOURCES:
 		var kind=resource
 		var dispatch=_button("",func():_dispatch_idle_gather(kind),140)
-		dispatch.name="IdleDispatch_"+resource;dispatch.tooltip_text="只派空手待命村民到最近可見、沒有已知敵人附近的資源點。不搶工作或搬運；路線仍可能受阻。"
+		dispatch.name="IdleDispatch_"+resource;dispatch.tooltip_text="按距離和現有採集人數，分派最多三名空手待命村民到可見資源。優先較近工人與較少人採集的附近資源；不搶工作或搬運，路線仍可能受阻。"
 		dispatch_row.add_child(dispatch);idle_dispatch_buttons[resource]=dispatch
 	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row]
 	shortcut_sections.army=[idle_army_button]
