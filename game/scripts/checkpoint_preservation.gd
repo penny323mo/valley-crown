@@ -1,7 +1,7 @@
 extends RefCounted
 ## Preserve bytes locally before replacing an incompatible slot. No migration.
 const Codec=preload("res://scripts/checkpoint_codec.gd")
-static func preserve(path:String,build:String,expedition:bool=false)->Dictionary:
+static func preserve(path:String,build:String,expedition:bool=false,force:bool=false)->Dictionary:
  if not FileAccess.file_exists(path):return {"ok":true,"preserved":false}
  var old=FileAccess.open(path,FileAccess.READ)
  if old==null:return {"ok":false,"reason":"BACKUP_READ"}
@@ -10,7 +10,7 @@ static func preserve(path:String,build:String,expedition:bool=false)->Dictionary
  var bytes=old.get_buffer(size);var error=old.get_error();old.close()
  if bytes.size()!=size or error not in [OK,ERR_FILE_EOF]:return {"ok":false,"reason":"BACKUP_READ"}
  var decoded=Codec.decode(bytes,build)
- if decoded.ok and (decoded.data.game.skirmish_mode=="expedition")==expedition:return {"ok":true,"preserved":false}
+ if not force and decoded.ok and (decoded.data.game.skirmish_mode=="expedition")==expedition:return {"ok":true,"preserved":false}
  var digest=HashingContext.new();digest.start(HashingContext.HASH_SHA256)
  if not bytes.is_empty():digest.update(bytes)
  var backup=path+".preserved-"+digest.finish().hex_encode()+".bin"

@@ -3,11 +3,16 @@ extends Node
 ## main.tscn remains the explicit battle fixture for simulation tests.
 const ExpeditionCheckpointStore=preload("res://scripts/expedition_checkpoint_store.gd")
 const CheckpointStore=preload("res://scripts/checkpoint_store.gd")
+const CheckpointBackups=preload("res://scripts/checkpoint_backups.gd")
 const CheckpointRestore=preload("res://scripts/checkpoint_restore.gd")
 const Rules=preload("res://scripts/rules.gd")
 var checkpoint_path=CheckpointStore.PATH
 var expedition_checkpoint_path=ExpeditionCheckpointStore.PATH
 var checkpoint_status=""
+var backup_name=""
+var backup_expedition=false
+var backup_info={}
+var backup_index=0
 const MATCH_SCENE = preload("res://main.tscn")
 const ModelCatalogue=preload("res://scripts/model_catalogue.gd")
 var manual_preview
@@ -209,7 +214,7 @@ func _layout():
 	if latin_name.visible:
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
-	buttons.columns=3 if page=="manual" else (2 if home and short_landscape and buttons.get_child_count()>3 else 1)
+	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot"]) else 1)
 	var button_height=54.0
 	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0
 	var button_gap=10
@@ -387,7 +392,39 @@ func _show_page(next_page: String):
 			_add_button("讀取存檔（取代目前戰役）", "LoadCheckpointButton", _load_checkpoint)
 		if FileAccess.file_exists(expedition_checkpoint_path):
 			_add_button("讀取遠征存檔（取代目前戰役）", "LoadExpeditionCheckpointButton", func(): _load_checkpoint(true))
+		_add_button("本機備存", "CheckpointBackupsButton", func(): _show_page("checkpoint_backups"))
 		_add_button("返回", "CheckpointBackButton", func(): _show_page("home"))
+	elif page == "checkpoint_backups":
+		heading.text="本機備存"
+		description.text=checkpoint_status+"\n\n保留已儲存進度，不是目前未儲存戰役。相同版本同類備存可讀，讀取不覆寫存檔；舊版不會轉換。"
+		_add_button("普通戰役備存","OrdinaryBackupsButton",func(): backup_expedition=false;backup_index=0;_show_page("checkpoint_backup_slot"))
+		_add_button("遠征備存","ExpeditionBackupsButton",func(): backup_expedition=true;backup_index=0;_show_page("checkpoint_backup_slot"))
+		_add_button("返回存檔","BackupsBackButton",func(): _show_page("checkpoint"))
+	elif page == "checkpoint_backup_slot":
+		heading.text="遠征備存" if backup_expedition else "普通戰役備存"
+		var slot=expedition_checkpoint_path if backup_expedition else checkpoint_path
+		var listing=CheckpointBackups.list_slot(slot,Rules.BUILD_ID,backup_expedition)
+		description.text=checkpoint_status+"\n固定排序，最多顯示 24 個；其他備存不會移除。只在查看選中備存時讀取內容。"
+		if not listing.ok:description.text+="\n無法列出："+listing.reason
+		if FileAccess.file_exists(slot):_add_button("保留目前存檔","KeepBackupButton",func(): _keep_checkpoint_backup(backup_expedition))
+		if not listing.entries.is_empty():
+			backup_index=clampi(backup_index,0,listing.entries.size()-1)
+			var entry=listing.entries[backup_index]
+			description.text+="\n%d / %d · " % [backup_index+1,listing.entries.size()]+entry.name.substr(entry.name.find(".preserved-")+11,8)
+			_add_button("查看版本","InspectBackupButton",func(): _inspect_checkpoint_backup(backup_expedition,entry.name))
+			if backup_index>0:_add_button("上一個","PreviousBackupButton",func(): backup_index-=1;_show_page("checkpoint_backup_slot"))
+			if backup_index+1<listing.entries.size():_add_button("下一個","NextBackupButton",func(): backup_index+=1;_show_page("checkpoint_backup_slot"))
+		else:description.text+="\n尚未保留備存。"
+		_add_button("返回備存","BackupSlotBackButton",func(): _show_page("checkpoint_backups"))
+
+	elif page == "checkpoint_backup_detail":
+		heading.text="備存版本"
+		var compatible=backup_info.get("ok",false)
+		var version=Rules.BUILD_ID if compatible else backup_info.get("source_build","未知")
+		description.text=("遠征" if backup_expedition else "普通戰役")+"\n備存："+backup_name.substr(backup_name.find(".preserved-")+11,8)+"\n版本："+str(version)+"\n"+("此版本可讀。讀取後暫停，不覆寫目前存檔。" if compatible else "此版不可讀。此版本尚未確認；原檔保留，不會轉換。")
+		if compatible:_add_button("讀取備存（取代目前戰役）","LoadBackupButton",func(): _load_checkpoint_backup(backup_expedition,backup_name))
+		_add_button("返回備存","BackupDetailBackButton",func(): _show_page("checkpoint_backup_slot"))
+
 	elif page == "confirm":
 		heading.text = "開始新戰役？"
 		description.text = "目前未儲存的戰役與教學會重新開始。本機存檔不會被新戰役覆蓋。"
@@ -633,8 +670,12 @@ func _load_checkpoint(expedition=false):
 	transition_busy=true
 	call_deferred("_restore_checkpoint",expedition)
 
-func _restore_checkpoint(expedition=false):
-	var result=ExpeditionCheckpointStore.read_slot(Rules.BUILD_ID,expedition_checkpoint_path) if expedition else CheckpointStore.read_slot(Rules.BUILD_ID,checkpoint_path)
+func _restore_checkpoint(expedition=false,backup_name=""):
+	var result={}
+	if not backup_name.is_empty():
+		result=CheckpointBackups.read(expedition_checkpoint_path if expedition else checkpoint_path,backup_name,Rules.BUILD_ID,expedition)
+	else:
+		result=ExpeditionCheckpointStore.read_slot(Rules.BUILD_ID,expedition_checkpoint_path) if expedition else CheckpointStore.read_slot(Rules.BUILD_ID,checkpoint_path)
 	if not result.ok:
 		checkpoint_status=("存檔版本 %s 與目前 %s 不同，原檔未改動；不會自行轉換。" % [result.get("source_build","未知"),Rules.BUILD_ID]) if result.get("reason")=="BUILD_MISMATCH" else "無法讀取存檔，未改動目前戰役："+str(result.get("reason","UNKNOWN"))
 		transition_busy=false;_show_page("checkpoint");return
@@ -654,3 +695,21 @@ func _restore_checkpoint(expedition=false):
 	candidate.set_process(true)
 	checkpoint_status="已讀取存檔，戰役保持暫停。按繼續返回。"
 	transition_busy=false;_show_page("home")
+
+func _keep_checkpoint_backup(expedition:bool):
+	if transition_busy:return
+	var result=CheckpointBackups.keep(expedition_checkpoint_path if expedition else checkpoint_path,Rules.BUILD_ID,expedition)
+	checkpoint_status="已保留本機備存，原存檔不變。" if result.ok else "未能保留備存，原存檔不變："+str(result.get("reason","UNKNOWN"))
+	_show_page("checkpoint_backup_slot")
+func _load_checkpoint_backup(expedition:bool,name:String):
+	if transition_busy:return
+	transition_busy=true
+	call_deferred("_restore_checkpoint",expedition,name)
+
+func _inspect_checkpoint_backup(expedition:bool,name:String):
+	if transition_busy:return
+	backup_name=name;backup_expedition=expedition
+	var result=CheckpointBackups.read(expedition_checkpoint_path if expedition else checkpoint_path,name,Rules.BUILD_ID,expedition)
+	# Never cache decoded snapshot data; loading re-reads and validates the bytes.
+	backup_info={"ok":result.ok,"reason":result.get("reason",""),"source_build":result.get("source_build","未知")}
+	_show_page("checkpoint_backup_detail")
