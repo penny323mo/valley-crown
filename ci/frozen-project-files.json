@@ -384,7 +384,7 @@
   "tests/mobile_stop_control_contract.gd": "21eae16d24d2d9e2a0f2a9a50963e8e1c77c364bc7e9ee68377ec659f3400149",
   "tests/mobile_stop_control_phone.gd": "6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a",
   "tests/moving_attack_recovery_contract.gd": "1eb5e04060420db044f57d7cbb348458477ae6c8a3581398233eeb5754a44411",
-  "tests/normal_probe.gd": "57b839fb0ce0bc38351690301a18e32c21f6c07bd8e931832f10207c0945e721",
+  "tests/normal_probe.gd": "018a1f3b988fb6b71b25b1414cd621fa3a745b04ec93a166116412bbf3c907cf",
   "tests/occlusion_geometry_contract.gd": "22e294c2ef4c8682d73967d7dda89629db13cc0a63ef0cd7c8fbc75a915d0cec",
   "tests/occlusion_geometry_contract.gd.uid": "64a779a10a38cd8ce1151758b5c750e8f55fbf6908d039ccdcffee6899ce639e",
   "tests/occlusion_observation_lifecycle.gd": "d1333014d1b741a7f78959ed3ca4307ccced15e6e4f96b32afae3b4655ac83f8",
