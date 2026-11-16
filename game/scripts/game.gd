@@ -3777,7 +3777,7 @@ func _create_ui():
 	for resource in WorkforceOverview.RESOURCES:
 		var kind=resource
 		var button=_button("",func():_reassign_selected_workforce(kind),140)
-		button.name="WorkforceReassign_"+resource;button.tooltip_text="只改派所選正採集或運送其他資源的村民。保留負重，不同資源先送回再換工作；不搶建造、維修或新指令。目的地須可見且沒有已知威脅，仍可能受地形阻擋。"
+		button.name="WorkforceReassign_"+resource;button.tooltip_text="只改派所選正採集或運送其他資源的村民。保留負重，不同資源先送回再換工作；不搶建造、維修或新指令。目的地須可見且沒有已知威脅，路線仍可能受阻。"
 		reassign_row.add_child(button);workforce_reassign_buttons[resource]=button
 	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row,reassign_help,reassign_row]
 	shortcut_sections.army=[idle_army_button]
