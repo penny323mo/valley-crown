@@ -361,6 +361,8 @@ const SiegeChallenge=preload("res://scripts/siege_challenge.gd")
 var siege_challenge=SiegeChallenge.new()
 const FrontierExpedition=preload("res://scripts/frontier_expedition.gd")
 var frontier_expedition=FrontierExpedition.new()
+const FrontierEscort=preload("res://scripts/frontier_escort.gd")
+var frontier_escort=FrontierEscort.new()
 const ControlPoint=preload("res://scripts/control_point.gd")
 const SupplyRace=preload("res://scripts/supply_race.gd")
 const BattleHistory=preload("res://scripts/battle_history.gd")
@@ -502,11 +504,12 @@ func _tree_visual(parent, p, kind, sc=1.0):
 func _seed_match():
 	siege_challenge=SiegeChallenge.new()
 	frontier_expedition=FrontierExpedition.new()
+	frontier_escort=FrontierEscort.new()
 	# Mirrored resource fairness. No free military buildings or gifted AI income.
 	for team in 2:
 		var sign_team=1.0 if team==0 else -1.0
 		_spawn("town_center",team,MapRoutes.home(team))
-		if skirmish_mode in ["survival","expedition"] and team==1:continue
+		if skirmish_mode in ["survival","expedition","escort"] and team==1:continue
 		for i in 5: _spawn("villager",team,Vector3(-14.5+i*1.3,0,13.5)*sign_team+MapRoutes.home_offset(team))
 		_spawn("scout",team,Vector3(-7,0,8)*sign_team+MapRoutes.home_offset(team))
 		for c in [Vector3(-17,0,3),Vector3(-5,0,1)]:
@@ -536,7 +539,7 @@ func _seed_match():
 		# Explicit symmetric scenario start, never paid training/completion events.
 		for team in 2:
 			var sign_team=1.0 if team==0 else -1.0
-			if skirmish_mode in ["survival","expedition"] and team==1:continue
+			if skirmish_mode in ["survival","expedition","escort"] and team==1:continue
 			_spawn("house",team,Vector3(-29,0,23)*sign_team,true)
 			if skirmish_mode in ["fortress","survival"]:
 				for item in [["house",Vector3(-21,0,29)],["house",Vector3(-25,0,32)],["barracks",Vector3(-18.5,0,24.5)],["range",Vector3(-18.5,0,30.5)],["stable",Vector3(-11.5,0,24.5)],["workshop",Vector3(-11.5,0,30.5)],["tower",Vector3(-16,0,19)],["tower",Vector3(-11,0,19)]]:
@@ -553,6 +556,11 @@ func _seed_match():
 		frontier_expedition.outpost_id=_spawn("tower",1,FrontierExpedition.OUTPOST,true).id
 		_spawn("tower",1,Vector3(20,0,-19),true)
 		for point in [Vector3(3.5,0,-12.5),Vector3(6.5,0,-10.5)]:_spawn("spearman",1,point,true)
+		demo_tutorial.skip()
+
+	if skirmish_mode=="escort":
+		for member in entities:
+			if member.team==0 and member.kind=="villager" and frontier_escort.villagers.size()<3:frontier_escort.villagers.append(member.id)
 		demo_tutorial.skip()
 
 func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacity_milli=-1):
@@ -750,13 +758,14 @@ func _tick(dt):
 	no_progress_ticks=no_progress_ticks+1 if progress_serial==previous_progress else 0
 	if skirmish_mode=="survival":_update_siege_challenge()
 	if skirmish_mode=="expedition":_update_frontier_expedition()
+	if skirmish_mode=="escort":_update_frontier_escort()
 	_check_end()
 	_sync_audio()
 	if not game_over and no_progress_ticks>=EndRules.NO_PROGRESS_TICKS:
 		paused=true; inactivity_paused=true; tick_accumulator=0; _cancel_mode()
 		_sync_audio()
 		_message("180 秒內沒有採集、建造或交戰進展，已暫停。按繼續可重設計時。",INF)
-	if ai_enabled and skirmish_mode not in ["survival","expedition"] and not game_over and not paused and tick_count%20==0: _ai_update()
+	if ai_enabled and skirmish_mode not in ["survival","expedition","escort"] and not game_over and not paused and tick_count%20==0: _ai_update()
 	_update_repeat_training()
 
 func _submit(type: String, data: Dictionary={}, team=0):
@@ -2842,6 +2851,9 @@ func _check_end():
 	var player_alive=not _first(0,"town_center").is_empty()
 	var enemy_alive=not _first(1,"town_center").is_empty()
 	if skirmish_mode=="expedition":enemy_alive=frontier_expedition.stage<5
+	if skirmish_mode=="escort":
+		player_alive=player_alive and frontier_escort.living>0
+		enemy_alive=frontier_escort.stage<3
 	# Accepted surrender promises that faction's defeat even if its outgoing
 	# combat destroys the other keep, or a cap/recovery boundary falls this tick.
 	var player_lost=_surrender_intent.has(0) if not _surrender_intent.is_empty() else not player_alive
@@ -2858,16 +2870,20 @@ func _check_end():
 			player_lost=true; enemy_lost=true; end_reason="time_limit"
 		else:
 			player_lost=recovery_ticks[0]>=EndRules.IRRECOVERABLE_TICKS
-			enemy_lost=skirmish_mode!="expedition" and recovery_ticks[1]>=EndRules.IRRECOVERABLE_TICKS
+			enemy_lost=skirmish_mode not in ["expedition","escort"] and recovery_ticks[1]>=EndRules.IRRECOVERABLE_TICKS
 			if not player_lost and not enemy_lost: end_reason=""; return
 			end_reason="irrecoverable"
 	if skirmish_mode=="expedition" and enemy_lost and not player_lost and _surrender_intent.is_empty():end_reason="expedition_complete"
+	if skirmish_mode=="escort" and _surrender_intent.is_empty():
+		if enemy_lost and not player_lost:end_reason="escort_complete"
+		elif player_lost and frontier_escort.living==0:end_reason="escort_villagers_lost"
 	game_over=true
 	outcome="draw" if player_lost==enemy_lost else ("defeat" if player_lost else "victory")
 	victory=outcome=="victory"
 	last_match_report=match_report.make_report(outcome,end_reason,tick_count,age_completed_tick[0],economy.stats_view(0),economy.bank_milli(0))
 	last_match_report.skirmish_mode=skirmish_mode
 	if skirmish_mode=="expedition":last_match_report.expedition=frontier_expedition.report()
+	if skirmish_mode=="escort":last_match_report.escort=frontier_escort.report()
 	last_match_report.victory_mode=victory_mode
 	last_match_report.control_ticks=control_point.scores.duplicate()
 	if victory_mode=="supply":last_match_report.supply_progress=[SupplyRace.progress(economy.stats_view(0)),SupplyRace.progress(economy.stats_view(1))]
@@ -2879,6 +2895,10 @@ func _check_end():
 		if end_reason=="surrender":
 			end_title.text={"victory":"敵方投降","defeat":"我方投降","draw":"雙方投降"}[outcome]
 			end_body.text={"victory":"敵方已確認投降。","defeat":"你已確認投降。這局判定為失敗。","draw":"雙方已確認投降。和局。"}[outcome]
+		elif end_reason=="escort_complete":
+			end_title.text="護送任務完成";end_body.text="村民抵達、前哨建成、反攻全部擊退。村民與前哨仍然存活。"
+		elif end_reason=="escort_villagers_lost":
+			end_title.text="拓荒隊失守";end_body.text="三名指定村民全部死亡，護送任務失敗。"
 		elif end_reason=="expedition_complete":
 			end_title.text="前線遠征完成";end_body.text="生產、偵察、攻破哨站、擊退反攻及敵堡目標全部完成。敵方為固定劇本守軍與一次增援，非標準經濟對戰。"
 		elif end_reason=="waves_defended":
@@ -3801,7 +3821,7 @@ func _create_ui():
 	compact_unit_tools=HBoxContainer.new(); compact_unit_tools.add_theme_constant_override("separation",8); command_row.add_child(compact_unit_tools); command_row.move_child(compact_unit_tools,0)
 	touch_button=_button("指定",_toggle_unit_command,54); compact_unit_tools.add_child(touch_button)
 	compact_cancel_button=_button("取消",func(): _cancel_mode(),54); compact_unit_tools.add_child(compact_cancel_button)
-	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode=="expedition"; compact_top_stack.add_child(objective_button)
+	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort"]; compact_top_stack.add_child(objective_button)
 	compact_menu_dismiss=Control.new(); compact_menu_dismiss.name="MenuDismissShield"; compact_menu_dismiss.mouse_filter=Control.MOUSE_FILTER_STOP; compact_menu_dismiss.gui_input.connect(_dismiss_compact_menu_input); ui.add_child(compact_menu_dismiss); compact_menu_dismiss.hide()
 	compact_menu=PanelContainer.new(); compact_menu.name="ShortcutMenu"; ui.add_child(compact_menu); compact_menu.add_theme_stylebox_override("panel",_style(Color("1d241ef5")))
 	var menu_stack=VBoxContainer.new();menu_stack.add_theme_constant_override("separation",6);compact_menu.add_child(menu_stack)
@@ -3820,6 +3840,8 @@ func _create_ui():
 		category_row.add_child(category_button);shortcut_category_buttons[category]=category_button
 	attack_alert_button=_button("前往受襲位置",_focus_attack_alert,110); attack_alert_button.name="AttackAlert"; menu_box.add_child(attack_alert_button); attack_alert_button.hide()
 	mission_label=_label("",14,Color("c8d4b3")); mission_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(mission_label)
+	if skirmish_mode=="escort":
+		var party_button=_button("選取拓荒村民",_select_escort_party,160);party_button.name="EscortPartyButton";menu_box.add_child(party_button)
 	idle_worker_button=_button("閒置村民 0 · 下一位",_focus_idle_worker,160); idle_worker_button.name="IdleWorkerCycle"; menu_box.add_child(idle_worker_button)
 	idle_worker_button.tooltip_text="選取一位閒置村民，不改動任何指令。"
 	idle_army_button=_button("待命軍隊 0 · 全選",_select_idle_army,160); idle_army_button.name="IdleArmySelect"; menu_box.add_child(idle_army_button)
@@ -4096,6 +4118,7 @@ func _update_hud():
 	mission_label.text=("城防時代：建馬廄出騎兵，建工坊出攻城車，摧毀敵方主堡。" if _age2(0) else "聚落時代：採鐵，於主堡研究城防時代，解鎖騎兵與攻城車。")
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
+	if skirmish_mode=="escort":mission_label.text=frontier_escort.caption(tick_count)
 	if skirmish_mode=="expedition":mission_label.text=frontier_expedition.caption(tick_count)
 	elif skirmish_mode=="survival":mission_label.text=siege_challenge.caption(tick_count)
 	elif victory_mode=="control": mission_label.text=control_point.caption()
@@ -4123,6 +4146,7 @@ func _update_hud():
 	elif selection.size()==1:
 		var ent=selection[0]
 		selection_title.text=Rules.NAMES.get(ent.kind,ent.kind)
+		if skirmish_mode=="escort" and ent.id in frontier_escort.villagers:selection_title.text+=" · 拓荒隊"
 		var state_names={"idle":"待命","move":"移動","gather":"採集","deliver":"交付","build":"建造","repair":"修理","return":"返回守備點","attack":"攻擊"}
 		var missing=WorkerIdleStatus.missing_resource(ent,faction_views[0].records(),own_command_pending)
 		var status=state_names.get(ent.state,"") if missing.is_empty() else WorkerIdleStatus.label(missing)
@@ -6257,7 +6281,12 @@ func _create_control_point_marker():
 func _refresh_control_point_marker():
 	if not is_instance_valid(control_point_marker):return
 	control_point_marker.visible=victory_mode=="control"
-	if is_instance_valid(objective_button): objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode=="expedition"
+	if is_instance_valid(objective_button): objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort"]
+	if skirmish_mode=="escort":
+		if is_instance_valid(objective_button):
+			objective_button.text="護送拓荒隊 · "+FrontierEscort.TITLES[frontier_escort.stage]+"\n"+frontier_escort.progress_text(tick_count)
+			objective_button.tooltip_text=frontier_escort.caption(tick_count)
+		return
 	if skirmish_mode=="expedition":
 		if is_instance_valid(objective_button):
 			var remaining=0
@@ -6283,6 +6312,7 @@ func _refresh_control_point_marker():
 		control_point_flag.set_meta("owner",control_point.owner)
 
 func _focus_control_point():
+	if skirmish_mode=="escort":camera_focus=FrontierEscort.TARGET;_camera_update();return
 	if skirmish_mode=="expedition":camera_focus=frontier_expedition.target();_camera_update();return
 	if victory_mode=="supply":
 		var keep=_first(0,"town_center")
@@ -7104,3 +7134,34 @@ func _update_frontier_expedition():
 	progress_serial+=1;_update_vision()
 	_submit("advance",{"ids":ids,"position":MapRoutes.home(0)},1)
 	_message("六名反攻增援出發，保護主堡。",3)
+
+func _update_frontier_escort():
+	if game_over:return
+	if frontier_escort.update(tick_count,entities):
+		progress_serial+=1;_message(FrontierEscort.TITLES[frontier_escort.stage],3)
+	if not frontier_escort.ready(tick_count) or tick_count%20!=0:return
+	var slots=[]
+	for index in 64:
+		var point=FrontierEscort.STAGING+Vector3(2*(index%8),0,-2*(index/8))
+		if navigation.is_point_solid(_cell(point)):continue
+		var occupied=false
+		for ent in entities:
+			if ent.alive and ent.category=="unit" and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
+		if occupied or not _static_unit_step_is_free({"pos":point,"radius":Rules.MAX_UNIT_RADIUS},point):continue
+		slots.append(point)
+		if slots.size()==FrontierEscort.ROSTER.size():break
+	if slots.size()!=FrontierEscort.ROSTER.size():return
+	var ids=[]
+	for index in slots.size():ids.append(_spawn(FrontierEscort.ROSTER[index],1,slots[index],true).id)
+	if not frontier_escort.launch(ids):return
+	progress_serial+=1;_update_vision()
+	_submit("advance",{"ids":ids,"position":FrontierEscort.TARGET},1)
+	_message("六名反攻增援出發，保護前哨。",3)
+
+func _select_escort_party():
+	if skirmish_mode!="escort" or game_over:return
+	var records=faction_views[0].records()
+	var ids=[]
+	for id in frontier_escort.villagers:
+		if records.has(id) and records[id].get("owned",false) and records[id].get("alive",false):ids.append(id)
+	_select(ids);compact_menu.hide();compact_menu_dismiss.hide()

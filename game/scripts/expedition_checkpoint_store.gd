@@ -14,6 +14,7 @@ static func read_slot(build:String,path:String=PATH)->Dictionary:
  if result.ok and result.data.game.skirmish_mode!="expedition":return {"ok":false,"reason":"NOT_EXPEDITION"}
  return result
 static func save_slot(game:Node,path:String=PATH)->Dictionary:
+ if game.skirmish_mode=="escort":return {"ok":false,"reason":"護送任務暫不支援存檔"}
  if game.skirmish_mode!="expedition":return {"ok":false,"reason":"NOT_EXPEDITION"}
  if ProjectSettings.globalize_path(path).simplify_path()==ProjectSettings.globalize_path(preload("res://scripts/checkpoint_store.gd").PATH).simplify_path():return {"ok":false,"reason":"ORDINARY_SLOT_PROTECTED"}
  if game.game_over or not game.paused:return {"ok":false,"reason":"NOT_PAUSED_MATCH"}

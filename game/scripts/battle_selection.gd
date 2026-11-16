@@ -10,6 +10,7 @@ const OPTIONS=[
  {"id":"battle","group":2,"mode":"battle","victory":"conquest","title":"快速交戰"},
  {"id":"fortress","group":2,"mode":"fortress","victory":"conquest","title":"城防會戰"},
  {"id":"survival","group":3,"mode":"survival","victory":"conquest","title":"三波守城挑戰"},
+ {"id":"escort","group":3,"mode":"escort","victory":"conquest","title":"護送拓荒隊"},
  {"id":"expedition","group":3,"mode":"expedition","victory":"conquest","title":"前線遠征"}]
 static func option(id:String)->Dictionary:
  for item in OPTIONS:
@@ -28,6 +29,11 @@ static func briefing(mode:String,victory:String)->String:
   opening="完整城防基地、兩座箭塔及 12 名混合軍隊，45 秒後第一波。"
   enemy="固定三波劇本增援，普通經濟 AI 關閉，不消耗敵方資源；每波清除後有 45 秒整備。"
   win="擊退全部三波，或摧毀敵堡。"
+ elif mode=="escort":
+  opening+="三名起始村民為任務村民；至少一人到達前哨區（X -11 至 -3，Z 3 至 9）。此任務暫不支援存檔，普通戰役與遠征存檔不變。"
+  enemy="正常付費完成前哨倉庫及箭塔後，30 秒迎接固定 6 人混合反攻；沒有經濟 AI，不消耗敵方資源。保留正常視野、尋路及傷害。"
+  win="擊退全部反攻，至少一名任務村民及區內完成的倉庫、箭塔仍存活；建築被毀可重建。"
+  lose="主堡被毀、三名任務村民全部死亡或投降。40 分鐘上限可判和局。"
  elif mode=="expedition":
   opening+="可用分開本機存檔，普通戰役存檔不變；只支援相同版本。"
   enemy="固定守軍與一次 6 人反攻，不使用經濟 AI，不消耗敵方資源；攻破哨站後 30 秒出發。"

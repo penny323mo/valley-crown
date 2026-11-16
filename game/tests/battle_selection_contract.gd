@@ -12,7 +12,7 @@ func run():
   var f=FileAccess.open(path,FileAccess.WRITE);f.store_string("isolated untouched sentinel");f.close()
  shell.buttons.get_node("StartMatchButton").pressed.emit()
  check("start enters selection without starting game",shell.page=="battle_groups" and not is_instance_valid(shell.match_node))
- check("catalogue contains nine distinct configurations",shell.BattleSelection.OPTIONS.size()==9)
+ check("catalogue contains ten distinct configurations",shell.BattleSelection.OPTIONS.size()==10)
  for option in shell.BattleSelection.OPTIONS:
   shell._show_page("battle_groups");shell.buttons.get_node("BattleGroup"+str(option.group)).pressed.emit()
   shell.buttons.get_node("ChooseBattle_"+option.id).pressed.emit()
@@ -51,5 +51,5 @@ func run():
   shell._review_finished_match();await process_frame;await process_frame
  check("all menu and replay actions leave both slots untouched",FileAccess.get_file_as_string(shell.checkpoint_path)=="isolated untouched sentinel" and FileAccess.get_file_as_string(shell.expedition_checkpoint_path)=="isolated untouched sentinel")
  var failed=checks.filter(func(c):return not c.passed).size()
- print(JSON.stringify({"suite":"battle_selection_contract","checks":checks,"failed":failed,"scope":"Native direct selection of nine existing configurations, terminal replay and cancel routing, viewport geometry and isolated slot preservation; no new AI difficulty, migration or physical-device claim"}))
+ print(JSON.stringify({"suite":"battle_selection_contract","checks":checks,"failed":failed,"scope":"Native direct selection of ten supported configurations, terminal replay and cancel routing, viewport geometry and isolated slot preservation; no new AI difficulty, migration or physical-device claim"}))
  shell.queue_free();await process_frame;quit(1 if failed else 0)

@@ -394,9 +394,11 @@ func _show_page(next_page: String):
 	elif page == "checkpoint":
 		heading.text="本機戰役存檔"
 		description.text=checkpoint_status+"\n\n普通戰役與遠征各保留一個本機存檔，再次儲存只取代同類存檔。不相容的舊存檔會先保留本機備存，備存失敗就不會覆寫。備存不等於跨版本可讀，仍只支援相同遊戲版本。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
+		if is_instance_valid(match_node) and match_node.skirmish_mode=="escort":
+			description.text="護送拓荒隊暫不支援存檔；普通戰役與遠征存檔不變。\n\n"+description.text
 		if is_instance_valid(match_node) and match_node.skirmish_mode=="expedition":
 			description.text="遠征使用分開存檔，普通戰役存檔不變。\n\n"+description.text
-		if is_instance_valid(match_node) and not match_node.game_over :
+		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode!="escort":
 			_add_button("儲存目前戰役", "SaveCheckpointButton", _save_checkpoint)
 		if FileAccess.file_exists(checkpoint_path):
 			_add_button("讀取存檔（取代目前戰役）", "LoadCheckpointButton", _load_checkpoint)
