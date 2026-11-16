@@ -5,7 +5,7 @@ from pathlib import Path
 
 FIXTURES = {
  'construction_status': ('tests/construction_status_contract.gd', '4f73d7643fc066c7ed610f658c0e1a3f49150b2951933ebf5d695e5acda444df'),
- 'construction_status_hud': ('tests/construction_status_hud.gd', '1734367065d6b76d7db98793aafbf206584b6b96dadabeae960cceb5752fbd79'),
+ 'construction_status_hud': ('tests/construction_status_hud.gd', '1a9b1f81df0f90262a556fe22918ac19155a8009ca5d324f11837fdee1a0bb7f'),
  'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '21eae16d24d2d9e2a0f2a9a50963e8e1c77c364bc7e9ee68377ec659f3400149'),
  'mobile_stop_control_phone': ('tests/mobile_stop_control_phone.gd', '6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a'),
  'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'af1fdb39fe571ed38019991fee0801935e128667608b2dfc88cf001bfda9b3ce'),
@@ -14,12 +14,12 @@ FIXTURES = {
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '851d4fe2101ea82f65eecb3e5d3302bc79a008c82a7c4a59fdeb4ef7e00cca6e')}
 MENU_SHA = '944dd76b68a9b8a7fe98e6f50071c3d684f3a5fd3323b4f6ba30fd50f0b0a29f'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-07f58c85e3f2'
+BUILD = 'vc-8c653977e6ef'
 ARRAY_COUNTS = {'contextual_touch_contract':76, 'contextual_touch_phone':26}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}
 STATUS_SHA = 'a0991d4b6e3e25bbd757d241efa3c971eff374e206e51e8999c0f862eee7f644'
-GAME_SHA = '1436e1857d7bd4c19b748c9fb0cfde3a13517949808690cd45473432ebc59e82'
+GAME_SHA = '0b3b774c557a3f1b341524e02fcd310d7325b936a7bfba4168c9a84eb35cf05c'
 FILE_SUITE = 'stance_target_cancel_phone'
 FILE_REPORT = 'stance-target-cancel-phone.json'
 STOP_COUNTS = {'mobile_stop_control_contract':22, 'mobile_stop_control_phone':64,
