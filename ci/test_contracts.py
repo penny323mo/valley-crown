@@ -161,8 +161,8 @@ class FinalBindingTests(unittest.TestCase):
     def test_success_counts_reported_executed_assertions(self):
         code,receipt,state=self.exercise()
         self.assertEqual(code,0);self.assertTrue(receipt['passed'])
-        self.assertEqual([row['assertions_executed'] for row in receipt['suites']],[34,34,22,64,58,76,26,642])
-        self.assertEqual(receipt['assertions_executed'],956)
+        self.assertEqual([row['assertions_executed'] for row in receipt['suites']],[34,34,22,64,58,76,26,670])
+        self.assertEqual(receipt['assertions_executed'],984)
         self.assertEqual(state['monitor_calls'],8)
     def test_drift_after_last_report_parse_fails(self):
         code,receipt,state=self.exercise(drift_on_parse=True)
@@ -261,7 +261,7 @@ class ConsolidatedTests(unittest.TestCase):
     def test_exact_suite_order_and_count(self):
         self.assertEqual(r.SUITES,('construction_status','construction_status_hud','mobile_stop_control_contract',
             'mobile_stop_control_phone','stance_target_cancel_phone','contextual_touch_contract','contextual_touch_phone','main_menu_flow_contract'))
-        for suite,count in {**v.ARRAY_COUNTS,'main_menu_flow_contract':642}.items():
+        for suite,count in {**v.ARRAY_COUNTS,'main_menu_flow_contract':670}.items():
             self.assertEqual(len(C[suite+'_names']),count)
             self.assertEqual(len(C[suite+'_names']),count)
             self.assertEqual(r.argv('/godot','/game',suite)[-1],'res://'+v.FIXTURES[suite][0])
