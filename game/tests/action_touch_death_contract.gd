@@ -48,7 +48,7 @@ func release(button,canceled=false):
 func run():
 	game=ControlledGame.new(); root.add_child(game)
 	game._reset_economy(game.INITIAL_STOCKS)
-	for field in ["top_resources","time_label","selection_title","selection_detail","help_label","mission_label","queue_label"]:
+	for field in ["top_resources","time_label","selection_title","selection_summary","selection_detail","help_label","mission_label","queue_label"]:
 		var label=Label.new(); game.set(field,label); game.add_child(label)
 	for field in ["pause_button","touch_button","compact_cancel_button"]:
 		var button=Button.new(); game.set(field,button); game.add_child(button)
@@ -69,7 +69,7 @@ func run():
 		check("duplicate release adds no command "+str(sequence),game.commands.size()==sequence)
 	check("resource/building navigation still invalidated",game.nav_rebuilds==2)
 	var held=find_button("訓練村民"); press(held)
-	town.queue=[{"kind":"villager","remaining_ticks":20}]; sync_owned(); game._update_hud()
+	town.queue=[{"kind":"villager","remaining_ticks":20,"queue_id":1}]; sync_owned(); game._update_hud()
 	check("queue change still replaces controls",find_button("訓練村民")!=held and held.is_queued_for_deletion())
 	release(find_button("訓練村民"))
 	check("old held press cannot activate changed queue",game.commands.size()==sequence)

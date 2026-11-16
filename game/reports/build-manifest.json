@@ -1,5 +1,5 @@
 {
-  "build": "vc-07f58c85e3f2",
+  "build": "vc-8c653977e6ef",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -29,7 +29,7 @@
     "assets/fonts/menu_title_tc.otf.import": "c367b16fef41c41b4fd92804611683295d31c7c1064be22f011edce2954ab4c9",
     "assets/fonts/title.ttf": "8cb29f7db250ebb2551a6ce2c1e0bfd5a0eb520e9e233370db0493e82e1f36f7",
     "assets/fonts/title.ttf.import": "8a2281e6016912982b268a31ecd179e7c0918500bfddd5d7bd7e9e16b9800b3c",
-    "assets/fonts/ui_tc.otf": "988e94202ce8248914bebf8722b5e30baca31d27f2cebc51e127d93a2ba7e793",
+    "assets/fonts/ui_tc.otf": "0d50fe93b8e391af49039ceafe25cc5d658663d3beed0b493fe510f969d4dd7b",
     "assets/fonts/ui_tc.otf.import": "6c6eadb81e995f7d386286402e41759ed2c50267bf9932fe0a8e45a2807a52d1",
     "assets/mature/menu/menu_backdrop.gdshader": "2ac780dad43c47ca1d068a2b776619b495be121fcdbcebfa8b1b8fc62e057ac3",
     "assets/mature/menu/valley_crown_mark.svg": "5f5882dfb8542d687992308f504e318f55667c66c56141c6aead717c475ab957",
@@ -174,7 +174,7 @@
     "scripts/field_manual.gd": "cc49af37b10e858867fe3a5bc75611516ad1c77966006856fe06a2a8a97e3623",
     "scripts/frontier_escort.gd": "0fca8cf472dd270a78714efd1b371c5cfc2469678451500f9edfa1a30d432bbb",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "1436e1857d7bd4c19b748c9fb0cfde3a13517949808690cd45473432ebc59e82",
+    "scripts/game.gd": "0b3b774c557a3f1b341524e02fcd310d7325b936a7bfba4168c9a84eb35cf05c",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
     "scripts/home_defense_allocation.gd": "134cf17610998d4d314f8b819e11004ccefc1afdd5c0135a3141e33d440abde8",
@@ -206,7 +206,7 @@
     "scripts/rest_recovery.gd": "6c3b4c9387c0f8ab8443bde375b803775de40c698be42a4e26a3c57ec8a21917",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "cdee21d7de8d90601485428fa458628c4e0ef54873e85eda44e1432b20edb257",
+    "scripts/rules.gd": "5b9a6f66ba8cd74cf384f66c212552ed822956a214cc4a9d0f7d69194d242d4a",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",

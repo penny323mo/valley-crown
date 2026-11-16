@@ -78,6 +78,13 @@ var damage_feedback=DamageFeedback.new()
 var attack_effects: Array = [] # Detached, witnessed release cues; never authoritative projectiles.
 # S09 isolated candidate: observers receive only verified own commit facts.
 var demo_tutorial = preload("res://scripts/demo_tutorial.gd").new()
+var selection_summary: Label
+var context_details: PanelContainer
+var context_details_scroll: ScrollContainer
+var guidance_detail: Label
+var context_detail_button: Button
+var guidance_detail_button: Button
+var context_detail_kind=""
 var tutorial_panel: PanelContainer
 var tutorial_label: Label
 var tutorial_skip: Button
@@ -683,10 +690,8 @@ func _process(delta):
 	_update_visuals(minf(elapsed*battle_speed,0.1))
 	if frame_counter%4==0: _update_hud(); _refresh_fog()
 	if is_instance_valid(minimap): minimap.queue_redraw()
-	if toast_time>0:
-		toast_time-=visual_delta
-		toast_label.visible=true
-	else: toast_label.visible=false
+	if toast_time>0: toast_time=maxf(0,toast_time-visual_delta)
+	_refresh_tutorial()
 	if marker_time>0:
 		marker_time-=visual_delta; order_marker.visible=true
 		order_marker.scale=Vector3.ONE*(1.0+marker_time*0.25)
@@ -3826,6 +3831,28 @@ func _create_ui():
 	selection_row=HBoxContainer.new(); selection_row.add_theme_constant_override("separation",12); compact_bottom_stack.add_child(selection_row)
 	selection_title=_label("",17,GOLD); selection_row.add_child(selection_title)
 	selection_detail=_label("",14); selection_detail.size_flags_horizontal=Control.SIZE_EXPAND_FILL; selection_detail.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; selection_row.add_child(selection_detail)
+	selection_summary=_label("",14); selection_summary.name="SelectionSummary"
+	selection_summary.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	selection_summary.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	selection_row.add_child(selection_summary)
+	context_detail_button=_button("詳情",func():_toggle_context_details("selection"),54)
+	context_detail_button.name="SelectionDetailsButton";selection_row.add_child(context_detail_button)
+	context_details=PanelContainer.new();context_details.name="BattleDetails"
+	context_details.add_theme_stylebox_override("panel",_compact_panel_style());ui.add_child(context_details)
+	context_details.mouse_filter=Control.MOUSE_FILTER_STOP
+	context_details.mouse_force_pass_scroll_events=false
+	var detail_stack=VBoxContainer.new();context_details.add_child(detail_stack)
+	var close_details=_button("關閉",func():_toggle_context_details(""),60);close_details.name="CloseBattleDetails"
+	detail_stack.add_child(close_details)
+	context_details_scroll=ScrollContainer.new();context_details_scroll.name="BattleDetailsScroll"
+	context_details_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+	context_details_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO
+	context_details_scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;detail_stack.add_child(context_details_scroll)
+	var detail_content=VBoxContainer.new();detail_content.size_flags_horizontal=Control.SIZE_EXPAND_FILL;context_details_scroll.add_child(detail_content)
+	selection_detail.reparent(detail_content);selection_detail.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	guidance_detail=_label("",14);guidance_detail.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	guidance_detail.size_flags_horizontal=Control.SIZE_EXPAND_FILL;detail_content.add_child(guidance_detail)
+	context_details.hide()
 	queue_label=_label("",14,Color("c8d4b3")); queue_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; selection_row.add_child(queue_label)
 	compact_narrow_info=VBoxContainer.new(); compact_narrow_info.add_theme_constant_override("separation",2); compact_bottom_stack.add_child(compact_narrow_info)
 	action_scroll=ScrollContainer.new(); action_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO; action_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; action_scroll.size_flags_horizontal=Control.SIZE_EXPAND_FILL
@@ -4053,11 +4080,12 @@ func _layout_ui():
 	compact_brand.size_flags_horizontal=Control.SIZE_EXPAND_FILL if stack_resources else Control.SIZE_FILL
 	compact_menu_button.text=_shortcut_menu_caption()
 	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
-	var info_parent=compact_narrow_info if narrow else selection_row
-	for label in [selection_detail,queue_label]:
+	var stack_info=size.x<480
+	var info_parent=compact_narrow_info if stack_info else selection_row
+	for label in [selection_summary,queue_label]:
 		if label.get_parent()!=info_parent: label.reparent(info_parent)
 	queue_label.custom_minimum_size.x=0 if narrow or queue_label.text.is_empty() else 222
-	compact_narrow_info.visible=narrow
+	compact_narrow_info.visible=stack_info
 	var margin=6.0 if short_ui or narrow else 8.0
 	var width=size.x-margin*2
 	hud_top.position=Vector2(margin,margin); hud_top.size=Vector2(width,0)
@@ -4067,7 +4095,6 @@ func _layout_ui():
 	hud_bottom.size.y=bottom_height; hud_bottom.position=Vector2(margin,size.y-bottom_height-margin)
 	minimap.size=Vector2(124,124); minimap.position=Vector2(margin,hud_bottom.position.y-132)
 	minimap.visible=compact_map_choice==1 or (compact_map_choice==-1 and size.x>=1000 and not short_ui)
-	toast_label.position=Vector2(margin,hud_top.position.y+hud_top.size.y+5); toast_label.size=Vector2(width,42)
 	compact_menu.position=Vector2(maxf(margin,size.x-380-margin),hud_top.position.y+hud_top.size.y+6)
 	compact_menu.size=Vector2(minf(380,width),minf(340,size.y-compact_menu.position.y-margin))
 	compact_menu_dismiss.position=Vector2(0,hud_top.position.y+hud_top.size.y)
@@ -4076,6 +4103,29 @@ func _layout_ui():
 		ui.move_child(compact_menu_dismiss,ui.get_child_count()-1); ui.move_child(compact_menu,ui.get_child_count()-1)
 	_layout_end_report(size)
 	_layout_tutorial()
+	_layout_context_details(size)
+
+func _toggle_context_details(kind):
+	_cancel_pointer_streams()
+	_clear_box_select()
+	context_detail_kind="" if context_detail_kind==kind else kind
+	context_details_scroll.scroll_vertical=0
+	_refresh_tutorial()
+	_layout_context_details(get_viewport().get_visible_rect().size)
+
+func _layout_context_details(view_size):
+	if not is_instance_valid(context_details):return
+	context_details.visible=not context_detail_kind.is_empty() and not compact_menu.visible and not game_over
+	selection_detail.visible=context_detail_kind=="selection"
+	guidance_detail.visible=context_detail_kind=="guidance"
+	guidance_detail.text=toast_label.text if toast_time>0 else demo_tutorial.text(paused)
+	context_detail_button.text="收起" if context_detail_kind=="selection" else "詳情"
+	var width=minf(520,view_size.x-12)
+	var top=hud_top.position.y+hud_top.size.y+4
+	var height=minf(200,maxf(90,hud_bottom.position.y-top-6))
+	context_details.position=Vector2(view_size.x-width-6,hud_bottom.position.y-height-4)
+	context_details.size=Vector2(width,height)
+	ui.move_child(context_details,ui.get_child_count()-1)
 
 func _selection_stance_summary(selection: Array) -> String:
 	# Presentation only: caller supplies sanitized faction records, never entities.
@@ -4190,6 +4240,16 @@ func _update_hud():
 		selection_detail.text=("%d 村民無已知採集點" % missing_workers) if missing_workers>0 else "向資源、空地或可見敵軍落指令。"
 		if route_failed_workers>0:
 			selection_detail.text=(selection_detail.text+" · " if missing_workers>0 else "")+("%d 村民工作路線停止" % route_failed_workers)
+	selection_summary.text="點選單位" if selection.is_empty() else selection_detail.text
+	if selection.size()==1:
+		var summary_ent=selection[0]
+		if summary_ent.built:
+			# First segment is exact HP/status; passive rules remain in full details.
+			var parts=selection_detail.text.split(" · ")
+			selection_summary.text=" · ".join(parts.slice(0,2))
+			if worker_evacuations.has(summary_ent.id):selection_summary.text+=" · "+_worker_safety_label(summary_ent)
+		elif selection_summary.text.contains("；"):
+			selection_summary.text=selection_summary.text.split("；")[0]
 	var stance_summary=_selection_stance_summary(selection)
 	if not stance_summary.is_empty(): selection_detail.text+=" · "+stance_summary
 	var counter_count=selection.filter(func(record):return record.get("owned",false) and record.get("target_policy","")=="counter").size()
@@ -4265,9 +4325,15 @@ func _update_hud():
 		selection_detail.text="在戰場按住移動，選取框內單位；取消可返回選取。"
 		queue_label.hide()
 		help_label.text=selection_detail.text
+	if not build_mode.is_empty() or rally_building>=0 or touch_command or box_select_mode:
+		selection_summary.text=selection_detail.text.split("；")[0]
 	call_deferred("_layout_ui")
 
 func _rebuild_actions(selection):
+	# This 44px control lives in the action strip, not a taller summary header.
+	if is_instance_valid(context_detail_button) and context_detail_button.get_parent():
+		context_detail_button.reparent(ui);context_detail_button.hide()
+	call_deferred("_place_context_detail_action")
 	# Stop may occupy the auxiliary slot outside the action strip. Recreate it
 	# with the selection so a held press cannot act on a replacement selection.
 	if is_instance_valid(stop_button):
@@ -4427,6 +4493,19 @@ func _rebuild_actions(selection):
 			actions.add_child(stop_button)
 			actions.add_child(_button("守備",func(): _submit_selected_stance("defend"),54))
 			break
+
+func _place_context_detail_action():
+	if not is_instance_valid(actions) or not is_instance_valid(context_detail_button):return
+	if context_detail_button.get_parent():context_detail_button.get_parent().remove_child(context_detail_button)
+	actions.add_child(context_detail_button);context_detail_button.show()
+	# Keep the first core production actions in view; other contexts retain
+	# their primary command before the optional information action.
+	var index=1
+	if selected.size()==1:
+		var record=faction_views[0].get_record(selected[0])
+		if record.get("built",false) and Rules.PRODUCES.has(record.get("kind","")):
+			index=3
+	actions.move_child(context_detail_button,mini(index,actions.get_child_count()-1))
 
 func _refresh_repeat_train_button():
 	if not is_instance_valid(repeat_train_button): return
@@ -4616,6 +4695,7 @@ func _message(text,duration=4.0,build_guidance=false):
 	toast_build_guidance=build_guidance
 	if is_instance_valid(toast_label): toast_label.text=text
 	toast_time=duration
+	_refresh_tutorial()
 
 func _select(ids):
 	# Choosing a different group/building ends the previous builder preview.
@@ -4626,6 +4706,7 @@ func _select(ids):
 	# must never order the newly selected group.
 	_cancel_pointer_streams()
 	_clear_box_select()
+	context_detail_kind=""
 	selected=[]
 	for id in ids:
 		var ent=faction_views[0].get_record(id)
@@ -4713,7 +4794,7 @@ func _clear_box_select():
 
 func _box_point_in_world(point):
 	if not get_viewport().get_visible_rect().has_point(point): return false
-	for boundary in [hud_top,hud_bottom,minimap,compact_menu_dismiss,end_panel,tutorial_panel]:
+	for boundary in [hud_top,hud_bottom,minimap,compact_menu_dismiss,end_panel,tutorial_panel,context_details]:
 		if is_instance_valid(boundary) and boundary.is_visible_in_tree() and boundary.get_global_rect().has_point(point): return false
 	return true
 
@@ -5372,7 +5453,7 @@ func _qa_visible_rect(control: Control) -> Rect2:
 		if parent.clip_contents or parent is ScrollContainer: rect=rect.intersection(parent.get_global_rect())
 		parent=parent.get_parent()
 	# Do not offer a covered control as a touch target under an open overlay.
-	for cover in [compact_menu,end_panel,tutorial_panel]:
+	for cover in [compact_menu,end_panel,tutorial_panel,context_details]:
 		if is_instance_valid(cover) and cover.is_visible_in_tree() and cover!=control and not cover.is_ancestor_of(control) and rect.intersects(cover.get_global_rect()): return Rect2()
 	if is_instance_valid(compact_menu_dismiss) and compact_menu_dismiss.is_visible_in_tree() and not compact_menu.is_ancestor_of(control) and rect.intersects(compact_menu_dismiss.get_global_rect()): return Rect2()
 	return rect
@@ -5407,6 +5488,7 @@ func _qa_hud_snapshot() -> Dictionary:
 			if visible_cells[0].is_empty() or visible_cells[0][_cell_index(world)]==0 or _pick(screen)>=0: continue
 			result.ground_points.append([screen.x,screen.y])
 	if _qa_visible_rect(selection_detail).has_area(): result.selection_detail=selection_detail.text
+	elif _qa_visible_rect(selection_summary).has_area(): result.selection_detail=selection_summary.text
 	for record in faction_views[0].records().values():
 		if not record.get("owned",false) or not record.get("alive",false) or record.get("remembered",false) or record.get("team",-1)!=0: continue
 		var site=record.get("category","")=="building"
@@ -5920,6 +6002,14 @@ func _create_tutorial_ui():
 	tutorial_label.mouse_filter=Control.MOUSE_FILTER_IGNORE; row.add_child(tutorial_label)
 	tutorial_skip=_button("跳過",_skip_tutorial,56); tutorial_skip.name="SkipTutorial"
 	row.add_child(tutorial_skip)
+	guidance_detail_button=_button("詳情",func():_toggle_context_details("guidance"),54)
+	guidance_detail_button.name="GuidanceDetailsButton";row.add_child(guidance_detail_button)
+	toast_label.reparent(row);row.move_child(toast_label,0)
+	toast_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	toast_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_LEFT
+	for label in [toast_label,tutorial_label]:
+		label.autowrap_mode=TextServer.AUTOWRAP_OFF
+		label.clip_text=true;label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
 	_refresh_tutorial()
 	_layout_tutorial()
 
@@ -5929,20 +6019,23 @@ func _skip_tutorial():
 
 func _refresh_tutorial():
 	if not is_instance_valid(tutorial_panel): return
-	tutorial_panel.visible=not demo_tutorial.skipped and not game_over and not compact_menu.visible
+	var feedback=toast_time>0 and not toast_label.text.is_empty()
+	tutorial_panel.visible=(feedback or not demo_tutorial.skipped) and not game_over and not compact_menu.visible and context_detail_kind.is_empty()
+	tutorial_label.visible=not feedback
+	toast_label.visible=feedback and tutorial_panel.visible
+	tutorial_skip.visible=not feedback
 	tutorial_label.text=demo_tutorial.text(paused)
 	tutorial_skip.text="收起" if demo_tutorial.step()==demo_tutorial.KEYS.size() else "跳過"
+	if is_instance_valid(guidance_detail):
+		guidance_detail.text=toast_label.text if feedback else demo_tutorial.text(paused)
 
 func _layout_tutorial():
 	if not is_instance_valid(tutorial_panel): return
 	_refresh_tutorial()
 	var viewport_size=get_viewport().get_visible_rect().size
-	var width=minf(560,viewport_size.x-12)
-	tutorial_panel.position=Vector2(viewport_size.x-width-6,hud_top.position.y+hud_top.size.y+4)
+	var width=viewport_size.x-12
+	tutorial_panel.position=Vector2(6,hud_top.position.y+hud_top.size.y+4)
 	tutorial_panel.size=Vector2(width,0)
-	# Container wrapping settles on the following layout pass; no world reads.
-	if tutorial_panel.visible:
-		toast_label.position.y=tutorial_panel.position.y+tutorial_panel.size.y+4
 
 # Standalone battlefield fixtures retain deliberate startup; the product shell
 # owns navigation when connected. No game save or tutorial skip is implied.

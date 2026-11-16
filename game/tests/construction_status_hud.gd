@@ -93,7 +93,7 @@ func telemetry_contract(site: Dictionary):
 	var rng_state=game.rng.state
 	var hud=game._qa_hud_snapshot()
 	var size=root.get_visible_rect().size
-	check("QA schema reports logical viewport and visible detail",hud.schema==2 and hud.viewport==[size.x,size.y] and hud.selection_detail==game.selection_detail.text)
+	check("QA schema reports logical viewport and visible detail",hud.schema==2 and hud.viewport==[size.x,size.y] and hud.selection_detail==game.selection_summary.text)
 	var keys=hud.keys(); keys.sort()
 	check("QA exact public schema",keys==["action_scroll","buttons","camera","context_targets","ground_points","own_targets","preview","schema","selected_own","selection_detail","viewport"])
 	check("QA visible camera values only",hud.camera.size()==2 and hud.camera.focus==[game.camera_focus.x,game.camera_focus.y,game.camera_focus.z] and hud.camera.zoom==game.camera.size)
