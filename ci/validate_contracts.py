@@ -11,10 +11,10 @@ FIXTURES = {
  'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'af1fdb39fe571ed38019991fee0801935e128667608b2dfc88cf001bfda9b3ce'),
  'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '020e0ba0df41b0406fc29d27386ba2a4cdc327737d5129250d65c97de429d0ea'),
  'contextual_touch_phone': ('tests/contextual_touch_phone.gd', '5962568a2347360f8ed70cca4d3f026181b0c24a965c0f9b0a64b224143e7e5d'),
- 'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '4dfe17222274a38a71ff828f62dd357a1473702bb8e8a037ed3da2e053221d6c')}
-MENU_SHA = '56d9114a0faf9b230b888c93704eadede5379fab60875269b6d00399ac7b9807'
+ 'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', 'd1e4f274921382c58a657728854e77d797a3f0f005204b562e33cc18a7e1e9e1')}
+MENU_SHA = 'd17608ea59284ca2948d723ab4e7fed2473336aed4248a02cc9e5e29f2e47e3a'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-959fff7a3003'
+BUILD = 'vc-ccd572fb1931'
 ARRAY_COUNTS = {'contextual_touch_contract':76, 'contextual_touch_phone':26}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}
@@ -109,7 +109,7 @@ def validate_menu(report, lock, contract):
     need(report['scope']==MENU_SCOPE, 'Wrong menu scope')
     need(type(report['failure_count']) is int and report['failure_count']==0, 'Menu report failure count')
     checks=report['checks']
-    need(type(checks) is list and len(checks)==558, 'Missing menu checks')
+    need(type(checks) is list and len(checks)==614, 'Missing menu checks')
     need(all(type(c) is dict and set(c)=={'name','passed'} and type(c['name']) is str and c['passed'] is True for c in checks), 'Failed/malformed menu check')
     need([c['name'] for c in checks]==contract['main_menu_flow_contract_names'], 'Menu check order/name mismatch')
     expected={'scripts/game.gd':GAME_SHA,'scripts/main_menu.gd':MENU_SHA}
