@@ -1,4 +1,4 @@
-name: Capture v82 paid resource trade and real villager production
+name: Capture v83 paid wall construction and natural enemy damage
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [resource_trade]
+        scenario: [wall_natural]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,24 +32,24 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14253977611/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='0f37d279026ddc7ab305bfc859babae0f46f788c1e8fb12ccd4af6bd1bd9fd45'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14260210257/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='53bf7537085b14e0731c40c163bda30ef42ce64b16fa098c163fa5fcec4b4b28'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='3f2289b3715cae2a81ca41cb7f251ef371e8ebc4bfcf1d81a89ebb1bd4dcabbd'
+          assert hashlib.sha256(pck).hexdigest()=='1f848ae1167bf2b2a49e63897a8f787b7800664d718a71c5fcdb44b8c1730f36'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-resource-trade-natural.gd /tmp/capture/capture.gd
+          cp ci/capture-wall-natural-journey.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v82-resource-trade-${{ matrix.scenario }}
+          name: genuine-v83-wall-natural-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
-            /tmp/capture/resource-trade-natural-proof.json
-            /tmp/capture/resource-trade-natural-contract.json
+            /tmp/capture/wall-natural-proof.json
+            /tmp/capture/wall-natural-contract.json
             /tmp/capture/*stdout.txt
             /tmp/capture/*stderr.txt
           if-no-files-found: error
