@@ -3653,6 +3653,7 @@ func _update_visuals(delta):
 			var proxy=presentation_nodes[record.id]
 			proxy.node.visible=true; proxy.node.position=record.pos
 			if record.category=="building": ConstructionVisual.apply(proxy.body,record.kind,record.built,record.progress)
+			if record.category=="resource": ResourceVisuals.present(proxy.body,record)
 			proxy.body.rotation.y=record.visual_yaw
 			if record.category=="unit":
 				if record.kind in MatureVisuals.UNIT_KINDS: character_presenter.present(record,proxy.body,RED if record.team==1 else BLUE,delta,running)

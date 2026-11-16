@@ -75,16 +75,19 @@ static func _fruit(st: SurfaceTool, center: Vector3, radius: float, color: Color
 			if band>0: _triangle(st,p0,p1,p2,color)
 			if band<3: _triangle(st,p2,p1,p3,color.lightened(0.035))
 
-static func _make_mesh(kind: String) -> ArrayMesh:
+static func _make_mesh(kind: String, depletion: int=0) -> ArrayMesh:
 	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	if kind in ["stone","iron"]:
 		var color := Color("9a998e") if kind=="stone" else Color("73736a")
-		_boulder(st,Vector3(-0.17,0,-0.08),Vector3(0.36,0.52,0.32),0.4,color,kind=="iron")
-		_boulder(st,Vector3(0.23,0,0.10),Vector3(0.29,0.31,0.27),1.8,color.darkened(0.07),kind=="iron")
+		_boulder(st,Vector3(-0.17,0,-0.08),Vector3(0.36, [0.52,0.39,0.25,0.12][depletion],0.32),0.4,color,kind=="iron")
+		if depletion<3: _boulder(st,Vector3(0.23,0,0.10),Vector3(0.29,[0.31,0.26,0.14][mini(depletion,2)],0.27),1.8,color.darkened(0.07),kind=="iron")
 		_boulder(st,Vector3(-0.28,0,0.29),Vector3(0.20,0.21,0.16),2.9,color.lightened(0.04))
 		for i in 5:
 			var a := i*2.4
 			_boulder(st,Vector3(cos(a)*0.46,0,sin(a)*0.42),Vector3(0.075,0.07,0.06),a,color.darkened(0.08))
+		for i in depletion*3:
+			var a := i*2.39996
+			_boulder(st,Vector3(cos(a)*0.30,0.005,sin(a)*0.26),Vector3(0.07,0.025,0.055),a,color.lightened(0.12))
 	else:
 		# Branched fruiting shrub, irregular outline with visible gaps at its base.
 		for branch in 5:
@@ -95,8 +98,8 @@ static func _make_mesh(kind: String) -> ArrayMesh:
 			var r := 0.10+0.27*sqrt(float(i%17)/16.0)
 			var h := 0.20+0.24*(1.0-r/0.50)+0.075*sin(i*3.1)
 			_leaf(st,Vector3(cos(a)*r,h,sin(a)*r),a+0.25*sin(i),0.10+0.35*sin(i*1.7),0.21,Color("506536").lightened(0.025*(i%4)))
-		for cluster in 7:
-			var a := cluster*TAU/7.0+0.3
+		for cluster in [7,5,3,1][depletion]:
+			var a: float = cluster*TAU/7.0+0.3
 			for fruit in 3:
 				var p := Vector3(cos(a)*0.31,0.32+0.055*sin(cluster*1.9),sin(a)*0.31)+Vector3(cos(fruit*2.1)*0.043,0.028*(fruit%2),sin(fruit*2.1)*0.043)
 				_fruit(st,p,0.034+0.004*(fruit%2),Color("a03e42") if fruit%2==0 else Color("79323b"))
@@ -106,3 +109,27 @@ static func _make_mesh(kind: String) -> ArrayMesh:
 	material.cull_mode=BaseMaterial3D.CULL_DISABLED
 	st.set_material(material)
 	return st.commit()
+
+static func stage(record:Dictionary) -> int:
+	var maximum=float(record.get("max_hp",0))
+	if maximum<=0:return 0
+	var ratio=clampf(float(record.get("hp",maximum))/maximum,0.0,1.0)
+	return 3 if ratio<=0.25 else (2 if ratio<=0.5 else (1 if ratio<=0.75 else 0))
+
+static func present(parent:Node3D,record:Dictionary) -> void:
+	var kind=record.get("kind","")
+	if record.get("category","")!="resource" or kind not in ["stone","iron","berry"]:return
+	var visual=parent.get_node_or_null("ResourceVisual_"+kind)
+	if not visual is MeshInstance3D:return
+	var level=stage(record)
+	if visual.get_meta("depletion_stage",0)==level:return
+	var key=kind+"_"+str(level) if level>0 else kind
+	if not cache.has(key):cache[key]=_make_mesh(kind,level)
+	# Replacement affects only this observed proxy. Clear its old dim overrides,
+	# then reapply remembered styling from this same immutable observation.
+	visual.mesh=cache[key]
+	visual.set_surface_override_material(0,null)
+	visual.remove_meta("observed_material_override")
+	visual.remove_meta("observed_surface_overrides")
+	visual.set_meta("depletion_stage",level)
+	preload("res://scripts/remembered_material.gd").apply(visual,record.get("remembered",false))

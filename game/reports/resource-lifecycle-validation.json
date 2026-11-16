@@ -1,0 +1,74 @@
+{
+  "build": "vc-19bf58c498f1",
+  "source_base": "783e367c73a946edc554dc982881a8b184ef707f",
+  "native_checks": 192,
+  "suites": [
+    {
+      "suite": "resource_lifecycle_contract",
+      "checks": 59,
+      "passed": true,
+      "sampled_peak_rss_kib": 198320,
+      "log_sha256": "cd1de2c902eb4e74c43ba1fd41f4022cfb7416396e7f7951780e6e439e9ceebe"
+    },
+    {
+      "suite": "resource_visual_contract",
+      "checks": 27,
+      "passed": true,
+      "sampled_peak_rss_kib": 58420,
+      "log_sha256": "c478ccd5aa737ec82fcd658be22508493c664fa981cbe3030608027136555849"
+    },
+    {
+      "suite": "resource_polish_contract",
+      "checks": 24,
+      "passed": true,
+      "sampled_peak_rss_kib": 60228,
+      "log_sha256": "219e0f2218698c12521a130d435d14841b021ad9c07be1c6d3b59eb3c06c01ab"
+    },
+    {
+      "suite": "advanced_building_observation",
+      "checks": 52,
+      "passed": true,
+      "sampled_peak_rss_kib": 197080,
+      "log_sha256": "b1849e4c3256f4d0d8dac45619fad54ba0e6d34181253252bfe303dc35d8c039"
+    },
+    {
+      "suite": "occlusion_observation_lifecycle",
+      "checks": 27,
+      "passed": true,
+      "sampled_peak_rss_kib": 197288,
+      "log_sha256": "a9912b85473f126d3f4f63ec824170c828df3473a292f866dde86cafda5b66da"
+    },
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "passed": true,
+      "sampled_peak_rss_kib": 62316,
+      "log_sha256": "0142bec1ed8c63ac85448d4ef7f8b356f91dc1762be43aa0ab2e0a48620cb8af"
+    }
+  ],
+  "scope": "Four shared depletion stages for stone/iron/berry from immutable observed HP only. Real native harvest and hidden harvest/reobservation tested. Collision, economy, random stream and saved schema untouched. Rendered acceptance pending.",
+  "guard_unchanged": true,
+  "earlier_failure": "Initial inferred Variant angle compile error; corrected explicit float. Original failed guarded timeout receipt retained.",
+  "capture_half_preflight": {
+    "rendered": false,
+    "ticks": 7872,
+    "stone": 200,
+    "iron": 200,
+    "berry": 100,
+    "seconds": 67.23772,
+    "scope": "Normal harvesting to half capacity; shorter capture prepared for hosted60CPU/90wall guard."
+  },
+  "source_checks": 1029,
+  "capture_preflight": {
+    "rendered": false,
+    "ticks": 3912,
+    "stone_remaining": 300,
+    "iron_remaining": 300,
+    "berry_remaining": 150,
+    "stage": 1,
+    "seconds": 34.992738,
+    "sampled_peak_rss_kib": 197412,
+    "script_sha256": "d78460a1651ca20e5f6a1aca62f844d6cf5086109cb221a99a84f6afada5258a",
+    "scope": "Controlled full nodes, six workers, preplaced depot; actual harvesting until75percent, then normalStop. Two native frames intended at640x360."
+  }
+}
