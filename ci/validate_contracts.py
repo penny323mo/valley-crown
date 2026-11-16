@@ -6,9 +6,9 @@ from pathlib import Path
 FIXTURES = {
  'construction_status': ('tests/construction_status_contract.gd', '4f73d7643fc066c7ed610f658c0e1a3f49150b2951933ebf5d695e5acda444df'),
  'construction_status_hud': ('tests/construction_status_hud.gd', '1734367065d6b76d7db98793aafbf206584b6b96dadabeae960cceb5752fbd79'),
- 'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', 'b00b82d5a66ab1b9c70e093d7e49d550cf1ecec578dd9e72bc80f210581aaaa8'),
+ 'mobile_stop_control_contract': ('tests/mobile_stop_control_contract.gd', '21eae16d24d2d9e2a0f2a9a50963e8e1c77c364bc7e9ee68377ec659f3400149'),
  'mobile_stop_control_phone': ('tests/mobile_stop_control_phone.gd', '6952491d7cfd8aa92d79c357823ffc1302e55c6cab69b173ad0b1e64008e0f4a'),
- 'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'fe1a38da69e900aeef7edd4403f5b553727a704ca30c2ade83df654116b653e6'),
+ 'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'af1fdb39fe571ed38019991fee0801935e128667608b2dfc88cf001bfda9b3ce'),
  'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '020e0ba0df41b0406fc29d27386ba2a4cdc327737d5129250d65c97de429d0ea'),
  'contextual_touch_phone': ('tests/contextual_touch_phone.gd', '5962568a2347360f8ed70cca4d3f026181b0c24a965c0f9b0a64b224143e7e5d'),
  'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '4dfe17222274a38a71ff828f62dd357a1473702bb8e8a037ed3da2e053221d6c')}
