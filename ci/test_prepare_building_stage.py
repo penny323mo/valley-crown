@@ -7,6 +7,7 @@ from unittest import mock
 import prepare_web_release as prep
 import run_export as product
 import run_export_diagnostic as diagnostic
+import validate_latest_contracts as latest
 
 class PreparationTests(unittest.TestCase):
     def fake_git(self,*args):
@@ -33,6 +34,7 @@ class PreparationTests(unittest.TestCase):
                 self.assertFalse(receipt['engine_executed'])
                 self.assertEqual(lock['diagnostic_only'],side=='diagnostic')
                 self.assertEqual(len(lock['project_files']),prep.SIDES[side]['files'])
+                self.assertEqual(set(lock['latest_harness_sha256']),set(latest.SUITES))
                 self.assertEqual('scripts/building_art_review.gd.uid' in lock['allowed_generated_uid_files'],side=='diagnostic')
                 self.assertEqual('building_harness_sha256' in lock,side=='product')
                 self.assertEqual(set(x.name for x in work.iterdir()),{'project','source.zip','import-manifest.json','export-lock.json','pins.env','source-attestation.json'})
