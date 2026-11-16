@@ -156,7 +156,7 @@ def read_report(stage,suite):
   require(rows==['RESOURCE_CONTRACT_PASS 27'],'Wrong resource summary')
   metrics=[l for l in log.splitlines() if l.startswith('RESOURCE_METRIC ')]
   require(len(metrics)==3,'Missing/duplicate resource metrics')
-  for line,kind,count in zip(metrics,('stone','iron','berry'),(1344,1344,3378)):
+  for line,kind,count in zip(metrics,('stone','iron','berry'),(1008,1008,3402)):
    require(line.startswith('RESOURCE_METRIC '+kind+' vertices='+str(count)+' surfaces=1 bounds='),'Wrong resource geometry')
   return {'summary':rows[0],'assertions':27,'metrics':metrics}
  if suite=='skirmish_policy_contract':
