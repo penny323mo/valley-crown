@@ -1,4 +1,4 @@
-name: Capture v72 natural escort campaign
+name: Capture v73 cavalry harassment and withdrawal
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [escort]
+        scenario: [cavalry]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,19 +32,19 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14219940700/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='229958d668c216d2fe4d0bb3e0fdda838ae475cf491645817cb971285ebeeb44'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14220474195/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='816ded28836af84c73c3ee8f2651422362230f0e5481e84f7188fe0366174630'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='b942c54bc5d199c62d9034e18dd39f4377fbd028207e02d8c789b4183e73e355'
+          assert hashlib.sha256(pck).hexdigest()=='fd0aa7b23d6ec77f30594f97b03a44fce5a65b96c64aa4dcb5a3391cb1110ce7'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-v72-escort-journey.gd /tmp/capture/capture.gd
+          cp ci/capture-economic-raid-fortress.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v72-escort-${{ matrix.scenario }}
+          name: genuine-v73-cavalry-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
