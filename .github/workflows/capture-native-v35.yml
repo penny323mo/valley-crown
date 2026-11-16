@@ -1,4 +1,4 @@
-name: Capture v83 natural wall inspection angle
+name: Verify v83 post-breach advance and real keep attack
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [wall_natural]
+        scenario: [wall_continuation]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -38,13 +38,28 @@ jobs:
           assert hashlib.sha256(pck).hexdigest()=='1f848ae1167bf2b2a49e63897a8f787b7800664d718a71c5fcdb44b8c1730f36'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-wall-natural-journey.gd /tmp/capture/capture.gd
+          cp ci/capture-wall-natural-continuation.gd /tmp/capture/capture.gd
+      - name: Verify controlled real-tick wall continuation and recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          ulimit -v 2097152 -t 60
+          export HOME=/tmp/capture XDG_DATA_HOME=/tmp/capture/contract-data XDG_CONFIG_HOME=/tmp/capture/contract-config XDG_CACHE_HOME=/tmp/capture/contract-cache
+          timeout --signal=TERM --kill-after=5s 70s /tmp/Godot_v4.6.3-stable_linux.x86_64 --headless --main-pack /tmp/capture/index.pck --script ci/wall_continuation_contract.gd > /tmp/capture/wall-continuation-stdout.txt 2> /tmp/capture/wall-continuation-stderr.txt
+          python3 - <<'PY'
+          import json,pathlib
+          lines=pathlib.Path('/tmp/capture/wall-continuation-stdout.txt').read_text().splitlines()
+          report=next(json.loads(line) for line in reversed(lines) if line.startswith('{'))
+          assert report['suite']=='wall_continuation_contract' and report['failed']==0 and len(report['checks'])==10
+          assert all(row['passed'] for row in report['checks'])
+          print('All ten controlled continuation checks passed')
+          PY
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v83-wall-inspection-${{ matrix.scenario }}
+          name: genuine-v83-wall-continuation-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
@@ -53,3 +68,4 @@ jobs:
             /tmp/capture/*stdout.txt
             /tmp/capture/*stderr.txt
           if-no-files-found: error
+
