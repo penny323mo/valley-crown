@@ -1,4 +1,4 @@
-name: Capture genuine candidate v66 frontier expedition
+name: Capture v66 ordinary-command full expedition journey
 on:
   push:
     branches: [main]
@@ -38,13 +38,13 @@ jobs:
           assert hashlib.sha256(pck).hexdigest()=='c9007f6a5e1d81b8663f4f6bd9b615a42f32e175144b64535a75be9877096479'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-v66-expedition.gd /tmp/capture/capture.gd
+          cp ci/capture-v66-natural-expedition.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
-        run: python3 ci/capture-v35-guard.py
+        run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v66-expedition-native-render
+          name: genuine-v66-natural-expedition-journey
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
