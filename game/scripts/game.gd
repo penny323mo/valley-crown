@@ -358,6 +358,8 @@ const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var skirmish_mode="standard"
 const SiegeChallenge=preload("res://scripts/siege_challenge.gd")
 var siege_challenge=SiegeChallenge.new()
+const FrontierExpedition=preload("res://scripts/frontier_expedition.gd")
+var frontier_expedition=FrontierExpedition.new()
 const ControlPoint=preload("res://scripts/control_point.gd")
 const SupplyRace=preload("res://scripts/supply_race.gd")
 const BattleHistory=preload("res://scripts/battle_history.gd")
@@ -498,11 +500,12 @@ func _tree_visual(parent, p, kind, sc=1.0):
 
 func _seed_match():
 	siege_challenge=SiegeChallenge.new()
+	frontier_expedition=FrontierExpedition.new()
 	# Mirrored resource fairness. No free military buildings or gifted AI income.
 	for team in 2:
 		var sign_team=1.0 if team==0 else -1.0
 		_spawn("town_center",team,MapRoutes.home(team))
-		if skirmish_mode=="survival" and team==1:continue
+		if skirmish_mode in ["survival","expedition"] and team==1:continue
 		for i in 5: _spawn("villager",team,Vector3(-14.5+i*1.3,0,13.5)*sign_team+MapRoutes.home_offset(team))
 		_spawn("scout",team,Vector3(-7,0,8)*sign_team+MapRoutes.home_offset(team))
 		for c in [Vector3(-17,0,3),Vector3(-5,0,1)]:
@@ -532,7 +535,7 @@ func _seed_match():
 		# Explicit symmetric scenario start, never paid training/completion events.
 		for team in 2:
 			var sign_team=1.0 if team==0 else -1.0
-			if skirmish_mode=="survival" and team==1:continue
+			if skirmish_mode in ["survival","expedition"] and team==1:continue
 			_spawn("house",team,Vector3(-29,0,23)*sign_team,true)
 			if skirmish_mode in ["fortress","survival"]:
 				for item in [["house",Vector3(-21,0,29)],["house",Vector3(-25,0,32)],["barracks",Vector3(-18.5,0,24.5)],["range",Vector3(-18.5,0,30.5)],["stable",Vector3(-11.5,0,24.5)],["workshop",Vector3(-11.5,0,30.5)],["tower",Vector3(-16,0,19)],["tower",Vector3(-11,0,19)]]:
@@ -542,6 +545,13 @@ func _seed_match():
 			for index in kinds.size():
 				_spawn(kinds[index],team,Vector3(-26+2*(index%2),0,13-2*(index/2))*sign_team,true)
 			age_completed_tick[team]=0
+		demo_tutorial.skip()
+
+	if skirmish_mode=="expedition":
+		# Authored, disclosed enemy fortifications; not claimed as paid production.
+		frontier_expedition.outpost_id=_spawn("tower",1,FrontierExpedition.OUTPOST,true).id
+		_spawn("tower",1,Vector3(20,0,-19),true)
+		for point in [Vector3(3.5,0,-12.5),Vector3(6.5,0,-10.5)]:_spawn("spearman",1,point,true)
 		demo_tutorial.skip()
 
 func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacity_milli=-1):
@@ -738,13 +748,14 @@ func _tick(dt):
 		recovery_ticks[team]=recovery_ticks[team]+1 if EndRules.irrecoverable(_recovery_view(team)) else 0
 	no_progress_ticks=no_progress_ticks+1 if progress_serial==previous_progress else 0
 	if skirmish_mode=="survival":_update_siege_challenge()
+	if skirmish_mode=="expedition":_update_frontier_expedition()
 	_check_end()
 	_sync_audio()
 	if not game_over and no_progress_ticks>=EndRules.NO_PROGRESS_TICKS:
 		paused=true; inactivity_paused=true; tick_accumulator=0; _cancel_mode()
 		_sync_audio()
 		_message("180 秒內沒有採集、建造或交戰進展，已暫停。按繼續可重設計時。",INF)
-	if ai_enabled and skirmish_mode!="survival" and not game_over and not paused and tick_count%20==0: _ai_update()
+	if ai_enabled and skirmish_mode not in ["survival","expedition"] and not game_over and not paused and tick_count%20==0: _ai_update()
 	_update_repeat_training()
 
 func _submit(type: String, data: Dictionary={}, team=0):
@@ -2829,6 +2840,7 @@ func _check_end():
 	if game_over: return
 	var player_alive=not _first(0,"town_center").is_empty()
 	var enemy_alive=not _first(1,"town_center").is_empty()
+	if skirmish_mode=="expedition":enemy_alive=frontier_expedition.stage<5
 	# Accepted surrender promises that faction's defeat even if its outgoing
 	# combat destroys the other keep, or a cap/recovery boundary falls this tick.
 	var player_lost=_surrender_intent.has(0) if not _surrender_intent.is_empty() else not player_alive
@@ -2845,14 +2857,16 @@ func _check_end():
 			player_lost=true; enemy_lost=true; end_reason="time_limit"
 		else:
 			player_lost=recovery_ticks[0]>=EndRules.IRRECOVERABLE_TICKS
-			enemy_lost=recovery_ticks[1]>=EndRules.IRRECOVERABLE_TICKS
+			enemy_lost=skirmish_mode!="expedition" and recovery_ticks[1]>=EndRules.IRRECOVERABLE_TICKS
 			if not player_lost and not enemy_lost: end_reason=""; return
 			end_reason="irrecoverable"
+	if skirmish_mode=="expedition" and enemy_lost and not player_lost and _surrender_intent.is_empty():end_reason="expedition_complete"
 	game_over=true
 	outcome="draw" if player_lost==enemy_lost else ("defeat" if player_lost else "victory")
 	victory=outcome=="victory"
 	last_match_report=match_report.make_report(outcome,end_reason,tick_count,age_completed_tick[0],economy.stats_view(0),economy.bank_milli(0))
 	last_match_report.skirmish_mode=skirmish_mode
+	if skirmish_mode=="expedition":last_match_report.expedition=frontier_expedition.report()
 	last_match_report.victory_mode=victory_mode
 	last_match_report.control_ticks=control_point.scores.duplicate()
 	if victory_mode=="supply":last_match_report.supply_progress=[SupplyRace.progress(economy.stats_view(0)),SupplyRace.progress(economy.stats_view(1))]
@@ -2864,6 +2878,8 @@ func _check_end():
 		if end_reason=="surrender":
 			end_title.text={"victory":"敵方投降","defeat":"我方投降","draw":"雙方投降"}[outcome]
 			end_body.text={"victory":"敵方已確認投降。","defeat":"你已確認投降。這局判定為失敗。","draw":"雙方已確認投降。和局。"}[outcome]
+		elif end_reason=="expedition_complete":
+			end_title.text="前線遠征完成";end_body.text="生產、偵察、攻破哨站、擊退反攻及敵堡目標全部完成。敵方為固定劇本守軍與一次增援，非標準經濟對戰。"
 		elif end_reason=="waves_defended":
 			end_title.text="三波守城成功";end_body.text="三波固定增援全部被擊退，主堡仍然屹立。這是劇本挑戰勝利，非標準經濟對戰。"
 		elif end_reason=="supply_race":
@@ -3784,7 +3800,7 @@ func _create_ui():
 	compact_unit_tools=HBoxContainer.new(); compact_unit_tools.add_theme_constant_override("separation",8); command_row.add_child(compact_unit_tools); command_row.move_child(compact_unit_tools,0)
 	touch_button=_button("指定",_toggle_unit_command,54); compact_unit_tools.add_child(touch_button)
 	compact_cancel_button=_button("取消",func(): _cancel_mode(),54); compact_unit_tools.add_child(compact_cancel_button)
-	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"]; compact_top_stack.add_child(objective_button)
+	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode=="expedition"; compact_top_stack.add_child(objective_button)
 	compact_menu_dismiss=Control.new(); compact_menu_dismiss.name="MenuDismissShield"; compact_menu_dismiss.mouse_filter=Control.MOUSE_FILTER_STOP; compact_menu_dismiss.gui_input.connect(_dismiss_compact_menu_input); ui.add_child(compact_menu_dismiss); compact_menu_dismiss.hide()
 	compact_menu=PanelContainer.new(); compact_menu.name="ShortcutMenu"; ui.add_child(compact_menu); compact_menu.add_theme_stylebox_override("panel",_style(Color("1d241ef5")))
 	var menu_stack=VBoxContainer.new();menu_stack.add_theme_constant_override("separation",6);compact_menu.add_child(menu_stack)
@@ -4076,7 +4092,8 @@ func _update_hud():
 	mission_label.text=("城防時代：建馬廄出騎兵，建工坊出攻城車，摧毀敵方主堡。" if _age2(0) else "聚落時代：採鐵，於主堡研究城防時代，解鎖騎兵與攻城車。")
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
-	if skirmish_mode=="survival":mission_label.text=siege_challenge.caption(tick_count)
+	if skirmish_mode=="expedition":mission_label.text=frontier_expedition.caption(tick_count)
+	elif skirmish_mode=="survival":mission_label.text=siege_challenge.caption(tick_count)
 	elif victory_mode=="control": mission_label.text=control_point.caption()
 	elif victory_mode=="supply":mission_label.text="資源爭奪戰：實際送抵600糧＋400木；保護村民並截斷敵方資源。主堡被毀仍會落敗。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
@@ -6226,7 +6243,16 @@ func _create_control_point_marker():
 func _refresh_control_point_marker():
 	if not is_instance_valid(control_point_marker):return
 	control_point_marker.visible=victory_mode=="control"
-	if is_instance_valid(objective_button): objective_button.visible=victory_mode in ["control","supply"]
+	if is_instance_valid(objective_button): objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode=="expedition"
+	if skirmish_mode=="expedition":
+		if is_instance_valid(objective_button):
+			var remaining=0
+			for id in frontier_expedition.counter_ids:
+				var member=_get_entity(id)
+				if not member.is_empty() and member.alive:remaining+=1
+			objective_button.text="前線遠征 %d/5 · %s\n%s" % [mini(frontier_expedition.stage+1,5),FrontierExpedition.TITLES[frontier_expedition.stage],frontier_expedition.progress_text(tick_count,remaining)]
+			objective_button.tooltip_text=frontier_expedition.caption(tick_count)
+		return
 	if victory_mode=="supply":
 		if is_instance_valid(objective_button):
 			objective_button.text="我 "+SupplyRace.caption(economy.stats_view(0))+"\n敵 "+SupplyRace.caption(economy.stats_view(1))
@@ -6243,6 +6269,7 @@ func _refresh_control_point_marker():
 		control_point_flag.set_meta("owner",control_point.owner)
 
 func _focus_control_point():
+	if skirmish_mode=="expedition":camera_focus=frontier_expedition.target();_camera_update();return
 	if victory_mode=="supply":
 		var keep=_first(0,"town_center")
 		if not keep.is_empty():camera_focus=keep.pos;_camera_update()
@@ -7033,3 +7060,33 @@ func _dispatch_player_scout():
 	_cancel_mode();_submit("order",plan)
 	compact_menu.hide();compact_menu_dismiss.hide()
 	_message("斥候正前往未知地圖；到達後等待新指令。",3)
+
+
+func _update_frontier_expedition():
+	if skirmish_mode!="expedition" or game_over:return
+	var trained=0
+	for kind in Rules.UNIT_KINDS:
+		if kind not in ["villager","scout"]:trained+=int(match_report.trained.get(kind,0))
+	var post=_get_entity(frontier_expedition.outpost_id)
+	var scouted=explored_cells[0][_cell_index(FrontierExpedition.OUTPOST)]!=0
+	var counter_alive=frontier_expedition.counter_ids.any(func(id):return not _get_entity(id).is_empty() and _get_entity(id).alive)
+	if frontier_expedition.advance(tick_count,trained,int(economy.stats_view(0).get("delivered",{}).get("food",0)),scouted,not post.is_empty() and post.alive,counter_alive,not _first(1,"town_center").is_empty()):
+		progress_serial+=1;_message(frontier_expedition.caption(tick_count),8)
+	if not frontier_expedition.ready(tick_count) or tick_count%20!=0:return
+	var slots=[]
+	for index in 64:
+		var point=FrontierExpedition.STAGING+Vector3(2*(index%8),0,-2*(index/8))
+		if navigation.is_point_solid(_cell(point)):continue
+		var occupied=false
+		for ent in entities:
+			if ent.alive and ent.category=="unit" and ent.pos.distance_to(point)<ent.radius+Rules.MAX_UNIT_RADIUS:occupied=true;break
+		if occupied or not _static_unit_step_is_free({"pos":point,"radius":Rules.MAX_UNIT_RADIUS},point):continue
+		slots.append(point)
+		if slots.size()==FrontierExpedition.COUNTER_ROSTER.size():break
+	if slots.size()!=FrontierExpedition.COUNTER_ROSTER.size():return
+	var ids=[]
+	for index in slots.size():ids.append(_spawn(FrontierExpedition.COUNTER_ROSTER[index],1,slots[index],true).id)
+	if not frontier_expedition.launch(ids):return
+	progress_serial+=1;_update_vision()
+	_submit("advance",{"ids":ids,"position":MapRoutes.home(0)},1)
+	_message("前線遠征：敵方六名劇本增援出發，保護主堡。",8)

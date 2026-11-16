@@ -366,7 +366,7 @@ func _show_page(next_page: String):
 		_add_button("返回", "ManualBackButton", func(): _show_page(manual_back_page))
 	elif page == "setup":
 		heading.text = "戰役設定"
-		description.text = ("霧谷 · 單人劇本挑戰\n\n" if selected_mode=="survival" else "霧谷 · 1 對 1 電腦戰\n\n")+SkirmishPolicy.details(selected_mode)
+		description.text = ("霧谷 · 單人劇本挑戰\n\n" if selected_mode in ["survival","expedition"] else "霧谷 · 1 對 1 電腦戰\n\n")+SkirmishPolicy.details(selected_mode)
 		_add_button("模式："+("資源爭奪戰" if selected_victory_mode=="supply" else ("中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode)))+" >", "CycleModeButton", _cycle_victory_mode)
 		if selected_victory_mode=="control":
 			description.text="中央王旗爭奪戰 · 1 對 1\n至少兩名軍人進入中央圈，且圈內沒有敵軍，才累積控制時間。雙方同在圈內時停止計時；累積 180 秒勝利。主堡被毀仍會落敗。\n電腦從兩名軍人開始爭奪據點。雙方資源、戰鬥規則相同；據點狀態與分數公開，敵軍位置仍受迷霧限制。"
@@ -377,7 +377,9 @@ func _show_page(next_page: String):
 	elif page == "checkpoint":
 		heading.text="本機戰役存檔"
 		description.text=checkpoint_status+"\n\n只保留一個本機存檔，再次儲存會取代舊存檔。只支援相同遊戲版本；更新後可能無法讀取。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
-		if is_instance_valid(match_node) and not match_node.game_over:
+		if is_instance_valid(match_node) and match_node.skirmish_mode=="expedition":
+			description.text="前線遠征暫不支援存檔；既有存檔保持不變。\n\n"+description.text
+		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode!="expedition":
 			_add_button("儲存目前戰役", "SaveCheckpointButton", _save_checkpoint)
 		if FileAccess.file_exists(checkpoint_path):
 			_add_button("讀取存檔（取代目前戰役）", "LoadCheckpointButton", _load_checkpoint)
@@ -400,6 +402,7 @@ func _show_page(next_page: String):
 			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _show_page("setup"))
 		else:
 			_add_button("開始戰役", "StartMatchButton", func(): _show_page("setup"))
+			_add_button("前線遠征任務", "ExpeditionHomeButton", func(): selected_mode="expedition";selected_victory_mode="conquest";_show_page("setup"))
 		_add_button("兵種與建築圖鑑", "CatalogueMenuButton", func(): manual_section=0;manual_index=0;_show_page("manual"))
 		_add_button("本機存檔", "CheckpointMenuButton", func(): _show_page("checkpoint"))
 		_add_button("教學", "HelpButton", func(): _show_page("help"))
@@ -601,6 +604,8 @@ func _cycle_victory_mode():
 	if selected_mode=="fortress":
 		selected_mode="survival";selected_victory_mode="conquest";_show_page("setup");return
 	if selected_mode=="survival":
+		selected_mode="expedition";selected_victory_mode="conquest";_show_page("setup");return
+	if selected_mode=="expedition":
 		selected_mode="practice";selected_victory_mode="conquest";_show_page("setup");return
 	if selected_victory_mode=="supply":
 		selected_victory_mode="conquest";selected_mode="battle";_show_page("setup");return

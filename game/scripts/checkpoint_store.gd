@@ -11,6 +11,7 @@ static func read_slot(build:String,path:String=PATH)->Dictionary:
  var bytes=f.get_buffer(size);f.close()
  return Codec.decode(bytes,build)
 static func save_slot(game:Node,path:String=PATH)->Dictionary:
+ if game.skirmish_mode=="expedition":return {"ok":false,"reason":"前線遠征暫不支援存檔"}
  if game.game_over or not game.paused:return {"ok":false,"reason":"NOT_PAUSED_MATCH"}
  var data=Codec.capture(game)
  var encoded=Codec.encode(data,game.Rules.BUILD_ID)

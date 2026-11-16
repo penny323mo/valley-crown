@@ -101,6 +101,11 @@ static func page_text(report: Dictionary,page: String) -> String:
 			for team in 2:lines.append(("我方" if team==0 else "敵方")+"送抵　糧 %d/600 · 木 %d/400" % [supplies[team].food/1000,supplies[team].wood/1000])
 		else:
 			lines.append("戰役模式　"+preload("res://scripts/skirmish_policy.gd").title(report.get("skirmish_mode","standard")))
+		if report.has("expedition"):
+			var mission=report.expedition
+			lines.append("遠征階段　%d/5" % mini(int(mission.get("stage",0)),5))
+			for index in mission.get("stage_ticks",[]).size():
+				lines.append("%s  %s" % [time_label(mission.stage_ticks[index]),preload("res://scripts/frontier_expedition.gd").TITLES[index]])
 		lines.append("戰役歷時　"+time_label(report.tick))
 		lines.append("城防時代　"+("開局已有" if report.get("skirmish_mode","") in ["battle","fortress","survival"] else (time_label(report.age_tick) if report.age_tick>=0 else "未完成研究")))
 		var production=0

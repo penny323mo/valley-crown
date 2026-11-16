@@ -1,6 +1,6 @@
 extends Resource
 ## Demo rules v2. One data source for player, AI, HUD and tests.
-const BUILD_ID = "vc-f701fc4086dc"
+const BUILD_ID = "vc-08902d1190c7"
 const VERSION = "0.3.0-progression-candidate"
 # User-requested 2026-11-07 scale/buildability revision. Cell, unit, building,
 # movement, sight and economic scales stay unchanged; only world extent grows.
