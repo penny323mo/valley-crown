@@ -15,37 +15,28 @@ func run():
  var g=load("res://main.tscn").instantiate();root.add_child(g);g.set_process(false);g.test_mode=true;g._test_reset();g.set_process(false);g.ai_enabled=false
  await process_frame
  g.paused=false;g.application_focused=true;g.application_suspended=false;g._skip_tutorial();g.camera_zoom=15
- var home=g._first(1,"town_center");var soldier=g._spawn("spearman",1,home.pos+Vector3(-10,0,0));soldier.hp=10
+ var home=g._first(1,"town_center");var building=g._spawn("tower",1,home.pos+Vector3(-8,0,-1));building.hp=300;building.last_damage_tick=-1000
+ var workers=[]
+ for w in g.entities:
+  if w.team==1 and w.kind=="villager":workers.append(w)
+ for i in 2:g._order(workers[i],"gather",g._nearest_resource(workers[i].pos,"food",1).id)
+ workers[2].pos=building.pos+Vector3(-2,0,0);g._set_stance(workers[2],"STOP")
+ g._navigation_rebuild();g._update_vision(false);g._publish_faction_views();g.ai_opening_assigned=true;g._ai_update()
+ var commands=g.commands.filter(func(c):return c.type=="order" and c.target==building.id)
+ if commands.size()!=1:print("NO_REPAIR");g.queue_free();quit(1);return
+ # Isolate one real paid repair from unrelated queued training/construction.
+ g.commands=commands.duplicate(true)
+ var bank=g.economy.bank_milli(1).wood
  var observer=g._first(0,"scout");var original=observer.pos
- g._navigation_rebuild();g._update_vision(false);g._publish_faction_views()
- g.ai_raid_members=[soldier.id];g.ai_raid_departure_count=1;g._ai_army(g._ai_records(),home)
- var queued=g.commands.any(func(c):return c.type=="order" and soldier.id in c.get("ids",[]) and c.target==-1)
- g._tick(.05)
- # Observe only between simulated phases. Remove observer before healing ticks,
- # so actual normal threat-aware rest (not forced HP changes) does the healing.
- observer.pos=soldier.pos+Vector3(-7,0,0);g._set_stance(observer,"STOP");g.camera_focus=home.pos+Vector3(-5,0,0);g._update_vision(false);g._publish_faction_views();g._select([soldier.id])
- var ok=await shot(g,"native-ai-wounded-troop-withdrawing")
+ observer.pos=building.pos+Vector3(-7,0,0);g._set_stance(observer,"STOP");g.camera_focus=building.pos;g._update_vision(false);g._publish_faction_views();g._select([building.id])
+ var ok=await shot(g,"native-ai-damaged-tower-repair-requested")
  observer.pos=original;g._update_vision(false);g._publish_faction_views()
- var ticks=1;var arrived=false
- for i in 1200:
+ var ticks=0
+ for i in 1000:
   g._tick(.05);ticks+=1
-  if i%20==0:g._ai_army(g._ai_records(),home)
-  if soldier.state=="idle" and soldier.pos.distance_to(home.pos)<=7:arrived=true;break
- var arrival_hp=soldier.hp
- for i in 320:
-  g._tick(.05);ticks+=1
-  if i%20==0:g._ai_army(g._ai_records(),home)
- var early_hp=soldier.hp
- observer.pos=soldier.pos+Vector3(-7,0,0);g._update_vision(false);g._publish_faction_views();g._select([soldier.id])
- ok=(await shot(g,"native-ai-reserve-ordinary-healing")) and ok
- observer.pos=original;g._update_vision(false);g._publish_faction_views()
- var threshold=ceili(soldier.max_hp*.8)
- for i in 5000:
-  g._tick(.05);ticks+=1
-  if i%20==0:g._ai_army(g._ai_records(),home)
-  if soldier.hp>=threshold:break
- var ready=soldier.hp>=threshold
- observer.pos=soldier.pos+Vector3(-7,0,0);g._update_vision(false);g._publish_faction_views();g._select([soldier.id])
- ok=(await shot(g,"native-ai-recovered-troop-ready")) and ok
- var proof={"build":g.Rules.BUILD_ID,"ordinary_home_order":queued,"physically_arrived":arrived,"arrival_hp":arrival_hp,"early_healed_hp":early_hp,"final_hp":soldier.hp,"max_hp":soldier.max_hp,"ready":ready,"ticks":ticks,"rendered":DisplayServer.get_name()!="headless","scope":"Controlled damaged enemy soldier; real ordinary AI return and timed healing. Player scout positioned for each still then removed before simulation, because normal enemy proximity blocks recovery. No saves, natural-match or phone acceptance."}
- print(JSON.stringify(proof));g.queue_free();quit(0 if ok and queued and arrived and early_hp>arrival_hp and ready else 1)
+  if building.hp>=340:break
+ var paid=g.economy.bank_milli(1).wood<bank
+ observer.pos=building.pos+Vector3(-7,0,0);g._update_vision(false);g._publish_faction_views();g._select([building.id])
+ ok=(await shot(g,"native-ai-tower-real-paid-restoration")) and ok
+ var proof={"build":g.Rules.BUILD_ID,"ordinary_repair_queued":commands.size()==1,"initial_hp":300,"final_hp":building.hp,"wood_before":bank,"wood_after":g.economy.bank_milli(1).wood,"paid":paid,"ticks":ticks,"ledger_conserved":g.economy.audit().ok,"rendered":DisplayServer.get_name()!="headless","scope":"Controlled damaged AI tower, real full AI planning and ordinary worker paid repair. Other queued actions isolated. Player scout positioned only for stills then removed before work, no fog override. No saves/natural-match or phone acceptance."}
+ print(JSON.stringify(proof));g.queue_free();quit(0 if ok and paid and building.hp>=340 and proof.ledger_conserved else 1)
