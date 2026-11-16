@@ -111,7 +111,9 @@ const ProductionOverview=preload("res://scripts/production_overview.gd")
 var production_buttons={}
 var production_cursor={}
 const IdleGatherDispatch=preload("res://scripts/idle_gather_dispatch.gd")
+const WorkforceReassign=preload("res://scripts/workforce_reassign.gd")
 var idle_dispatch_buttons={}
+var workforce_reassign_buttons={}
 var shortcut_category="all"
 var shortcut_category_buttons={}
 var shortcut_sections={"economy":[],"army":[],"production":[],"settings":[]}
@@ -778,6 +780,12 @@ func _execute(command):
 				var front=producer.queue[0]
 				if front.queue_id!=command.get("clear_exit_queue",-1) or front.remaining_ticks>0 or front.get("research",false) or _population(0,false)>=_capacity(0):return
 				if blocker.is_empty() or not blocker.alive or blocker.team!=0 or blocker.category!="unit" or not _unit_blocks_production_exit(blocker,producer,front.kind):return
+			if command.has("work_reassign"):
+				if typeof(command.get("source_work_epoch",null))!=TYPE_INT or typeof(command.get("source_resource",null))!=TYPE_STRING or typeof(command.work_reassign)!=TYPE_STRING or command.work_reassign not in ["food","wood","stone","iron"] or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
+				var worker=_get_entity(command.ids[0])
+				if worker.is_empty() or worker.team!=0 or not worker.alive or worker.kind!="villager" or worker.state not in ["gather","deliver"] or worker.get("work_epoch",-1)!=command.get("source_work_epoch",-2) or worker.gather_type!=command.get("source_resource","") or worker.gather_type==command.work_reassign:return
+				if target.is_empty() or target.category!="resource" or IdleGatherDispatch.TYPES.get(target.kind,"")!=command.work_reassign or economy.node_view(target.id).remaining_milli<=0:return
+				if IdleGatherDispatch.threatened(target.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(worker.pos,faction_views[0].records()):return
 			if command.has("idle_gather"):
 				if typeof(command.idle_gather)!=TYPE_STRING or command.idle_gather not in ["food","wood","stone","iron"] or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
 				var gather_worker=_get_entity(command.ids[0])
@@ -3541,6 +3549,7 @@ func _publish_faction_views():
 					if owned_motion_witness_tick==tick_count and segment.size()==2 and segment[0]!=segment[1] and segment[1]==ent.pos:
 						record.last_native_motion_tick=tick_count; record.last_native_motion_position=segment[1]
 				record.cargo_milli=_cargo_amount(ent) if ent.kind=="villager" else 0
+				record.work_epoch=ent.get("work_epoch",0)
 			observed[ent.id]=record
 		# Forget hidden action history before it can be replayed on reappearance.
 		for id in unit_action_cues[team].keys():
@@ -3762,7 +3771,15 @@ func _create_ui():
 		var dispatch=_button("",func():_dispatch_idle_gather(kind),140)
 		dispatch.name="IdleDispatch_"+resource;dispatch.tooltip_text="按距離和現有採集人數，分派最多三名空手待命村民到可見資源。優先較近工人與較少人採集的附近資源；不搶工作或搬運，路線仍可能受阻。"
 		dispatch_row.add_child(dispatch);idle_dispatch_buttons[resource]=dispatch
-	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row]
+	var reassign_help=_label("選取中的採集村民 · 每次最多改派 3 人，保留原負重",13)
+	reassign_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(reassign_help)
+	var reassign_row=HFlowContainer.new();reassign_row.add_theme_constant_override("h_separation",6);menu_box.add_child(reassign_row)
+	for resource in WorkforceOverview.RESOURCES:
+		var kind=resource
+		var button=_button("",func():_reassign_selected_workforce(kind),140)
+		button.name="WorkforceReassign_"+resource;button.tooltip_text="只改派所選正採集或運送其他資源的村民。保留負重，不同資源先送回再換工作；不搶建造、維修或新指令。目的地須可見且沒有已知威脅，仍可能受地形阻擋。"
+		reassign_row.add_child(button);workforce_reassign_buttons[resource]=button
+	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row,reassign_help,reassign_row]
 	shortcut_sections.army=[idle_army_button]
 	var roster_help=_label("軍隊總覽 · 點兵種全選，或只選傷兵",13)
 	roster_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(roster_help);shortcut_sections.army.append(roster_help)
@@ -6527,6 +6544,12 @@ func _refresh_idle_dispatch_buttons():
 		var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource)
 		_bind_squad_button(button,orders,not _squad_actions_available())
 		button.text="派 %d 人採%s" % [orders.size(),Rules.RESOURCE_NAMES[resource]]
+	for resource in workforce_reassign_buttons:
+		var button=workforce_reassign_buttons[resource]
+		var orders=WorkforceReassign.orders(faction_views[0].records(),selected,commands,resource)
+		_bind_squad_button(button,orders,not _squad_actions_available())
+		button.set_meta("selection_source",selected.duplicate())
+		button.text="改派 %d 人採%s" % [orders.size(),Rules.RESOURCE_NAMES[resource]]
 func _dispatch_idle_gather(resource):
 	if not _squad_actions_available() or not compact_menu.visible or not idle_dispatch_buttons.has(resource):return
 	var button=idle_dispatch_buttons[resource]
@@ -6851,3 +6874,14 @@ func _submit_escort_target(target_id):
 	_submit("escort",{"ids":selected.duplicate(),"target":target_id})
 	_cancel_mode()
 	return true
+
+func _reassign_selected_workforce(resource):
+	if not _squad_actions_available() or not compact_menu.visible or not workforce_reassign_buttons.has(resource):return
+	var button=workforce_reassign_buttons[resource]
+	var plan=WorkforceReassign.orders(faction_views[0].records(),selected,commands,resource)
+	if button.disabled or plan.is_empty() or selected!=button.get_meta("selection_source",[]) or plan!=button.get_meta("squad_ids",[]):
+		_refresh_idle_dispatch_buttons();return
+	_cancel_mode()
+	for order in plan:_submit("order",order)
+	compact_menu.hide();compact_menu_dismiss.hide()
+	_message("已改派 %d 名所選村民採%s；保留負重，不同資源先交付再換工作。" % [plan.size(),Rules.RESOURCE_NAMES[resource]],4)

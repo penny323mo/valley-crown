@@ -1,5 +1,5 @@
 {
-  "build": "vc-484157408059",
+  "build": "vc-3e06fa074f26",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -158,7 +158,7 @@
     "scripts/faction_work_memory.gd.uid": "239d961533a18793aa151c2e110ba8f629b42681b634ff5ff19a117f9e21ba9e",
     "scripts/farm_dispatch.gd": "e61b36c2a89eeb8b4d9e95f3aac862e8e8332aaa4bd0d45393688817e0bb15de",
     "scripts/field_manual.gd": "cc49af37b10e858867fe3a5bc75611516ad1c77966006856fe06a2a8a97e3623",
-    "scripts/game.gd": "87794ae7cdc7bc906a255ddd55a3b7f64f36776820d1e0701c9fdd2390f32dc1",
+    "scripts/game.gd": "f131b0e82113c554c12d987867827e813709a93f5e77bb161688a11d948823cf",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
     "scripts/idle_army_selection.gd": "1e65f91c328ef25ec2a6f6a4a06bad4aff2b2c78594dd81bfb9f073d477fe802",
@@ -186,7 +186,7 @@
     "scripts/rest_recovery.gd": "6c3b4c9387c0f8ab8443bde375b803775de40c698be42a4e26a3c57ec8a21917",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "728c3922e5b37a70224fe5057e19c3a8c43c995b9f077d1f68e8bb6896efee54",
+    "scripts/rules.gd": "799c63f31523a67a7a3e8af023feeff02e9c531e32b35c41ba6b46850c667fe1",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",
@@ -200,6 +200,7 @@
     "scripts/worker_idle_status.gd": "d99bf87d3d86c48df14813a47f0ad9d1cc2baf473d0fbf36c53d5b0554b4d236",
     "scripts/worker_safety.gd": "1e51db91f214bbae10aef1b995f774f81b60dfee8156a22ec7ca3e298ac3dc78",
     "scripts/workforce_overview.gd": "83e38e66499a1913c4a855476fedbf55bc50de5dc4a6bdb451d4217c567a305e",
+    "scripts/workforce_reassign.gd": "5e10cc9117a99007c698e72c8a29c95a06a9455a57a5f03abc7ca592af26f8c5",
     "scripts/wounded_retreat.gd": "498af8e0dfba57ea56ff387736b1567a766adf302872f6f794014fb3a1c9b179"
   }
 }
