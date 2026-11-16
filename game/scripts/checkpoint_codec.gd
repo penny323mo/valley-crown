@@ -192,6 +192,7 @@ static func validation_result(data)->Dictionary:
  if not exact_keys(data.rng,["seed","state"]) or not data.rng.seed is int or not data.rng.state is int:return failure("RNG")
  if not data.entities is Array or data.entities.size()>10000:return failure("ENTITY_BOUNDS")
  var ids={}
+ var by_id={}
  for entity in data.entities:
   if not entity is Dictionary:return failure("ENTITY_TYPE")
   for key in ENTITY_NODE_FIELDS:
@@ -200,6 +201,7 @@ static func validation_result(data)->Dictionary:
    if not entity.has(key):return failure("ENTITY_REQUIRED_FIELD")
   if not entity.id is int or entity.id<0 or ids.has(entity.id):return failure("ENTITY_ID")
   ids[entity.id]=true
+  by_id[entity.id]=entity
   if entity.kind not in Rules.UNIT_KINDS+Rules.RESOURCE_KINDS+Rules.FOOTPRINT.keys():return failure("ENTITY_KIND")
   var category="unit" if entity.kind in Rules.UNIT_KINDS else ("resource" if entity.kind in Rules.RESOURCE_KINDS else "building")
   if entity.category!=category or entity.team not in ([-1] if category=="resource" else [0,1]):return failure("ENTITY_KIND_TEAM")
@@ -216,7 +218,19 @@ static func validation_result(data)->Dictionary:
    if not entity.escort_target is int or entity.escort_target<0:return failure("ENTITY_ESCORT_TARGET")
    if not entity.get("escort_next_tick",0) is int or entity.get("escort_next_tick",0)<0:return failure("ENTITY_ESCORT_TICK")
    if entity.has("escort_follow_origin") and (not entity.escort_follow_origin is Vector3 or not finite_position(entity.escort_follow_origin)):return failure("ENTITY_ESCORT_ORIGIN")
+  if entity.has("construction_return"):
+   var intent=entity.construction_return
+   if not exact_keys(intent,["site","resource","type"]):return failure("CONSTRUCTION_RETURN_KEYS")
+   if not intent.site is int or intent.site<0 or not intent.resource is int or intent.resource<0 or not intent.type is String or intent.type not in ["food","wood","stone","iron"]:return failure("CONSTRUCTION_RETURN_TYPES")
+   if entity.kind!="villager" or entity.team!=0 or not entity.alive or entity.state!="build" or entity.target!=intent.site:return failure("CONSTRUCTION_RETURN_WORKER")
   if not entity.state is String or not entity.mode is String or entity.state.length()>64 or entity.mode.length()>64:return failure("ENTITY_STATE")
+ for entity in data.entities:
+  if entity.has("construction_return"):
+   var site=by_id.get(entity.construction_return.site,{})
+   if site.is_empty() or not site.alive or site.category!="building" or site.team!=entity.team:return failure("CONSTRUCTION_RETURN_SITE")
+   var resource=by_id.get(entity.construction_return.resource,{})
+   var types={"pine":"wood","oak":"wood","berry":"food","farm":"food","stone":"stone","iron":"iron"}
+   if resource.is_empty() or types.get(resource.kind,"")!=entity.construction_return.type or (resource.kind=="farm" and resource.team!=entity.team):return failure("CONSTRUCTION_RETURN_RESOURCE")
  if data.game.skirmish_mode=="expedition" and not expedition_valid(data):return failure("EXPEDITION_STATE")
  var attack=data.modules.attack_ledger
  if attack._records.size()%80!=0:return failure("ATTACK_RECORD_ALIGNMENT")

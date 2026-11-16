@@ -1691,6 +1691,7 @@ func _path_state(ent):
 	ent.traffic_replans=0; ent.traffic_last_replan=tick_count; ent.traffic_route=false; ent.work_slot_wait=-1; ent.traffic_path_length=0; ent.traffic_command_origin=ent.pos; ent.traffic_gate_since=-1
 
 func _path_new_command(ent):
+	ent.erase("construction_return")
 	TacticalRoute.clear(ent)
 	# Accepted explicit player intents win over evacuation and its old job.
 	if ent.get("kind","")=="villager":
@@ -1727,6 +1728,7 @@ func _path_navigation_changed(ent,changed_cells):
 	else: ent.path_version=work_memory[ent.team].revision
 
 func _path_stop(ent,status,reason):
+	ent.erase("construction_return")
 	if ent.has("tactical_points"):
 		TacticalRoute.clear(ent);ent.state="idle";ent.mode="STOP";ent.target=-1
 	ent.path_status=status; ent.path_reason=reason; ent.path_pending=false
@@ -2250,6 +2252,9 @@ func _order(ent,state,target_id,automatic=false):
 		if ent.is_empty() or not ent.alive or ent.kind!="villager" or site.is_empty() or not site.alive or site.category!="building" or site.built or site.team!=ent.team: return false
 		# Joining a site does not cancel another villager's construction order.
 
+	var return_work={}
+	if state=="build" and ent.team==0 and ent.state in ["gather","deliver"] and ent.get("resource_target",-1)>=0 and ent.get("gather_type","") in ["food","wood","stone","iron"]:
+		return_work={"site":target_id,"resource":ent.resource_target,"type":ent.gather_type}
 	if ent.kind=="villager":
 		var requested=_get_entity(target_id)
 		if state=="gather" and not requested.is_empty() and requested.kind=="farm":
@@ -2261,6 +2266,8 @@ func _order(ent,state,target_id,automatic=false):
 			economy_sequence+=1
 			if not economy.assign_farm("farm_assign:%d" % economy_sequence,ent.id,target_id).applied: return false
 			ent.farm_id=target_id
+	ent.erase("construction_return")
+	if not return_work.is_empty():ent.construction_return=return_work
 	_path_cancel_pending(ent)
 	if not automatic:_clear_escort(ent)
 	ent.erase("patrol_points"); ent.erase("patrol_index")
@@ -2448,6 +2455,7 @@ func _advance_combat(ent):
 	if ent.cooldown_ticks<=0: _release_attack(ent,target)
 
 func _order_move(ent,p,reserved={},ignore_orders=[]):
+	ent.erase("construction_return")
 	TacticalRoute.clear(ent)
 	_clear_escort(ent)
 	ent.rest_ticks=0; ent.rest_base=-1
@@ -2462,6 +2470,7 @@ func _order_move(ent,p,reserved={},ignore_orders=[]):
 	if ent.dest==Vector3.INF: ent.dest=ent.pos; _set_stance(ent,"STOP")
 
 func _set_stance(ent,mode):
+	ent.erase("construction_return")
 	TacticalRoute.clear(ent)
 	_clear_escort(ent)
 	ent.rest_ticks=0; ent.rest_base=-1
@@ -2748,6 +2757,7 @@ func _update_unit(ent,dt):
 			var type=_gather_intent(ent)
 			var resource=_nearest_resource(ent.pos,type,ent.team)
 			if not resource.is_empty(): _order(ent,"gather",resource.id); return
+		ent.erase("construction_return")
 		ent.state="idle"; return
 	match ent.state:
 		"attack":
@@ -2796,9 +2806,12 @@ func _update_unit(ent,dt):
 					if target.hp>=target.max_hp or economy.bank_milli(ent.team).wood<1000: ent.state="idle"
 				else: ent.state="idle"
 		"build":
-			if target.built: ent.state="idle"; return
+			if target.built:
+				var result=_construction_return_work(ent,target)
+				if result not in ["","returned"] and ent.team==0:_message(result+"，村民待命。",3)
+				return
 			var adjacent=_free_adjacent(target,ent.pos,false,ent.team,ent)
-			if adjacent==Vector3.INF: ent.state="idle"; return
+			if adjacent==Vector3.INF: ent.erase("construction_return"); ent.state="idle"; return
 			if ent.pos.distance_to(adjacent)<0.3:
 				# Shared work resolves once per site/tick, independent of entity order.
 				# Only villagers physically at a legal construction slot contribute.
@@ -2823,7 +2836,7 @@ func _update_unit(ent,dt):
 					if not receipt_id.is_empty():
 						var fulfilled=economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,target.team)
 						if not fulfilled.applied: return
-					target.built=true; completed_builds[ent.team]+=1; ent.state="idle"
+					target.built=true; completed_builds[ent.team]+=1
 					match_report.record_completion(target,tick_count)
 					if target.kind=="farm":
 						var registered=economy.register_farm(target.id,target.team)
@@ -2831,13 +2844,63 @@ func _update_unit(ent,dt):
 						# Finishing this field continues its builder into ordinary farm
 						# work. No harvest this tick, cargo conversion or retry reset.
 						# An earlier player command already replaced build before here.
-						if registered.ok: _order(ent,"gather",target.id)
+						if registered.ok:
+							_order(ent,"gather",target.id)
+					var returned=0;var waiting=0;var reasons=[]
+					for worker in entities:
+						if worker.alive and worker.kind=="villager" and worker.team==target.team and worker.state=="build" and worker.target==target.id:
+							var result=_construction_return_work(worker,target)
+							if result=="returned":returned+=1
+							elif not result.is_empty():
+								waiting+=1
+								if result not in reasons:reasons.append(result)
 					if target.team==0 and not receipt_id.is_empty() and target.kind in ["house","barracks"]: demo_tutorial.record(target.kind)
 					if target.team==0 and not receipt_id.is_empty() and target.kind in ["stable","workshop"]: demo_tutorial.record("advanced_building")
-					if ent.team==0: _message(Rules.NAMES[target.kind]+"建造完成。",3)
+					if ent.team==0:
+						var notice=Rules.NAMES[target.kind]+"建造完成。"
+						if returned>0:notice+=" %d 村民已返回工作。" % returned
+						if waiting>0:notice+=" %d 村民待命：%s。" % [waiting,"；".join(reasons)]
+						_message(notice,6)
+
+# A one-shot continuation of the job interrupted by this paid construction.
+# No hidden authority scan, new command budget, repeated retry or cargo edit.
+func _construction_return_work(worker,site):
+	if not worker.alive or worker.state!="build" or worker.target!=site.id or not site.alive or not site.built:return ""
+	var saved=worker.get("construction_return",{}).duplicate()
+	worker.erase("construction_return")
+	_path_cancel_pending(worker)
+	worker.path=PackedVector3Array();worker.state="idle";worker.target=-1
+	if saved.is_empty() or saved.site!=site.id or _worker_pending_intent(worker.id):return ""
+	_refresh_work_memory()
+	var records=faction_views[worker.team].records()
+	var known=_gather_records(worker.team)
+	var candidates=[]
+	for record in known.values():
+		if not record.alive or _resource_type(record)!=saved.type or visible_cells[worker.team][_cell_index(record.pos)]==0:continue
+		if record.kind=="farm" and economy.farm_view(record.id).get("worker_id",-1) not in [-1,worker.id]:continue
+		if not WorkerSafety.threats(records,worker.team,record.pos).is_empty():continue
+		candidates.append(record)
+	candidates.sort_custom(func(a,b):
+		if (a.id==saved.resource)!=(b.id==saved.resource):return a.id==saved.resource
+		var da=a.pos.distance_squared_to(worker.pos);var db=b.pos.distance_squared_to(worker.pos)
+		return a.id<b.id if da==db else da<db)
+	if candidates.is_empty() or not WorkerSafety.threats(records,worker.team,worker.pos).is_empty() or worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:
+		return "原工作受阻"
+	worker.resource_target=candidates[0].id;worker.gather_type=saved.type
+	if _cargo_amount(worker)>0:
+		var drop=_dropoff(worker)
+		if drop.is_empty() or not WorkerSafety.threats(records,worker.team,drop.pos).is_empty():
+			return "交付受阻，已保留負重"
+		_route_to_dropoff(worker)
+	else:_order(worker,"gather",candidates[0].id)
+	return "returned"
 
 func _kill(ent):
 	if not ent.alive: return
+	ent.erase("construction_return")
+	if ent.category=="building":
+		for worker in entities:
+			if worker.get("construction_return",{}).get("site",-1)==ent.id:worker.erase("construction_return")
 	TacticalRoute.clear(ent)
 	worker_evacuations.erase(ent.id); worker_manual_until.erase(ent.id); worker_safety_hits.erase(ent.id)
 	ai_scout_moves.erase(ent.id)
@@ -3709,6 +3772,7 @@ func _publish_faction_views():
 				record.rally_mode=ent.get("rally_mode","move")
 				record.repeat_kind=ent.get("repeat_kind","")
 				record.repeat_generation=ent.get("repeat_generation",0)
+				if ent.has("construction_return"):record.construction_return_type=ent.construction_return.type
 				for key in ["state","queue","carry","carry_type","path","target","resource_target","dest","gather_type","mode"]: record[key]=ent[key].duplicate(true) if ent[key] is Array or ent[key] is Dictionary else ent[key]
 				if ent.category=="unit":
 					for key in ["path_status","path_reason","path_pending","path_request_kind","path_request_state","path_request_target","path_request_epoch","work_epoch","traffic_route"]:
@@ -4276,6 +4340,7 @@ func _update_hud():
 		var state_names={"idle":"待命","move":"移動","gather":"採集","deliver":"交付","build":"建造","repair":"修理","return":"返回守備點","attack":"攻擊"}
 		var missing=WorkerIdleStatus.missing_resource(ent,faction_views[0].records(),own_command_pending)
 		var status=state_names.get(ent.state,"") if missing.is_empty() else WorkerIdleStatus.label(missing)
+		if ent.owned and ent.get("construction_return_type","")!="":status+=" · 完工回採"+{"wood":"木材","food":"食物","stone":"石材","iron":"鐵礦"}.get(ent.construction_return_type,"")
 		var route_failure=WorkerIdleStatus.route_failure(ent,own_command_pending)
 		if not route_failure.is_empty(): status=route_failure
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
