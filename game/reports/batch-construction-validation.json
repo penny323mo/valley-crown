@@ -1,0 +1,59 @@
+{
+  "build": "vc-78e54d08e333",
+  "source_base": "06d023d67ac75d960f542de36c591370a75b95f9",
+  "source_checks": 1007,
+  "native_checks": 135,
+  "suites": [
+    {
+      "suite": "batch_construction_dispatch_contract",
+      "checks": 20,
+      "passed": true,
+      "sampled_peak_rss_kib": 195824,
+      "log_sha256": "dd2ddaec46d3795437a615e881eddc19e1c7c873b1f648a206711350bfa2f929"
+    },
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "passed": true,
+      "sampled_peak_rss_kib": 62308,
+      "log_sha256": "0142bec1ed8c63ac85448d4ef7f8b356f91dc1762be43aa0ab2e0a48620cb8af"
+    },
+    {
+      "suite": "construction_dispatch_contract",
+      "checks": 14,
+      "passed": true,
+      "sampled_peak_rss_kib": 195640,
+      "log_sha256": "ff643c0dded080d5489e17a74ecbc34cd7ca3362f12fe02211f3cb493df43593"
+    },
+    {
+      "suite": "cooperative_build_contract",
+      "checks": 19,
+      "passed": true,
+      "sampled_peak_rss_kib": 195836,
+      "log_sha256": "0aa45f8611aead597942d226ae14d334ebc17fbf93af0665cce473ed654e2ef1"
+    },
+    {
+      "suite": "batch_repair_dispatch_contract",
+      "checks": 23,
+      "passed": true,
+      "sampled_peak_rss_kib": 195764,
+      "log_sha256": "3b5fe639847cf7bddaa5beaa01527196e5f74a89d0828d398e52a55e4da347ed"
+    },
+    {
+      "suite": "shortcut_categories_contract",
+      "checks": 33,
+      "passed": true,
+      "sampled_peak_rss_kib": 195624,
+      "log_sha256": "5add6c6309108c3976b4fb9aaba742a2c57ad976c185a9edea568f797f9ed1ee"
+    },
+    {
+      "suite": "repair_dispatch_contract",
+      "checks": 23,
+      "passed": true,
+      "sampled_peak_rss_kib": 195588,
+      "log_sha256": "03ccb3dfcf9c4b49aecb724671b66eb45598be8121c9f345f7c885850e6c2d2d"
+    }
+  ],
+  "scope": "Controlled ordinary paid sites with earned construction progress, actual Economy callback and physical completion. No user saves, natural-match, phone or rendered acceptance. Unattended sites only: living blocked builders are not replaced. Priority is completion percentage, not shortest remaining time.",
+  "review": "Distinct workers/sites; heldplan stale rejection; unfinished site, epoch, observedthreat and duplicatebuilder execution guards; no second building payment; normal bounded routes preserved."
+}
