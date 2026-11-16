@@ -1,0 +1,57 @@
+extends SceneTree
+const Challenge=preload("res://scripts/siege_challenge.gd")
+var checks=[]
+func check(label,ok):
+ checks.append({"name":label,"passed":bool(ok)})
+ if not ok:push_error(label)
+func _initialize():call_deferred("run")
+func run():
+ var director=Challenge.new()
+ check("preparation is forty five simulated seconds",not director.ready(899) and director.ready(900))
+ check("opening wave has six troops",director.roster().size()==6)
+ check("partial wave cannot advance director",not director.launch([1]))
+ director.launch([1,2,3,4,5,6]);director.observe(1000,func(id):return id==6)
+ check("one surviving attacker prevents next wave",director.wave==1 and not director.ready(2000))
+ director.observe(1100,func(_id):return false)
+ check("cleared wave grants full preparation interval",not director.ready(1999) and director.ready(2000))
+ check("second wave adds cavalry pressure",director.roster().count("cavalry")==4 and director.roster().size()==8)
+ var shell=load("res://scripts/main_menu.gd").new();root.add_child(shell);await process_frame
+ shell.selected_mode="fortress";shell._cycle_victory_mode()
+ check("menu exposes staged challenge after fortress",shell.selected_mode=="survival")
+ check("setup honestly discloses scripted free reinforcements",shell.SkirmishPolicy.details("survival").contains("不消耗敵方資源"))
+ shell._cycle_victory_mode();check("challenge cycles back to practice",shell.selected_mode=="practice")
+ shell.queue_free();await process_frame
+ var g=load("res://main.tscn").instantiate();g.skirmish_mode="survival";root.add_child(g);g.set_process(false);g.test_mode=true;await process_frame
+ check("player begins with full fortress military",g._count(0,"spearman")==4 and g._count(0,"archer")==4 and g._count(0,"cavalry")==2 and g._count(0,"siege")==2 and g._count(0,"tower")==2)
+ check("enemy scenario does not receive economic workers",g._count(1,"villager")==0 and g._count(1,"scout")==0)
+ var bank=g.economy.bank_milli(1).duplicate();g.tick_count=899;g._update_siege_challenge()
+ check("no wave before preparation expires",g.siege_challenge.wave==0)
+ g.tick_count=900;g._update_siege_challenge()
+ check("first wave spawns all six scheduled attackers",g.siege_challenge.wave==1 and g.siege_challenge.active.size()==6)
+ check("scenario spawns are not counterfeit paid training",g.economy.bank_milli(1)==bank and g.trained_total[1]==0)
+ check("wave uses ordinary queued advance command",g.commands.size()==1 and g.commands[0].type=="advance" and g.commands[0].team==1 and g.commands[0].ids==g.siege_challenge.active)
+ while not g.commands.is_empty():g._execute(g.commands.pop_front())
+ check("normal advance applies to all wave soldiers",g.siege_challenge.active.all(func(id):return g._get_entity(id).mode=="ADVANCE"))
+ for id in g.siege_challenge.active:g._kill(g._get_entity(id))
+ g._update_siege_challenge();check("clear starts next wave preparation",g.siege_challenge.wave==1 and g.siege_challenge.next_tick==1800 and g.siege_challenge.active.is_empty())
+ g.tick_count=1800;g._update_siege_challenge()
+ check("second wave has eight attackers and four cavalry",g.siege_challenge.wave==2 and g.siege_challenge.active.size()==8 and g._count(1,"cavalry")==4)
+ for id in g.siege_challenge.active:g._kill(g._get_entity(id))
+ g._update_siege_challenge();g.tick_count=2700;g._update_siege_challenge()
+ check("final wave includes twelve combined arms attackers",g.siege_challenge.wave==3 and g.siege_challenge.active.size()==12 and g._count(1,"siege")==2)
+ for id in g.siege_challenge.active:g._kill(g._get_entity(id))
+ g._update_siege_challenge();g._check_end()
+ check("clearing all scripted waves wins with keep intact",g.game_over and g.outcome=="victory" and g.end_reason=="waves_defended" and not g._first(0,"town_center").is_empty())
+ check("victory screen identifies challenge outcome",g.end_title.text=="三波守城成功")
+ g._test_reset();g.set_process(false)
+ check("restart resets schedule not previous victory",g.skirmish_mode=="survival" and g.siege_challenge.wave==0 and not g.siege_challenge.complete)
+ g._kill(g._first(0,"town_center"));g._check_end()
+ check("losing own keep defeats challenge",g.game_over and g.outcome=="defeat")
+ g._test_reset();g.set_process(false);g.tick_count=900
+ for y in g.Rules.MAP_SIZE:
+  for x in g.Rules.MAP_SIZE:g.navigation.set_point_solid(Vector2i(x,y),true)
+ g._update_siege_challenge()
+ check("blocked staging cannot overlap spawn or skip wave",g.siege_challenge.wave==0 and g.siege_challenge.active.is_empty())
+ g.queue_free();await process_frame
+ var failed=checks.filter(func(c):return not c.passed).size()
+ print(JSON.stringify({"suite":"siege_challenge_contract","checks":checks,"failed":failed,"scope":"Controlled scenario lifecycle; wave deaths synthetic, not natural three-wave playthrough or balance acceptance"}));quit(1 if failed else 0)

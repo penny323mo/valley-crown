@@ -1,0 +1,139 @@
+{
+  "build": "vc-79ebcaef19e3",
+  "source_commit": "ce2ea3d2513bd79cf62cf5c651abe3c47aad8513",
+  "game_tree": "cadc77674b0b3184e7c3af9961f3e6ffdac507e9",
+  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/43022406764",
+  "export_scope": "Two byte-identical repeat Web exports from one clean guarded import. Browser validation is a separate required release gate.",
+  "files_sha256": {
+    "index.apple-touch-icon.png": "9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a",
+    "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
+    "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
+    "index.html": "b2a87147f8e61da0d7aa3c8002d0a5ba68416b9a18e75c8b5befef694f1ccd51",
+    "index.icon.png": "08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5",
+    "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
+    "index.pck": "131f56c7aec6c50812842bd658a662b19d6abadc7a4a6c999f86802808efcb95",
+    "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
+    "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6",
+    "GODOT-LICENSES.txt": "f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f",
+    "THIRD_PARTY_NOTICES.txt": "764383beefaab35533bca4cf65654aeb4ef1a4a5a2f6074e5e4e98a56389ece2",
+    "assets/fonts/MENU-TITLE-LICENSE.txt": "849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b",
+    "assets/fonts/NOTO-LICENSE.txt": "849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b",
+    "assets/fonts/DEJAVU-LICENSE.txt": "f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9",
+    "art/action_characters/licenses/quaternius-base.txt": "0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e",
+    "art/action_characters/licenses/quaternius-ual.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+    "art/action_characters/licenses/quaternius-outfits.txt": "2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb",
+    "art/action_characters/licenses/quaternius-ual2.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+    "art/action_characters/licenses/kaykit-animations.txt": "373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9"
+  },
+  "scope": "Tested mobile input repair and military progression beta; provisional military presentation, not full-game acceptance.",
+  "features": [
+    "Fix the first battlefield tap after swiping the action strip. Actual producer swipe followed by first worker selection is covered; cancelled and repeated swipes also have routed engine regressions.",
+    "Four resources and age progression, eight worker-buildable structures plus the starting town center, cavalry and siege gameplay, age-locked stable/workshop and expanded production/economy rules. New military models remain provisional.",
+    "Immediate villager build palette, contextual ground/resource orders, compact Stop and the existing illustrated responsive main menu.",
+    "Faction-view publication optimization with separate semantic/component checks; no claim of whole-game or mobile speedup."
+  ],
+  "native_validation": {
+    "status": "passed",
+    "run": "https://github.com/penny323mo/valley-crown/actions/runs/43022406764",
+    "passed_assertions": 642,
+    "suites": {
+      "construction_status": 34,
+      "construction_status_hud": 34,
+      "mobile_stop_control_contract": 21,
+      "mobile_stop_control_phone": 64,
+      "stance_target_cancel_phone": 58,
+      "contextual_touch_contract": 25,
+      "contextual_touch_phone": 26,
+      "main_menu_flow_contract": 243,
+      "military_progression_contract": 66,
+      "military_runtime_edges": 31,
+      "faction_publication": 40
+    },
+    "scope": "Controlled headless engine fixtures including synthetic states and actual Viewport-routed input; not rendered combat or physical-device proof.",
+    "repeat_web_exports": 2,
+    "cleanup_verified": true,
+    "oom_unchanged": true
+  },
+  "browser_validation": {
+    "status": "passed",
+    "run": "https://github.com/penny323mo/valley-crown/actions/runs/43024327364",
+    "input": "Real hosted Chrome390x844 emulated touchscreen, not a physical phone",
+    "scenarios": [
+      {
+        "profile": "military390-producer",
+        "passed": true,
+        "viewport": [
+          390,
+          844
+        ],
+        "elapsed_seconds": 25.102039512999998,
+        "scope": "producer-direct",
+        "screenshots": [
+          "military390-producer-producer-queue-age.png"
+        ],
+        "cleanup_verified": true,
+        "host_oom_unchanged": true,
+        "inputs_unchanged": true,
+        "network_errors": 0
+      },
+      {
+        "profile": "military390-palette-first",
+        "passed": true,
+        "viewport": [
+          390,
+          844
+        ],
+        "elapsed_seconds": 28.657445938,
+        "scope": "palette-first",
+        "screenshots": [
+          "military390-palette-first-palette-pair-1.png",
+          "military390-palette-first-palette-pair-2.png"
+        ],
+        "cleanup_verified": true,
+        "host_oom_unchanged": true,
+        "inputs_unchanged": true,
+        "network_errors": 0
+      },
+      {
+        "profile": "military390-palette-last",
+        "passed": true,
+        "viewport": [
+          390,
+          844
+        ],
+        "elapsed_seconds": 47.512449880999995,
+        "scope": "palette-last",
+        "screenshots": [
+          "military390-palette-last-palette-pair-3.png",
+          "military390-palette-last-palette-pair-4.png"
+        ],
+        "cleanup_verified": true,
+        "host_oom_unchanged": true,
+        "inputs_unchanged": true,
+        "network_errors": 0
+      }
+    ],
+    "screenshots": "Actual four-resource/age HUD, production queue and all eight building entries inspected; no overlap or clipped required labels accepted.",
+    "network_gate": "Zero observed browser errors, exact WASM/PCK GET200 finished; strict close and cleanup checks.",
+    "fixture_cache_policy": "Only exact manifest-pinned WASM/PCK use no-cache in fresh isolated fixture contexts; all failures remain fatal.",
+    "cleanup_verified": true,
+    "input_hashes_unchanged": true,
+    "host_oom_unchanged": true
+  },
+  "validation_limits": [
+    "Cavalry/siege presentation and existing weapon/tool/shield grip remain provisional; corrected final models are not in this release.",
+    "Complete rendered growth-war-victory sequence, normal-phone-camera projectile/HP readability and advanced-unit natural-play coverage remain unverified.",
+    "Physical phones, audible audio, OS background interruption and browser-history behavior remain unverified.",
+    "Current-build browser acceptance is390x844; prior-build four-profile menu evidence is labelled separately.",
+    "Earlier failed runs remain failed. Public served-byte verification is separate after deployment."
+  ],
+  "full_game_acceptance": false,
+  "historical_validation": {
+    "prior_build": "vc-542ddb524e45",
+    "source_commit": "422acc862d9fc56f1fe2c95440f411893ded5edf",
+    "menu_profiles_run": "https://github.com/penny323mo/valley-crown/actions/runs/43017262730",
+    "menu_profiles": "320x568,390x844,844x390,1440x900 plus rotations on the prior build; menu source remains unchanged.",
+    "natural_match_run": "https://github.com/penny323mo/valley-crown/actions/runs/43017137336",
+    "natural_match": "13 ordinary-command phases through keep-destruction victory, headless only, game338.75s. This is prior-build evidence, not rendered or physical-touch proof for this release."
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "build": "vc-e4811bacee80",
+  "base_source": "e00ed1520ae262b7486a52b6c22291229df8f83c",
+  "change": "Replace tooltip U+64CB missing from bundled font with existing supported wording; gate unchanged.",
+  "results": [
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "failed": 0,
+      "missing_codepoints": []
+    },
+    {
+      "suite": "workforce_reassign_contract",
+      "checks": 35,
+      "failed": 0,
+      "missing_codepoints": []
+    },
+    {
+      "suite": "shortcut_categories_contract",
+      "checks": 33,
+      "failed": 0,
+      "missing_codepoints": []
+    }
+  ],
+  "scope": "Native headless font glyph and selected workforce/menu contracts; no rendered or phone acceptance.",
+  "persistence": "No save files or schema changes."
+}

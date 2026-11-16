@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1"]
+
+[node name="ValleyAndCrown" type="Node3D" unique_id=1221524117]
+script = ExtResource("1")

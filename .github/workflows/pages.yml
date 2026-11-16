@@ -1,0 +1,614 @@
+name: Publish verified phone-controls test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Restore durable verified archive 13854909658
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13854909658 --destination candidate
+      - name: Verify every candidate byte and package public assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYVERIFY'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('candidate')
+          expected={'clean-a/GODOT-LICENSES.txt': 'f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f', 'clean-a/THIRD_PARTY_NOTICES.txt': '764383beefaab35533bca4cf65654aeb4ef1a4a5a2f6074e5e4e98a56389ece2', 'artifacts/clean-a/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-a/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-a/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-a/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-a/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-a/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-a/index.pck': '131f56c7aec6c50812842bd658a662b19d6abadc7a4a6c999f86802808efcb95', 'artifacts/clean-a/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-a/index.html': 'b2a87147f8e61da0d7aa3c8002d0a5ba68416b9a18e75c8b5befef694f1ccd51', 'artifacts/clean-b/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-b/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-b/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-b/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-b/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-b/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-b/index.pck': '131f56c7aec6c50812842bd658a662b19d6abadc7a4a6c999f86802808efcb95', 'artifacts/clean-b/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-b/index.html': 'b2a87147f8e61da0d7aa3c8002d0a5ba68416b9a18e75c8b5befef694f1ccd51', 'clean-a/assets/fonts/MENU-TITLE-LICENSE.txt': '849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b', 'clean-a/assets/fonts/NOTO-LICENSE.txt': '849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b', 'clean-a/assets/fonts/DEJAVU-LICENSE.txt': 'f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9', 'clean-a/art/action_characters/licenses/quaternius-base.txt': '0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e', 'clean-a/art/action_characters/licenses/quaternius-ual.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/quaternius-outfits.txt': '2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb', 'clean-a/art/action_characters/licenses/quaternius-ual2.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/kaykit-animations.txt': '373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9'}
+          actual={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          assert actual==expected, 'Candidate artifact allowlist/hash mismatch'
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Candidate symlink rejected'
+          target=pathlib.Path('site/builds/vc-79ebcaef19e3')
+          shutil.copytree(root/'artifacts/clean-a',target)
+          for source,dest in [('GODOT-LICENSES.txt', 'GODOT-LICENSES.txt'), ('THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_NOTICES.txt'), ('art/action_characters/licenses/kaykit-animations.txt', 'art/action_characters/licenses/kaykit-animations.txt'), ('art/action_characters/licenses/quaternius-base.txt', 'art/action_characters/licenses/quaternius-base.txt'), ('art/action_characters/licenses/quaternius-outfits.txt', 'art/action_characters/licenses/quaternius-outfits.txt'), ('art/action_characters/licenses/quaternius-ual.txt', 'art/action_characters/licenses/quaternius-ual.txt'), ('art/action_characters/licenses/quaternius-ual2.txt', 'art/action_characters/licenses/quaternius-ual2.txt'), ('assets/fonts/DEJAVU-LICENSE.txt', 'assets/fonts/DEJAVU-LICENSE.txt'), ('assets/fonts/NOTO-LICENSE.txt', 'assets/fonts/NOTO-LICENSE.txt'), ('assets/fonts/MENU-TITLE-LICENSE.txt', 'assets/fonts/MENU-TITLE-LICENSE.txt')]:
+              out=target/dest;out.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/'clean-a'/source,out)
+          for name in ['WEB_EXPORT_MANIFEST.json','THIRD_PARTY_NOTICES.txt']:
+              shutil.copyfile(pathlib.Path('release-history/vc-79ebcaef19e3')/name,target/name)
+          (target/'.nojekyll').touch()
+          manifest=json.loads((target/'WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']=='vc-79ebcaef19e3'
+          for name,digest in manifest['files_sha256'].items():
+              assert hashlib.sha256((target/name).read_bytes()).hexdigest()==digest,name
+          assert len([p for p in target.rglob('*') if p.is_file()])==21
+          shutil.copytree(target,'site/play')
+          shutil.copyfile('landing.html','site/index.html')
+          pathlib.Path('site/.nojekyll').touch()
+          print('Verified immutable mobile candidate and current play route')
+          PYVERIFY
+          echo '0d6c1bd6f8d8b42bc605ad74401c1f600f9f66d7485fd3b706d9278516095fa7  valley-crown-vc-bff2dcf4109a-web.zip' | sha256sum --check --strict
+          mkdir -p site/builds/vc-bff2dcf4109a
+          unzip -q valley-crown-vc-bff2dcf4109a-web.zip -d site/builds/vc-bff2dcf4109a
+      - name: Restore durable verified archive 13830390118
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13830390118 --destination previous-candidate
+      - name: Verify and preserve exact prior beta bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYVERIFY'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('previous-candidate')
+          expected={'artifacts/clean-a/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-a/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-a/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-a/index.html': '5c3741c84ecc3eab4e74b9223252b3616577fff784270c3f542313eb376736ea', 'artifacts/clean-a/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-a/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-a/index.pck': 'dbc85abf289b1ec40a63a5a30628a2a708db536038a39e23455e3828e5c8574f', 'artifacts/clean-a/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-a/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-b/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-b/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-b/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-b/index.html': '5c3741c84ecc3eab4e74b9223252b3616577fff784270c3f542313eb376736ea', 'artifacts/clean-b/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-b/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-b/index.pck': 'dbc85abf289b1ec40a63a5a30628a2a708db536038a39e23455e3828e5c8574f', 'artifacts/clean-b/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-b/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'clean-a/GODOT-LICENSES.txt': 'f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f', 'clean-a/THIRD_PARTY_NOTICES.txt': '8833bc5c11f9c130e545fe94650e05687383c37fdf45ab79ebe584bbc4ae63bb', 'clean-a/art/action_characters/licenses/kaykit-animations.txt': '373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9', 'clean-a/art/action_characters/licenses/quaternius-base.txt': '0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e', 'clean-a/art/action_characters/licenses/quaternius-outfits.txt': '2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb', 'clean-a/art/action_characters/licenses/quaternius-ual.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/quaternius-ual2.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/assets/fonts/DEJAVU-LICENSE.txt': 'f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9', 'clean-a/assets/fonts/NOTO-LICENSE.txt': '849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b'}
+          actual={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          assert actual==expected, 'Candidate artifact allowlist/hash mismatch'
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Candidate symlink rejected'
+          target=pathlib.Path('site/builds/vc-dd795d96905c')
+          shutil.copytree(root/'artifacts/clean-a',target)
+          for source,dest in [('GODOT-LICENSES.txt', 'GODOT-LICENSES.txt'), ('THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_NOTICES.txt'), ('art/action_characters/licenses/kaykit-animations.txt', 'art/action_characters/licenses/kaykit-animations.txt'), ('art/action_characters/licenses/quaternius-base.txt', 'art/action_characters/licenses/quaternius-base.txt'), ('art/action_characters/licenses/quaternius-outfits.txt', 'art/action_characters/licenses/quaternius-outfits.txt'), ('art/action_characters/licenses/quaternius-ual.txt', 'art/action_characters/licenses/quaternius-ual.txt'), ('art/action_characters/licenses/quaternius-ual2.txt', 'art/action_characters/licenses/quaternius-ual2.txt'), ('assets/fonts/DEJAVU-LICENSE.txt', 'assets/fonts/DEJAVU-LICENSE.txt'), ('assets/fonts/NOTO-LICENSE.txt', 'assets/fonts/NOTO-LICENSE.txt')]:
+              out=target/dest;out.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/'clean-a'/source,out)
+          for name in ['WEB_EXPORT_MANIFEST.json','THIRD_PARTY_NOTICES.txt']:
+              shutil.copyfile(pathlib.Path('release-history/vc-dd795d96905c')/name,target/name)
+          (target/'.nojekyll').touch()
+          manifest=json.loads((target/'WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']=='vc-dd795d96905c'
+          for name,digest in manifest['files_sha256'].items():
+              assert hashlib.sha256((target/name).read_bytes()).hexdigest()==digest,name
+          assert len([p for p in target.rglob('*') if p.is_file()])==20
+          print('Preserved immutable prior beta route; current play route unchanged')
+          PYVERIFY
+      - name: Restore durable verified archive 13833927602
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13833927602 --destination previous-construction-candidate
+      - name: Verify and preserve exact construction beta bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYVERIFY'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('previous-construction-candidate')
+          expected={'clean-a/GODOT-LICENSES.txt': 'f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f', 'clean-a/THIRD_PARTY_NOTICES.txt': '8833bc5c11f9c130e545fe94650e05687383c37fdf45ab79ebe584bbc4ae63bb', 'artifacts/clean-a/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-a/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-a/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-a/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-a/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-a/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-a/index.pck': 'c8981d6bb7e6a50d692424b226d3f838419008a13ce40baa6908323600550bf8', 'artifacts/clean-a/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-a/index.html': '1f3e1bb0e71c4223bf5bdc4c3f9847c7d1f624f41a5c5a0b7fdc03f52dce18ff', 'artifacts/clean-b/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-b/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-b/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-b/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-b/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-b/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-b/index.pck': 'c8981d6bb7e6a50d692424b226d3f838419008a13ce40baa6908323600550bf8', 'artifacts/clean-b/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-b/index.html': '1f3e1bb0e71c4223bf5bdc4c3f9847c7d1f624f41a5c5a0b7fdc03f52dce18ff', 'clean-a/assets/fonts/NOTO-LICENSE.txt': '849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b', 'clean-a/assets/fonts/DEJAVU-LICENSE.txt': 'f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9', 'clean-a/art/action_characters/licenses/quaternius-base.txt': '0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e', 'clean-a/art/action_characters/licenses/quaternius-ual.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/quaternius-outfits.txt': '2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb', 'clean-a/art/action_characters/licenses/quaternius-ual2.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/kaykit-animations.txt': '373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9'}
+          actual={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          assert actual==expected, 'Candidate artifact allowlist/hash mismatch'
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Candidate symlink rejected'
+          target=pathlib.Path('site/builds/vc-cf764648c52f')
+          shutil.copytree(root/'artifacts/clean-a',target)
+          for source,dest in [('GODOT-LICENSES.txt', 'GODOT-LICENSES.txt'), ('THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_NOTICES.txt'), ('art/action_characters/licenses/kaykit-animations.txt', 'art/action_characters/licenses/kaykit-animations.txt'), ('art/action_characters/licenses/quaternius-base.txt', 'art/action_characters/licenses/quaternius-base.txt'), ('art/action_characters/licenses/quaternius-outfits.txt', 'art/action_characters/licenses/quaternius-outfits.txt'), ('art/action_characters/licenses/quaternius-ual.txt', 'art/action_characters/licenses/quaternius-ual.txt'), ('art/action_characters/licenses/quaternius-ual2.txt', 'art/action_characters/licenses/quaternius-ual2.txt'), ('assets/fonts/DEJAVU-LICENSE.txt', 'assets/fonts/DEJAVU-LICENSE.txt'), ('assets/fonts/NOTO-LICENSE.txt', 'assets/fonts/NOTO-LICENSE.txt')]:
+              out=target/dest;out.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/'clean-a'/source,out)
+          for name in ['WEB_EXPORT_MANIFEST.json','THIRD_PARTY_NOTICES.txt']:
+              shutil.copyfile(pathlib.Path('release-history/vc-cf764648c52f')/name,target/name)
+          (target/'.nojekyll').touch()
+          manifest=json.loads((target/'WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']=='vc-cf764648c52f'
+          for name,digest in manifest['files_sha256'].items():
+              assert hashlib.sha256((target/name).read_bytes()).hexdigest()==digest,name
+          assert len([p for p in target.rglob('*') if p.is_file()])==20
+          print('Preserved immutable construction beta route')
+          PYVERIFY
+      - name: Restore durable verified archive 13841514220
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13841514220 --destination previous-menu-candidate
+      - name: Verify and preserve exact menu and touch beta bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYVERIFY'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('previous-menu-candidate')
+          expected={'clean-a/GODOT-LICENSES.txt': 'f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f', 'clean-a/THIRD_PARTY_NOTICES.txt': '8833bc5c11f9c130e545fe94650e05687383c37fdf45ab79ebe584bbc4ae63bb', 'artifacts/clean-a/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-a/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-a/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-a/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-a/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-a/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-a/index.pck': '05052b7b14ef9d149ece01770b2f0b72f21547f78408b1f3a66f2b261e733042', 'artifacts/clean-a/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-a/index.html': '3eb5b2f8d9bedf641e9b0ef0e9282fb18662be2503d3a8e5203ca82dae42e82c', 'artifacts/clean-b/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-b/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-b/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-b/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-b/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-b/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-b/index.pck': '05052b7b14ef9d149ece01770b2f0b72f21547f78408b1f3a66f2b261e733042', 'artifacts/clean-b/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-b/index.html': '3eb5b2f8d9bedf641e9b0ef0e9282fb18662be2503d3a8e5203ca82dae42e82c', 'clean-a/assets/fonts/NOTO-LICENSE.txt': '849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b', 'clean-a/assets/fonts/DEJAVU-LICENSE.txt': 'f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9', 'clean-a/art/action_characters/licenses/quaternius-base.txt': '0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e', 'clean-a/art/action_characters/licenses/quaternius-ual.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/quaternius-outfits.txt': '2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb', 'clean-a/art/action_characters/licenses/quaternius-ual2.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/kaykit-animations.txt': '373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9'}
+          actual={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          assert actual==expected, 'Candidate artifact allowlist/hash mismatch'
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Candidate symlink rejected'
+          target=pathlib.Path('site/builds/vc-21ae974acec8')
+          shutil.copytree(root/'artifacts/clean-a',target)
+          for source,dest in [('GODOT-LICENSES.txt', 'GODOT-LICENSES.txt'), ('THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_NOTICES.txt'), ('art/action_characters/licenses/kaykit-animations.txt', 'art/action_characters/licenses/kaykit-animations.txt'), ('art/action_characters/licenses/quaternius-base.txt', 'art/action_characters/licenses/quaternius-base.txt'), ('art/action_characters/licenses/quaternius-outfits.txt', 'art/action_characters/licenses/quaternius-outfits.txt'), ('art/action_characters/licenses/quaternius-ual.txt', 'art/action_characters/licenses/quaternius-ual.txt'), ('art/action_characters/licenses/quaternius-ual2.txt', 'art/action_characters/licenses/quaternius-ual2.txt'), ('assets/fonts/DEJAVU-LICENSE.txt', 'assets/fonts/DEJAVU-LICENSE.txt'), ('assets/fonts/NOTO-LICENSE.txt', 'assets/fonts/NOTO-LICENSE.txt')]:
+              out=target/dest;out.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/'clean-a'/source,out)
+          for name in ['WEB_EXPORT_MANIFEST.json','THIRD_PARTY_NOTICES.txt']:
+              shutil.copyfile(pathlib.Path('release-history/vc-21ae974acec8')/name,target/name)
+          (target/'.nojekyll').touch()
+          manifest=json.loads((target/'WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']=='vc-21ae974acec8'
+          for name,digest in manifest['files_sha256'].items():
+              assert hashlib.sha256((target/name).read_bytes()).hexdigest()==digest,name
+          assert len([p for p in target.rglob('*') if p.is_file()])==20
+          print('Preserved immutable menu and touch beta route')
+          PYVERIFY
+      - name: Restore durable verified archive 13849965133
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 13849965133 --destination previous-illustrated-menu-candidate
+      - name: Verify and preserve exact illustrated-menu beta bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYVERIFY'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('previous-illustrated-menu-candidate')
+          expected={'clean-a/GODOT-LICENSES.txt': 'f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f', 'clean-a/THIRD_PARTY_NOTICES.txt': '764383beefaab35533bca4cf65654aeb4ef1a4a5a2f6074e5e4e98a56389ece2', 'artifacts/clean-a/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-a/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-a/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-a/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-a/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-a/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-a/index.pck': 'd0aeff364782b1442cee947b03f352f11ae78b531cb0016a63d15a78733becd6', 'artifacts/clean-a/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-a/index.html': 'e0aa42997b5073968d8f4bf75ff82cbd428bb4be7cf5a266ab44929147f54c4c', 'artifacts/clean-b/index.apple-touch-icon.png': '9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a', 'artifacts/clean-b/index.wasm': '26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6', 'artifacts/clean-b/index.png': '3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e', 'artifacts/clean-b/index.audio.position.worklet.js': 'be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8', 'artifacts/clean-b/index.icon.png': '08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5', 'artifacts/clean-b/index.js': 'e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981', 'artifacts/clean-b/index.pck': 'd0aeff364782b1442cee947b03f352f11ae78b531cb0016a63d15a78733becd6', 'artifacts/clean-b/index.audio.worklet.js': '5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3', 'artifacts/clean-b/index.html': 'e0aa42997b5073968d8f4bf75ff82cbd428bb4be7cf5a266ab44929147f54c4c', 'clean-a/assets/fonts/MENU-TITLE-LICENSE.txt': '849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b', 'clean-a/assets/fonts/NOTO-LICENSE.txt': '849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b', 'clean-a/assets/fonts/DEJAVU-LICENSE.txt': 'f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9', 'clean-a/art/action_characters/licenses/quaternius-base.txt': '0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e', 'clean-a/art/action_characters/licenses/quaternius-ual.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/quaternius-outfits.txt': '2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb', 'clean-a/art/action_characters/licenses/quaternius-ual2.txt': '6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061', 'clean-a/art/action_characters/licenses/kaykit-animations.txt': '373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9'}
+          actual={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}
+          assert actual==expected, 'Candidate artifact allowlist/hash mismatch'
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Candidate symlink rejected'
+          target=pathlib.Path('site/builds/vc-10d6c6145978')
+          shutil.copytree(root/'artifacts/clean-a',target)
+          for source,dest in [('GODOT-LICENSES.txt', 'GODOT-LICENSES.txt'), ('THIRD_PARTY_NOTICES.txt', 'THIRD_PARTY_NOTICES.txt'), ('art/action_characters/licenses/kaykit-animations.txt', 'art/action_characters/licenses/kaykit-animations.txt'), ('art/action_characters/licenses/quaternius-base.txt', 'art/action_characters/licenses/quaternius-base.txt'), ('art/action_characters/licenses/quaternius-outfits.txt', 'art/action_characters/licenses/quaternius-outfits.txt'), ('art/action_characters/licenses/quaternius-ual.txt', 'art/action_characters/licenses/quaternius-ual.txt'), ('art/action_characters/licenses/quaternius-ual2.txt', 'art/action_characters/licenses/quaternius-ual2.txt'), ('assets/fonts/DEJAVU-LICENSE.txt', 'assets/fonts/DEJAVU-LICENSE.txt'), ('assets/fonts/NOTO-LICENSE.txt', 'assets/fonts/NOTO-LICENSE.txt'), ('assets/fonts/MENU-TITLE-LICENSE.txt', 'assets/fonts/MENU-TITLE-LICENSE.txt')]:
+              out=target/dest;out.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(root/'clean-a'/source,out)
+          for name in ['WEB_EXPORT_MANIFEST.json','THIRD_PARTY_NOTICES.txt']:
+              shutil.copyfile(pathlib.Path('release-history/vc-10d6c6145978')/name,target/name)
+          (target/'.nojekyll').touch()
+          manifest=json.loads((target/'WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']=='vc-10d6c6145978'
+          for name,digest in manifest['files_sha256'].items():
+              assert hashlib.sha256((target/name).read_bytes()).hexdigest()==digest,name
+          assert len([p for p in target.rglob('*') if p.is_file()])==21
+          print('Preserved exact illustrated-menu beta route')
+          PYVERIFY
+      - name: Restore durable verified archive 14017792953
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14017792953 --destination new-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('new-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='861274b82ceec7faa952a0b822ca17c3c548973801e73d3ef72d05881c723a1d'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-5a977bb2321a' and m['source_commit']=='44dde647632f19b5148ca7c3ecf74f4fb09060c7'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-5a977bb2321a')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-5a977bb2321a/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-5a977bb2321a/"><a href="../builds/vc-5a977bb2321a/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14022635856
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14022635856 --destination resource-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('resource-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='46197908d606d96939dd31de96fc452fc0b607050c0781a177b67507aa1bbb35'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-a3e77de29039' and m['source_commit']=='740b3dd5f81130cbceaabd838cf7724013a1fec8'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-a3e77de29039')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-a3e77de29039/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-a3e77de29039/"><a href="../builds/vc-a3e77de29039/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14029163982
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14029163982 --destination touch-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('touch-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='8de29de6c15b5eb1922db2392709a3439888e743a310f2e3f5afbd357d88d2b1'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-51872ab8fa5f' and m['source_commit']=='b152f2bfd5db69a85060444a12dc06f44b41b471'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-51872ab8fa5f')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-51872ab8fa5f/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-51872ab8fa5f/"><a href="../builds/vc-51872ab8fa5f/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14094036533
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14094036533 --destination hold-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('hold-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='ec6aacdff4fa07ccf51ee4e9e8dc86c1bbdc7235b62170bb9f4847f130720be9'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-082afef9b546' and m['source_commit']=='ba3e7cad977331c4451b4d9a4d68713888042e60'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-082afef9b546')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-082afef9b546/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-082afef9b546/"><a href="../builds/vc-082afef9b546/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14095462720
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14095462720 --destination skirmish-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('skirmish-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='421b13e24a6018643196aca75a01e87c97a88edb5f05606a174536c8791e503d'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-2a34660346e1' and m['source_commit']=='5270156aa0825ec605313bfbaa531f02aa5c034d'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-2a34660346e1')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-2a34660346e1/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-2a34660346e1/"><a href="../builds/vc-2a34660346e1/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14095494187
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14095494187 --destination polish-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('polish-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='0e399c19068116191eac7051baa2a99dfac67a58d97eb6e0f71d20fa2482b873'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-08e7cfdf004a' and m['source_commit']=='4165e0348c55e01bcb925046c5c25610b34e2299'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-08e7cfdf004a')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-08e7cfdf004a/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-08e7cfdf004a/"><a href="../builds/vc-08e7cfdf004a/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14096485100
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14096485100 --destination army-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('army-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='8416a410da3c62280e3e2aafd9879df654b176257e66fb7e7205c9fc061b8af4'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-c06b349e87da' and m['source_commit']=='84721b66ad19c7739383b15502bb60e2a8e4e11b'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-c06b349e87da')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-c06b349e87da/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-c06b349e87da/"><a href="../builds/vc-c06b349e87da/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14098043958
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14098043958 --destination formation-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('formation-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='db8efc77e4577645f65567b0f96c09d1f6cc84f7a1eea72e0f47c13758a05e8d'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-35ac50658b60' and m['source_commit']=='6133a8aa9874233d0a3f15a9778bc61ca6c7f6da'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-35ac50658b60')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-35ac50658b60/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-35ac50658b60/"><a href="../builds/vc-35ac50658b60/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14098714511
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14098714511 --destination menu-redesign-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('menu-redesign-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='2e824dc4c0b7d167f377db654f4d33bcb23ecc59b3f2dcaeb467b58922bb76d6'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-be8c3c2f8ca5' and m['source_commit']=='72f7beadd3a822e88edbb1754542735b552c4538'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-be8c3c2f8ca5')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-be8c3c2f8ca5/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-be8c3c2f8ca5/"><a href="../builds/vc-be8c3c2f8ca5/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14099198517
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14099198517 --destination title-fix-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('title-fix-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='55959bf074cba5b607288cd7d0a047d69768f3d4cf374d8edbd59c028e09668f'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-697a5681098b' and m['source_commit']=='a062df4c679504fb12c0b5a296006730482dc54e'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-697a5681098b')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-697a5681098b/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-697a5681098b/"><a href="../builds/vc-697a5681098b/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Restore durable verified archive 14100074005
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/web_release_archive.py restore --artifact 14100074005 --destination home-defense-product
+      - name: Verify current product bytes and preserve immutable history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYNEW'
+          import hashlib,json,pathlib,shutil
+          root=pathlib.Path('home-defense-product')
+          assert not any(p.is_symlink() for p in root.rglob('*')), 'Symlink rejected before hashing'
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          meta=root/'candidate-metadata.json'
+          assert sha(meta)=='8e8ae8e5920b68824821e32a2fb9104e4ba51ad09e938c23cee5a142ad03cf1c'
+          m=json.loads(meta.read_text())
+          assert m['build']=='vc-e34dd7caadc3' and m['source_commit']=='ae066c0f9e53b9e9be6a00a3f2bc149d07d70afa'
+          assert m['side']=='product' and m['diagnostic_only'] is False
+          actual={p.relative_to(root).as_posix():sha(p) for p in root.rglob('*') if p.is_file() and p!=meta}
+          assert actual==m['files_sha256'], 'Exact artifact allowlist mismatch'
+          for name,h in m['export_files_sha256'].items():
+              assert sha(root/'artifacts/clean-a'/name)==h and sha(root/'artifacts/clean-b'/name)==h
+          target=pathlib.Path('site/builds/vc-e34dd7caadc3')
+          assert not target.exists(), 'Immutable build collision'
+          shutil.copytree(root/'artifacts/clean-a',target)
+          shutil.copytree(root/'notices',target,dirs_exist_ok=True)
+          manifest=json.loads(pathlib.Path('release-history/vc-e34dd7caadc3/WEB_EXPORT_MANIFEST.json').read_text())
+          assert manifest['build']==m['build'] and manifest['source_commit']==m['source_commit']
+          for name,h in manifest['files_sha256'].items(): assert sha(target/name)==h,name
+          (target/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          (target/'.nojekyll').touch()
+          shutil.rmtree('site/play')
+          pathlib.Path('site/play').mkdir()
+          pathlib.Path('site/play/index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../builds/vc-e34dd7caadc3/"><a href="../builds/vc-e34dd7caadc3/">進入遊戲</a>')
+          print('Verified current build and all preserved historical routes')
+          PYNEW
+      - name: Preserve every historical raw URL and enforce Pages capacity
+        run: |
+          python3 - <<'PYHISTORY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('site')
+          baseline=json.loads(pathlib.Path('release-history/PAGES_ARCHIVE_BASELINE.json').read_text())
+          for name,meta in baseline['files'].items():
+              if name.startswith('builds/'):
+                  path=root/name
+                  assert path.is_file() and not path.is_symlink(), name
+                  assert path.stat().st_size==meta['bytes'], name
+                  assert hashlib.sha256(path.read_bytes()).hexdigest()==meta['sha256'], name
+          total=sum(p.stat().st_size for p in root.rglob('*') if p.is_file())
+          assert total<1_000_000_000, f'Pages site {total} bytes exceeds conservative 1GB capacity; publish new builds on new host, never remove history'
+          print('Historical raw bytes unchanged; total site bytes:',total)
+          PYHISTORY
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: site
+      - name: Wait for uploaded Pages artifact to become visible
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          python3 - <<'PYVISIBLE'
+          import json,os,time,urllib.request
+          url=f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}/artifacts?per_page=100"
+          for attempt in range(20):
+              request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+              with urllib.request.urlopen(request,timeout=20) as response: data=json.load(response)
+              artifacts=[a for a in data['artifacts'] if a['name']=='github-pages' and not a['expired']]
+              if len(artifacts)==1:
+                  print('Pages artifact metadata visible:',artifacts[0]['id'])
+                  break
+              if len(artifacts)>1: raise SystemExit('Ambiguous Pages artifact identity')
+              print('Waiting for uploaded artifact metadata',attempt+1)
+              time.sleep(3)
+          else: raise SystemExit('Uploaded Pages artifact not visible within bounded wait')
+          PYVISIBLE
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e

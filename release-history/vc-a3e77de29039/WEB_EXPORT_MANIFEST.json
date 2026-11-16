@@ -1,0 +1,42 @@
+{
+  "build": "vc-a3e77de29039",
+  "source_commit": "740b3dd5f81130cbceaabd838cf7724013a1fec8",
+  "game_tree": "b6474eacdfcc812407e279e9299ae468e4402e8a",
+  "export_run": "https://github.com/penny323mo/valley-crown/actions/runs/43395162042",
+  "artifact_id": 14022635856,
+  "artifact_zip_sha256": "5064788d625f1b45d855f968d7c2a89fa6f24ccc348ff8850da0fde271febf3f",
+  "files_sha256": {
+    "index.apple-touch-icon.png": "9b374ecbc8558f480421e646f38aaa8a69d5b1d65ff7b48d0735da214c46773a",
+    "index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
+    "index.audio.worklet.js": "5b476a9c9ce642c0ee4256436d1bc31d9c38f868aca0f9a8e2a57c18d2dec2a3",
+    "index.html": "f36b3188b0fa24ce83f302d3195d09450e59471577508a0f3f412f04153889ff",
+    "index.icon.png": "08808dd5397e9a502cb3624944151f87a9705b5b66b5c365c5ca4c6ab51525f5",
+    "index.js": "e3f56ee40e6f84371053db06692cfac15e2c8659547b11c6b2dfa1996dabd981",
+    "index.pck": "b26c4c16f6ff73c94b2aa2d3907eb5aa587aeea00f73cee7012a7948a8a6e8af",
+    "index.png": "3cb4495c0b98dfbe4b663cbf2b6836473572339beb66d902367893162a70be0e",
+    "index.wasm": "26b61ce95247012ab3dca3ff51e96d1cdbff44ee91a8c20a83e150afca83f1b6",
+    "THIRD_PARTY_NOTICES.txt": "7afd20f756ae18339cbd42382b6c6d55b2297fb10749ad472230f703e3ad8193",
+    "GODOT-LICENSES.txt": "f0d10be03fc4d21a7e0ce642206746f7448025af3c57ef1778535811d646ac5f",
+    "assets/fonts/NOTO-LICENSE.txt": "849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b",
+    "assets/fonts/MENU-TITLE-LICENSE.txt": "849f4ea9c214fa4ac3593b770c699f387534b11ce671264c1b10d85bdcb5997b",
+    "assets/fonts/DEJAVU-LICENSE.txt": "f73fafdf2d5ae08d2ffbca865a34f2982bda3cd842b3b09c83790ff667cd93d9",
+    "art/advanced_buildings/upstream/QUATERNIUS-LICENSE.txt": "ec6fd5004514cb0515a7dc1065f474644d31698861597b32e1745945ffec71de",
+    "art/action_characters/licenses/quaternius-base.txt": "0f4beaf0fe360a7732e58bbe3dbf60a2422367fbea60cb9ea4add968f383268e",
+    "art/action_characters/licenses/kaykit-animations.txt": "373b159044d1a886ed15f57ca5a7673ba14e2623c460283452705f2056912ed9",
+    "art/action_characters/licenses/quaternius-ual2.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+    "art/action_characters/licenses/quaternius-ual.txt": "6d01f55c6e4c49a2c9963e147e561945ae2c83958c8ca667d90a6bffdbfac061",
+    "art/action_characters/licenses/quaternius-outfits.txt": "2202cc2f608c4210790b112e5f121bc2e7f8dced7b5b1c7f4be6203461bdebbb"
+  },
+  "verification": {
+    "engine": "Godot 4.6.3",
+    "native_assertions": 1266,
+    "faction_semantics": "PASS",
+    "two_identical_web_exports": true,
+    "browser": "UNVERIFIED for this build; available cloud Chrome lacks WebGL2 and Mac UI is locked",
+    "physical_iphone": "UNVERIFIED",
+    "weapon_grip": "original product assets; restoration experiment excluded",
+    "resource_mesh_and_fog_assertions": 27,
+    "resource_visuals": "Native isolated mesh/fog contract and staged native screenshots; no browser/phone performance acceptance"
+  },
+  "release_status": "development beta; native contracts and reproducible export passed; browser interaction and physical iPhone unverified"
+}
