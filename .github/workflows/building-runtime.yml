@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-8ba8a562744d-717f7643
+  group: building-runtime-vc-b277bc1d3f0b-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 2267b673e0c2d05b18b062a57613ec942bf3dde6
+      BUILDING_RUNTIME_SOURCE_COMMIT: 61f9b835a3975ee41590133b5cf85746ef65a8c1
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '8285369100892116399ede14ca41dac6f1d3a50221c2c1570288c03d8400b04c  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'cc0f904f4c87e1cb280ca89a569b48ebd181eea7257e6646a4c40fe884771de4  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -323,6 +323,12 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/garrison_checkpoint_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/garrison_natural_journey/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/garrison_natural_journey/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_worker_safety_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_worker_safety_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_worker_safety_checkpoint_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_worker_safety_checkpoint_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_evacuation_natural_journey/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_evacuation_natural_journey/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
