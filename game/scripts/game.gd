@@ -90,6 +90,10 @@ var guidance_detail: Label
 var context_detail_button: Button
 var guidance_detail_button: Button
 var context_detail_kind=""
+const TradePolicy=preload("res://scripts/trade_policy.gd")
+var trade_content: VBoxContainer
+var trade_buttons={}
+var trade_building=-1
 var tutorial_panel: PanelContainer
 var tutorial_label: Label
 var tutorial_skip: Button
@@ -799,6 +803,7 @@ func _execute(command):
 		if processed_command_ids.has(dedup_key): return
 		processed_command_ids[dedup_key]=true
 	match command.type:
+		"trade": _enqueue_trade(command.get("building",-1),command.get("from",""),command.get("to",""),team)
 		"garrison": _order_garrison(command.get("ids",[]),command.get("building",-1),team)
 		"ungarrison": _ungarrison(command.get("building",-1),command.get("count",5),team)
 		"tactical_route": _order_tactical_route(command.get("ids",[]),command.get("points",[]),team,command.get("final_advance",false))
@@ -829,7 +834,7 @@ func _execute(command):
 				var producer=_get_entity(command.clear_exit_building);var blocker=_get_entity(command.ids[0])
 				if producer.is_empty() or not producer.alive or producer.team!=0 or not producer.built or producer.queue.is_empty():return
 				var front=producer.queue[0]
-				if front.queue_id!=command.get("clear_exit_queue",-1) or front.remaining_ticks>0 or front.get("research",false) or _population(0,false)>=_capacity(0):return
+				if front.queue_id!=command.get("clear_exit_queue",-1) or front.remaining_ticks>0 or front.get("research",false) or front.get("trade",false) or _population(0,false)>=_capacity(0):return
 				if blocker.is_empty() or not blocker.alive or blocker.team!=0 or blocker.category!="unit" or not _unit_blocks_production_exit(blocker,producer,front.kind):return
 			if command.has("work_reassign"):
 				if typeof(command.get("source_work_epoch",null))!=TYPE_INT or typeof(command.get("source_resource",null))!=TYPE_STRING or typeof(command.work_reassign)!=TYPE_STRING or command.work_reassign not in ["food","wood","stone","iron"] or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
@@ -1070,7 +1075,7 @@ func _population(team, include_reserved=true):
 		if ent.category=="unit": result+=1
 		elif include_reserved:
 			for item in ent.queue:
-				if not item.get("research",false): result+=1
+				if not item.get("research",false) and not item.get("trade",false): result+=1
 	return result
 
 func _capacity(team):
@@ -1346,7 +1351,7 @@ func _update_production(ent,dt,commit_ready=true):
 	if not ent.built or ent.queue.is_empty() or ent.get("production_tick",-1)==tick_count: return
 	ent.production_tick=tick_count
 	var order=ent.queue[0]
-	if not order.get("research",false) and order.remaining_ticks>0 and _population(ent.team)>_capacity(ent.team): return
+	if not order.get("research",false) and not order.get("trade",false) and order.remaining_ticks>0 and _population(ent.team)>_capacity(ent.team): return
 	if not economy.mark_started(order.get("receipt_id",""),ent.team).ok: return
 	order.started=true; order.remaining_ticks=maxi(0,order.remaining_ticks-1)
 	if order.remaining_ticks<=0 and commit_ready: _try_ready_production(ent)
@@ -1371,6 +1376,15 @@ func _try_ready_production(ent):
 	if not ent.alive or ent.queue.is_empty(): return
 	var order=ent.queue[0]
 	if order.remaining_ticks>0 or tick_count<order.next_retry_tick: return
+	if order.get("trade",false):
+		economy_sequence+=1
+		var completed=economy.complete_trade("trade_complete:%s:%d" % [order.receipt_id,economy_sequence],order.receipt_id,ent.team)
+		if not completed.get("applied",false):
+			order.next_retry_tick=tick_count+20
+			return
+		ent.queue.pop_front();progress_serial+=1
+		if ent.team==0:_message("交易完成："+TradePolicy.label(order.kind)+"；不計採集交付目標。",4)
+		return
 	if order.get("research",false):
 		var receipt_id=order.get("receipt_id","")
 		if not economy.fulfill_cost("fulfilled:"+receipt_id,receipt_id,ent.team).applied: return
@@ -2975,7 +2989,7 @@ func _recovery_view(team):
 		elif ent.category=="building":
 			if Rules.DAMAGE.get(ent.kind,0)>0 or ent.get("attack_damage",0)>0: view.attack_buildings+=1
 			for item in ent.queue:
-				if not item.get("research",false): view.training_items+=1
+				if not item.get("research",false) and not item.get("trade",false): view.training_items+=1
 				else:
 					var refund=economy.quote_refund(item.get("receipt_id",""),team)
 					view.refundable_food+=int(refund.get("food",0)/Economy.SCALE)
@@ -3627,7 +3641,7 @@ func _ai_update():
 		if ent.category=="unit": living+=1
 		else:
 			for item in ent.queue:
-				if not item.get("research",false): reserved+=1
+				if not item.get("research",false) and not item.get("trade",false): reserved+=1
 				if item.kind=="villager": queued_workers+=1
 			if ent.built: capacity+=10 if ent.kind=="town_center" else (5 if ent.kind=="house" else 0)
 			else: sites.append(ent)
@@ -4031,6 +4045,14 @@ func _create_ui():
 	selection_detail.reparent(detail_content);selection_detail.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	guidance_detail=_label("",14);guidance_detail.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	guidance_detail.size_flags_horizontal=Control.SIZE_EXPAND_FILL;detail_content.add_child(guidance_detail)
+	trade_content=VBoxContainer.new();trade_content.name="ResourceTradePanel";detail_content.add_child(trade_content)
+	var trade_help=_label("資源交易 · 每單十五秒，共用主堡隊列。先付款、完成收貨；未開始可全退，開始後退 75%。不計採集交付目標。",14)
+	trade_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;trade_content.add_child(trade_help)
+	for trade_kind in TradePolicy.RECIPES:
+		var chosen=trade_kind
+		var option=_button(TradePolicy.label(chosen),func():_request_trade(chosen),160)
+		option.name=chosen;trade_content.add_child(option);trade_buttons[chosen]=option
+	trade_content.hide()
 	context_details.hide()
 	queue_label=_label("",14,Color("c8d4b3")); queue_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; selection_row.add_child(queue_label)
 	compact_narrow_info=VBoxContainer.new(); compact_narrow_info.add_theme_constant_override("separation",2); compact_bottom_stack.add_child(compact_narrow_info)
@@ -4297,6 +4319,7 @@ func _layout_context_details(view_size):
 	context_details.visible=not context_detail_kind.is_empty() and not compact_menu.visible and not game_over
 	selection_detail.visible=context_detail_kind=="selection"
 	guidance_detail.visible=context_detail_kind=="guidance"
+	_refresh_trade_panel()
 	guidance_detail.text=toast_label.text if toast_time>0 else demo_tutorial.text(paused)
 	context_detail_button.text="收起" if context_detail_kind=="selection" else "詳情"
 	var width=minf(520,view_size.x-12)
@@ -4415,9 +4438,11 @@ func _update_hud():
 		if not ent.built: selection_detail.text=ConstructionStatus.detail(ent,faction_views[0].records(),own_command_pending,paused)
 		if not ent.queue.is_empty():
 			queue_label.text="%s %ds · 隊列 %d" % [Rules.NAMES[ent.queue[0].kind],ceili(ent.queue[0].remaining_ticks/20.0),ent.queue.size()]
-			if ent.queue[0].remaining_ticks<=0:
+			if ent.queue[0].get("trade",false) and ent.queue[0].remaining_ticks<=0:
+				queue_label.text="交易等待入庫；尚未收到資源"
+			elif ent.queue[0].remaining_ticks<=0:
 				queue_label.text="訓練完成，等待人口空位" if _population(0,false)>=_capacity(0) else "訓練完成，出口受阻；選取出口單位，再點空地移開"
-			elif not ent.queue[0].get("research",false) and _population(0)>_capacity(0): queue_label.text="缺少住房，訓練暫停"
+			elif not ent.queue[0].get("research",false) and not ent.queue[0].get("trade",false) and _population(0)>_capacity(0): queue_label.text="缺少住房，訓練暫停"
 	else:
 		selection_title.text="已選取 %d 個單位" % selection.size()
 		selection_detail.text=("%d 村民無已知採集點" % missing_workers) if missing_workers>0 else "向資源、空地或可見敵軍落指令。"
@@ -4637,6 +4662,11 @@ func _rebuild_actions(selection):
 					if not completed and not pending: label+="\n"+Rules.cost_label(tech)
 					var button=_button(label,func(): _submit("military_research",{"building":ent.id,"kind":tech}),200)
 					button.disabled=completed or pending; button.name=tech; actions.add_child(button)
+			if ent.kind=="town_center":
+				var trade_open=_button("資源交易",func():_open_trade_panel(ent.id),130)
+				trade_open.name="OpenResourceTrade";trade_open.disabled=not _age2(0)
+				trade_open.tooltip_text="城防時代開放；主堡共享隊列，每單十五秒。先付款，完成才收貨。"
+				actions.add_child(trade_open)
 			for item in ent.queue:
 				var queue_id=item.queue_id
 				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
@@ -4656,7 +4686,7 @@ func _rebuild_actions(selection):
 			farm_dispatch_button.name="FarmDispatch";farm_dispatch_button.set_meta("building",ent.id)
 			farm_dispatch_button.tooltip_text="派最近空手閒置村民到空置農田；不搶工作，不會免費增加糧食，仍須正常走路、耕作和運送。"
 			actions.add_child(farm_dispatch_button)
-		if ent.owned and ent.built and not ent.get("queue",[]).is_empty() and ent.queue[0].remaining_ticks<=0 and not ent.queue[0].get("research",false):
+		if ent.owned and ent.built and not ent.get("queue",[]).is_empty() and ent.queue[0].remaining_ticks<=0 and not ent.queue[0].get("research",false) and not ent.queue[0].get("trade",false):
 			clear_exit_button=_button("疏通出兵口",func():_clear_production_exit(ent.id),170)
 			clear_exit_button.name="ClearProductionExit";clear_exit_button.set_meta("building",ent.id);clear_exit_button.set_meta("queue_id",ent.queue[0].queue_id)
 			clear_exit_button.tooltip_text="只移開出口旁沒有待處理命令的己方單位，會中止原工作。保留已付款隊列，仍由正常生產規則決定出兵；無法移開敵人、資源或建築。"
@@ -7088,7 +7118,7 @@ func _clear_exit_plan(building_id):
 	var records=faction_views[0].records();var building=records.get(building_id,{})
 	if not building.get("owned",false) or not building.get("alive",false) or building.get("team",-1)!=0 or not building.get("built",false) or building.get("queue",[]).is_empty() or _population(0,false)>=_capacity(0):return result
 	var front=building.queue[0]
-	if front.remaining_ticks>0 or front.get("research",false):return result
+	if front.remaining_ticks>0 or front.get("research",false) or front.get("trade",false):return result
 	var pending={}
 	for c in commands:
 		if c.get("team",-1)!=0:continue
@@ -7667,3 +7697,48 @@ func _ai_worker_resource_blocked(point):
 		var memo=_get_entity(owned.id).get("ai_evacuation",{})
 		if not memo.is_empty() and point.distance_squared_to(memo.origin)<=36.0:return true
 	return false
+
+
+# Fixed-price exchange uses an ordinary paid queue, never harvest/delivery credit.
+func _enqueue_trade(id,from_resource,to_resource,team):
+	if typeof(id)!=TYPE_INT or typeof(from_resource)!=TYPE_STRING or typeof(to_resource)!=TYPE_STRING or typeof(team)!=TYPE_INT or team not in [0,1]:return false
+	var kind=TradePolicy.kind(from_resource,to_resource)
+	if kind.is_empty():return _reject_command(team,"無效交易配方。")
+	var building=_get_entity(id)
+	if building.is_empty() or not building.alive or not building.built or building.team!=team or building.kind!="town_center":return _reject_command(team,"請選取自己的完整主堡。")
+	if not _age2(team):return _reject_command(team,"資源交易需要城防時代。")
+	if building.queue.size()>=5:return _reject_command(team,"生產隊列已滿。")
+	economy_sequence+=1
+	var payment=economy.pay_trade("trade_payment:%d" % economy_sequence,team,from_resource,to_resource)
+	if not payment.get("applied",false):return _reject_command(team,"資源不足，交易未有扣款。")
+	building.queue.append({"receipt_id":payment.receipt_id,"queue_id":next_queue_id,"kind":kind,"trade":true,"research":false,"trade_from":from_resource,"trade_to":to_resource,"remaining_ticks":TradePolicy.TICKS,"started":false,"next_retry_tick":0,"candidate_cursor":0})
+	next_queue_id+=1;progress_serial+=1
+	return true
+
+func _open_trade_panel(id):
+	var record=faction_views[0].get_record(id)
+	if paused or game_over or not record.get("owned",false) or not record.get("alive",false) or not record.get("built",false) or record.get("kind","")!="town_center" or not _age2(0):return
+	trade_building=id
+	_toggle_context_details("trade")
+
+func _request_trade(kind):
+	if paused or game_over or context_detail_kind!="trade" or not TradePolicy.RECIPES.has(kind):return
+	if commands.any(func(c):return c.get("team",-1)==0 and c.get("type","")=="trade" and c.get("building",-1)==trade_building):return
+	var record=faction_views[0].get_record(trade_building)
+	if not record.get("owned",false) or not record.get("alive",false) or record.get("kind","")!="town_center" or not _age2(0):return
+	_cancel_pointer_streams()
+	var recipe=TradePolicy.RECIPES[kind]
+	_submit("trade",{"building":trade_building,"from":recipe.from,"to":recipe.to})
+	_refresh_trade_panel()
+
+func _refresh_trade_panel():
+	if not is_instance_valid(trade_content):return
+	trade_content.visible=context_detail_kind=="trade"
+	if not trade_content.visible:return
+	var record=faction_views[0].get_record(trade_building)
+	if not record.get("owned",false) or not record.get("alive",false) or not record.get("built",false) or record.get("kind","")!="town_center":
+		context_detail_kind="";trade_content.hide();context_details.hide();return
+	var pending=commands.any(func(c):return c.get("team",-1)==0 and c.get("type","")=="trade" and c.get("building",-1)==trade_building)
+	for kind in trade_buttons:
+		var recipe=TradePolicy.RECIPES[kind]
+		trade_buttons[kind].disabled=paused or game_over or pending or not _age2(0) or record.get("queue",[]).size()>=5 or economy.bank_milli(0).get(recipe.from,0)<recipe.input*Economy.SCALE

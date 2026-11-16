@@ -1,7 +1,7 @@
 extends RefCounted
 ## Isolated D04 derivative of the research-v2 integer ledger; see sources/manifest.json.
 ## The no-argument constructor preserves the original two-resource API.
-## This file is NOT integrated into the playable Demo.
+## Integrated playable runtime ledger; isolated derivative provenance retained above.
 ## Original: Demo ECO01 authority. Costs enter as whole integer units; all balances,
 ## cargo, node capacity and audit counters are integer milli-resources.
 ## World validity (ownership, reachability, live completed dropoff, distance,
@@ -26,6 +26,7 @@ const REFUND_UNSTARTED = "unstarted"
 const REFUND_STARTED = "started"
 const REFUND_NONE = "none"
 
+const TRADE_RECIPES={"wood_food":60,"food_wood":60,"food_iron":30,"food_stone":40}
 var _banks: Array = []
 var _initial: Array = []
 var _stats: Array = []
@@ -270,6 +271,41 @@ func pay(transaction_id: String, team: int, cost_units: Dictionary,
 		"state": "fulfilled" if refund_policy == REFUND_NONE else "open"}
 	return _remember(transaction_id, signature, _success({"receipt_id": transaction_id, "paid_milli": amounts}))
 
+# Fixed, lossy resource conversion. Only completed receipts create trade credit;
+# harvesting, farm generation and delivery counters are never touched.
+func pay_trade(transaction_id: String, team: int, source: String, destination: String) -> Dictionary:
+	var signature=["pay_trade",team,source,destination]
+	var replay=_replay(transaction_id,signature)
+	if not replay.is_empty():return replay
+	if source not in _resource_types or destination not in _resource_types or not TRADE_RECIPES.has(source+"_"+destination):
+		return _remember(transaction_id,signature,_failure("invalid_trade"))
+	# pay performs all balance/overflow checks before mutation. No failure-prone
+	# work remains after it succeeds; replace its replay signature atomically.
+	var paid=pay(transaction_id,team,{source:100})
+	if paid.applied:
+		var receipt=_receipts[transaction_id]
+		receipt.purpose="trade";receipt.trade_from=source;receipt.trade_to=destination
+	return _remember(transaction_id,signature,paid)
+
+func complete_trade(transaction_id: String, receipt_id: String, team: int) -> Dictionary:
+	var signature=["complete_trade",receipt_id,team]
+	var replay=_replay(transaction_id,signature)
+	if not replay.is_empty():return replay
+	if not _own_receipt(receipt_id,team):return _remember(transaction_id,signature,_failure("invalid_receipt"))
+	var receipt=_receipts[receipt_id]
+	if not trade_receipt_valid(receipt) or receipt.state!="open" or receipt.refund_policy!=REFUND_STARTED:
+		return _remember(transaction_id,signature,_failure("invalid_trade_receipt"))
+	var resource=receipt.trade_to
+	var amount=TRADE_RECIPES[receipt.trade_from+"_"+resource]*SCALE
+	var credits=_stats[team].get("traded_in",_zero())
+	if not _can_add(_banks[team][resource],amount) or not _can_add(credits[resource],amount):
+		return _failure("integer_overflow") # Transient: retry same order after bank space is available.
+	# One commit: receipt closure and credit. Replays or another transaction ID
+	# cannot credit the same receipt twice, including after a save/restore.
+	_banks[team][resource]+=amount;credits[resource]+=amount
+	_stats[team].traded_in=credits;receipt.state="fulfilled"
+	return _remember(transaction_id,signature,_success({"receipt_id":receipt_id,"resource_type":resource,"amount_milli":amount}))
+
 func mark_started(receipt_id: String, team: int) -> Dictionary:
 	if not _own_receipt(receipt_id, team): return _failure("invalid_receipt")
 	var receipt: Dictionary = _receipts[receipt_id]
@@ -298,6 +334,7 @@ func destroy_cost(transaction_id: String, receipt_id: String, team: int) -> Dict
 	return _close_cost(transaction_id, receipt_id, team, "destroyed")
 
 func fulfill_cost(transaction_id: String, receipt_id: String, team: int) -> Dictionary:
+	if _own_receipt(receipt_id,team) and _receipts[receipt_id].get("purpose","")=="trade":return _failure("trade_requires_atomic_completion")
 	return _close_cost(transaction_id, receipt_id, team, "fulfilled")
 
 func _close_cost(transaction_id: String, receipt_id: String, team: int, state: String) -> Dictionary:
@@ -366,6 +403,17 @@ func snapshot() -> Dictionary:
 func audit() -> Dictionary:
 	var errors: Array = []
 	var global_extracted: Dictionary = _zero()
+	var trade_totals=[]
+	for _team in _banks.size():trade_totals.append(_zero())
+	for rid in _receipts:
+		var receipt=_receipts[rid]
+		if receipt.get("purpose","")!="trade":continue
+		if not trade_receipt_valid(receipt):errors.append("invalid_trade_receipt");continue
+		if receipt.state=="fulfilled":
+			var totals=trade_totals[receipt.team];var resource=receipt.trade_to
+			var amount=TRADE_RECIPES[receipt.trade_from+"_"+resource]*SCALE
+			if not _can_add(totals[resource],amount):errors.append("audit_overflow")
+			else:totals[resource]+=amount
 	var node_extracted: Dictionary = _zero()
 	var farm_generated: Array = []
 	for _team in _banks.size(): farm_generated.append(0)
@@ -414,14 +462,30 @@ func audit() -> Dictionary:
 			var refund: int = stats.refunded[resource]
 			if refund > spent: errors.append("refund_exceeds_payment")
 			# Reorder rather than forming initial+delivered when that sum may overflow.
-			var delta: int = stats.delivered[resource] - (spent - refund)
-			delta -= stats.repaired[resource]
-			if _banks[team][resource] - _initial[team][resource] != delta: errors.append("bank_conservation:%s:%s" % [team, resource])
+			var trade_credit=stats.get("traded_in",_zero())[resource]
+			if trade_credit!=trade_totals[team][resource]:errors.append("trade_receipt_conservation")
+			if not _equal_nonnegative_sums([_banks[team][resource],spent,stats.repaired[resource]],[_initial[team][resource],stats.delivered[resource],refund,trade_credit]):errors.append("bank_conservation:%s:%s" % [team,resource])
 			if typeof(_banks[team][resource]) != TYPE_INT or _banks[team][resource] < 0: errors.append("invalid_bank")
 			if not _can_add(global_extracted[resource], stats.extracted[resource]): errors.append("audit_overflow")
 			else: global_extracted[resource] += stats.extracted[resource]
 	if global_extracted != node_extracted: errors.append("node_team_extraction_mismatch")
 	return {"ok": errors.is_empty(), "errors": errors}
+
+func trade_receipt_valid(receipt) -> bool:
+	if not receipt is Dictionary or receipt.size()!=8:return false
+	for key in ["team","cost_units","paid_milli","refund_policy","purpose","state","trade_from","trade_to"]:
+		if not receipt.has(key):return false
+	if not receipt.team is int or not _valid_team(receipt.team):return false
+	if not receipt.trade_from is String or not receipt.trade_to is String:return false
+	if receipt.trade_from not in _resource_types or receipt.trade_to not in _resource_types or not TRADE_RECIPES.has(receipt.trade_from+"_"+receipt.trade_to):return false
+	if not receipt.purpose is String or not receipt.state is String or not receipt.refund_policy is String:return false
+	if receipt.purpose!="trade" or receipt.state not in ["open","cancelled","destroyed","fulfilled"] or receipt.refund_policy not in [REFUND_STARTED,REFUND_UNSTARTED]:return false
+	if receipt.state=="fulfilled" and receipt.refund_policy!=REFUND_STARTED:return false
+	if not receipt.cost_units is Dictionary or receipt.cost_units.size()!=1 or not receipt.cost_units.get(receipt.trade_from,null) is int or receipt.cost_units[receipt.trade_from]!=100:return false
+	if not receipt.paid_milli is Dictionary or receipt.paid_milli.size()!=_resource_types.size():return false
+	for resource in _resource_types:
+		if not receipt.paid_milli.get(resource,null) is int or receipt.paid_milli[resource]!=(100000 if resource==receipt.trade_from else 0):return false
+	return true
 
 func _equal_nonnegative_sums(left: Array, right: Array) -> bool:
 	# Inputs are copied before cancellation; no caller-owned counters are mutated.

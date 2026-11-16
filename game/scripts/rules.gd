@@ -1,6 +1,6 @@
 extends Resource
 ## Demo rules v2. One data source for player, AI, HUD and tests.
-const BUILD_ID = "vc-b277bc1d3f0b"
+const BUILD_ID = "vc-f6fd1ed9c3f4"
 const VERSION = "0.3.0-progression-candidate"
 # User-requested 2026-11-07 scale/buildability revision. Cell, unit, building,
 # movement, sight and economic scales stay unchanged; only world extent grows.
@@ -43,7 +43,7 @@ const SPEED = {"villager":2.0,"scout":3.2,"spearman":2.0,"archer":1.8,"cavalry":
 const DAMAGE = {"villager":3,"scout":4,"spearman":6,"archer":5,"cavalry":10,"siege":6,"tower":8}
 const RANGE = {"villager":1.1,"scout":1.1,"spearman":1.1,"archer":4.5,"cavalry":1.1,"siege":1.3,"tower":6.0}
 const ATTACK_TIME = {"villager":1.5,"scout":1.5,"spearman":1.5,"archer":1.5,"cavalry":1.5,"siege":2.5,"tower":1.5}
-const NAMES = {"supply_station":"前線補給站","town_center":"主堡", "barracks":"兵營", "range":"箭場", "house":"民居", "storehouse":"倉庫", "farm":"農田", "stable":"馬廄", "tower":"守望塔", "workshop":"工坊", "villager":"村民", "scout":"斥候", "spearman":"長槍兵", "archer":"弓手", "cavalry":"騎兵", "siege":"攻城車", "pine":"木材", "oak":"木材", "berry":"漿果", "stone":"石材", "iron":"鐵礦", "age2":"城防時代", "forged_blades":"鍛鋼兵刃", "tempered_arrows":"精製箭矢", "reinforced_armor":"加固護甲", "wheelbarrow":"手推車"}
+const NAMES = {"trade_wood_food":"木換食交易","trade_food_wood":"食換木交易","trade_food_iron":"食換鐵交易","trade_food_stone":"食換石交易","supply_station":"前線補給站","town_center":"主堡", "barracks":"兵營", "range":"箭場", "house":"民居", "storehouse":"倉庫", "farm":"農田", "stable":"馬廄", "tower":"守望塔", "workshop":"工坊", "villager":"村民", "scout":"斥候", "spearman":"長槍兵", "archer":"弓手", "cavalry":"騎兵", "siege":"攻城車", "pine":"木材", "oak":"木材", "berry":"漿果", "stone":"石材", "iron":"鐵礦", "age2":"城防時代", "forged_blades":"鍛鋼兵刃", "tempered_arrows":"精製箭矢", "reinforced_armor":"加固護甲", "wheelbarrow":"手推車"}
 # Legacy primary product remains available for old observers. Orders use products_for.
 const PRODUCES = {"town_center":"villager","barracks":"spearman","range":"archer","stable":"cavalry","workshop":"siege"}
 const AGE2_KINDS = ["stable","workshop","cavalry","siege"]
