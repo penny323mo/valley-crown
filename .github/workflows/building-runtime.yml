@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '221cc5cded613645b3c12f74dbe9cf9d68f42ad03f73f527534a3f713ed0e0eb  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'fc38b536bf486aae7ddcf754d3a60395d701338ef9b78242b62cb8fb7f9f57fa  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -309,6 +309,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/gather_assignment_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/workforce_reassign_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/workforce_reassign_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_journey/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_journey/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
