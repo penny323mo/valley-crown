@@ -1,4 +1,4 @@
-name: Capture v70 local backup browser and protected restore
+name: Capture v71 battle selection and replay flow
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [backup]
+        scenario: [selection]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,19 +32,19 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14214332990/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='d8fdef7193005367b09205fb0456e0817ea7988957239177ba61718517636cf1'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14216893491/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='47e4d7d07ab0639a4e0caf69f883256eaa98ab6aa799c96db5d8e38bc8f289fb'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='71e0b5879b72918f4ea33c90a3b52231f136e6e31628701174af29064c53b898'
+          assert hashlib.sha256(pck).hexdigest()=='87e338000e70c4ce64a0354af929d844122026d98fb650014f6e7b7c432feae5'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp game/tests/checkpoint_backups_capture.gd /tmp/capture/capture.gd
+          cp game/tests/battle_selection_capture.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v70-checkpoint-${{ matrix.scenario }}
+          name: genuine-v71-battle-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
