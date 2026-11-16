@@ -1,4 +1,4 @@
-name: Capture v77 actual tactical route progression
+name: Capture v78 actual automatic construction return
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [tactical_route]
+        scenario: [construction_return]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,19 +32,19 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14232461645/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='80e2ffb08181eca06d5fa3be0cb2637b1fd10fb511ada4213e9b745eb4d1eeea'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14236366846/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='87a9b3dbf95bc684f4935360dad8d5c530f9b760ac2a8035ec76bdf03067a7a0'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='e71bb5b62993daeb74efd78310e261ca86b55430abd12d6159e585a1660f1392'
+          assert hashlib.sha256(pck).hexdigest()=='c648d0d86ce3c817313e0f81e79bc0e21bdf5bc5c809e7fbce1dbaa3da6fa760'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-tactical-route-natural.gd /tmp/capture/capture.gd
+          cp ci/capture-construction-return-natural.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v77-tactical-route-${{ matrix.scenario }}
+          name: genuine-v78-construction-return-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
