@@ -20,6 +20,14 @@ func run_case(mode,count,tick,known=true,remembered=false,threat=false):
  g._ai_army(records,castle)
  var result={"status":g.ai_status.army,"commands":g.issued.duplicate(true),"raids":g.ai_raids}
  g.free();return result
+func defends_local_scout(result):
+ # A lone scout now intentionally gets one defender, not a global status
+ # overriding the other troops. Assert the actual priority/order, not its label.
+ var orders=result.commands.filter(func(c):return c.type=="order" and c.data.get("target",-1)==91)
+ if orders.size()!=1 or orders[0].data.ids!=[1] or orders[0].team!=1:return false
+ # The chosen defender cannot also receive a conflicting offensive order.
+ var assigned=result.commands.filter(func(c):return 1 in c.data.get("ids",[]))
+ return assigned.size()==1 and result.raids==0
 func _initialize():
  check("invalid policy defaults standard",Policy.valid("cheat")=="standard")
  check("standard exact existing policy",Policy.muster("standard")==5 and Policy.interval("standard")==1800)
@@ -33,9 +41,9 @@ func _initialize():
   check(mode+" unseen keep no raid",run_case(mode,n,interval,false).raids==0)
   result=run_case(mode,n,interval,true,true)
   check(mode+" remembered target ground only",result.commands.size()==1 and result.commands[0].data.target==-1)
-  check(mode+" home defense priority",run_case(mode,n,interval,true,false,true).status=="home_defense")
+  check(mode+" home defense priority",defends_local_scout(run_case(mode,n,interval,true,false,true)))
  check("practice no offensive raid",run_case("practice",10,999999).raids==0)
- check("practice still defends",run_case("practice",5,999999,true,false,true).status=="home_defense")
+ check("practice still defends",defends_local_scout(run_case("practice",5,999999,true,false,true)))
  var failed=checks.filter(func(c):return not c.passed).size()
  print("SKIRMISH ",checks.size()-failed,"/",checks.size())
  var args=OS.get_cmdline_user_args()

@@ -15,6 +15,7 @@ const SquadSelection = preload("res://scripts/squad_selection.gd")
 const RaidTactics = preload("res://scripts/raid_tactics.gd")
 const AIResourceOutpost=preload("res://scripts/ai_resource_outpost.gd")
 const ScoutFrontier=preload("res://scripts/scout_frontier.gd")
+const HomeDefenseAllocation = preload("res://scripts/home_defense_allocation.gd")
 const HomeDefense = preload("res://scripts/home_defense.gd")
 const ArmyComposition = preload("res://scripts/army_composition.gd")
 const ConstructionStatus = preload("res://scripts/construction_status.gd")
@@ -3214,11 +3215,17 @@ func _ai_move_home(members,castle):
 		if _attack_distance(ent.pos,castle)>3.0 and (ent.state!="move" or ent.dest.distance_to(castle.pos)>6.0): ids.append(ent.id)
 	if not ids.is_empty(): _submit("order",{"ids":ids,"target":-1,"position":castle.pos},1)
 
+const AIEconomicRaid=preload("res://scripts/ai_economic_raid.gd")
 func _ai_raid_order(ent,records,enemy_keep):
+	var worker=AIEconomicRaid.choose(ent,records,enemy_keep)
+	if not worker.is_empty():
+		if ent.state!="attack" or ent.target!=worker.id:_submit("order",{"ids":[ent.id],"target":worker.id,"position":worker.pos},1)
+		return
 	# Escort combat uses current faction observations, never hidden authority.
 	# Siege clears nearby visible towers before approaching the keep; escorts
 	# intercept defenders. A keep already in striking range stays the objective.
-	var defender=RaidTactics.siege_target(ent,records,enemy_keep) if ent.kind=="siege" else RaidTactics.choose(ent,records)
+	var combat_records=records.filter(func(r):return r.get("kind","")!="villager") if ent.kind=="cavalry" else records
+	var defender=RaidTactics.siege_target(ent,records,enemy_keep) if ent.kind=="siege" else RaidTactics.choose(ent,combat_records)
 	if not defender.is_empty():
 		if ent.state!="attack" or ent.target!=defender.id:
 			_submit("order",{"ids":[ent.id],"target":defender.id,"position":defender.pos},1)
@@ -3263,28 +3270,31 @@ func _ai_army(records,castle):
 	for ent in army:
 		if ent.id in ai_raid_members: survivors.append(ent)
 	if not ai_raid_members.is_empty() and survivors.is_empty(): ai_raid_members.clear(); ai_raid_retreating=false
-	# Visible home defense takes priority over an ongoing offensive order.
-	if not threats.is_empty():
-		ai_control_targets.clear()
-		var assignments={}
-		for ent in army:
-			var threat=HomeDefense.choose(ent,threats)
-			if threat.is_empty(): continue
-			assignments[ent.id]=threat.id
-			if ent.state!="attack" or ent.target!=threat.id: _submit("order",{"ids":[ent.id],"target":threat.id,"position":threat.pos},1)
-		ai_home_defense_targets=assignments
+	# Only real keep emergencies interrupt the whole raid. Local harassment
+	# receives a bounded nearby detachment while the offensive cohort continues.
+	var defense=HomeDefenseAllocation.plan(army,threats,castle,ai_home_defense_targets)
+	var assignments={}; var excluded={}
+	for ent in army:
+		if defense.assignments.has(ent.id):
+			var threat=defense.assignments[ent.id]
+			assignments[ent.id]=threat.id; excluded[ent.id]=true
+			ai_control_targets.erase(ent.id)
+			if ent.state!="attack" or ent.target!=threat.id:
+				_submit("order",{"ids":[ent.id],"target":threat.id,"position":threat.pos},1)
+			if not defense.emergency and ent.id in ai_raid_members:
+				ai_raid_members.erase(ent.id)
+				ai_raid_departure_count=maxi(0,ai_raid_departure_count-1)
+		elif ai_home_defense_targets.get(ent.id,-1)==ent.get("target",-2) and ent.state=="attack" and ent.get("mode","")=="ATTACK":
+			# No stale hidden pursuit; do not overwrite Stop in this AI turn.
+			_submit("stop",{"ids":[ent.id]},1); excluded[ent.id]=true
+	ai_home_defense_targets=assignments
+	if defense.emergency and not assignments.is_empty():
 		if not ai_raid_members.is_empty(): ai_raid_retreating=true
 		ai_status.army="home_defense"; return
-	# Cancel only an unchanged defensive target we previously assigned. Once
-	# it leaves the observed home threat zone, do not pursue it across the map.
-	# Retire via ordinary Stop; the next AI turn resumes existing muster/retreat.
-	var released=false
-	for ent in army:
-		if ai_home_defense_targets.get(ent.id,-1)==ent.get("target",-2) and ent.state=="attack" and ent.get("mode","")=="ATTACK":
-			_submit("stop",{"ids":[ent.id]},1); released=true
-	ai_home_defense_targets.clear()
-	if released:
-		ai_status.army="home_defense_released"; return
+	army=army.filter(func(ent):return not excluded.has(ent.id))
+	if army.is_empty():
+		ai_status.army="home_defense" if not assignments.is_empty() else "home_defense_released"
+		return
 	# Home defense above remains first priority. Recovery reserves are excluded
 	# from strategic orders, but use ordinary motion/Stop and ordinary healing.
 	var ready=[]
