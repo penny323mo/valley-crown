@@ -40,6 +40,8 @@ func run():
 	shell._cycle_victory_mode()
 	check("eighth option selects staged defense",shell.selected_mode=="survival" and shell.selected_victory_mode=="conquest")
 	shell._cycle_victory_mode()
+	check("ninth option selects frontier expedition",shell.selected_mode=="expedition" and shell.selected_victory_mode=="conquest")
+	shell._cycle_victory_mode()
 	check("mode cycle returns to ordinary practice",shell.selected_victory_mode=="conquest" and shell.selected_mode=="practice")
 	var failed=checks.filter(func(c):return not c.passed).size()
 	print(JSON.stringify({"suite":"control_point_menu_contract","checks":checks,"failed":failed,"scope":"native controls, viewport geometry and real menu transitions; no rendered or physical-device acceptance"}))
