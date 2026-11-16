@@ -183,6 +183,8 @@ var victory=false
 var build_mode=""
 var ghost: Node3D
 var placement_ok=false
+var wall_line_count=1
+var wall_line_vertical=false
 var clear_site_button: Button
 var build_preview_held=false # Presentation/input intent only; no payment until explicit Confirm.
 var pointer_world=Vector3.ZERO
@@ -727,7 +729,15 @@ func _tick(dt):
 	tick_count+=1; game_time=tick_count*Rules.TICK; last_path_queries=0
 	var batch=commands.duplicate(); commands.clear()
 	batch.sort_custom(func(a,b): return a.get("sequence",0)<b.get("sequence",0))
-	for command in batch: _execute(command)
+	var wall_requests=0;var walls_placed=0
+	for command in batch:
+		var wall_request=command.get("type","")=="build" and command.get("kind","")=="wall" and command.get("team",-1)==0
+		if wall_request:wall_requests+=1
+		var previous_id=next_id
+		_execute(command)
+		if wall_request and next_id>previous_id:walls_placed+=1
+	if wall_requests>1:
+		_message("木柵已落地 %d / %d 段，實扣木材 %d。" % [walls_placed,wall_requests,walls_placed*30]+(" 其餘位置或村民失效／資源不足，未扣款。" if walls_placed<wall_requests else " 村民各自施工。"),6)
 	_update_escorts()
 	_process_path_requests()
 	_begin_unit_motion()
@@ -4542,13 +4552,14 @@ func _update_hud():
 			help_label.text=selection_detail.text
 			touch_button.text="規劃中"
 	else:
-		var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
+		var reason=_build_preview_reason()
 		help_label.text=("位置已選，按確認建造；點空地可重選。" if build_preview_held else "點選空地作預覽，再按確認建造。") if reason.is_empty() else "不可建造："+reason
 		if Rules.PRODUCES.has(build_mode): selection_detail.text="可在目前可見空地建造，留有施工通道，勿堵住既有生產建築最後出口。"
 		if is_instance_valid(build_confirm): build_confirm.disabled=not reason.is_empty() or paused or not build_preview_held
+		if build_mode=="wall" and wall_line_count>1:help_label.text="%d 段木柵／木材 %d／每段一人。" % [wall_line_count,wall_line_count*30]+help_label.text
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		selection_detail.text=help_label.text
-		queue_label.text=Rules.cost_label(build_mode)+(" · 資源不足" if not _can_pay(COSTS[build_mode],0) else ""); queue_label.show()
+		queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else Rules.cost_label(build_mode))+(" · 資源不足" if not _can_pay({"wood":30*wall_line_count} if build_mode=="wall" else COSTS[build_mode],0) else ""); queue_label.show()
 	if rally_building>=0:
 		selection_detail.text="警戒集合點：點可見空地；新軍隊射程內迎擊，敵軍離開後繼續前進，不追擊。" if rally_mode=="advance" else "點可見空地設定集合點；主堡亦可點資源，讓新村民自動採集。"
 		help_label.text=selection_detail.text
@@ -4613,6 +4624,12 @@ func _rebuild_actions(selection):
 	if not build_mode.is_empty():
 		build_confirm=_button("確認建造",func(): _confirm_build(),120); actions.add_child(build_confirm)
 		actions.add_child(_button("取消建造",func(): _cancel_mode(),110))
+		if build_mode=="wall":
+			var segments=_button("木柵段數：%d" % wall_line_count,_cycle_wall_line_count,150)
+			segments.name="WallLineCount";segments.tooltip_text="選取多位村民可成排建造，每人一段，最多四段；每段木材30。"
+			actions.add_child(segments)
+			var orientation=_button("方向："+("直排" if wall_line_vertical else "橫排"),_rotate_wall_line,130)
+			orientation.name="WallLineDirection";orientation.disabled=wall_line_count==1;actions.add_child(orientation)
 		clear_site_button=_button("移開己方單位",_clear_build_site,170)
 		clear_site_button.name="ClearBuildSite"
 		clear_site_button.tooltip_text="只移開預覽地點內沒有待處理指令的己方單位，會中止牠們原本工作。保留建造預覽；必須等移開後自行確認建造。不保證路線暢通。"
@@ -5661,6 +5678,7 @@ func _start_build(kind):
 	if paused or game_over or _selected_builder()<0: return
 	_cancel_pointer_streams()
 	_clear_box_select()
+	wall_line_count=1; wall_line_vertical=false
 	build_mode=kind; touch_command=false; rally_building=-1; rally_group.clear(); build_preview_held=false
 	var builder=faction_views[0].get_record(_selected_builder())
 	pointer_world=_point(_cell(builder.pos+Vector3(3,0,0)))
@@ -5677,23 +5695,92 @@ func _start_build(kind):
 	ghost=Node3D.new(); add_child(ghost)
 	var box=BoxMesh.new(); var width=Rules.FOOTPRINT.get(kind,3); box.size=Vector3(width,0.12,width)
 	_mesh(ghost,box,Vector3(0,0.15,0),Color("a4d899"))
+	if kind=="wall":
+		for i in range(1,4):
+			_mesh(ghost,box,Vector3(i*2,0.15,0),Color("a4d899"))
+			ghost.get_child(i).hide()
 	_message("可在任何目前可見的空地建造；避開樹木、漿果、建築和單位，留有施工通道。",6,true)
 	action_key=""; _update_hud()
+
+# Wall rows are a bounded UI plan, not a new simulation order or saved queue.
+func _wall_line_points() -> Array:
+	var points=[]
+	var origin=_snap_build_position("wall",pointer_world)
+	for i in wall_line_count:points.append(origin+(Vector3(0,0,i*2) if wall_line_vertical else Vector3(i*2,0,0)))
+	return points
+
+func _cycle_wall_line_count():
+	if build_mode!="wall" or paused or game_over:return
+	var count=_selected_construction_workers().size()
+	if count<2:_message("先選取兩至四位村民，可以每人一段成排建造。",4);return
+	_cancel_pointer_streams();build_preview_held=false
+	wall_line_count=wall_line_count%mini(count,4)+1
+	action_key="";_update_hud();_update_ghost()
+
+func _rotate_wall_line():
+	if build_mode!="wall" or wall_line_count<2 or paused or game_over:return
+	_cancel_pointer_streams();build_preview_held=false;wall_line_vertical=not wall_line_vertical
+	action_key="";_update_hud();_update_ghost()
+
+func _build_preview_reason(check_resources=true) -> String:
+	if build_mode!="wall" or wall_line_count==1:return _placement_reason(build_mode,pointer_world,0,_selected_builder(),check_resources)
+	var crew=_selected_construction_workers()
+	if wall_line_count<1 or wall_line_count>4 or crew.size()<wall_line_count:return "每段木柵需要一位已選村民"
+	if check_resources and not _can_pay({"wood":30*wall_line_count},0):return "整排木柵資源不足"
+	var reserved={};var sites=[]
+	for i in wall_line_count:
+		var pos=_wall_line_points()[i]
+		var reason=_placement_reason("wall",pos,0,crew[i],false)
+		if not reason.is_empty():return "第%d段：%s" % [i+1,reason]
+		var mock={"pos":pos,"kind":"wall","category":"building"}
+		sites.append(mock)
+		for cell in _occupied_cells(mock):
+			if reserved.has(cell):return "木柵重疊"
+			reserved[cell]=true
+	var known_grid=work_memory[0].grid
+	for site in sites:
+		var access=false
+		for cell in _perimeter_cells(site):
+			if known_grid.region.has_point(cell) and not known_grid.is_point_solid(cell) and not reserved.has(cell):access=true;break
+		if not access:return "整排木柵需要留有施工通道"
+	for producer in entities:
+		if producer.team!=0 or not producer.alive or producer.category!="building" or not Rules.PRODUCES.has(producer.kind):continue
+		var before=false;var after=false
+		for cell in _perimeter_cells(producer):
+			if not known_grid.region.has_point(cell) or known_grid.is_point_solid(cell):continue
+			before=true
+			if not reserved.has(cell):after=true
+		if before and not after:return "整排木柵不可阻住生產建築最後出口"
+	return ""
 
 func _update_ghost():
 	if not is_instance_valid(ghost): return
 	ghost.position=_snap_build_position(build_mode,pointer_world)
-	var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
+	var reason=_build_preview_reason()
 	placement_ok=reason.is_empty()
-	var site_clear=_placement_reason(build_mode,pointer_world,0,_selected_builder(),false).is_empty()
+	var site_clear=_build_preview_reason(false).is_empty()
 	ghost.get_child(0).material_override=_material(Color("92d389") if placement_ok else (Color("e4bc68") if site_clear else Color("d97c65")))
-	if short_ui: _message(("位置已選，按確認建造。" if build_preview_held else "點選空地作預覽，再按確認建造。") if placement_ok else "不可建造："+reason,1,true)
+	if build_mode=="wall":
+		for i in ghost.get_child_count():
+			var part=ghost.get_child(i)
+			part.visible=i<wall_line_count
+			part.position=Vector3(0,0.15,i*2) if wall_line_vertical else Vector3(i*2,0.15,0)
+			part.material_override=ghost.get_child(0).material_override
+	if short_ui: _message(("%d 段／木材 %d。" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else "")+(("位置已選，按確認建造。" if build_preview_held else "點選空地作預覽，再按確認建造。") if placement_ok else "不可建造："+reason),1,true)
 
 func _confirm_build():
 	if build_mode.is_empty() or paused or not build_preview_held or touch_gesture: return
-	var reason=_placement_reason(build_mode,pointer_world,0,_selected_builder())
+	var reason=_build_preview_reason()
 	if not reason.is_empty(): _message(reason); return
-	_submit("build",{"kind":build_mode,"position":pointer_world,"builder":_selected_builder(),"ids":_selected_construction_workers()})
+	if build_mode=="wall" and wall_line_count>1:
+		var crew=_selected_construction_workers()
+		var points=_wall_line_points()
+		# Ordinary independent commands preserve each site's existing authority,
+		# receipt and checkpoint shape. No single worker abandons an earlier site.
+		for i in points.size():_submit("build",{"kind":"wall","position":points[i],"builder":crew[i],"ids":[crew[i]]})
+		_message("已安排 %d 段木柵；每段各派一位村民。執行時逐段確認及扣款，失效位置不建造亦不扣款。" % points.size(),6)
+	else:
+		_submit("build",{"kind":build_mode,"position":pointer_world,"builder":_selected_builder(),"ids":_selected_construction_workers()})
 	_cancel_mode()
 
 func _cancel_mode():
@@ -6250,6 +6337,13 @@ func _cleanup_button_touch(index,press_epoch):
 	touch_press_epochs.erase(index)
 
 func _button_touch_input(button:Button,event:InputEvent):
+	# A rebuilt action strip can detach a button while its old touch is held.
+	# Never activate that obsolete callback against a replacement worker/plan.
+	if not button.is_inside_tree() or button.is_queued_for_deletion():
+		if event is InputEventScreenTouch:
+			var held=gui_touch_press.get(event.index,{})
+			if not held.is_empty() and held.button.get_ref()==button:gui_touch_press.erase(event.index)
+		return
 	# The project disables mouse-from-touch to avoid duplicate world commands.
 	# Give ordinary GUI buttons an explicit, single-pointer release path instead.
 	if Input.emulate_mouse_from_touch or ProjectSettings.get_setting("input_devices/pointing/emulate_mouse_from_touch",true): return
@@ -7024,6 +7118,11 @@ func _clear_site_plan():
 	if build_mode.is_empty() or not build_preview_held or not Rules.BUILD_TIME.has(build_mode):return result
 	var center=_snap_build_position(build_mode,pointer_world)
 	var cells=_occupied_cells({"pos":center,"kind":build_mode,"category":"building"})
+	if build_mode=="wall" and wall_line_count>1:
+		cells=[]
+		var points=_wall_line_points()
+		for point in points:cells.append_array(_occupied_cells({"pos":point,"kind":"wall","category":"building"}))
+		center=(points.front()+points.back())/2.0
 	var records=faction_views[0].records();var ids=records.keys();ids.sort()
 	var pending={}
 	for command in commands:
@@ -7040,7 +7139,7 @@ func _clear_site_plan():
 		if not overlaps:continue
 		var mover=_get_entity(id);var best=Vector3.INF;var distance=INF
 		if mover.is_empty() or not mover.alive:continue
-		var radius=ceilf(Rules.FOOTPRINT.get(build_mode,3)/2.0)+2.0
+		var radius=ceilf(Rules.FOOTPRINT.get(build_mode,3)*(wall_line_count if build_mode=="wall" else 1)/2.0)+2.0
 		for direction in [Vector3(1,0,0),Vector3(-1,0,0),Vector3(0,0,1),Vector3(0,0,-1),Vector3(1,0,1),Vector3(-1,0,1),Vector3(1,0,-1),Vector3(-1,0,-1)]:
 			var cell=_cell(center+direction*radius);var point=_point(cell)
 			if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or visible_cells[0][cell.y*Rules.MAP_SIZE+cell.x]==0 or _route_grid(mover).is_point_solid(cell):continue
@@ -7060,12 +7159,12 @@ func _refresh_clear_site_button():
 	if not is_instance_valid(clear_site_button):return
 	var plan=_clear_site_plan()
 	_bind_squad_button(clear_site_button,plan,not _squad_actions_available())
-	clear_site_button.set_meta("site_identity",[build_mode,_snap_build_position(build_mode,pointer_world),selected.duplicate()])
+	clear_site_button.set_meta("site_identity",[build_mode,_snap_build_position(build_mode,pointer_world),selected.duplicate(),wall_line_count if build_mode=="wall" else 1,wall_line_vertical if build_mode=="wall" else false])
 	clear_site_button.text="移開己方單位 · %d" % plan.size()
 
 func _clear_build_site():
 	if not _squad_actions_available() or not is_instance_valid(clear_site_button) or clear_site_button.disabled:return
-	var identity=[build_mode,_snap_build_position(build_mode,pointer_world),selected.duplicate()]
+	var identity=[build_mode,_snap_build_position(build_mode,pointer_world),selected.duplicate(),wall_line_count if build_mode=="wall" else 1,wall_line_vertical if build_mode=="wall" else false]
 	var plan=_clear_site_plan()
 	if identity!=clear_site_button.get_meta("site_identity",[]) or plan.is_empty() or plan!=clear_site_button.get_meta("squad_ids",[]):
 		_refresh_clear_site_button();return

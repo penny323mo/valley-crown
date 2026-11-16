@@ -1,3 +1,15 @@
+# v84 touch-friendly paid wooden-wall rows
+
+Select two to four villagers, enter wooden-wall construction, and use the segment-count control to preview a row of two to four adjoining segments. The direction control switches horizontal/vertical rows. Quantity and the full wood price are visible before confirmation, including compact guidance. A changed quantity/direction retires held pointer input and requires choosing the preview location again.
+
+The default remains one segment with the selected helpers cooperating as before. Row mode assigns exactly one selected villager to each segment, so later orders cannot abandon earlier segments. Each segment still uses its ordinary 30-wood receipt, ten seconds of on-site work, 250 HP cap, placement/access checks, cancel refund and checkpoint schema. Rows add no gates, drag painting, automatic replenishment or single-worker build queue.
+
+The preview checks the entire row, its total price and combined remaining producer exits. Clear-site includes every segment. Confirm submits existing independent build commands; if workers, visibility, occupancy or funds change before execution, only still-valid segments are purchased. The resulting message states the actual placed count and actual wood spent, including partial or zero success. Canceling the preview charges nothing. Canceling an already paid unfinished site retains the existing refund rules.
+
+Validation: controlled native `wall_line_contract.gd` covers real commands, construction ticks and checkpoint continuation plus stale/duplicate touch-handler events. `ui_glyph_coverage_contract.gd` checks the shipped font. Screenshot and live-deployment evidence must be recorded separately; these tests are not a physical-phone acceptance claim.
+
+---
+
 # Idle-worker recovery navigation candidate (source only)
 
 The shortcut menu now shows the current number of eligible idle villagers and a next-worker action. It cycles stable owned IDs, selects one worker and focuses the camera; it never assigns work or cancels the worker's orders. Carrying cargo and terminal work-route status remain eligible when genuinely idle, so the player can inspect and recover them. Active/pending routes and individually queued unit/build orders are excluded. The separate select-all-idle action remains available.
