@@ -16,11 +16,11 @@ func run():
  check("cleared wave grants full preparation interval",not director.ready(1999) and director.ready(2000))
  check("second wave adds cavalry pressure",director.roster().count("cavalry")==4 and director.roster().size()==8)
  var shell=load("res://scripts/main_menu.gd").new();root.add_child(shell);await process_frame
- shell.selected_mode="fortress";shell._cycle_victory_mode()
+ shell._show_page("battle_groups");shell.buttons.get_node("BattleGroup3").pressed.emit();shell.buttons.get_node("ChooseBattle_survival").pressed.emit()
  check("menu exposes staged challenge after fortress",shell.selected_mode=="survival")
  check("setup honestly discloses scripted free reinforcements",shell.SkirmishPolicy.details("survival").contains("不消耗敵方資源"))
- shell._cycle_victory_mode();check("challenge cycles to expedition",shell.selected_mode=="expedition")
- shell._cycle_victory_mode();check("expedition cycles back to practice",shell.selected_mode=="practice")
+ shell._choose_battle("expedition");check("expedition remains selectable",shell.selected_mode=="expedition")
+ shell._choose_battle("practice");check("practice remains selectable",shell.selected_mode=="practice")
  shell.queue_free();await process_frame
  var g=load("res://main.tscn").instantiate();g.skirmish_mode="survival";root.add_child(g);g.set_process(false);g.test_mode=true;await process_frame
  check("player begins with full fortress military",g._count(0,"spearman")==4 and g._count(0,"archer")==4 and g._count(0,"cavalry")==2 and g._count(0,"siege")==2 and g._count(0,"tower")==2)

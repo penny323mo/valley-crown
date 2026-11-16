@@ -1,6 +1,7 @@
 extends Node3D
 signal main_menu_requested
 signal restart_requested
+signal setup_requested
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
 const EscortPolicy=preload("res://scripts/escort_policy.gd")
 const AIGatherLoad=preload("res://scripts/ai_gather_load.gd")
@@ -3949,8 +3950,11 @@ func _create_ui():
 	end_body=_label("",15); end_body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; end_content.add_child(end_body)
 	end_report_label=_label("",15); end_report_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; end_report_label.add_theme_constant_override("line_spacing",4); end_content.add_child(end_report_label)
 	end_actions=HBoxContainer.new(); end_actions.add_theme_constant_override("separation",8); end_panel.add_child(end_actions)
-	var restart=_button("再開一局",_request_restart,110); restart.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(restart)
-	var menu=_button("主選單",_request_main_menu,110); menu.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(menu)
+	var restart=_button("同局再戰",_request_restart,80);restart.name="ReplayMatchButton"; restart.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(restart)
+	var setup=_button("重新設定",func():
+		if game_over:setup_requested.emit()
+	,80);setup.name="ReconfigureMatchButton";setup.size_flags_horizontal=Control.SIZE_EXPAND_FILL;end_actions.add_child(setup)
+	var menu=_button("主選單",_request_main_menu,80);menu.name="EndMainMenuButton"; menu.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(menu)
 	end_panel.hide()
 	# Child controls may bubble wheel events to their ScrollContainer, but the
 	# owning UI boundary must consume leftovers (including at scroll limits).

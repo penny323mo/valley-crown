@@ -22,7 +22,7 @@ func run():
 	check("public progress capped",Goal.progress({"delivered":{"food":900000,"wood":-2}})=={"food":600000,"wood":0})
 	var shell=load("res://main_menu.tscn").instantiate();root.add_child(shell);await process_frame
 	shell._show_page("setup")
-	for i in 3:shell.buttons.get_node("CycleModeButton").pressed.emit()
+	shell._show_page("battle_groups");shell.buttons.get_node("BattleGroup1").pressed.emit();shell.buttons.get_node("ChooseBattle_supply").pressed.emit()
 	check("menu enters distinct supply mode",shell.selected_victory_mode=="supply" and shell.mode_title.text=="資源爭奪戰")
 	check("rules disclose delivered-only and public opponent progress","進度公開" in shell.description.text and "退款" in shell.description.text and "600" in shell.description.text)
 	for size in [Vector2i(320,568),Vector2i(390,844),Vector2i(844,390)]:
@@ -52,7 +52,7 @@ func run():
 	g.victory_mode="supply";g._surrender_intent[0]=true;g._check_end();check("accepted surrender keeps precedence",g.outcome=="defeat" and g.end_reason=="surrender")
 	shell._restart_match();await process_frame;await process_frame;g=shell.match_node;g.set_process(false)
 	check("restart retains supply mode but resets delivery",g.victory_mode=="supply" and Goal.progress(g.economy.stats_view(0))=={"food":0,"wood":0})
-	shell._show_page("setup");shell._cycle_victory_mode();check("ordinary modes remain reachable",shell.selected_victory_mode=="conquest")
+	shell._choose_battle("standard");check("ordinary modes remain reachable",shell.selected_victory_mode=="conquest")
 	var failed=checks.filter(func(c):return not c.passed).size()
 	print(JSON.stringify({"suite":"supply_race_contract","checks":checks,"failed":failed,"scope":"Native menu/end lifecycle with controlled real ledger deposits; not natural full-match balance, travel or physical phone acceptance"}))
 	shell.queue_free();quit(1 if failed else 0)

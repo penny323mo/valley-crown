@@ -6,9 +6,9 @@ func check(label,ok):
 func _initialize():call_deferred("run")
 func run():
 	var shell=load("res://main_menu.tscn").instantiate();root.add_child(shell);await process_frame
-	shell.selected_mode="battle";shell.selected_victory_mode="conquest";shell._cycle_victory_mode()
+	shell._show_page("battle_groups");shell.buttons.get_node("BattleGroup2").pressed.emit();shell.buttons.get_node("ChooseBattle_fortress").pressed.emit()
 	check("mode cycle reaches fortress after quick battle",shell.selected_mode=="fortress")
-	shell._cycle_victory_mode();check("fortress cycles to staged defense",shell.selected_mode=="survival")
+	shell._choose_battle("survival");check("staged defense remains selectable",shell.selected_mode=="survival")
 	shell.selected_mode="fortress";shell.selected_victory_mode="conquest";shell._show_page("setup")
 	check("setup discloses symmetric scenario army",shell.description.text.contains("長槍兵 4") and shell.description.text.contains("兩座箭塔"))
 	for size in [Vector2i(390,844),Vector2i(320,568),Vector2i(568,320),Vector2i(1280,800)]:

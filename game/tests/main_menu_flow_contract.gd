@@ -175,7 +175,8 @@ func run():
 	check(not shell.transition_busy, "distant release without drag sample cannot start")
 	# Exercise the same deliberate public button as a player, never a QA bypass.
 	shell.buttons.get_node("StartMatchButton").pressed.emit()
-	check(shell.page=="setup" and not is_instance_valid(shell.match_node), "start opens setup without world")
+	check(shell.page=="battle_groups" and not is_instance_valid(shell.match_node), "start opens selection without world")
+	shell._choose_battle("standard")
 	await check_layout_matrix(shell, "skirmish setup")
 	var saved_size=root.size
 	root.size=Vector2i(568,320);shell._layout()
@@ -217,7 +218,7 @@ func run():
 	shell._show_page("home")
 	check(not shell.buttons.has_node("ResumeMatchButton"), "terminal match cannot resume")
 	shell.buttons.get_node("NewMatchButton").pressed.emit()
-	check(shell.page=="setup", "terminal new opens setup")
+	check(shell.page=="battle_groups", "terminal new opens selection")
 	shell._choose_mode("practice")
 	shell.buttons.get_node("LaunchMatchButton").pressed.emit()
 	await process_frame

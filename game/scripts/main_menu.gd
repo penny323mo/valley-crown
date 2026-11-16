@@ -5,6 +5,8 @@ const ExpeditionCheckpointStore=preload("res://scripts/expedition_checkpoint_sto
 const CheckpointStore=preload("res://scripts/checkpoint_store.gd")
 const CheckpointBackups=preload("res://scripts/checkpoint_backups.gd")
 const CheckpointRestore=preload("res://scripts/checkpoint_restore.gd")
+const BattleSelection=preload("res://scripts/battle_selection.gd")
+var battle_group=0
 const Rules=preload("res://scripts/rules.gd")
 var checkpoint_path=CheckpointStore.PATH
 var expedition_checkpoint_path=ExpeditionCheckpointStore.PATH
@@ -214,7 +216,7 @@ func _layout():
 	if latin_name.visible:
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
-	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot"]) else 1)
+	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options"]) else 1)
 	var button_height=54.0
 	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0
 	var button_gap=10
@@ -371,14 +373,22 @@ func _show_page(next_page: String):
 		_add_button(FieldManual.SECTIONS[manual_section]+" >", "ManualSectionButton", func(): manual_section=(manual_section+1)%3;manual_index=0;_show_page("manual"))
 		_add_button("下一項 >", "ManualNextButton", func(): manual_index=(manual_index+1)%FieldManual.entries(manual_section).size();_show_page("manual"))
 		_add_button("返回", "ManualBackButton", func(): _show_page(manual_back_page))
+	elif page == "battle_groups":
+		heading.text="選擇戰役"
+		description.text="先選對戰方式，再查看開局、敵軍與取勝條件。只有出征才會開始新戰役。"
+		for index in BattleSelection.GROUPS.size():
+			_add_button(BattleSelection.GROUPS[index],"BattleGroup"+str(index),func(): battle_group=index;_show_page("battle_options"))
+		_add_button("返回主選單","BattleGroupsBackButton",func(): _show_page("home"))
+	elif page == "battle_options":
+		heading.text=BattleSelection.GROUPS[battle_group]
+		description.text="選擇後先查看戰役設定，不會立即開始。"
+		for item in BattleSelection.OPTIONS:
+			if item.group==battle_group:_add_button(item.title,"ChooseBattle_"+item.id,func(): _choose_battle(item.id))
+		_add_button("返回分類","BattleOptionsBackButton",func(): _show_page("battle_groups"))
 	elif page == "setup":
 		heading.text = "戰役設定"
-		description.text = ("霧谷 · 單人劇本挑戰\n\n" if selected_mode in ["survival","expedition"] else "霧谷 · 1 對 1 電腦戰\n\n")+SkirmishPolicy.details(selected_mode)
-		_add_button("模式："+("資源爭奪戰" if selected_victory_mode=="supply" else ("中央據點爭奪" if selected_victory_mode=="control" else SkirmishPolicy.title(selected_mode)))+" >", "CycleModeButton", _cycle_victory_mode)
-		if selected_victory_mode=="control":
-			description.text="中央王旗爭奪戰 · 1 對 1\n至少兩名軍人進入中央圈，且圈內沒有敵軍，才累積控制時間。雙方同在圈內時停止計時；累積 180 秒勝利。主堡被毀仍會落敗。\n電腦從兩名軍人開始爭奪據點。雙方資源、戰鬥規則相同；據點狀態與分數公開，敵軍位置仍受迷霧限制。"
-		if selected_victory_mode=="supply":
-			description.text="資源爭奪戰 · 1 對 1\n先實際送抵 600 糧食及 400 木材勝出。起始庫存、退款與尚在村民身上的負重不計；已送抵的資源用於建造後仍保留進度。\n雙方資源進度公開，敵軍位置仍受迷霧限制。可襲擊採集線或摧毀敵方主堡取勝；同回合達標為和局。使用標準電腦，雙方經濟規則相同。"
+		description.text=BattleSelection.briefing(selected_mode,selected_victory_mode)
+		_add_button("選擇其他戰役", "ChooseBattleButton", func(): _show_page("battle_groups"))
 		_add_button("出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "checkpoint":
@@ -428,7 +438,7 @@ func _show_page(next_page: String):
 	elif page == "confirm":
 		heading.text = "開始新戰役？"
 		description.text = "目前未儲存的戰役與教學會重新開始。本機存檔不會被新戰役覆蓋。"
-		_add_button("設定新戰役", "ConfirmNewMatchButton", func(): _show_page("setup"))
+		_add_button("設定新戰役", "ConfirmNewMatchButton", func(): _show_page("battle_groups"))
 		_add_button("保留目前戰役", "CancelNewMatchButton", func(): _show_page("home"))
 	else:
 		heading.text = "霧谷王旗"
@@ -440,9 +450,9 @@ func _show_page(next_page: String):
 			else:
 				description.text = "戰役已結束。\n查看總結，或再開一局。"
 				_add_button("戰役總結", "MatchReportButton", _review_finished_match)
-			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _show_page("setup"))
+			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _show_page("battle_groups"))
 		else:
-			_add_button("開始戰役", "StartMatchButton", func(): _show_page("setup"))
+			_add_button("開始戰役", "StartMatchButton", func(): _show_page("battle_groups"))
 			_add_button("前線遠征任務", "ExpeditionHomeButton", func(): selected_mode="expedition";selected_victory_mode="conquest";_show_page("setup"))
 		_add_button("兵種與建築圖鑑", "CatalogueMenuButton", func(): manual_section=0;manual_index=0;_show_page("manual"))
 		_add_button("本機存檔", "CheckpointMenuButton", func(): _show_page("checkpoint"))
@@ -479,6 +489,7 @@ func _replace_match():
 	match_node.victory_mode=selected_victory_mode
 	match_node.main_menu_requested.connect(_open_menu)
 	match_node.restart_requested.connect(_restart_match)
+	match_node.setup_requested.connect(_reconfigure_finished_match)
 	add_child(match_node)
 	_release_menu_focus()
 	manual_preview.clear_model()
@@ -639,25 +650,6 @@ func _input(event):
 			prose_touch=-1;get_viewport().set_input_as_handled();return
 	if _help_touch(event): get_viewport().set_input_as_handled()
 
-func _cycle_victory_mode():
-	if selected_mode=="battle":
-		selected_mode="fortress";selected_victory_mode="conquest";_show_page("setup");return
-	if selected_mode=="fortress":
-		selected_mode="survival";selected_victory_mode="conquest";_show_page("setup");return
-	if selected_mode=="survival":
-		selected_mode="expedition";selected_victory_mode="conquest";_show_page("setup");return
-	if selected_mode=="expedition":
-		selected_mode="practice";selected_victory_mode="conquest";_show_page("setup");return
-	if selected_victory_mode=="supply":
-		selected_victory_mode="conquest";selected_mode="battle";_show_page("setup");return
-	if selected_victory_mode=="control":
-		selected_victory_mode="supply";selected_mode="standard"
-	elif selected_mode=="pressure":
-		selected_victory_mode="control";selected_mode="standard"
-	else:
-		selected_mode=SkirmishPolicy.IDS[(SkirmishPolicy.IDS.find(selected_mode)+1)%SkirmishPolicy.IDS.size()]
-	_show_page("setup")
-
 func _save_checkpoint():
 	if not is_instance_valid(match_node) or transition_busy:return
 	var result=ExpeditionCheckpointStore.save_slot(match_node,expedition_checkpoint_path) if match_node.skirmish_mode=="expedition" else CheckpointStore.save_slot(match_node,checkpoint_path)
@@ -690,7 +682,7 @@ func _restore_checkpoint(expedition=false,backup_name=""):
 	if is_instance_valid(match_node):remove_child(match_node);match_node.queue_free()
 	match_node=candidate
 	selected_mode=candidate.skirmish_mode;selected_victory_mode=candidate.victory_mode
-	candidate.main_menu_requested.connect(_open_menu);candidate.restart_requested.connect(_restart_match)
+	candidate.main_menu_requested.connect(_open_menu);candidate.restart_requested.connect(_restart_match);candidate.setup_requested.connect(_reconfigure_finished_match)
 	candidate.process_mode=Node.PROCESS_MODE_DISABLED
 	candidate.set_process(true)
 	checkpoint_status="已讀取存檔，戰役保持暫停。按繼續返回。"
@@ -713,3 +705,13 @@ func _inspect_checkpoint_backup(expedition:bool,name:String):
 	# Never cache decoded snapshot data; loading re-reads and validates the bytes.
 	backup_info={"ok":result.ok,"reason":result.get("reason",""),"source_build":result.get("source_build","未知")}
 	_show_page("checkpoint_backup_detail")
+
+func _choose_battle(id:String):
+	var option=BattleSelection.option(id)
+	if option.is_empty():return
+	selected_mode=option.mode;selected_victory_mode=option.victory
+	_show_page("setup")
+func _reconfigure_finished_match():
+	if not is_instance_valid(match_node) or not match_node.game_over or transition_busy:return
+	selected_mode=match_node.skirmish_mode;selected_victory_mode=match_node.victory_mode
+	_open_menu();_show_page("battle_groups")

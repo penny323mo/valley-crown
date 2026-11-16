@@ -9,15 +9,15 @@ class MenuSourceContract(unittest.TestCase):
         self.assertIn('run/main_scene="res://main_menu.tscn"', project)
         ready = menu.split('func _ready():', 1)[1].split('func _layout', 1)[0]
         self.assertNotIn('instantiate()', ready)
-        self.assertEqual(menu.count('MATCH_SCENE.instantiate()'), 1)
-        self.assertIn('"StartMatchButton", func(): _show_page("setup")', menu)
+        self.assertEqual(menu.count('MATCH_SCENE.instantiate()'), 2)
+        self.assertIn('"StartMatchButton", func(): _show_page("battle_groups")', menu)
         self.assertIn('call_deferred("_replace_match")', menu)
     def test_pause_and_terminal_wiring(self):
         menu = (ROOT / 'scripts/main_menu.gd').read_text()
         game = (ROOT / 'scripts/game.gd').read_text()
         for token in ['match_node.paused = true', 'Node.PROCESS_MODE_DISABLED', 'match_node.ui.hide()', 'match_node._toggle_pause()', '"CancelNewMatchButton"', 'match_node.game_over: return']:
             self.assertIn(token, menu)
-        for token in ['signal main_menu_requested', 'signal restart_requested', '_button("主選單", _request_main_menu', '_button("再開一局",_request_restart,110)']:
+        for token in ['signal main_menu_requested', 'signal restart_requested', '_button("主選單", _request_main_menu', '_button("同局再戰",_request_restart,80)']:
             self.assertIn(token, game)
     def test_small_viewport_geometry_and_scroll(self):
         menu = (ROOT / 'scripts/main_menu.gd').read_text()
