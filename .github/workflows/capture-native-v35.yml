@@ -1,4 +1,4 @@
-name: Capture genuine pinned v54 nearest-worker quick-gather and deposit
+name: Capture genuine pinned v54 bounded640 quick-gather and deposit
 on:
   push:
     branches: [main]

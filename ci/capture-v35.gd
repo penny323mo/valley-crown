@@ -11,7 +11,7 @@ func shot(g,name):
  print("CAPTURE ",name," ",im.get_width(),"x",im.get_height()," ",err)
  return err==OK
 func run():
- root.size=Vector2i(960,640)
+ root.size=Vector2i(640,360)
  var g=load("res://main.tscn").instantiate();root.add_child(g);g.set_process(false);g.test_mode=true;g.ai_enabled=false;g._test_reset();g.set_process(false)
  await process_frame
  g.paused=false;g.application_focused=true;g.application_suspended=false;g._skip_tutorial()
