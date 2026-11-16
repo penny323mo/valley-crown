@@ -358,7 +358,7 @@
   "tests/farm_rally_contract.gd": "205892d5323b1b64aa03b9db2cc78e82d75489065b83bb502e54dd0312417b7f",
   "tests/farm_rally_distribution_contract.gd": "667765639cef896d81bc66860e68c91f92260b8798cad83c5685811e1b91960c",
   "tests/farm_rally_natural_journey.gd": "16f24a82e545e9b44cc2e4704f8a85a8b8ce6e9180bb81044dc0316b552cca12",
-  "tests/field_manual_contract.gd": "7402e6d66cde3b59ec50a28f683e1b962749249bf63aa637a7ba80f14e18f1d6",
+  "tests/field_manual_contract.gd": "57724c4639e076d76c81eb5fc50242a5b5c92a1623bc54b53a8ec8daea276aeb",
   "tests/fortress_contract.gd": "f1c0fe9e5ec8a9304bc576e2a3c53b96b993e869fd6ee64529750cd5c3fd7d47",
   "tests/frontier_expedition_capture.gd": "bb82d6cbac159d3f333ceba65f43a13bad4bab214a87566ac66151b5f4156775",
   "tests/frontier_expedition_contract.gd": "920931bbab5336f397813a8349c5f8561c432ef676d09e24e6a1ae949b3b28b9",
