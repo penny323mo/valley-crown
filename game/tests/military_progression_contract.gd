@@ -40,7 +40,7 @@ func run():
 	started_ms=Time.get_ticks_msec()
 	root.size=Vector2i(390,844)
 	game=load("res://main.tscn").instantiate(); root.add_child(game); game.set_process(false); game.test_mode=true
-	check("nine building and six unit profiles",Rules.FOOTPRINT.size()==9 and Rules.UNIT_KINDS.size()==6)
+	check("ten building and six unit profiles",Rules.FOOTPRINT.size()==10 and Rules.UNIT_KINDS.size()==6)
 	await test_research()
 	if deadline(): await test_farm()
 	if deadline(): await test_minerals()

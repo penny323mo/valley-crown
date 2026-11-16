@@ -20,7 +20,7 @@ func run():
   check(kind+" actual model loads",preview.set_entry(kind) and preview.model_kind==kind and preview.active)
   check(kind+" finite visible mesh bounds",preview.model_bounds.is_finite() and preview.model_bounds.size.length()>0 and preview.pivot.find_children("*","MeshInstance3D",true,false).size()>0)
   check(kind+" replaces prior model without battle",not is_instance_valid(old) and preview.stage.get_node_or_null("CatalogueModel")==preview.pivot)
- check("all fifteen model entries supported",Rules.UNIT_KINDS.size()+1+Rules.BUILDABLE_KINDS.size()==15)
+ check("all sixteen model entries supported",Rules.UNIT_KINDS.size()+1+Rules.BUILDABLE_KINDS.size()==16)
  preview.set_entry("villager");var pose=preview.actor.pose_applications
  for i in 10:preview._process(.05)
  check("walking rig uses real idle animation",preview.actor.clip=="idle" and preview.actor.pose_applications>pose and preview.actor.player.has_animation("idle"))

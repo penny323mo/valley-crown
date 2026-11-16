@@ -4,14 +4,14 @@ extends RefCounted
 const Rules = preload("res://scripts/rules.gd")
 const SOOT_SHADER = preload("res://assets/mature/shaders/building_damage_soot.gdshader")
 const MAX_ACTIVE := 64
-const MAX_MESHES := 18 # Nine building profiles, two damage tiers; bounded cache.
+const MAX_MESHES := 20 # Ten building profiles including palisades, two bounded damage tiers.
 var nodes: Dictionary = {}
 var meshes: Dictionary = {}
 
 static func tier(record: Dictionary) -> int:
 	if record.get("category", "") != "building" or record.get("remembered", true): return 0
 	if not record.get("alive", false) or not record.get("built", false): return 0
-	if not Rules.FOOTPRINT.has(record.get("kind", "")): return 0
+	if record.get("kind", "")!="wall" and not Rules.FOOTPRINT.has(record.get("kind", "")): return 0
 	var hp := float(record.get("hp", 0))
 	var maximum := float(record.get("max_hp", 0))
 	if not is_finite(hp) or not is_finite(maximum) or maximum <= 0 or hp <= 0: return 0
@@ -71,8 +71,8 @@ static func _material(color: Color) -> StandardMaterial3D:
 	return material
 
 static func make_mesh(kind: String, level: int) -> ArrayMesh:
-	assert(Rules.FOOTPRINT.has(kind) and level in [1, 2])
-	var half := float(Rules.FOOTPRINT[kind]) * 0.5
+	assert((kind=="wall" or Rules.FOOTPRINT.has(kind)) and level in [1, 2])
+	var half := float(Rules.FOOTPRINT.get(kind,2)) * 0.5
 	var soot := SurfaceTool.new()
 	soot.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var material := ShaderMaterial.new()
@@ -80,7 +80,7 @@ static func make_mesh(kind: String, level: int) -> ArrayMesh:
 	soot.set_material(material)
 	var stone := SurfaceTool.new()
 	stone.begin(Mesh.PRIMITIVE_TRIANGLES)
-	stone.set_material(_material(Color("777366")))
+	stone.set_material(_material(Color("6b5038") if kind=="wall" else Color("777366")))
 	var timber := SurfaceTool.new()
 	timber.begin(Mesh.PRIMITIVE_TRIANGLES)
 	timber.set_material(_material(Color("34322c")))

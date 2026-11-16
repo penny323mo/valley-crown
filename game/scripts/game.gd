@@ -643,7 +643,10 @@ func _unit_visual(_parent, _kind, _team):
 	# authority actors. Missing assets are an explicit incomplete-candidate error.
 	pass
 
+const WallVisual=preload("res://scripts/wall_visual.gd")
 func _building_visual(parent,kind,team):
+	if kind=="wall":
+		parent.add_child(WallVisual.instantiate_asset(RED if team==1 else BLUE));return
 	if kind in AdvancedBuildingVisuals.KINDS:
 		parent.add_child(AdvancedBuildingVisuals.instantiate_asset(kind,RED if team==1 else BLUE)); return
 	if kind in MatureVisuals.BUILDING_KINDS:
@@ -2568,6 +2571,22 @@ func _refine_cavalry_contact(ent,target,dt):
 	_apply_unit_step(ent,next,dt)
 	return true
 
+func _refine_wall_contact(ent,target,dt):
+	# Only a completed normal route may finish inside its SAME free grid cell.
+	# This does not enlarge weapon range, shrink obstacles or start another search.
+	if not ent.alive or ent.category!="unit" or ent.team not in [0,1] or ent.kind not in ["cavalry","siege"] or target.kind!="wall" or target.category!="building" or target.team!=1-ent.team or not target.alive or not _attack_target_observed(target,ent.team):return false
+	if ent.state!="attack" or ent.target!=target.id or ent.path_status!=BoundedPath.FOUND or ent.path_pending or not ent.path.is_empty() or ent.traffic_route:return false
+	if ent.path_request_target!=target.id or ent.path_request_state!="attack" or ent.path_request_epoch!=ent.work_epoch:return false
+	var endpoint=ent.get("path_resolved_goal",Vector3.INF)
+	if not endpoint.is_finite() or _cell(endpoint)!=_cell(ent.pos):return false
+	if _attack_distance(ent.pos,target)>Rules.RANGE[ent.kind]+0.5:return false
+	var delta=target.pos-ent.pos
+	if delta.length()<0.001:return false
+	var next=ent.pos+delta.normalized()*minf(Rules.SPEED[ent.kind]*dt,delta.length())
+	if _cell(next)!=_cell(ent.pos) or not _path_step_is_free(ent.pos,next) or not _unit_step_is_free(ent,next):return false
+	_apply_unit_step(ent,next,dt)
+	return true
+
 func _move_unit_phase(ent,dt):
 	ent.advance_engaged=false
 	if ent.state=="move":
@@ -2617,7 +2636,7 @@ func _move_unit_phase(ent,dt):
 		var remembered={"category":target.category,"kind":target.kind,"pos":ent.last_known,"radius":target.radius}
 		if observed and _attack_distance(ent.pos,remembered)<=Rules.RANGE[ent.kind]: return
 		if not observed and _attack_distance(ent.pos,remembered)<0.6: return
-		if observed and _refine_cavalry_contact(ent,target,dt):return
+		if observed and (_refine_cavalry_contact(ent,target,dt) or _refine_wall_contact(ent,target,dt)):return
 		var goal=_attack_approach(ent,remembered,not observed) if target.category!="unit" else ent.last_known
 		if goal==Vector3.INF: return
 		var before=ent.pos
@@ -3390,6 +3409,7 @@ func _ai_move_home(members,castle):
 
 const AIRaidReinforcement=preload("res://scripts/ai_raid_reinforcement.gd")
 const AIEconomicRaid=preload("res://scripts/ai_economic_raid.gd")
+const WallBreachPolicy=preload("res://scripts/wall_breach_policy.gd")
 func _ai_raid_order(ent,records,enemy_keep):
 	var worker=AIEconomicRaid.choose(ent,records,enemy_keep)
 	if not worker.is_empty():
@@ -3403,6 +3423,13 @@ func _ai_raid_order(ent,records,enemy_keep):
 	if not defender.is_empty():
 		if ent.state!="attack" or ent.target!=defender.id:
 			_submit("order",{"ids":[ent.id],"target":defender.id,"position":defender.pos},1)
+		return
+	# A visible forward wall already in striking reach can be breached locally.
+	# Distant obstructions retain ordinary detours and bounded no-path stopping.
+	var breach=WallBreachPolicy.choose(ent,records,enemy_keep)
+	if not breach.is_empty():
+		if ent.state!="attack" or ent.target!=breach.id:
+			_submit("order",{"ids":[ent.id],"target":breach.id,"position":breach.pos},1)
 		return
 	if not enemy_keep.remembered:
 		if ent.state!="attack" or ent.target!=enemy_keep.id:
@@ -6519,7 +6546,8 @@ func _attack_approach(ent: Dictionary,target: Dictionary,inspect_site=false) -> 
 					if _attack_distance(point,target)>=0.6: continue
 				elif (cell-center).length_squared()>Rules.SIGHT.archer*Rules.SIGHT.archer: continue
 			if ent.kind=="archer" and point.distance_squared_to(ent.pos)>=distance: continue
-			if _attack_distance(point,target)>Rules.RANGE[ent.kind] or not _known_destination_clear(ent,point): continue
+			var contact_margin=0.5 if target.kind=="wall" and ent.kind in ["cavalry","siege"] and not inspect_site else 0.0
+			if _attack_distance(point,target)>Rules.RANGE[ent.kind]+contact_margin or not _known_destination_clear(ent,point): continue
 			var d=point.distance_squared_to(ent.pos)
 			if d<distance: distance=d; best=point
 	return best

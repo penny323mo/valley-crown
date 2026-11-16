@@ -2,6 +2,7 @@ extends RefCounted
 ## Temporary construction presentation only. No authority or visibility inputs.
 ## Uses the existing building's stone/oak materials, with two batched surfaces.
 const DIMENSIONS = {
+	"wall": Vector3(1.9,1.40,1.9),
 	"farm": Vector3(2.74,0.5,2.74),
 	"stable": Vector3(2.62,1.68,2.30),
 	"tower": Vector3(1.76,2.76,1.76),
@@ -64,6 +65,7 @@ static func _beam(surface: SurfaceTool, a: Vector3, b: Vector3) -> void:
 	surface.append_from(box,0,Transform3D(Basis(x,axis,z),(a+b)*0.5))
 
 static func _make_mesh(body: Node3D, kind: String, stage: int) -> ArrayMesh:
+	if kind == "wall": return preload("res://scripts/wall_visual.gd").construction_mesh(stage)
 	if kind == "farm": return _make_farm(body,stage)
 	var size: Vector3 = DIMENSIONS[kind]
 	var stone := SurfaceTool.new()

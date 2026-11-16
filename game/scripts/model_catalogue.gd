@@ -75,6 +75,8 @@ func show_model(kind:String) -> bool:
   if not actor.bind(pivot,kind,TEAM):clear_model();return false
  elif kind in ProgressionVisuals.UNIT_KINDS:
   ProgressionVisuals.build(pivot,kind,TEAM)
+ elif kind=="wall":
+  model=preload("res://scripts/wall_visual.gd").instantiate_asset(TEAM);pivot.add_child(model)
  elif kind in AdvancedVisuals.KINDS:
   model=AdvancedVisuals.instantiate_asset(kind,TEAM);pivot.add_child(model)
  else:

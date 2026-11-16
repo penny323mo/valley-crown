@@ -19,6 +19,7 @@ const UNITS = {
 }
 
 const BUILDINGS = {
+	"wall": {"footprint":2,"hp":250,"armor":0,"sight":1,"cost":{"wood":30},"build_ticks":200},
 	"town_center": {"footprint":4,"hp":1200,"armor":2,"sight":8,"population":10},
 	"house": {"footprint":2,"hp":250,"armor":0,"sight":5,"population":5,"cost":{"wood":50},"build_ticks":400},
 	"storehouse": {"footprint":2,"hp":300,"armor":0,"sight":5,"cost":{"wood":80},"build_ticks":500},

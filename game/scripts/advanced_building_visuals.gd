@@ -22,4 +22,5 @@ static func instantiate_asset(kind: String, team: Color) -> Node3D:
 	return root
 
 static func health_bar_height(kind: String) -> float:
+	if kind=="wall":return preload("res://scripts/wall_visual.gd").HEIGHT+0.25
 	return float(HEIGHTS.get(kind, 4.25)) + 0.25
