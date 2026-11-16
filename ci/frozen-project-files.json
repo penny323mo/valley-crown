@@ -329,7 +329,7 @@
   "tests/contextual_touch_phone.gd": "5962568a2347360f8ed70cca4d3f026181b0c24a965c0f9b0a64b224143e7e5d",
   "tests/continuous_training_contract.gd": "fa0593130a86edf4d1310ff1c4323c2da0524939946453e3c188061b1efbbd65",
   "tests/control_point_contract.gd": "89f605aeeeb4764a6fc3b0a08a0be8777c47d090c69bad494ade08631b30305c",
-  "tests/control_point_menu_contract.gd": "0234a8776d80bbc946cb72f102426cba709a54b93748efdf8d57fa930692c95b",
+  "tests/control_point_menu_contract.gd": "13f87d05dca3d26500a4563aaa8c24c941b22412df0ebb51c56ff456dcf40401",
   "tests/cooperative_build_contract.gd": "543a418b6d36367fe53b87c1bc59864a0f097481bbc9022a55e82392fa4b320a",
   "tests/damage_feedback_contract.gd": "94578d6bfc1aa6507bab4424e6050e99aa84debe3cefbe2b16e4a1f534f604be",
   "tests/defend_retarget_contract.gd": "2727bf8f12c8dd43b0013a8252b386fcf8435068c877301fefbaf4245f354ae0",
