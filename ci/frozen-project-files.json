@@ -357,7 +357,7 @@
   "tests/economy_ledger_contract.gd": "d923b646c9188533b814548b4ade48c64c9b0b35bafbb87ae82f438b5bfc8d0c",
   "tests/economy_ledger_contract.gd.uid": "9dd300e285b2ddbc320df4af9c9e7e2ada9b5928af6ae20a8330cf6c457ae569",
   "tests/escort_integration_contract.gd": "fe1d1cd0e23dac3335139ae27d9fa52bb949bc99deb1bb82e2e60ea44637bbe5",
-  "tests/escort_menu_contract.gd": "ac9610289fb6f0990651286cb41449b733c009a95e46661e47145529aa227de3",
+  "tests/escort_menu_contract.gd": "471e9f9b6e6c5d689af3354339006a82cab3a3ae564ab5adbebd246637568feb",
   "tests/escort_policy_contract.gd": "5f82de68dd13ad012c0d5d8274686342bc57b9e1e99577e59444773f2824e335",
   "tests/escort_storage_boundary_contract.gd": "da9fb96cf8710ab2900f9a89d44e9b9905439e9eb1bafdc66699e204bc85fb4b",
   "tests/expedition_checkpoint_capture.gd": "d1f7b60b3f650a2bd520fae8a9ab179ae2ea970314eb3672d84cb3898bfeda5b",
