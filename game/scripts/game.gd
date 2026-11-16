@@ -84,6 +84,7 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const AIInfrastructureRepair=preload("res://scripts/ai_infrastructure_repair.gd")
 const AIArmyRecovery=preload("res://scripts/ai_army_recovery.gd")
 const WoundedRetreat=preload("res://scripts/wounded_retreat.gd")
 var wounded_retreat_button: Button
@@ -3384,7 +3385,8 @@ func _ai_update():
 	if not ai_opening_assigned:
 		for i in workers.size(): _assign_worker(workers[i],"food" if i<3 else "wood")
 		ai_opening_assigned=true
-	_ai_keep_repair(records,castle)
+	var keep_repairing=_ai_keep_repair(records,castle)
+	_ai_infrastructure_repair(records,keep_repairing)
 	# Preserve at least two food workers before borrowing workers for recovery.
 	for ent in workers:
 		if _ai_food_count(records)>=mini(2,workers.size()): break
@@ -6918,3 +6920,37 @@ func _ai_resource_outpost(records):
 		ai_claimed_workers[plan.builder]="build";ai_build_submitted=true;_ai_reserve_budget("storehouse")
 		ai_status.build="remote_resource_outpost";return true
 	return false
+
+func _ai_infrastructure_repair(records,keep_priority=false):
+	var workforce=0
+	for worker in records:
+		if AIInfrastructureRepair.owned(worker) and worker.get("kind","")=="villager": workforce+=1
+	var food_safe=_ai_food_count(records)>=2
+	# Retain an already assigned repairer through later economy scheduling, or
+	# stop through ordinary authority when safety or the wood reserve is lost.
+	var assigned=false
+	for worker in records:
+		if not AIInfrastructureRepair.owned(worker) or worker.get("kind","")!="villager" or worker.get("state","")!="repair": continue
+		var target={}
+		for b in records:
+			if b.get("id",-2)==worker.get("target",-1) and b.get("kind","") in AIInfrastructureRepair.KINDS: target=b; break
+		if target.is_empty(): continue
+		assigned=true;ai_claimed_workers[worker.id]="repair"
+		if keep_priority or workforce<5 or not food_safe or ai_budget.get("wood",0)<AIInfrastructureRepair.RESERVE+Economy.SCALE or not AIInfrastructureRepair.safe(target,records) or worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]:
+			_submit("stop",{"ids":[worker.id]},1)
+		else: ai_budget.wood-=Economy.SCALE
+	if assigned or keep_priority or workforce<5 or not food_safe or ai_budget.get("wood",0)<AIInfrastructureRepair.RESERVE+Economy.SCALE: return false
+	var target=AIInfrastructureRepair.target(records,tick_count)
+	if target.is_empty():return false
+	var chosen={};var score=INF
+	for worker in records:
+		if not AIInfrastructureRepair.owned(worker) or worker.get("kind","")!="villager":continue
+		if ai_claimed_workers.has(worker.id) or worker.get("state","") not in ["idle","gather"] or worker.get("cargo_milli",0)>0 or _ai_food_worker(worker):continue
+		if worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:continue
+		var distance=worker.pos.distance_to(target.pos)+(0 if worker.state=="idle" else 8)
+		if distance<score or (distance==score and (chosen.is_empty() or worker.id<chosen.id)):chosen=worker;score=distance
+	if chosen.is_empty():return false
+	_submit("order",{"ids":[chosen.id],"target":target.id,"position":target.pos},1)
+	ai_claimed_workers[chosen.id]="repair";ai_budget.wood-=Economy.SCALE
+	ai_status.infrastructure_repair=target.kind
+	return true

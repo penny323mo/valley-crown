@@ -1,0 +1,59 @@
+{
+  "build": "vc-7da4c5657337",
+  "source_base": "acc6025dccbefbeaa5f1aae668da3187762940ca",
+  "source_checks": 991,
+  "native_checks": 101,
+  "suites": [
+    {
+      "suite": "ai_infrastructure_repair_contract",
+      "checks": 19,
+      "passed": true,
+      "sampled_peak_rss_kib": 194552,
+      "log_sha256": "ae3bf65aaa462d0ed00c74436913e369d42a0940b0aef29a6f06aed01a2af3aa"
+    },
+    {
+      "suite": "ai_keep_recovery_contract",
+      "checks": 8,
+      "passed": true,
+      "sampled_peak_rss_kib": 194620,
+      "log_sha256": "29d40b8efec2238eef559be3ae54178a60fa9dc3daee7b4c61405ebd823a843e"
+    },
+    {
+      "suite": "ai_worker_recovery_contract",
+      "checks": 17,
+      "passed": true,
+      "sampled_peak_rss_kib": 194596,
+      "log_sha256": "24d0707e12e7f5527fa263de61a16e859285cef74a9e0dc34b55186cde277381"
+    },
+    {
+      "suite": "ai_worker_slot_contract",
+      "checks": 10,
+      "passed": true,
+      "sampled_peak_rss_kib": 194536,
+      "log_sha256": "e887f866860c3af85d691f40ecc9d4b0cfda9a7fd14b47ccce581816a193e720"
+    },
+    {
+      "suite": "ai_resource_outpost_contract",
+      "checks": 23,
+      "passed": true,
+      "sampled_peak_rss_kib": 194696,
+      "log_sha256": "d2373d0d84b50e4e75d80917d4523a8d8163467fe26600ed476e674751fa4cb9"
+    },
+    {
+      "suite": "ai_army_recovery_contract",
+      "checks": 21,
+      "passed": true,
+      "sampled_peak_rss_kib": 194580,
+      "log_sha256": "a4c9bb975bd7d4236441d0770daa367a3f8edf074419f827f7323fe4f279f681"
+    },
+    {
+      "suite": "ui_glyph_coverage_contract",
+      "checks": 3,
+      "passed": true,
+      "sampled_peak_rss_kib": 62684,
+      "log_sha256": "0142bec1ed8c63ac85448d4ef7f8b356f91dc1762be43aa0ab2e0a48620cb8af"
+    }
+  ],
+  "scope": "Controlled ordinary full AI planning and paid repair; no natural-match balance, render or phone acceptance. 80wood is repair eligibility threshold, not bank protection against later ordinary spending. No saves or schema changes.",
+  "review": "Home keep priority; active repair stops for unsafe target, failed route, insufficient wood, fewer than5 workers or loss of two food workers; full AI turn preserves claimed repair worker."
+}
