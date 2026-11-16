@@ -19,8 +19,11 @@ var proof={}
 var observation_trace=[]
 func _initialize():call_deferred("run")
 func shot(label,point,ids):
- g._select(ids);g.camera_focus=point;g.camera_zoom=14;g._camera_update();g._update_visuals(0);g._update_hud()
- shots.append({"stage":label,"tick":g.tick_count,"focus":str(point),"focus_current_visible":g.visible_cells[0][g._cell_index(point)]!=0})
+ g._select(ids);g.camera_focus=point;g.camera_zoom=13;g._camera_update();g._update_visuals(0);g._update_hud()
+ # Inspection camera only: real same-world render, no entity/simulation changes.
+ g.camera.position=point+Vector3(-12,28,-15);g.camera.look_at(point);g.camera.size=13
+ g.tutorial_panel.visible=false
+ shots.append({"stage":label,"tick":g.tick_count,"focus":str(point),"view":"inspection angle; notification hidden; unchanged real runtime scene","focus_current_visible":g.visible_cells[0][g._cell_index(point)]!=0})
  if DisplayServer.get_name()=="headless":return
  for i in 3:await process_frame
  await RenderingServer.frame_post_draw

@@ -1,4 +1,4 @@
-name: Capture v83 paid wall construction and natural enemy damage
+name: Capture v83 natural wall inspection angle
 on:
   push:
     branches: [main]
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v83-wall-natural-${{ matrix.scenario }}
+          name: genuine-v83-wall-inspection-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
