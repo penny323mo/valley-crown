@@ -5,9 +5,12 @@ const Rules=preload("res://scripts/rules.gd")
 const ORDER=["spearman","archer","cavalry","siege"]
 const BASE={"spearman":5,"archer":5,"cavalry":5,"siege":2}
 const MAX_COUNTER_ADDITION=5
+const MAX_SIEGE_ADDITION=4
+const FORTIFIED_PRODUCERS=["barracks","range","stable","workshop"]
 
 static func plan(records: Array, candidates: Array=ORDER) -> Dictionary:
 	var owned={}; var visible={}; var seen={}
+	var towers=0; var producers=0
 	for record in records:
 		if not record.get("alive",false) or seen.has(record.get("id",-1)): continue
 		seen[record.get("id",-1)]=true
@@ -21,7 +24,14 @@ static func plan(records: Array, candidates: Array=ORDER) -> Dictionary:
 		elif not record.get("owned",false) and record.get("team",-1)==0 and not record.get("remembered",true) and record.get("category","")=="unit":
 			var kind=record.get("kind","")
 			if kind in Rules.UNIT_KINDS: visible[kind]=visible.get(kind,0)+1
+		elif not record.get("owned",false) and record.get("team",-1)==0 and not record.get("remembered",true) and record.get("category","")=="building" and record.get("built",false):
+			if record.get("kind","")=="tower": towers+=1
+			elif record.get("kind","") in FORTIFIED_PRODUCERS: producers+=1
 	var desired=BASE.duplicate(); var counters={}
+	# Current visible fortifications justify a bounded siege complement. Never
+	# remember enemy construction, infer unseen towers, or replace the escort
+	# baseline. Queued siege below counts against this same recruitment goal.
+	desired.siege+=mini(MAX_SIEGE_ADDITION,towers*2+int(producers/2))
 	for kind in ORDER:
 		var pressure=0
 		for target_kind in Rules.CONTENT.UNIT_COUNTER_BONUSES.get(kind,{}):
