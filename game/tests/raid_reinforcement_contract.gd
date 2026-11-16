@@ -96,5 +96,5 @@ func run():
  g.ai_raid_members=[old.id];g.ai_raid_departure_count=1;g.ai_raid_retreating=false;g.commands.clear();g._ai_army(danger,ownhome)
  check("keep emergency precedes reinforcement",g.ai_status.army=="home_defense" and g.ai_raid_retreating and g.ai_raid_members==[old.id])
  check("isolated history untouched",not FileAccess.file_exists(g.history_path))
- print(JSON.stringify({"suite":"raid_reinforcement_contract","checks":checks,"passed":checks.all(func(c):return c.passed)}))
+ print(JSON.stringify({"suite":"raid_reinforcement_contract","checks":checks,"failed":checks.filter(func(c):return not c.passed).size()}))
  g.free();quit(0 if checks.all(func(c):return c.passed) else 1)
