@@ -3347,7 +3347,7 @@ func _ai_army(records,castle):
 			ai_status.army="raid_static_frontier_retired"; return
 		# Reinforcement is a whole home-mustered cohort, never a stream of
 		# isolated recruits. Defense/recovery/retreat above retain precedence.
-		var reserves=army.filter(func(ent):return not ent.id in ai_raid_members)
+		var reserves=army.filter(func(ent):return ent.kind in ["spearman","archer","cavalry","siege"] and ent.id not in ai_raid_members)
 		var reinforcement=AIRaidReinforcement.batch(reserves,ai_raid_members,castle,skirmish_mode,tick_count,ai_last_raid_tick)
 		if not reinforcement.is_empty():
 			ai_raid_members.append_array(reinforcement)

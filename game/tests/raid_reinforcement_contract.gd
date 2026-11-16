@@ -96,5 +96,20 @@ func run():
  g.ai_raid_members=[old.id];g.ai_raid_departure_count=1;g.ai_raid_retreating=false;g.commands.clear();g._ai_army(danger,ownhome)
  check("keep emergency precedes reinforcement",g.ai_status.army=="home_defense" and g.ai_raid_retreating and g.ai_raid_members==[old.id])
  check("isolated history untouched",not FileAccess.file_exists(g.history_path))
+ # Controlled actual scout movement must not be overwritten by reserve muster.
+ var scout=g._spawn("scout",1,home.pos+Vector3(-12,0,-8))
+ var reserve=g._spawn("spearman",1,home.pos+Vector3(-10,0,-8))
+ var scout_goal=home.pos+Vector3(-18,0,-12)
+ g._execute({"type":"order","team":1,"ids":[scout.id],"target":-1,"position":scout_goal})
+ var scout_epoch=scout.work_epoch
+ var scout_dest=scout.dest
+ g._update_vision();g._publish_faction_views()
+ var isolated=g._ai_records().filter(func(r):return r.id in [home.id,old.id,scout.id,reserve.id])
+ isolated.append(keep)
+ g.ai_raid_members=[old.id];g.ai_raid_departure_count=1;g.ai_raid_retreating=false;g.ai_last_raid_tick=-1800
+ g.commands.clear();g._ai_army(isolated,ownhome)
+ check("active exploring scout receives no reserve return command",not g.commands.any(func(c):return scout.id in c.get("ids",[])))
+ check("active scout movement goal and epoch preserved",scout.state=="move" and scout.dest==scout_dest and scout.work_epoch==scout_epoch)
+ check("under-quorum military reserve still moves home",g.commands.any(func(c):return c.type=="order" and reserve.id in c.get("ids",[]) and c.position==home.pos) and reserve.id not in g.ai_raid_members)
  print(JSON.stringify({"suite":"raid_reinforcement_contract","checks":checks,"failed":checks.filter(func(c):return not c.passed).size()}))
  g.free();quit(0 if checks.all(func(c):return c.passed) else 1)
