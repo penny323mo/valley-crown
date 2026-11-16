@@ -1,4 +1,4 @@
-name: Capture v68 independent checkpoint and natural continuation
+name: Capture v69 protected checkpoint and accurate restored mission
 on:
   push:
     branches: [main]
@@ -32,10 +32,10 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14210658065/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='280a6a50c97469937590001da13ba35b95f9b308247b78a05530ac3577082fad'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14212194107/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='ac5aa59ad11774637780fdcc9fb31fa943a0c59d8843719d54381048fe679a4e'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='662b1649854d126882d5ed931a06fc1c05a67711e9dbe947c69d34b848273891'
+          assert hashlib.sha256(pck).hexdigest()=='aa25764f352dd1ce70a4d389547cc77699793e16859eced7408c4fbd6ebc9066'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
           if [ "${{ matrix.scenario }}" = "journey" ]; then cp ci/capture-v68-checkpoint-journey.gd /tmp/capture/capture.gd; else cp ci/capture-v68-checkpoint-menu.gd /tmp/capture/capture.gd; fi
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v68-checkpoint-${{ matrix.scenario }}
+          name: genuine-v69-checkpoint-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
