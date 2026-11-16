@@ -1,10 +1,12 @@
 extends Node
 ## Product entry point. The battlefield does not exist until Start is chosen.
 ## main.tscn remains the explicit battle fixture for simulation tests.
+const ExpeditionCheckpointStore=preload("res://scripts/expedition_checkpoint_store.gd")
 const CheckpointStore=preload("res://scripts/checkpoint_store.gd")
 const CheckpointRestore=preload("res://scripts/checkpoint_restore.gd")
 const Rules=preload("res://scripts/rules.gd")
 var checkpoint_path=CheckpointStore.PATH
+var expedition_checkpoint_path=ExpeditionCheckpointStore.PATH
 var checkpoint_status=""
 const MATCH_SCENE = preload("res://main.tscn")
 const ModelCatalogue=preload("res://scripts/model_catalogue.gd")
@@ -376,13 +378,15 @@ func _show_page(next_page: String):
 		_add_button("返回", "BackButton", func(): _show_page("home"))
 	elif page == "checkpoint":
 		heading.text="本機戰役存檔"
-		description.text=checkpoint_status+"\n\n只保留一個本機存檔，再次儲存會取代舊存檔。只支援相同遊戲版本；更新後可能無法讀取。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
+		description.text=checkpoint_status+"\n\n普通戰役與遠征各保留一個本機存檔，再次儲存只取代同類存檔。只支援相同遊戲版本；更新後可能無法讀取。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
 		if is_instance_valid(match_node) and match_node.skirmish_mode=="expedition":
-			description.text="前線遠征暫不支援存檔；既有存檔保持不變。\n\n"+description.text
-		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode!="expedition":
+			description.text="遠征使用分開存檔，普通戰役存檔不變。\n\n"+description.text
+		if is_instance_valid(match_node) and not match_node.game_over :
 			_add_button("儲存目前戰役", "SaveCheckpointButton", _save_checkpoint)
 		if FileAccess.file_exists(checkpoint_path):
 			_add_button("讀取存檔（取代目前戰役）", "LoadCheckpointButton", _load_checkpoint)
+		if FileAccess.file_exists(expedition_checkpoint_path):
+			_add_button("讀取遠征存檔（取代目前戰役）", "LoadExpeditionCheckpointButton", func(): _load_checkpoint(true))
 		_add_button("返回", "CheckpointBackButton", func(): _show_page("home"))
 	elif page == "confirm":
 		heading.text = "開始新戰役？"
@@ -619,17 +623,17 @@ func _cycle_victory_mode():
 
 func _save_checkpoint():
 	if not is_instance_valid(match_node) or transition_busy:return
-	var result=CheckpointStore.save_slot(match_node,checkpoint_path)
-	checkpoint_status="已寫入本機存檔：%d 秒。" % int(result.tick/20) if result.ok else "未能儲存，原存檔不變："+str(result.get("reason","UNKNOWN"))
+	var result=ExpeditionCheckpointStore.save_slot(match_node,expedition_checkpoint_path) if match_node.skirmish_mode=="expedition" else CheckpointStore.save_slot(match_node,checkpoint_path)
+	checkpoint_status=("已寫入遠征存檔：%d 秒。" if match_node.skirmish_mode=="expedition" else "已寫入本機存檔：%d 秒。") % int(result.tick/20) if result.ok else "未能儲存，原存檔不變："+str(result.get("reason","UNKNOWN"))
 	_show_page("checkpoint")
 
-func _load_checkpoint():
+func _load_checkpoint(expedition=false):
 	if transition_busy:return
 	transition_busy=true
-	call_deferred("_restore_checkpoint")
+	call_deferred("_restore_checkpoint",expedition)
 
-func _restore_checkpoint():
-	var result=CheckpointStore.read_slot(Rules.BUILD_ID,checkpoint_path)
+func _restore_checkpoint(expedition=false):
+	var result=ExpeditionCheckpointStore.read_slot(Rules.BUILD_ID,expedition_checkpoint_path) if expedition else CheckpointStore.read_slot(Rules.BUILD_ID,checkpoint_path)
 	if not result.ok:
 		checkpoint_status="存檔版本不同，保留原檔；請開新戰役。" if result.get("reason")=="BUILD_MISMATCH" else "無法讀取存檔，未改動目前戰役："+str(result.get("reason","UNKNOWN"))
 		transition_busy=false;_show_page("checkpoint");return

@@ -9,7 +9,9 @@ static func read_slot(build:String,path:String=PATH)->Dictionary:
  var size=f.get_length()
  if size<=0 or size>Codec.MAX_BYTES:f.close();return {"ok":false,"reason":"SIZE"}
  var bytes=f.get_buffer(size);f.close()
- return Codec.decode(bytes,build)
+ var result=Codec.decode(bytes,build)
+ if result.ok and result.data.game.skirmish_mode=="expedition":return {"ok":false,"reason":"WRONG_SLOT"}
+ return result
 static func save_slot(game:Node,path:String=PATH)->Dictionary:
  if game.skirmish_mode=="expedition":return {"ok":false,"reason":"前線遠征暫不支援存檔"}
  if game.game_over or not game.paused:return {"ok":false,"reason":"NOT_PAUSED_MATCH"}

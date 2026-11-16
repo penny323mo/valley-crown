@@ -31,6 +31,12 @@ const MODULE_FIELDS={
  "demo_tutorial":["achieved","skipped"],
  "siege_challenge":["wave","active","next_tick","complete"],
  "control_point":["scores","owner","contested","last_tick"]}
+const EXPEDITION_FIELDS=["stage","stage_ticks","outpost_id","counter_ids","counter_launched","counter_due","trained","supplied"]
+static func module_fields(mode:String)->Dictionary:
+ var fields=MODULE_FIELDS.duplicate()
+ if mode=="expedition":fields["frontier_expedition"]=EXPEDITION_FIELDS
+ return fields
+
 const WORK_FIELDS=["revision","resources","structures","known_obstacles","observed_solids","own_solids","resource_observed_at","obstacle_observed_at","cell_observed_at"]
 const FACTION_FIELDS=["memory","current","tick"]
 const ENTITY_NODE_FIELDS=["node","body","ring","bar","bar_fill"]
@@ -50,7 +56,7 @@ static func capture_result(game:Node)->Dictionary:
  if game.game_over:return failure("TERMINAL_MATCH")
  # Caller must invoke between _tick calls on the main thread, not from a ledger callback.
  var data={"build":game.Rules.BUILD_ID,"game":copy_fields(game,GAME_FIELDS),"modules":{},"entities":[],"work_memory":[],"faction_views":[],"rng":{"seed":game.rng.seed,"state":game.rng.state}}
- for name in MODULE_FIELDS:data.modules[name]=copy_fields(game.get(name),MODULE_FIELDS[name])
+ for name in module_fields(game.skirmish_mode):data.modules[name]=copy_fields(game.get(name),module_fields(game.skirmish_mode)[name])
  for entity in game.entities:
   var clean={}
   for key in entity:
@@ -113,6 +119,14 @@ static func finite_position(point:Vector3)->bool:
  return is_finite(point.x) and is_finite(point.y) and is_finite(point.z) and absf(point.x)<=Rules.MAP_HALF and absf(point.z)<=Rules.MAP_HALF and absf(point.y)<=100.0
 
 static func module_types(name:String,record:Dictionary)->bool:
+ if name=="frontier_expedition":
+  for key in EXPEDITION_FIELDS:
+   if key in ["stage_ticks","counter_ids"]:
+    if not record[key] is Array:return false
+   elif key=="counter_launched":
+    if not record[key] is bool:return false
+   elif not record[key] is int:return false
+  return true
  var arrays={"economy":["_resource_types","_banks","_initial","_stats"],"squad_selection":["groups"],"battle_alerts":["entries"],"match_report":["events"],"siege_challenge":["active"],"control_point":["scores"]}
  var ints={"attack_ledger":["_settled_through"],"combat_veterancy":["settled_through"],"battle_alerts":["serial"],"match_report":["event_serial","omitted_events"],"siege_challenge":["wave","next_tick"],"control_point":["owner","last_tick"]}
  var booleans={"economy":["_configuration_valid"],"demo_tutorial":["skipped"],"siege_challenge":["complete"],"control_point":["contested"]}
@@ -147,7 +161,7 @@ static func game_types(record:Dictionary)->bool:
   elif key=="camera_focus":
    if not record[key] is Vector3 or not finite_position(record[key]):return false
   elif not record[key] is Dictionary:return false
- if record.skirmish_mode not in ["practice","standard","pressure","battle","fortress","survival"] or record.victory_mode not in ["conquest","control","supply"]:return false
+ if record.skirmish_mode not in ["practice","standard","pressure","battle","fortress","survival","expedition"] or record.victory_mode not in ["conquest","control","supply"]:return false
  if record.battle_speed not in [0.5,1.0,2.0]:return false
  for key in ["age_completed_tick","military_tech_completed","completed_builds","trained_total","repeat_train_cursor","recovery_ticks"]:
   if record[key].size()!=2:return false
@@ -164,9 +178,10 @@ static func validation_result(data)->Dictionary:
  if not data.build is String or data.build.is_empty() or data.build.length()>128:return failure("BUILD")
  if not exact_keys(data.game,GAME_FIELDS):return failure("GAME_KEYS")
  if not game_types(data.game):return failure("GAME_FIELD_TYPES")
- if not exact_keys(data.modules,MODULE_FIELDS.keys()):return failure("MODULE_KEYS")
- for name in MODULE_FIELDS:
-  if not exact_keys(data.modules[name],MODULE_FIELDS[name]):return failure("MODULE_FIELDS:"+name)
+ var fields=module_fields(data.game.skirmish_mode)
+ if not exact_keys(data.modules,fields.keys()):return failure("MODULE_KEYS")
+ for name in fields:
+  if not exact_keys(data.modules[name],fields[name]):return failure("MODULE_FIELDS:"+name)
   if not module_types(name,data.modules[name]):return failure("MODULE_FIELD_TYPES:"+name)
  if not exact_keys(data.rng,["seed","state"]) or not data.rng.seed is int or not data.rng.state is int:return failure("RNG")
  if not data.entities is Array or data.entities.size()>10000:return failure("ENTITY_BOUNDS")
@@ -195,6 +210,7 @@ static func validation_result(data)->Dictionary:
    if not entity.get("escort_next_tick",0) is int or entity.get("escort_next_tick",0)<0:return failure("ENTITY_ESCORT_TICK")
    if entity.has("escort_follow_origin") and (not entity.escort_follow_origin is Vector3 or not finite_position(entity.escort_follow_origin)):return failure("ENTITY_ESCORT_ORIGIN")
   if not entity.state is String or not entity.mode is String or entity.state.length()>64 or entity.mode.length()>64:return failure("ENTITY_STATE")
+ if data.game.skirmish_mode=="expedition" and not expedition_valid(data):return failure("EXPEDITION_STATE")
  var attack=data.modules.attack_ledger
  if attack._records.size()%80!=0:return failure("ATTACK_RECORD_ALIGNMENT")
  var attack_count=attack._records.size()/80
@@ -262,3 +278,35 @@ static func decode(bytes:PackedByteArray,expected_build:String)->Dictionary:
  if not result.ok:return result
  if data.build!=expected_build:return failure("BUILD_MISMATCH")
  return {"ok":true,"data":data}
+
+static func expedition_valid(data:Dictionary)->bool:
+ var m=data.modules.frontier_expedition
+ if data.game.victory_mode!="conquest" or m.stage<0 or m.stage>4:return false
+ if m.trained<0 or m.trained>100000 or m.supplied<0 or m.supplied>1000000000:return false
+ if m.stage_ticks.size()!=m.stage:return false
+ var previous=-1
+ for tick in m.stage_ticks:
+  if not tick is int or tick<0 or tick<=previous or tick>data.game.tick_count:return false
+  previous=tick
+ var entities={}
+ for e in data.entities:entities[e.id]=e
+ if not entities.has(m.outpost_id):return false
+ var post=entities[m.outpost_id]
+ if post.kind!="tower" or post.team!=1 or (m.stage>=3 and post.alive):return false
+ if m.stage<3:
+  if m.counter_due!=-1 or m.counter_launched or not m.counter_ids.is_empty():return false
+ else:
+  if m.counter_due!=m.stage_ticks[2]+600:return false
+  if m.stage==4 and not m.counter_launched:return false
+ if m.counter_launched:
+  if m.stage<3 or m.counter_ids.size()!=6 or data.game.tick_count<m.counter_due:return false
+  var unique={}
+  var roster=preload("res://scripts/frontier_expedition.gd").COUNTER_ROSTER
+  for i in 6:
+   var id=m.counter_ids[i]
+   if not id is int or unique.has(id) or not entities.has(id):return false
+   unique[id]=true
+   var e=entities[id]
+   if e.team!=1 or e.kind!=roster[i] or (m.stage==4 and e.alive):return false
+ elif not m.counter_ids.is_empty():return false
+ return true

@@ -27,9 +27,9 @@ static func apply(g,data:Dictionary)->bool:
    if key!="checkpoint_body_rotation":e[key]=bytes_to_var(var_to_bytes(saved[key]))
   e.body.rotation=saved.checkpoint_body_rotation
  for key in Codec.GAME_FIELDS:g.set(key,data.game[key])
- for name in Codec.MODULE_FIELDS:
+ for name in Codec.module_fields(data.game.skirmish_mode):
   var object=g.get(name)
-  for key in Codec.MODULE_FIELDS[name]:object.set(key,data.modules[name][key])
+  for key in Codec.module_fields(data.game.skirmish_mode)[name]:object.set(key,data.modules[name][key])
  for team in 2:
   var memory=g.work_memory[team];var saved=data.work_memory[team]
   for key in Codec.WORK_FIELDS:memory.set(key,saved[key])

@@ -28,7 +28,7 @@ func run():
  check("home provides direct mission entry",shell.find_child("ExpeditionHomeButton",true,false)!=null)
  shell.find_child("ExpeditionHomeButton",true,false).pressed.emit()
  check("mission shortcut goes to setup not destructive launch",shell.page=="setup" and shell.selected_mode=="expedition" and not is_instance_valid(shell.match_node))
- check("scenario and unsupported save clearly disclosed",shell.description.text.contains("暫不支援存檔") and shell.description.text.contains("不消耗敵方資源"))
+ check("scenario and independent save clearly disclosed",shell.description.text.contains("分開本機存檔") and shell.description.text.contains("不消耗敵方資源"))
  shell.queue_free();await process_frame
  var g=load("res://main.tscn").instantiate();g.skirmish_mode="expedition";root.add_child(g);g.set_process(false);g.test_mode=true;await process_frame
  check("scenario keeps ordinary player economy opening",g._count(0,"villager")==5 and g._count(0,"scout")==1 and g._count(0,"spearman")==0 and not g._age2(0))
