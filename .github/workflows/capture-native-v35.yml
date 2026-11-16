@@ -1,4 +1,4 @@
-name: Capture v80 villager keep refuge and ordinary return to work
+name: Capture v81 visible economic raid and opponent worker recovery
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [garrison]
+        scenario: [ai_evacuation]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,24 +32,24 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14245108984/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='d40d08dc178081fbbf55523e04b909ff8ef4e12463629ed7c4f17fc8556b39b5'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14249916308/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='cd82f33312230f7e173c80a71ad90fbba6d38bc75c4ae8db7409d481ceecfaba'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='f48e133d70c284d52bab3a1e6be169120a995c5909489c21b08c5ae95dfc5899'
+          assert hashlib.sha256(pck).hexdigest()=='388a93dad517fd42f0cc3a52b26d9d3acc997119b380c5ddc70c29a2f2bf11a8'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-garrison-natural-journey.gd /tmp/capture/capture.gd
+          cp ci/capture-ai-evacuation-natural.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v80-garrison-${{ matrix.scenario }}
+          name: genuine-v81-ai-evacuation-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
-            /tmp/capture/garrison-natural-proof.json
-            /tmp/capture/garrison-natural-contract.json
+            /tmp/capture/ai-evacuation-natural-proof.json
+            /tmp/capture/ai-evacuation-natural-contract.json
             /tmp/capture/*stdout.txt
             /tmp/capture/*stderr.txt
           if-no-files-found: error
