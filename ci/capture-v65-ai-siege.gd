@@ -10,7 +10,8 @@ func unit(id,kind):
 func tower(id):
  return {"id":id,"kind":"tower","team":0,"owned":false,"alive":true,"remembered":false,"category":"building","built":true}
 func shot(g,focus,name,label):
- g.camera_zoom=18;g.camera_focus=focus;g._layout_ui();g._camera_update();g._update_vision();g._publish_faction_views()
+ g.camera_zoom=11;g.camera_focus=focus;g._layout_ui();g._camera_update();g._update_vision();g._publish_faction_views()
+ g.camera.position=g.camera_focus+Vector3(-19,25,23);g.camera.look_at(g.camera_focus);g._cover_camera_ground()
  g._update_visuals(.016);g._refresh_fog();g._update_hud();g._message(label,30)
  await process_frame
  await process_frame
@@ -100,6 +101,7 @@ func run():
   for tick in 200:g._tick(.05)
   check("normal combat actually damages fortification",fort.hp<hp)
 
+  g._select([fort.id])
   var err=await shot(g,fort.pos+Vector3(-2,0,0),"native-ai-siege-response","AI SIEGE DEMO: reinforcement attacks tower")
   print(JSON.stringify({"build":Rules.BUILD_ID,"rendered":DisplayServer.get_name()!="headless","image_error":err,"tower_before":hp,"tower_after":fort.hp,"scope":"Controlled funded developed-base demonstration. AI-selected siege reinforcement completed ordinary paid timed production, then ordinary orders damaged a player tower. Resources/base layout/age supplied explicitly; newborn repositioned for tactical proof, friendly observer moved for workshop capture. Not a natural full-match balance proof."}))
   var failed=checks.filter(func(c):return not c.passed).size()
