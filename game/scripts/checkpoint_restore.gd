@@ -3,11 +3,15 @@ extends RefCounted
 const Codec=preload("res://scripts/checkpoint_codec.gd")
 static func apply(g,data:Dictionary)->bool:
  if not Codec.validate(data) or data.build!=g.Rules.BUILD_ID:return false
+ # Candidate must have been constructed for this world before _ready builds
+ # terrain/presentation. Reject mismatches before touching either game.
+ if g.layout_id!=data.game.layout_id:return false
  data=bytes_to_var(var_to_bytes(data))
  for e in data.entities:
   if e.kind not in g.Rules.UNIT_KINDS+g.Rules.RESOURCE_KINDS+g.Rules.FOOTPRINT.keys():return false
   if e.team not in [-1,0,1]:return false
  g.set_process(false);g._cancel_mode();g._cancel_pointer_streams()
+ g.layout_id=data.game.layout_id
  g._test_reset()
  for proxy in g.presentation_nodes.values():proxy.node.free()
  g.presentation_nodes.clear();g.character_presenter.clear();g.building_damage_presenter.clear();g._clear_attack_effects()

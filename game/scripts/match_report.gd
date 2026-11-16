@@ -70,6 +70,7 @@ static func time_label(tick: int) -> String:
 static func page_text(report: Dictionary,page: String) -> String:
 	if report.is_empty(): return "沒有已完成的戰役紀錄。"
 	var lines=PackedStringArray()
+	if report.has("layout_title"):lines.append("戰場："+str(report.layout_title))
 	if page=="economy":
 		lines.append("資源帳目（實際入庫／支出／退款／庫存）")
 		for resource in ["food","wood","stone","iron"]:

@@ -5,6 +5,9 @@ const ExpeditionCheckpointStore=preload("res://scripts/expedition_checkpoint_sto
 const CheckpointStore=preload("res://scripts/checkpoint_store.gd")
 const CheckpointBackups=preload("res://scripts/checkpoint_backups.gd")
 const CheckpointRestore=preload("res://scripts/checkpoint_restore.gd")
+const BattlefieldLayout=preload("res://scripts/battlefield_layout.gd")
+var selected_layout="valley"
+var battlefield_preview
 const BattleSelection=preload("res://scripts/battle_selection.gd")
 var battle_group=0
 const Rules=preload("res://scripts/rules.gd")
@@ -153,6 +156,8 @@ func _ready():
 	manual_preview=ModelCatalogue.new()
 	box.add_child(manual_preview)
 	manual_preview.hide()
+	battlefield_preview=preload("res://scripts/battlefield_preview.gd").new()
+	box.add_child(battlefield_preview);battlefield_preview.hide()
 	description = Label.new()
 	description.add_theme_color_override("font_color", Color("ded9ce"))
 	description.add_theme_constant_override("line_spacing", 5)
@@ -335,6 +340,7 @@ func _button_touch(button: Button, event: InputEvent):
 func _show_page(next_page: String):
 	if next_page=="manual" and page!="manual":manual_back_page="home" if page=="home" else "help"
 	if is_instance_valid(manual_preview):manual_preview.clear_model();manual_preview.hide()
+	if is_instance_valid(battlefield_preview):battlefield_preview.hide()
 	page = next_page
 	_cancel_menu_touches()
 	scroll.scroll_vertical = 0
@@ -387,10 +393,20 @@ func _show_page(next_page: String):
 		_add_button("返回分類","BattleOptionsBackButton",func(): _show_page("battle_groups"))
 	elif page == "setup":
 		heading.text = "戰役設定"
-		description.text=BattleSelection.briefing(selected_mode,selected_victory_mode)
+		selected_layout=BattlefieldLayout.valid(selected_layout) if BattlefieldLayout.supported(selected_mode,selected_victory_mode) else "valley"
+		if BattlefieldLayout.supported(selected_mode,selected_victory_mode):
+			battlefield_preview.configure(selected_layout);battlefield_preview.show()
+		description.text="戰場："+BattlefieldLayout.title(selected_layout)+"\n"+BattlefieldLayout.details(selected_layout)+"\n\n"+BattleSelection.briefing(selected_mode,selected_victory_mode)
+		if BattlefieldLayout.supported(selected_mode,selected_victory_mode):_add_button("選擇戰場", "ChooseLayoutButton", func(): _show_page("battlefield"))
 		_add_button("選擇其他戰役", "ChooseBattleButton", func(): _show_page("battle_groups"))
 		_add_button("出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("home"))
+	elif page == "battlefield":
+		heading.text="選擇戰場"
+		description.text="經典谷地：保留原有開局與資源布局。\n\n雙翼林地：中場林帶與兩翼資源路線；樹木仍可正常砍伐，空地仍可自由建造。\n\n只改戰場布局，不贈送資源或軍隊；普通對戰 AI、視野與付費規則不變。"
+		_add_button("經典谷地", "LayoutValleyButton", func(): selected_layout="valley";_show_page("setup"))
+		_add_button("雙翼林地", "LayoutWoodlandButton", func(): selected_layout="woodland";_show_page("setup"))
+		_add_button("返回", "LayoutBackButton", func(): _show_page("setup"))
 	elif page == "checkpoint":
 		heading.text="本機戰役存檔"
 		description.text=checkpoint_status+"\n\n普通戰役與遠征各保留一個本機存檔，再次儲存只取代同類存檔。不相容的舊存檔會先保留本機備存，備存失敗就不會覆寫。備存不等於跨版本可讀，仍只支援相同遊戲版本。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
@@ -474,6 +490,7 @@ func _restart_match():
 	if is_instance_valid(match_node):
 		selected_mode=match_node.skirmish_mode
 		selected_victory_mode=match_node.victory_mode
+		selected_layout=match_node.layout_id
 	_start_match()
 
 func _start_match():
@@ -488,6 +505,7 @@ func _replace_match():
 		match_node.queue_free()
 	match_node = MATCH_SCENE.instantiate()
 	match_node.skirmish_mode=selected_mode
+	match_node.layout_id=selected_layout if BattlefieldLayout.supported(selected_mode,selected_victory_mode) else "valley"
 	match_node.victory_mode=selected_victory_mode
 	match_node.main_menu_requested.connect(_open_menu)
 	match_node.restart_requested.connect(_restart_match)
@@ -676,6 +694,7 @@ func _restore_checkpoint(expedition=false,backup_name=""):
 	# Build a disposable replacement before touching the player's current game.
 	var candidate=MATCH_SCENE.instantiate()
 	candidate.skirmish_mode=result.data.game.skirmish_mode
+	candidate.layout_id=result.data.game.layout_id
 	candidate.victory_mode=result.data.game.victory_mode
 	add_child(candidate);candidate.set_process(false);candidate.hide();candidate.ui.hide()
 	if not CheckpointRestore.apply(candidate,result.data):
@@ -683,7 +702,7 @@ func _restore_checkpoint(expedition=false,backup_name=""):
 		transition_busy=false;_show_page("checkpoint");return
 	if is_instance_valid(match_node):remove_child(match_node);match_node.queue_free()
 	match_node=candidate
-	selected_mode=candidate.skirmish_mode;selected_victory_mode=candidate.victory_mode
+	selected_mode=candidate.skirmish_mode;selected_victory_mode=candidate.victory_mode;selected_layout=candidate.layout_id
 	candidate.main_menu_requested.connect(_open_menu);candidate.restart_requested.connect(_restart_match);candidate.setup_requested.connect(_reconfigure_finished_match)
 	candidate.process_mode=Node.PROCESS_MODE_DISABLED
 	candidate.set_process(true)
@@ -715,5 +734,5 @@ func _choose_battle(id:String):
 	_show_page("setup")
 func _reconfigure_finished_match():
 	if not is_instance_valid(match_node) or not match_node.game_over or transition_busy:return
-	selected_mode=match_node.skirmish_mode;selected_victory_mode=match_node.victory_mode
+	selected_mode=match_node.skirmish_mode;selected_victory_mode=match_node.victory_mode;selected_layout=match_node.layout_id
 	_open_menu();_show_page("battle_groups")

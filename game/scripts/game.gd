@@ -356,6 +356,8 @@ var traffic_priority_order=[]
 var traffic_tick_segments={}
 
 
+const BattlefieldLayout=preload("res://scripts/battlefield_layout.gd")
+var layout_id="valley"
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var skirmish_mode="standard"
 const SiegeChallenge=preload("res://scripts/siege_challenge.gd")
@@ -380,6 +382,7 @@ func _ready():
 	skirmish_mode=SkirmishPolicy.valid(skirmish_mode)
 	victory_mode=valid_victory_mode(victory_mode)
 	if victory_mode in ["control","supply"]: skirmish_mode="standard"
+	layout_id=BattlefieldLayout.valid(layout_id) if BattlefieldLayout.supported(skirmish_mode,victory_mode) else "valley"
 	_sync_web_display_scale()
 	audio_cues=preload("res://scripts/audio_cues.gd").new(); add_child(audio_cues)
 	_reset_economy(INITIAL_STOCKS)
@@ -518,23 +521,11 @@ func _seed_match():
 				var p=c+Vector3((i%3)*1.5,0,floor(i/3.0)*1.5)
 				_spawn("pine" if i%3 else "oak",-1,p*sign_team+MapRoutes.home_offset(team))
 		for i in 6: _spawn("berry",-1,Vector3(-17+(i%2)*1.5,0,11+floor(i/2.0)*1.5)*sign_team+MapRoutes.home_offset(team))
-	# Candidate mineral layout: antipodal cell-centered pairs, available in Age I.
-	# Four near-base deposits and two forward deposits of each mineral per side.
-	for team in 2:
-		var sign_team=1.0 if team==0 else -1.0
-		for kind in ["stone","iron"]:
-			for point in Rules.MINERAL_POINTS[kind]: _spawn(kind,-1,Vector3(point[0],0,point[1])*sign_team)
-	# Mirrored forward expansion groves: modest extra supply, not a 2.78x
-	# multiplication of expensive tree nodes. Starting travel/economy is intact.
-	for team in 2:
-		var sign_team=1.0 if team==0 else -1.0
-		for i in 6: _spawn("pine" if i%3 else "oak",-1,_point(_cell(Vector3(-13+(i%3)*1.5,0,8+floor(i/3.0)*1.5)))*sign_team)
-		for i in 3: _spawn("berry",-1,_point(_cell(Vector3(-9+i*1.5,0,11)))*sign_team)
-	# Three antipodal pairs centered inside cells, so the contested supply has
-	# mirrored local footprints, not merely equal node counts. Full routes
-	# still include the inherited home groves and need paired simulation QA.
-	for p in [Vector3(-3.5,0,-1.5),Vector3(-0.5,0,-1.5),Vector3(2.5,0,-1.5)]:
-		_spawn("berry",-1,p); _spawn("berry",-1,-p)
+	for item in BattlefieldLayout.mineral_resources(layout_id):
+		_spawn(item.kind,-1,item.pos)
+	# Fixed authored expansion layout; classic ordering retained exactly.
+	for item in BattlefieldLayout.expansion_resources(layout_id):
+		_spawn(item.kind,-1,item.pos)
 
 	if skirmish_mode in ["battle","fortress","survival"] and victory_mode=="conquest":
 		# Explicit symmetric scenario start, never paid training/completion events.
@@ -2882,6 +2873,7 @@ func _check_end():
 	outcome="draw" if player_lost==enemy_lost else ("defeat" if player_lost else "victory")
 	victory=outcome=="victory"
 	last_match_report=match_report.make_report(outcome,end_reason,tick_count,age_completed_tick[0],economy.stats_view(0),economy.bank_milli(0))
+	last_match_report.layout_title=BattlefieldLayout.title(layout_id)
 	last_match_report.skirmish_mode=skirmish_mode
 	if skirmish_mode=="expedition":last_match_report.expedition=frontier_expedition.report()
 	if skirmish_mode=="escort":last_match_report.escort=frontier_escort.report()
