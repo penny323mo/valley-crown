@@ -1,6 +1,12 @@
 # Valley & Crown / 霧谷王旗
 
-Current tested Web beta: `vc-79ebcaef19e3`. [Play](https://penny323mo.github.io/valley-crown/builds/vc-79ebcaef19e3/).
+Current development Web build: [Play Valley & Crown on Sites](https://valley-crown-play.penny323tw.chatgpt.site/). The live versioned manifest identifies the deployed runtime; historical acceptance below does not automatically apply to later builds.
+
+[GitHub Pages archive](https://penny323mo.github.io/valley-crown/play/) is retained for historical builds, not current releases. Its archive workflow is manual-only; ordinary main pushes no longer republish the pinned archive. Existing history and byte-verification steps remain intact.
+
+## Historical vc-79ebcaef19e3 acceptance
+
+[Open that historical build](https://penny323mo.github.io/valley-crown/builds/vc-79ebcaef19e3/).
 
 Tested source `ce2ea3d2513bd79cf62cf5c651abe3c47aad8513`, game tree `cadc77674b0b3184e7c3af9961f3e6ffdac507e9`. Later release documentation does not alter runtime bytes.
 

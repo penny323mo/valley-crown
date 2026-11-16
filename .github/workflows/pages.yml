@@ -1,7 +1,5 @@
-name: Publish verified phone-controls test
+name: Maintain historical GitHub Pages archive
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
