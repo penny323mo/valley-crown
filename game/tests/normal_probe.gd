@@ -3,7 +3,7 @@ const V=preload("res://scripts/resource_visuals.gd")
 func _initialize():
 	for kind in ["rock","fruit","leaf"]:
 		var st=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		if kind=="rock": V._boulder(st,Vector3.ZERO,Vector3.ONE,0.0,Color.WHITE)
+		if kind=="rock": V._slab(st,Vector3.ZERO,Vector3.ONE,0.0,Color.WHITE,false)
 		elif kind=="fruit": V._fruit(st,Vector3.ZERO,1.0,Color.WHITE)
 		else: V._leaf(st,Vector3.ZERO,0.0,0.1,1.0,Color.WHITE)
 		st.generate_normals();var a=st.commit().surface_get_arrays(0)
