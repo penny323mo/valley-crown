@@ -1,10 +1,10 @@
 {
-  "build": "vc-f6fd1ed9c3f4",
-  "game_sha256": "325cd386bd95263c75c8b2ea28eaa7cfd66eff3185b38c749f38f792c793fdaa",
+  "build": "vc-f1aeb1af04e8",
+  "game_sha256": "959828dfee1f5267eb63dc7acbbb6d563dcad723f6a67b533de596cd313c4735",
   "fixtures": {
     "military_progression_contract": [
       "tests/military_progression_contract.gd",
-      "4c5f8b52cc4259dd1a512ad1e13ead2b7d4835c7d6526cce8d09fafb71180432"
+      "f92621fb62d9a7265182576e15c1984eeeedc0fee9e62961098e966e7ba57487"
     ],
     "military_runtime_edges": [
       "tests/military_runtime_edges.gd",
@@ -13,7 +13,7 @@
   },
   "names": {
     "military_progression_contract": [
-      "nine building and six unit profiles",
+      "ten building and six unit profiles",
       "missing iron rejects research atomically",
       "Age I stable placement is locked",
       "enqueue research succeeds",

@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-f6fd1ed9c3f4-717f7643
+  group: building-runtime-vc-f1aeb1af04e8-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 55ae8d43b569c6c5cd3e2c892c790ee18b958e80
+      BUILDING_RUNTIME_SOURCE_COMMIT: 8875ce2a9469d7eebdd8bb84d6dd908eae51ded9
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '9c9d1767bab5de76f77046627abf69266854ce0a2e2d9d1caf689fc3c44b0f12  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'f769aa9d819ff3699d54b929a19e7c5effffd4bbc7885b4dffd234b677ae40bd  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -339,6 +339,16 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/resource_trade_input_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/resource_trade_natural_journey/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/resource_trade_natural_journey/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_visual_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_visual_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_checkpoint_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_checkpoint_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_breach_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_breach_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_construction_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_construction_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_contact_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/wall_contact_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
