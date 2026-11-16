@@ -84,6 +84,8 @@ var selected: Array = []
 var squad_selection=SquadSelection.new()
 var squad_buttons=[]
 var idle_worker_cursor=-1
+const BatchRepairDispatch=preload("res://scripts/batch_repair_dispatch.gd")
+var batch_repair_button: Button
 const AIInfrastructureRepair=preload("res://scripts/ai_infrastructure_repair.gd")
 const AIArmyRecovery=preload("res://scripts/ai_army_recovery.gd")
 const WoundedRetreat=preload("res://scripts/wounded_retreat.gd")
@@ -812,6 +814,13 @@ func _execute(command):
 				if typeof(command.repair_dispatch)!=TYPE_BOOL or not command.repair_dispatch or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
 				var worker=_get_entity(command.ids[0])
 				if worker.is_empty() or worker.team!=team or not worker.alive or worker.state!="idle" or not worker.path.is_empty() or worker.get("path_pending",false) or _cargo_amount(worker)>0 or not _repair_order_allowed(worker,target): return
+			if command.has("repair_batch"):
+				if typeof(command.repair_batch)!=TYPE_BOOL or not command.repair_batch or not command.get("repair_dispatch",false) or typeof(command.get("source_work_epoch",null))!=TYPE_INT:return
+				var worker=_get_entity(command.ids[0])
+				if worker.get("work_epoch",-1)!=command.source_work_epoch or target.category!="building":return
+				if IdleGatherDispatch.threatened(worker.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(target.pos,faction_views[0].records()):return
+				for other in entities:
+					if other.alive and other.team==0 and other.kind=="villager" and other.state=="repair" and other.target==target_id:return
 			if command.has("farm_dispatch"):
 				if typeof(command.farm_dispatch)!=TYPE_BOOL or not command.farm_dispatch or not command.get("farm_gather",false) or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
 				var farmer=_get_entity(command.ids[0])
@@ -3793,6 +3802,8 @@ func _create_ui():
 		var dispatch=_button("",func():_dispatch_idle_gather(kind),140)
 		dispatch.name="IdleDispatch_"+resource;dispatch.tooltip_text="按距離和現有採集人數，分派最多三名空手待命村民到可見資源。優先較近工人與較少人採集的附近資源；不搶工作或搬運，路線仍可能受阻。"
 		dispatch_row.add_child(dispatch);idle_dispatch_buttons[resource]=dispatch
+	batch_repair_button=_button("",_dispatch_batch_repair,160);batch_repair_button.name="BatchRepairDispatch";menu_box.add_child(batch_repair_button)
+	batch_repair_button.tooltip_text="最多派三名空手閒置村民，維修不同受損建築。優先主堡、守望塔；不搶現有工作，避開已知敵人。每人每秒消耗1木材修復5生命，路線仍可能受阻。"
 	var reassign_help=_label("選取中的採集村民 · 每次最多改派 3 人，保留原負重",13)
 	reassign_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(reassign_help)
 	var reassign_row=HFlowContainer.new();reassign_row.add_theme_constant_override("h_separation",6);menu_box.add_child(reassign_row)
@@ -3801,7 +3812,7 @@ func _create_ui():
 		var button=_button("",func():_reassign_selected_workforce(kind),140)
 		button.name="WorkforceReassign_"+resource;button.tooltip_text="只改派所選正採集或運送其他資源的村民。保留負重，不同資源先送回再換工作；不搶建造、維修或新指令。目的地須可見且沒有已知威脅，路線仍可能受阻。"
 		reassign_row.add_child(button);workforce_reassign_buttons[resource]=button
-	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row,reassign_help,reassign_row]
+	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row,batch_repair_button,reassign_help,reassign_row]
 	shortcut_sections.army=[idle_army_button]
 	var roster_help=_label("軍隊總覽 · 點兵種全選，或只選傷兵",13)
 	roster_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(roster_help);shortcut_sections.army.append(roster_help)
@@ -6561,6 +6572,10 @@ func _clear_build_site():
 func _refresh_idle_dispatch_buttons():
 	# Resource/threat scans are needed only while this menu is visible.
 	if not is_instance_valid(compact_menu) or not compact_menu.visible:return
+	if is_instance_valid(batch_repair_button):
+		var repairs=BatchRepairDispatch.orders(faction_views[0].records(),commands,tick_count)
+		_bind_squad_button(batch_repair_button,repairs,not _squad_actions_available() or economy.bank_milli(0).get("wood",0)<Economy.SCALE)
+		batch_repair_button.text="派 %d 人維修建築" % repairs.size()
 	for resource in idle_dispatch_buttons:
 		var button=idle_dispatch_buttons[resource]
 		var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource)
@@ -6954,3 +6969,13 @@ func _ai_infrastructure_repair(records,keep_priority=false):
 	ai_claimed_workers[chosen.id]="repair";ai_budget.wood-=Economy.SCALE
 	ai_status.infrastructure_repair=target.kind
 	return true
+
+func _dispatch_batch_repair():
+	if not _squad_actions_available() or not compact_menu.visible or not is_instance_valid(batch_repair_button):return
+	var orders=BatchRepairDispatch.orders(faction_views[0].records(),commands,tick_count)
+	if batch_repair_button.disabled or orders.is_empty() or orders!=batch_repair_button.get_meta("squad_ids",[]) or economy.bank_milli(0).get("wood",0)<Economy.SCALE:
+		_refresh_idle_dispatch_buttons();return
+	_cancel_mode()
+	for order in orders:_submit("order",order)
+	compact_menu.hide();compact_menu_dismiss.hide()
+	_message("已下達 %d 名閒置村民維修指令；沿路前往並照常消耗木材。" % orders.size(),3)
