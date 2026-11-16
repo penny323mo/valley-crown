@@ -759,6 +759,7 @@ func _tick(dt):
 	if victory_mode=="control" and control_point.advance(entities,tick_count): progress_serial+=1
 	_publish_faction_views()
 	_update_worker_safety()
+	if ai_enabled and skirmish_mode not in ["survival","expedition","escort"] and _update_ai_worker_safety():_publish_faction_views()
 	_sync_audio()
 	audio_cues.observe(faction_views[0].records(),tick_count,Time.get_ticks_msec())
 	for team in 2:
@@ -1700,6 +1701,7 @@ func _path_state(ent):
 	ent.traffic_replans=0; ent.traffic_last_replan=tick_count; ent.traffic_route=false; ent.work_slot_wait=-1; ent.traffic_path_length=0; ent.traffic_command_origin=ent.pos; ent.traffic_gate_since=-1
 
 func _path_new_command(ent):
+	ent.erase("ai_evacuation")
 	if _garrisoned(ent):return
 	ent.erase("garrison_pending")
 	ent.erase("construction_return")
@@ -1739,6 +1741,7 @@ func _path_navigation_changed(ent,changed_cells):
 	else: ent.path_version=work_memory[ent.team].revision
 
 func _path_stop(ent,status,reason):
+	ent.erase("ai_evacuation")
 	ent.erase("garrison_pending")
 	ent.erase("construction_return")
 	if ent.has("tactical_points"):
@@ -2280,7 +2283,7 @@ func _order(ent,state,target_id,automatic=false):
 			economy_sequence+=1
 			if not economy.assign_farm("farm_assign:%d" % economy_sequence,ent.id,target_id).applied: return false
 			ent.farm_id=target_id
-	ent.erase("construction_return");ent.erase("garrison_pending")
+	ent.erase("construction_return");ent.erase("garrison_pending");ent.erase("ai_evacuation")
 	if not return_work.is_empty():ent.construction_return=return_work
 	_path_cancel_pending(ent)
 	if not automatic:_clear_escort(ent)
@@ -2469,6 +2472,7 @@ func _advance_combat(ent):
 	if ent.cooldown_ticks<=0: _release_attack(ent,target)
 
 func _order_move(ent,p,reserved={},ignore_orders=[]):
+	ent.erase("ai_evacuation")
 	if _garrisoned(ent):return
 	ent.erase("garrison_pending")
 	ent.erase("construction_return")
@@ -2486,6 +2490,7 @@ func _order_move(ent,p,reserved={},ignore_orders=[]):
 	if ent.dest==Vector3.INF: ent.dest=ent.pos; _set_stance(ent,"STOP")
 
 func _set_stance(ent,mode):
+	ent.erase("ai_evacuation")
 	if _garrisoned(ent):return
 	ent.erase("garrison_pending")
 	ent.erase("construction_return")
@@ -2571,10 +2576,13 @@ func _move_unit_phase(ent,dt):
 				_set_stance(ent,"ESCORT");ent.escort_target=ally;ent.escort_next_tick=tick_count
 			elif ent.mode=="PATROL": _patrol_next_leg(ent)
 			else:
+				var ai_shelter=ent.get("ai_evacuation",{}).duplicate(true)
 				var shelter_host=ent.get("garrison_pending",-1)
 				var evacuating=worker_evacuations.has(ent.id) and worker_evacuations[ent.id].epoch==ent.work_epoch
 				_set_stance(ent,"STOP")
 				if shelter_host>=0:ent.garrison_pending=shelter_host
+				if not ai_shelter.is_empty():
+					ai_shelter.epoch=ent.work_epoch;ent.ai_evacuation=ai_shelter;ent.mode="MOVE"
 				if evacuating:
 					worker_evacuations[ent.id].epoch=ent.work_epoch
 					ent.mode="MOVE" # Shelter wait must not auto-chase the attacker.
@@ -2918,6 +2926,7 @@ func _construction_return_work(worker,site):
 
 func _kill(ent):
 	if not ent.alive: return
+	ent.erase("ai_evacuation")
 	if ent.kind=="town_center":
 		for resident in _garrison_members(ent.id,false):_kill(resident)
 		for pending in _garrison_members(ent.id,true):
@@ -3132,7 +3141,7 @@ func _ai_builder(records):
 	# commandeer an active builder, nor issue two jobs to one worker this turn.
 	for idle_only in [true,false]:
 		for ent in records:
-			if not ent.owned or ent.kind!="villager" or ent.state=="build" or ai_claimed_workers.has(ent.id): continue
+			if not ent.owned or ent.kind!="villager" or ent.state=="build" or ai_claimed_workers.has(ent.id) or _get_entity(ent.id).has("ai_evacuation"): continue
 			if ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: continue
 			if idle_only and ent.state!="idle": continue
 			if _ai_food_worker(ent) and food_count<=2: continue
@@ -3148,6 +3157,7 @@ func _ai_reserve_budget(kind):
 	for resource in COSTS[kind]: ai_budget[resource]-=COSTS[kind][resource]*Economy.SCALE
 
 func _assign_worker(ent,desired=""):
+	if ent.get("team",-1)==1 and (_get_entity(ent.get("id",-1)).has("ai_evacuation") or ai_claimed_workers.get(ent.get("id",-1),"") in ["evacuation","safety_resume"]):return false
 	if desired.is_empty(): desired="food"
 	var resource={}; var distance=INF
 	var observations=faction_views[ent.team].records()
@@ -3155,6 +3165,7 @@ func _assign_worker(ent,desired=""):
 	for known in observations.values():
 		if not known.get("alive",false): continue
 		if _resource_type(known)!=desired: continue
+		if ent.team==1 and (not WorkerSafety.threats(observations,1,known.pos).is_empty() or _ai_worker_resource_blocked(known.pos)):continue
 		if known.category!="resource" and not (known.owned and known.built and known.kind=="farm"): continue
 		if known.kind=="farm" and economy.farm_view(known.id).get("worker_id",-1) not in [-1,ent.id]: continue
 		var d=AIGatherLoad.score(ent.pos,known,loads)
@@ -3219,7 +3230,7 @@ func _ai_keep_repair(records,castle):
 	for idle_only in [true,false]:
 		for worker in records:
 			if not worker.get("owned",false) or not worker.get("alive",false) or worker.get("team",-1)!=1 or worker.get("category","")!="unit" or worker.get("kind","")!="villager" or worker.get("remembered",false): continue
-			if ai_claimed_workers.has(worker.id) or worker.get("state","") not in ["idle","gather"] or worker.get("cargo_milli",0)>0: continue
+			if ai_claimed_workers.has(worker.id) or _get_entity(worker.id).has("ai_evacuation") or worker.get("state","") not in ["idle","gather"] or worker.get("cargo_milli",0)>0: continue
 			if worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]: continue
 			if idle_only and worker.state!="idle": continue
 			if _ai_food_worker(worker) and food_count<=2: continue
@@ -3563,7 +3574,7 @@ func _ai_terminal_site_builder(records,entry):
 	var food_count=_ai_food_count(records)
 	for idle_only in [true,false]:
 		for worker in records:
-			if not worker.owned or worker.kind!="villager" or worker.state=="build" or ai_claimed_workers.has(worker.id): continue
+			if not worker.owned or worker.kind!="villager" or worker.state=="build" or ai_claimed_workers.has(worker.id) or _get_entity(worker.id).has("ai_evacuation"): continue
 			if idle_only and worker.state!="idle": continue
 			if worker.get("path_pending",false) or worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: continue
 			if _ai_food_worker(worker) and food_count<=2: continue
@@ -3601,7 +3612,13 @@ func _ai_recover_terminal_site(site,owner,records):
 	return true
 
 func _ai_update():
-	ai_claimed_workers.clear(); ai_build_submitted=false; ai_budget=economy.bank_milli(1).duplicate(); ai_status={"tick":tick_count,"site_recovery":{}}
+	var safety_claims={}
+	for id in ai_claimed_workers:
+		if ai_claimed_workers[id]=="safety_resume":safety_claims[id]="safety_resume"
+	ai_claimed_workers=safety_claims
+	for record in _ai_records():
+		if record.get("owned",false) and record.get("kind","")=="villager" and _get_entity(record.id).has("ai_evacuation"):ai_claimed_workers[record.id]="evacuation"
+	ai_build_submitted=false; ai_budget=economy.bank_milli(1).duplicate(); ai_status={"tick":tick_count,"site_recovery":{}}
 	var records=_ai_records(); var castle=_ai_owned(records,"town_center")
 	var workers=[]; var sites=[]; var living=0; var reserved=0; var capacity=0
 	var queued_workers=0
@@ -7396,7 +7413,7 @@ func _ai_infrastructure_repair(records,keep_priority=false):
 	var chosen={};var score=INF
 	for worker in records:
 		if not AIInfrastructureRepair.owned(worker) or worker.get("kind","")!="villager":continue
-		if ai_claimed_workers.has(worker.id) or worker.get("state","") not in ["idle","gather"] or worker.get("cargo_milli",0)>0 or _ai_food_worker(worker):continue
+		if ai_claimed_workers.has(worker.id) or _get_entity(worker.id).has("ai_evacuation") or worker.get("state","") not in ["idle","gather"] or worker.get("cargo_milli",0)>0 or _ai_food_worker(worker):continue
 		if worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:continue
 		var distance=worker.pos.distance_to(target.pos)+(0 if worker.state=="idle" else 8)
 		if distance<score or (distance==score and (chosen.is_empty() or worker.id<chosen.id)):chosen=worker;score=distance
@@ -7587,3 +7604,66 @@ func _request_garrison_near(host_id):
 	var ids=[]
 	for w in workers:ids.append(w.id)
 	_submit("garrison",{"ids":ids,"building":host_id})
+
+# --- Opponent economy shelter, independent of player safety toggle and keep garrison. ---
+func _ai_worker_pending_intent(id):
+	for command in commands:
+		if command.get("team",-1)==1 and (id in command.get("ids",[]) or command.get("builder",-1)==id):return true
+	return false
+
+func _update_ai_worker_safety():
+	if paused or game_over or skirmish_mode in ["survival","expedition","escort"]:return false
+	# Resume claims last this simulation tick only, including an AI policy turn.
+	for id in ai_claimed_workers.keys():
+		if ai_claimed_workers[id]=="safety_resume":ai_claimed_workers.erase(id)
+	var records=faction_views[1].records();var changed=false
+	for record in records.values():
+		if not record.get("owned",false) or not record.get("alive",false) or record.get("kind","")!="villager":continue
+		var worker=_get_entity(record.id) # Current OWN authority only after ownership gate.
+		if worker.has("ai_evacuation"):
+			var saved=worker.ai_evacuation
+			if worker.work_epoch!=saved.epoch or worker.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"] or worker.state not in ["move","idle"]:
+				worker.erase("ai_evacuation");changed=true;continue
+			if _ai_worker_pending_intent(worker.id):continue
+			# A hidden original work area is unknown, never evidence the threat left.
+			if worker.state!="idle" or worker.last_damage_tick==tick_count or visible_cells[1][_cell_index(saved.origin)]==0 or not WorkerSafety.threats(records,1,worker.pos).is_empty() or not WorkerSafety.threats(records,1,saved.origin).is_empty():
+				saved.safe_since_tick=-1;continue
+			if saved.safe_since_tick<0:saved.safe_since_tick=tick_count;continue
+			if tick_count-saved.safe_since_tick<WorkerSafety.SAFE_TICKS:continue
+			var original=records.get(saved.resource,{})
+			# No hidden-authority resource lookup; disappearance is not free food.
+			if not original.is_empty() and original.get("alive",false) and not original.get("remembered",true) and original.get("category","")=="resource":
+				worker.erase("ai_evacuation");_order(worker,"gather",original.id)
+			elif _cargo_amount(worker)>0:
+				var depot=_dropoff(worker)
+				if depot.is_empty() or not WorkerSafety.threats(records,1,depot.pos).is_empty():saved.safe_since_tick=-1;continue
+				worker.erase("ai_evacuation");_route_to_dropoff(worker)
+			else:
+				worker.erase("ai_evacuation")
+				ai_claimed_workers.erase(worker.id)
+				_assign_worker(record,worker.get("gather_type","food"))
+			ai_claimed_workers[worker.id]="safety_resume";changed=true;continue
+		if _ai_worker_pending_intent(worker.id) or worker.state not in ["gather","deliver"] or worker.get("gather_type","") not in ["food","wood","stone","iron"]:continue
+		if tick_count-worker.last_damage_tick>20 or worker.last_damage_tick<0:continue
+		if worker.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:continue
+		if WorkerSafety.threats(records,1,worker.pos).is_empty():continue
+		var resource=worker.get("resource_target",-1);var known=_gather_records(1)
+		if not known.has(resource) or known[resource].get("category","")!="resource":continue
+		for refuge in WorkerSafety.refuges(records,record):
+			var away=(refuge.pos-worker.pos).normalized()
+			var destination=_nearest_free(refuge.pos+away*(refuge.radius+1.0),3,1,worker)
+			if destination==Vector3.INF or destination.distance_to(worker.pos)<1.0 or not WorkerSafety.threats(records,1,destination).is_empty():continue
+			_order_move(worker,destination) # Never _path_new_command or retry-budget reset.
+			if worker.state!="move":continue
+			worker.ai_evacuation={"epoch":worker.work_epoch,"resource":resource,"origin":known[resource].pos,"safe_since_tick":-1,"hit_tick":worker.last_damage_tick}
+			changed=true;break
+	return changed
+
+func _ai_worker_resource_blocked(point):
+	# Active shelter memories preserve a bounded danger area through fog;
+	# no hidden enemy state is needed and no global blacklist is introduced.
+	for owned in faction_views[1].records().values():
+		if not owned.get("owned",false) or owned.get("team",-1)!=1 or owned.get("kind","")!="villager":continue
+		var memo=_get_entity(owned.id).get("ai_evacuation",{})
+		if not memo.is_empty() and point.distance_squared_to(memo.origin)<=36.0:return true
+	return false

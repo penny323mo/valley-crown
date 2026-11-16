@@ -231,6 +231,7 @@ static func validation_result(data)->Dictionary:
    var resource=by_id.get(entity.construction_return.resource,{})
    var types={"pine":"wood","oak":"wood","berry":"food","farm":"food","stone":"stone","iron":"iron"}
    if resource.is_empty() or types.get(resource.kind,"")!=entity.construction_return.type or (resource.kind=="farm" and resource.team!=entity.team):return failure("CONSTRUCTION_RETURN_RESOURCE")
+ if not preload("res://scripts/ai_worker_safety_checkpoint.gd").validate(data):return failure("AI_WORKER_SAFETY_STATE")
  if not preload("res://scripts/garrison_checkpoint.gd").validate(data):return failure("GARRISON_STATE")
  if not preload("res://scripts/supply_station_checkpoint.gd").validate(data):return failure("SUPPLY_STATION_STATE")
  if data.game.skirmish_mode=="expedition" and not expedition_valid(data):return failure("EXPEDITION_STATE")
