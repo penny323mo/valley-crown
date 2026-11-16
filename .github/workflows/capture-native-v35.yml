@@ -1,4 +1,4 @@
-name: Capture genuine pinned v51 shortest-time paid reinforcement routing
+name: Capture genuine pinned v52 escort follow and threat interception
 on:
   push:
     branches: [main]
@@ -22,15 +22,15 @@ jobs:
           unzip /tmp/engine.zip -d /tmp
           echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum -c -
           chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
-          curl -fL https://valley-crown-play.penny323tw.chatgpt.site/builds/vc-da21664e0540/index.pck -o /tmp/capture/index.pck
-          echo '0f0a7c2636a747676af9c6e9b6457e8d8aa2f535396a10e7740634d84e5ddb52  /tmp/capture/index.pck' | sha256sum -c -
+          curl -fL https://valley-crown-play.penny323tw.chatgpt.site/builds/vc-0e930f239fdb/index.pck -o /tmp/capture/index.pck
+          echo '6845502b13caa5e8f0c35fa95f2fbe5524050abff723676dfac6a2462de3f585  /tmp/capture/index.pck' | sha256sum -c -
           cp ci/capture-v35.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-v35-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v51-portrait-native-render
+          name: genuine-v52-portrait-native-render
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
