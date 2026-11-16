@@ -1,4 +1,4 @@
-name: Capture v67 ordinary-command full expedition journey
+name: Capture v68 independent checkpoint and natural continuation
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [normal]
+        scenario: [journey, menu]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,19 +32,19 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14209681347/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='3db4724c41310e9f1f46e877d5ea3e16f66a0243094b276f2d9a2a5c2900aea9'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14210658065/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='280a6a50c97469937590001da13ba35b95f9b308247b78a05530ac3577082fad'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='5e0a85f894025abed4e7106ad7d1400346223c3e800964c2c4a9bf600257fe32'
+          assert hashlib.sha256(pck).hexdigest()=='662b1649854d126882d5ed931a06fc1c05a67711e9dbe947c69d34b848273891'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-v66-natural-expedition.gd /tmp/capture/capture.gd
+          if [ "${{ matrix.scenario }}" = "journey" ]; then cp ci/capture-v68-checkpoint-journey.gd /tmp/capture/capture.gd; else cp ci/capture-v68-checkpoint-menu.gd /tmp/capture/capture.gd; fi
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v67-natural-expedition-journey
+          name: genuine-v68-checkpoint-${{ matrix.scenario }}
           path: |
             /tmp/capture/*.png
             /tmp/capture/*receipt.json
