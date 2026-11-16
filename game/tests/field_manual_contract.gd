@@ -54,6 +54,8 @@ func run():
 	button(shell,"ManualBackButton").pressed.emit();await frames()
 	button(shell,"BackButton").pressed.emit();await frames()
 	button(shell,"StartMatchButton").pressed.emit();await frames()
+	button(shell,"BattleGroup0").pressed.emit();await frames()
+	button(shell,"ChooseBattle_standard").pressed.emit();await frames()
 	button(shell,"LaunchMatchButton").pressed.emit();await frames()
 	var game=shell.match_node;game.set_process(false);game.test_mode=true
 	game._tick(Rules.TICK);var before_tick=game.tick_count;var before_bank=game.economy.bank_milli(0).duplicate();var before_ids=game.entities.map(func(e):return e.id)
