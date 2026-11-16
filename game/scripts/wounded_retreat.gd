@@ -15,7 +15,7 @@ static func orders(records:Dictionary,selection:Array,pending:Array)->Array:
 			for id in c.get("ids",[]):busy[id]=true
 	var bases=[]
 	for r in records.values():
-		if not owned(r) or r.get("category","")!="building" or r.get("kind","")!="town_center" or not r.get("built",false):continue
+		if not owned(r) or r.get("category","")!="building" or not Rest.eligible_base(r):continue
 		var danger=false
 		for e in records.values():
 			if not e.get("alive",false) or e.get("remembered",false) or e.get("team",-1)!=1:continue

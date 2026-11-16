@@ -6,10 +6,13 @@ const THREAT_RADIUS=9.0
 const SAFE_TICKS=200
 const HEAL_TICKS=40
 
+static func eligible_base(base: Dictionary) -> bool:
+	return base.get("alive",false) and base.get("built",false) and (base.get("kind","")=="town_center" or (base.get("kind","")=="storehouse" and base.get("supply_station",false)))
+
 static func base_for(unit: Dictionary, bases: Array) -> Dictionary:
 	var best={}
 	for base in bases:
-		if not base.get("alive",false) or not base.get("built",false) or base.get("kind","")!="town_center" or base.get("team",-1)!=unit.get("team",-2): continue
+		if not eligible_base(base) or base.get("team",-1)!=unit.get("team",-2): continue
 		if unit.pos.distance_to(base.pos)>RADIUS: continue
 		if best.is_empty() or base.id<best.id: best=base
 	return best
@@ -29,6 +32,6 @@ static func blocked(unit: Dictionary, base: Dictionary, threats: Array, now: int
 static func label(record: Dictionary) -> String:
 	if not record.get("owned",false) or record.get("kind","") not in KINDS or record.get("hp",0)>=record.get("max_hp",0): return ""
 	var ticks=int(record.get("rest_ticks",0))
-	if ticks<=0: return "回己方主堡旁安全待命，可休整回血"
-	if ticks<SAFE_TICKS: return "回城休整：安全待命 %d 秒" % ceili((SAFE_TICKS-ticks)/20.0)
-	return "回城休整：每 2 秒恢復 1 生命"
+	if ticks<=0: return "回己方主堡／補給站旁安全待命，可休整回血"
+	if ticks<SAFE_TICKS: return "據點休整：安全待命 %d 秒" % ceili((SAFE_TICKS-ticks)/20.0)
+	return "據點休整：每 2 秒恢復 1 生命"

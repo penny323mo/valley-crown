@@ -15,7 +15,7 @@ const BUILDING_ROLES={
 	"house":"增加人口空間，供村民與軍隊使用。",
 	"barracks":"訓練長槍兵，建立近戰防線。",
 	"range":"訓練弓手，提供遠距火力。",
-	"storehouse":"資源交付點。靠近採集區建造，可縮短往返路程。",
+	"storehouse":"資源交付點。靠近採集區建造，可縮短往返路程。城防時代可付 100 木材與 100 食糧，30 秒升級為前線補給站；保留交付功能，附近軍隊可安全休整。每座分開付款；費率仍待平衡。",
 	"farm":"每田一名村民耕作。選村民後點農田；收成先放入負重，送回主堡／倉庫才入庫。",
 	"tower":"自動攻擊可見敵軍的防守建築。沒有兩座上限，可按資源沿採集區或前線部署；仍須避開障礙並保留施工通道。不能取代軍隊進攻。",
 	"stable":"訓練騎兵，提供快速突擊部隊。",
@@ -49,7 +49,7 @@ static func entry(section: int,index: int) -> Dictionary:
 			if kind in Rules.TECH_UNITS[tech]:lines.append("可受益科技："+Rules.NAMES[tech]+("，護甲 +%d。" % Rules.TECH_ARMOR_BONUS if tech=="reinforced_armor" else "，攻擊 +%d。" % Rules.TECH_BONUS))
 		if kind in ["scout","spearman","archer","cavalry","siege"]:lines.append("戰場晉升：存活並擊破敵方軍事單位 3 次成為老兵（攻擊 +1），6 次成為精銳（攻擊 +2，上限）。村民／建築不計；同輪合擊由造成最多傷害的存活軍隊取得，平手按單位次序。雙方相同，對局結束不保留。")
 		if kind=="villager":lines.append("可受益科技：手推車，負重 10 → 15；採集速度不變。")
-		if kind in ["scout","spearman","archer","cavalry"]:lines.append("可回己方主堡旁休整；安全待命 10 秒後，每 2 秒回 1 生命。")
+		if kind in ["scout","spearman","archer","cavalry"]:lines.append("可回己方主堡或已升級補給站 7 距離內休整；安全待命 10 秒後，每 2 秒回 1 生命。不疊加，移動、攻擊、受傷或附近敵軍會中斷。")
 	elif section==1:
 		lines.append(BUILDING_ROLES[kind])
 		if Rules.COSTS.has(kind):lines.append("建造："+Rules.cost_label(kind)+" · "+str(Rules.BUILD_TIME[kind])+" 秒")

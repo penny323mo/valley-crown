@@ -1,4 +1,5 @@
 extends Node3D
+const SupplyVisual=preload("res://scripts/supply_station_visual.gd")
 const TacticalRoute=preload("res://scripts/tactical_route.gd")
 var tactical_draft=[]
 var tactical_ids=[]
@@ -817,7 +818,7 @@ func _execute(command):
 				var retreat_orders=WoundedRetreat.orders(faction_views[0].records(),command.ids,[])
 				if retreat_orders.size()!=1 or retreat_orders[0].retreat_base!=command.get("retreat_base",-1) or retreat_orders[0].position!=command.get("position",Vector3.INF):return
 				var wounded=_get_entity(command.ids[0]);var home=_get_entity(command.retreat_base)
-				if wounded.is_empty() or not wounded.alive or wounded.team!=0 or wounded.hp>=wounded.max_hp or home.is_empty() or not home.alive or not home.built or home.team!=0:return
+				if wounded.is_empty() or not wounded.alive or wounded.team!=0 or wounded.hp>=wounded.max_hp or home.is_empty() or not home.alive or not home.built or home.team!=0 or not RestRecovery.eligible_base(home):return
 			if command.has("clear_exit_building"):
 				if team!=0 or target_id!=-1 or typeof(command.clear_exit_building)!=TYPE_INT or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
 				var producer=_get_entity(command.clear_exit_building);var blocker=_get_entity(command.ids[0])
@@ -982,6 +983,7 @@ func _execute(command):
 		"repeat_train": _set_repeat_training(command.get("building",-1),command.get("kind",null),team)
 		"train":
 			if not command.has("repeat_generation") or _repeat_train_current(command): _enqueue_train(command.building,command.kind,team)
+		"supply_upgrade": _enqueue_supply_upgrade(command.get("building",-1),team)
 		"research": _enqueue_research(command.get("building",-1),team)
 		"military_research": _enqueue_military_research(command.get("building",-1),command.get("kind",""),team)
 		"cancel_train": _cancel_train(command.building,team)
@@ -1372,6 +1374,9 @@ func _try_ready_production(ent):
 			age_completed_tick[ent.team]=tick_count
 			if ent.team==0: demo_tutorial.record("age2")
 			if ent.team==0: _message("城防時代研究完成。下一步可建馬廄與工坊。",6)
+		elif order.kind=="supply_station":
+			ent.supply_station=true;ent.supply_receipt_id=receipt_id;ent.supply_completed_tick=tick_count
+			if ent.team==0:_message("前線補給站完成；附近軍隊安全待命可休整，資源交付不變。",6)
 		elif order.kind in Rules.RESEARCH_TECHS:
 			military_tech_completed[ent.team][order.kind]=tick_count
 			if order.kind=="wheelbarrow": economy.complete_wheelbarrow(ent.team,tick_count)
@@ -3743,6 +3748,7 @@ func _publish_faction_views():
 			var record={}
 			for key in ["id","kind","team","category","pos","hp","max_hp","progress","built","radius"]: record[key]=ent[key]
 			record.owned=ent.team==team; record.alive=true
+			if ent.kind=="storehouse":record.supply_station=ent.get("supply_station",false)
 			if ent.kind=="tower" and record.owned:
 				var focused=_tower_focus_target(ent)
 				record.focus_kind=focused.get("kind","")
@@ -3834,7 +3840,9 @@ func _update_visuals(delta):
 			if not presentation_nodes.has(record.id): continue
 			var proxy=presentation_nodes[record.id]
 			proxy.node.visible=true; proxy.node.position=record.pos
-			if record.category=="building": ConstructionVisual.apply(proxy.body,record.kind,record.built,record.progress)
+			if record.category=="building":
+				ConstructionVisual.apply(proxy.body,record.kind,record.built,record.progress)
+				SupplyVisual.apply(proxy.body,record)
 			if record.category=="resource": ResourceVisuals.present(proxy.body,record)
 			proxy.body.rotation.y=record.visual_yaw
 			if record.category=="unit":
@@ -3852,7 +3860,9 @@ func _update_visuals(delta):
 			continue
 		ent.node.visible=true; ent.node.position=record.pos
 		ent.ring.visible=record.id in selected
-		if record.category=="building": ConstructionVisual.apply(ent.body,record.kind,record.built,record.progress)
+		if record.category=="building":
+			ConstructionVisual.apply(ent.body,record.kind,record.built,record.progress)
+			SupplyVisual.apply(ent.body,record)
 		if record.category=="unit":
 			if record.kind in MatureVisuals.UNIT_KINDS: character_presenter.present(record,ent.body,BLUE if record.team==0 else RED,delta,running)
 			else: ProgressionVisuals.present(record,ent.body,BLUE if record.team==0 else RED,delta,running)
@@ -4335,7 +4345,7 @@ func _update_hud():
 		selection_detail.text="選取主堡可訓練村民；選取村民可建造。"
 	elif selection.size()==1:
 		var ent=selection[0]
-		selection_title.text=Rules.NAMES.get(ent.kind,ent.kind)
+		selection_title.text="前線補給站" if ent.get("supply_station",false) else Rules.NAMES.get(ent.kind,ent.kind)
 		if skirmish_mode=="escort" and ent.id in frontier_escort.villagers:selection_title.text+=" · 拓荒隊"
 		var state_names={"idle":"待命","move":"移動","gather":"採集","deliver":"交付","build":"建造","repair":"修理","return":"返回守備點","attack":"攻擊"}
 		var missing=WorkerIdleStatus.missing_resource(ent,faction_views[0].records(),own_command_pending)
@@ -4349,6 +4359,7 @@ func _update_hud():
 		var rest_label=RestRecovery.label(ent)
 		if not rest_label.is_empty(): selection_detail.text+=" · "+rest_label
 		if ent.kind=="tower" and ent.owned:selection_detail.text+=" · 集中射擊 "+Rules.NAMES.get(ent.focus_kind,ent.focus_kind) if not ent.get("focus_kind","").is_empty() else " · 自動射擊；點敵人可集中火力"
+		if ent.kind=="storehouse" and ent.get("supply_station",false):selection_detail.text+=" · 7 距離內安全待命 10 秒，每 2 秒回 1 生命；不疊加，資源交付不變"
 		if ent.kind=="town_center": selection_detail.text+=" · 步兵／弓手／騎兵在堡旁安全待命 10 秒後，每 2 秒回 1 生命"
 		if worker_evacuations.has(ent.id): selection_detail.text+=" · "+_worker_safety_label(ent)
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
@@ -4576,6 +4587,15 @@ func _rebuild_actions(selection):
 				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
 				cancel.name="CancelQueue%d" % queue_id
 				actions.add_child(cancel); queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
+		if ent.owned and ent.built and ent.kind=="storehouse":
+			var upgraded=ent.get("supply_station",false)
+			var button=_button("前線補給站"+(" · 已完成" if upgraded else (" · 升級中" if not ent.queue.is_empty() else " · 30 秒"))+"\n"+("資源交付不變" if upgraded else "木 100 · 食 100 · 需城防時代"),func():_submit("supply_upgrade",{"building":ent.id}),220)
+			button.name="SupplyStationUpgrade";button.disabled=upgraded or not ent.queue.is_empty() or not _age2(0)
+			actions.add_child(button)
+			for item in ent.queue:
+				var queue_id=item.queue_id
+				var cancel=_button("",func():_queue_cancel_request(ent.id,queue_id),180)
+				cancel.name="CancelQueue%d" % queue_id;actions.add_child(cancel);queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
 		if ent.owned and ent.built and ent.kind=="farm":
 			farm_dispatch_button=_button("派閒置村民耕作",func():_request_farm_dispatch(ent.id),180)
 			farm_dispatch_button.name="FarmDispatch";farm_dispatch_button.set_meta("building",ent.id)
@@ -4617,9 +4637,9 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
 		actions.add_child(_button("護送",_start_escort_command,100))
 	if not WoundedRetreat.injured(faction_views[0].records(),selected).is_empty():
-		wounded_retreat_button=_button("傷兵回城",_retreat_wounded,150)
+		wounded_retreat_button=_button("傷兵撤回據點",_retreat_wounded,150)
 		wounded_retreat_button.name="WoundedRetreat";wounded_retreat_button.set_meta("selection_source",selected.duplicate())
-		wounded_retreat_button.tooltip_text="只撤回所選受傷步兵、弓手、騎兵與斥候到最近沒有已知敵人的主堡旁。已在休整範圍不打斷；不保證路線安全或必定到達，不會瞬間回血。"
+		wounded_retreat_button.tooltip_text="只撤回所選受傷步兵、弓手、騎兵與斥候到最近沒有已知敵人的主堡或補給站旁。已在休整範圍不打斷；不保證路線安全或必定到達，不會瞬間回血。"
 		actions.add_child(wounded_retreat_button)
 	var manual_entry=ContextManual.selected_entry(faction_views[0].records(),selected)
 	if not manual_entry.is_empty():
@@ -6215,6 +6235,18 @@ func _research_pending(team: int) -> bool:
 				if item.get("research",false) and item.kind=="age2": return true
 	return false
 
+func _enqueue_supply_upgrade(id,team):
+	if typeof(id)!=TYPE_INT or team not in [0,1]:return false
+	var building=_get_entity(id)
+	if building.is_empty() or not building.alive or not building.built or building.team!=team or building.kind!="storehouse":return _reject_command(team,"請選取自己的已完成倉庫。")
+	if not _age2(team):return _reject_command(team,"補給站需要城防時代。")
+	if building.get("supply_station",false) or not building.queue.is_empty():return _reject_command(team,"此倉庫已升級或正在升級。")
+	var payment=_pay(COSTS.supply_station,team,Economy.REFUND_UNSTARTED)
+	if not payment.applied:return _reject_command(team,"補給站需要木材 100、食糧 100。")
+	building.queue.append({"receipt_id":payment.receipt_id,"queue_id":next_queue_id,"kind":"supply_station","research":true,"remaining_ticks":Rules.TRAIN_TICKS.supply_station,"started":false,"next_retry_tick":0,"candidate_cursor":0})
+	next_queue_id+=1
+	return true
+
 func _enqueue_research(id: int,team: int):
 	var building=_get_entity(id)
 	if building.is_empty() or not building.alive or not building.built or building.team!=team or building.kind!="town_center": return _reject_command(team,"請選取自己的已完成主堡。")
@@ -6616,7 +6648,7 @@ func _update_rest_recovery():
 	var threats=[[],[]]
 	for entity in entities:
 		if not entity.alive or entity.team not in [0,1]: continue
-		if entity.kind=="town_center" and entity.built: bases[entity.team].append(entity)
+		if RestRecovery.eligible_base(entity): bases[entity.team].append(entity)
 		# Current visibility only. This list is never made from hidden authority.
 		if _visible_to(entity,1-entity.team): threats[1-entity.team].append(entity)
 	for unit in entities:

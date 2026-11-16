@@ -1,6 +1,6 @@
 extends Resource
 ## Demo rules v2. One data source for player, AI, HUD and tests.
-const BUILD_ID = "vc-48c985fda8c5"
+const BUILD_ID = "vc-a800cb9d221c"
 const VERSION = "0.3.0-progression-candidate"
 # User-requested 2026-11-07 scale/buildability revision. Cell, unit, building,
 # movement, sight and economic scales stay unchanged; only world extent grows.
@@ -22,6 +22,7 @@ const UNIT_KINDS = ["villager","scout","spearman","archer","cavalry","siege"]
 const RESOURCE_KINDS = ["pine","oak","berry","stone","iron"]
 const BUILDABLE_KINDS = ["house","barracks","range","storehouse","farm","tower","stable","workshop"]
 const COSTS = {
+ "supply_station":{"wood":100,"food":100},
  "villager":{"food":50}, "scout":{"food":70}, "spearman":{"food":50,"wood":20},
  "archer":{"food":25,"wood":45}, "cavalry":{"food":90,"iron":35}, "siege":{"wood":160,"iron":70},
  "house":{"wood":50}, "storehouse":{"wood":80}, "barracks":{"wood":120}, "range":{"wood":120},
@@ -29,7 +30,7 @@ const COSTS = {
  "age2":{"food":350,"wood":150,"iron":50},
  "forged_blades":{"food":150,"iron":100}, "tempered_arrows":{"wood":150,"iron":100}, "reinforced_armor":{"wood":100,"iron":150}, "wheelbarrow":{"food":150,"wood":100}
 }
-const TRAIN_TICKS = {"villager":300,"scout":400,"spearman":360,"archer":440,"cavalry":600,"siege":900,"age2":1800,"forged_blades":900,"tempered_arrows":900,"reinforced_armor":900, "wheelbarrow":900}
+const TRAIN_TICKS = {"supply_station":600,"villager":300,"scout":400,"spearman":360,"archer":440,"cavalry":600,"siege":900,"age2":1800,"forged_blades":900,"tempered_arrows":900,"reinforced_armor":900, "wheelbarrow":900}
 const TRAIN_TIME = {"villager":15.0,"scout":20.0,"spearman":18.0,"archer":22.0,"cavalry":30.0,"siege":45.0}
 const ATTACK_TICKS = {"villager":30,"scout":30,"spearman":30,"archer":30,"cavalry":30,"siege":50,"tower":30}
 const BUILD_TIME = {"house":20.0,"barracks":35.0,"range":35.0,"storehouse":25.0,"farm":15.0,"stable":45.0,"tower":45.0,"workshop":50.0}
@@ -42,7 +43,7 @@ const SPEED = {"villager":2.0,"scout":3.2,"spearman":2.0,"archer":1.8,"cavalry":
 const DAMAGE = {"villager":3,"scout":4,"spearman":6,"archer":5,"cavalry":10,"siege":6,"tower":8}
 const RANGE = {"villager":1.1,"scout":1.1,"spearman":1.1,"archer":4.5,"cavalry":1.1,"siege":1.3,"tower":6.0}
 const ATTACK_TIME = {"villager":1.5,"scout":1.5,"spearman":1.5,"archer":1.5,"cavalry":1.5,"siege":2.5,"tower":1.5}
-const NAMES = {"town_center":"主堡", "barracks":"兵營", "range":"箭場", "house":"民居", "storehouse":"倉庫", "farm":"農田", "stable":"馬廄", "tower":"守望塔", "workshop":"工坊", "villager":"村民", "scout":"斥候", "spearman":"長槍兵", "archer":"弓手", "cavalry":"騎兵", "siege":"攻城車", "pine":"木材", "oak":"木材", "berry":"漿果", "stone":"石材", "iron":"鐵礦", "age2":"城防時代", "forged_blades":"鍛鋼兵刃", "tempered_arrows":"精製箭矢", "reinforced_armor":"加固護甲", "wheelbarrow":"手推車"}
+const NAMES = {"supply_station":"前線補給站","town_center":"主堡", "barracks":"兵營", "range":"箭場", "house":"民居", "storehouse":"倉庫", "farm":"農田", "stable":"馬廄", "tower":"守望塔", "workshop":"工坊", "villager":"村民", "scout":"斥候", "spearman":"長槍兵", "archer":"弓手", "cavalry":"騎兵", "siege":"攻城車", "pine":"木材", "oak":"木材", "berry":"漿果", "stone":"石材", "iron":"鐵礦", "age2":"城防時代", "forged_blades":"鍛鋼兵刃", "tempered_arrows":"精製箭矢", "reinforced_armor":"加固護甲", "wheelbarrow":"手推車"}
 # Legacy primary product remains available for old observers. Orders use products_for.
 const PRODUCES = {"town_center":"villager","barracks":"spearman","range":"archer","stable":"cavalry","workshop":"siege"}
 const AGE2_KINDS = ["stable","workshop","cavalry","siege"]
