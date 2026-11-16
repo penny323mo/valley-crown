@@ -221,7 +221,7 @@ func _layout():
 	if latin_name.visible:
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
-	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options"]) else 1)
+	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","setup"]) else 1)
 	var button_height=54.0
 	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0
 	var button_gap=10
