@@ -2111,7 +2111,7 @@ func _apply_unit_step(ent,next_pos,dt):
 	var before=ent.pos
 	ent.pos+=step; ent.stuck=0
 	traffic_tick_segments[ent.id]=[before,ent.pos]
-	ent.body.rotation.y=lerp_angle(ent.body.rotation.y,atan2(step.x,step.z),0.35)
+	ent.body.rotation.y=wrapf(lerp_angle(ent.body.rotation.y,atan2(step.x,step.z),0.35),-PI,PI)
 
 func _path_step_is_free(from,to):
 	var a=_cell(from); var b=_cell(to)
