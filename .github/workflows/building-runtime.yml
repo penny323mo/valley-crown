@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-b38fa8cb667b-717f7643
+  group: building-runtime-vc-354618426ce6-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 0f5ee79cbbb2d8bee52acae32c670b93e30105f7
+      BUILDING_RUNTIME_SOURCE_COMMIT: 9b17c7cb769ffb55ff8f52b386fd39d1acae0e63
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'ed23471facdeca1fa136d8cd4a1495a36e9159610b1adada8f2efcc8ee4aaa88  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'bcacaa830a4aed7c1eee31ad9b64b0e07b3791722f219ff71b635e2f1b94c36a  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -359,6 +359,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/minimap_navigation_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/minimap_touch_ownership_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/minimap_touch_ownership_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_difficulty_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_difficulty_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/difficulty_menu_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/difficulty_menu_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
