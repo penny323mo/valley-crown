@@ -200,4 +200,33 @@ class DifficultyFailureCountSchemaTests(unittest.TestCase):
                         with self.assertRaises(ValueError):read(bad)
 
 
+class FriendlyPickReportSchemaTests(unittest.TestCase):
+    """Frozen native 38-row report, not generated from validator expectations."""
+    def test_exact_frozen_report_and_fail_closed_mutations(self):
+        import copy
+        import validate_latest_contracts as validator
+        report = {'checks': [{'name': 'world projection usable (390, 844) z15.0', 'passed': True}, {'name': 'routed closer worker selected (390, 844) z15.0', 'passed': True}, {'name': 'routed building center retains priority (390, 844) z15.0', 'passed': True}, {'name': 'world projection usable (390, 844) z30.0', 'passed': True}, {'name': 'routed closer worker selected (390, 844) z30.0', 'passed': True}, {'name': 'routed building center retains priority (390, 844) z30.0', 'passed': True}, {'name': 'world projection usable (390, 844) z46.0', 'passed': True}, {'name': 'routed closer worker selected (390, 844) z46.0', 'passed': True}, {'name': 'routed building center retains priority (390, 844) z46.0', 'passed': True}, {'name': 'world projection usable (844, 390) z15.0', 'passed': True}, {'name': 'routed closer worker selected (844, 390) z15.0', 'passed': True}, {'name': 'routed building center retains priority (844, 390) z15.0', 'passed': True}, {'name': 'world projection usable (844, 390) z30.0', 'passed': True}, {'name': 'routed closer worker selected (844, 390) z30.0', 'passed': True}, {'name': 'routed building center retains priority (844, 390) z30.0', 'passed': True}, {'name': 'world projection usable (844, 390) z46.0', 'passed': True}, {'name': 'routed closer worker selected (844, 390) z46.0', 'passed': True}, {'name': 'routed building center retains priority (844, 390) z46.0', 'passed': True}, {'name': 'world projection usable (320, 568) z15.0', 'passed': True}, {'name': 'routed closer worker selected (320, 568) z15.0', 'passed': True}, {'name': 'routed building center retains priority (320, 568) z15.0', 'passed': True}, {'name': 'world projection usable (320, 568) z30.0', 'passed': True}, {'name': 'routed closer worker selected (320, 568) z30.0', 'passed': True}, {'name': 'routed building center retains priority (320, 568) z30.0', 'passed': True}, {'name': 'world projection usable (320, 568) z46.0', 'passed': True}, {'name': 'routed closer worker selected (320, 568) z46.0', 'passed': True}, {'name': 'routed building center retains priority (320, 568) z46.0', 'passed': True}, {'name': 'identical unit centers resolve stable lower id', 'passed': True}, {'name': 'remembered and dead unit observations cannot steal selection', 'passed': True}, {'name': 'absent units never queried through authority for selection', 'passed': True}, {'name': 'unseen actual enemy has no pick record', 'passed': True}, {'name': 'farm precondition legacy winner with closer worker', 'passed': True}, {'name': 'selected villager farm tap remains gather command', 'passed': True}, {'name': 'paused farm tap selects nearer worker without gather', 'passed': True}, {'name': 'unfinished farm tap selects nearer worker without gather', 'passed': True}, {'name': 'selected army tapping friendly building center selects without order', 'passed': True}, {'name': 'visible enemy winner remains command-target eligible', 'passed': True}, {'name': 'visible resource mesh winner is not overridden', 'passed': True}], 'failed': 0, 'scope': 'Actual viewport touch routing and camera at three sizes/zooms; controlled positions and explicit observation-filter fixtures; not physical phone or natural combat.', 'suite': 'friendly_pick_routed_contract'}
+        suite = 'friendly_pick_routed_contract'
+        with tempfile.TemporaryDirectory() as td:
+            stage = Path(td)
+            def read_raw(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,suite)
+            self.assertEqual(read_raw(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                bad=copy.deepcopy(report);bad[key]=value;mutants.append(json.dumps(bad))
+            for i in range(38):
+                for value in (False,1):
+                    bad=copy.deepcopy(report);bad['checks'][i]['passed']=value;mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['checks'].pop(i);mutants.append(json.dumps(bad))
+            bad=copy.deepcopy(report);bad['checks'].reverse();mutants.append(json.dumps(bad))
+            bad=copy.deepcopy(report);bad['checks'].append(bad['checks'][0]);mutants.append(json.dumps(bad))
+            bad=copy.deepcopy(report);bad['extra']=True;mutants.append(json.dumps(bad))
+            bad=copy.deepcopy(report);del bad['scope'];mutants.append(json.dumps(bad))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            for index,raw in enumerate(mutants):
+                with self.subTest(mutation=index):
+                    with self.assertRaises(ValueError):read_raw(raw)
+
 if __name__=='__main__':unittest.main(verbosity=2)
