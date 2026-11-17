@@ -3420,9 +3420,11 @@ func _ai_move_home(members,castle):
 	if not ids.is_empty(): _submit("order",{"ids":ids,"target":-1,"position":castle.pos},1)
 
 const AIRaidReinforcement=preload("res://scripts/ai_raid_reinforcement.gd")
+const AIArcherSpacing=preload("res://scripts/ai_archer_spacing.gd")
 const AIEconomicRaid=preload("res://scripts/ai_economic_raid.gd")
 const WallBreachPolicy=preload("res://scripts/wall_breach_policy.gd")
 func _ai_raid_order(ent,records,enemy_keep):
+	if _ai_archer_spacing(ent,records):return
 	var worker=AIEconomicRaid.choose(ent,records,enemy_keep)
 	if not worker.is_empty():
 		if ent.state!="attack" or ent.target!=worker.id:_submit("order",{"ids":[ent.id],"target":worker.id,"position":worker.pos},1)
@@ -3869,6 +3871,7 @@ func _publish_faction_views():
 				record.visual_anticipation=1.0-float(ent.cooldown_ticks)/anticipate_ticks
 			if record.owned:
 				record.last_damage_tick=ent.last_damage_tick
+				record.cooldown_ticks=ent.cooldown_ticks
 				record.rest_ticks=ent.get("rest_ticks",0)
 				record.rally_point=ent.get("rally_point",Vector3.INF)
 				record.rally_target=ent.get("rally_target",-1)
@@ -7914,4 +7917,37 @@ func _ai_fortify_lane(plan,records):
 			var point=tower.pos+front*depth+across*(width+0.5)
 			var cell=_cell(point)
 			if not work_memory[1].grid.region.has_point(cell) or work_memory[1].grid.is_point_solid(cell):return false
+	return true
+
+func _ai_archer_spacing(ent,records):
+	var point=AIArcherSpacing.destination(ent,records)
+	if point==Vector3.INF:return false
+	var own=_get_entity(ent.id)
+	# Resolve with normal faction-known placement; reject a detour/alias rather
+	# than issuing an unbounded retreat. No policy pathfinding or failure reset.
+	var resolved=_nearest_free(point,2,1,own)
+	if resolved==Vector3.INF or resolved.distance_to(point)>0.8 or not AIArcherSpacing.safe(ent,resolved,records):return false
+	var enemy=AIArcherSpacing.threat(ent,records)
+	if enemy.is_empty() or resolved.distance_to(enemy.pos)<ent.pos.distance_to(enemy.pos)+0.5:return false
+	for i in range(1,5):
+		var p=ent.pos.lerp(resolved,float(i)/4.0)
+		if absf(p.x)>=Rules.MAP_WORLD_LIMIT or absf(p.z)>=Rules.MAP_WORLD_LIMIT:return false
+		var cell=_cell(p)
+		if not work_memory[1].grid.region.has_point(cell) or work_memory[1].grid.is_point_solid(cell) or visible_cells[1][_cell_index(p)]==0:return false
+	# Short capsule check uses only known static geometry, with the ordinary
+	# actor radius. Reject narrow corners rather than inviting a long detour.
+	var radius=ent.get("radius",Rules.UNIT_RADIUS)
+	var low=Vector2i(floori(minf(ent.pos.x,resolved.x)+Rules.MAP_HALF-radius),floori(minf(ent.pos.z,resolved.z)+Rules.MAP_HALF-radius))
+	var high=Vector2i(floori(maxf(ent.pos.x,resolved.x)+Rules.MAP_HALF+radius),floori(maxf(ent.pos.z,resolved.z)+Rules.MAP_HALF+radius))
+	for y in range(low.y,high.y+1):
+		for x in range(low.x,high.x+1):
+			var cell=Vector2i(x,y)
+			if (not work_memory[1].grid.region.has_point(cell) or work_memory[1].grid.is_point_solid(cell)) and _segment_box_distance_squared(ent.pos,resolved,cell)<radius*radius:return false
+	for ally in records:
+		if ally.get("owned",false) and ally.get("alive",false) and ally.get("category","")=="unit" and ally.id!=ent.id and resolved.distance_to(ally.pos)<radius+ally.get("radius",Rules.UNIT_RADIUS)+0.15:return false
+	# Pending strategic/defense orders win. Ordinary move preserves cooldown
+	# and every already-issued attack ledger event.
+	for command in commands:
+		if command.get("team",-1)==1 and ent.id in command.get("ids",[]):return false
+	_submit("order",{"ids":[ent.id],"target":-1,"position":resolved},1)
 	return true
