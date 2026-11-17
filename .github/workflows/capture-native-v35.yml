@@ -1,4 +1,4 @@
-name: Capture v88 difficulty selection and normal-start native UI
+name: Capture v88 difficulty label with ordinary scroll into view
 on:
   push:
     branches: [main]

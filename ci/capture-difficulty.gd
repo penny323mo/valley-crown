@@ -83,8 +83,16 @@ func run():
   report.actions.append({"signal":"pressed","button":"game shortcut settings > 主選單","text":home_button.text})
   home_button.pressed.emit();await process_frame;await process_frame
   check("actual game main menu route",menu.page=="home" and g.paused)
-  check("home shows actual match difficulty",menu.description.text.contains("本局電腦：較低襲擊壓力"))
+  check("home description contains actual match difficulty",menu.description.text.contains("本局電腦：較低襲擊壓力"))
   report.pause_scope="Actual game menu return to paused home with match difficulty label. Product hides match and HUD here; game background is NOT forcibly shown. Previous capture preserves actual paused battlefield. No raid timing test."
+  menu.scroll.scroll_vertical=int(menu.scroll.get_v_scroll_bar().max_value)
+  await process_frame;await process_frame
+  var clip=menu.scroll.get_global_rect()
+  var desc=menu.description.get_global_rect()
+  var line_height=menu.description.get_line_height()
+  var last_line=Rect2(Vector2(desc.position.x,desc.end.y-line_height),Vector2(desc.size.x,line_height))
+  check("home final difficulty line lies inside scroll clip",clip.encloses(last_line))
+  report.home_difficulty_visibility={"description_rect":str(desc),"last_line_rect":str(last_line),"scroll_clip":str(clip),"scroll_value":menu.scroll.scroll_vertical,"scope":"Geometry of final line after normal scroll; native inspection still required"}
   await capture("08-easy-match-home",["ResumeMatchButton"])
   report.captures[-1].game_visible=g.visible
   report.captures[-1].game_ui_visible=g.ui.visible
