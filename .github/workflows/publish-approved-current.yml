@@ -27,10 +27,10 @@ jobs:
           import sys,json,pathlib,hashlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,verified_members
-          row={'artifact_id': 14312874531, 'run_id': 44049285446, 'build': 'vc-e72d87617cb6', 'metadata_sha256': '12422bb66cd15b819d20eda5668304fe704ef86eb30330f0678aa58636a2ca42', 'zip_sha256': '7dcdde8978e9838611a1e16f1d7cb89fa957d456c76615747ced524ba33e9a33'}
+          row={'artifact_id': 14316053258, 'run_id': 44055121192, 'build': 'vc-d12f55727772', 'metadata_sha256': '467997f73cbc7f4d5b29a05ea5f7812a39ddf8e4aaa5f20935f789ddd8da112d', 'zip_sha256': '59e3e087c8cd43005e782ffc8a4edd65f3e2e648d4dae81af432f72ee4b4b361'}
           g=GitHub(os.environ['GITHUB_REPOSITORY'])
           run=g.request('/actions/runs/'+str(row['run_id']))
-          assert run['conclusion']=='success' and run['head_sha']=='6c2a027941b03fec893293a7981a587d77e413f5'
+          assert run['conclusion']=='success' and run['head_sha']=='f4cc8720ac30e0f186b946e027cb151fda0ad62f'
           meta=g.request('/actions/artifacts/'+str(row['artifact_id']))
           assert not meta['expired'] and meta['workflow_run']['id']==row['run_id']
           data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
@@ -60,7 +60,7 @@ jobs:
           row=json.loads(pathlib.Path('approved-row.json').read_text());data=pathlib.Path('approved-product.zip').read_bytes()
           verified_members(data,row);g=GitHub(os.environ['GITHUB_REPOSITORY']);release=g.release(row)
           if release is None:
-           release=g.request('/releases',method='POST',body={'tag_name':'web-archive-artifact-'+str(row['artifact_id']),'target_commitish':'6c2a027941b03fec893293a7981a587d77e413f5','name':'Durable Web archive: '+row['build'],'body':'Exact owner-approved verified artifact. ZIP SHA-256: '+row['zip_sha256'],'draft':False,'prerelease':True,'make_latest':'false'})
+           release=g.request('/releases',method='POST',body={'tag_name':'web-archive-artifact-'+str(row['artifact_id']),'target_commitish':'f4cc8720ac30e0f186b946e027cb151fda0ad62f','name':'Durable Web archive: '+row['build'],'body':'Exact owner-approved verified artifact. ZIP SHA-256: '+row['zip_sha256'],'draft':False,'prerelease':True,'make_latest':'false'})
           asset=g.asset(release,row)
           if asset is None:
            asset=g.request(release['upload_url'].split('{')[0]+'?name='+str(row['artifact_id'])+'.zip',method='POST',body=data)
@@ -68,7 +68,7 @@ jobs:
           assert readback==data
           print('Durable archive readback verified',row['artifact_id'])
           PY
-          GITHUB_SHA=6c2a027941b03fec893293a7981a587d77e413f5 python3 scripts/publish_web_seed.py --build vc-e72d87617cb6 --directory seed-approved --catalog approved-catalog.json
+          GITHUB_SHA=f4cc8720ac30e0f186b946e027cb151fda0ad62f python3 scripts/publish_web_seed.py --build vc-d12f55727772 --directory seed-approved --catalog approved-catalog.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: approved-current-seed-receipt

@@ -1,4 +1,4 @@
-name: Capture v84 paid wall rows from clear overhead inspection camera
+name: Capture v85 controlled paid AI tower-flank fortifications
 on:
   push:
     branches: [main]
@@ -32,22 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14312874531/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='7dcdde8978e9838611a1e16f1d7cb89fa957d456c76615747ced524ba33e9a33'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14316053258/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='59e3e087c8cd43005e782ffc8a4edd65f3e2e648d4dae81af432f72ee4b4b361'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='46a51be52078312c825b9d37519669a8655e4f00544b3134df91accc9bb21ccd'
+          assert hashlib.sha256(pck).hexdigest()=='a158cdf3af91ad1a267d1f31c181e60d2ebb5e54791aac6d2dd1c7efe3effb8a'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-wall-batch-natural.gd /tmp/capture/capture.gd
+          cp ci/capture-ai-fortify-controlled.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v84-wall-rows-${{ matrix.scenario }}
+          name: genuine-v85-ai-fortify-${{ matrix.scenario }}
           path: |
-            /tmp/wall-batch-capture/*.png
-            /tmp/wall-batch-capture/wall-batch-proof.json
+            /tmp/ai-fortify-capture/*.png
+            /tmp/ai-fortify-capture/ai-fortify-proof.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
