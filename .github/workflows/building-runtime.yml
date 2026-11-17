@@ -243,6 +243,15 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_menu_contract/receipt.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+      - name: Always retain remaining explicit actual bounded evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
+          path: |
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_menu_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_contract/godot.log
