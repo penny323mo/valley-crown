@@ -199,6 +199,8 @@ var drag_active=false
 var touch_command=false
 var unit_command_kind="order"
 var advance_formation=""
+const EscortBatch=preload("res://scripts/escort_batch.gd")
+var escort_batch_button: Button
 var rally_building=-1
 var rally_group=[]
 var rally_mode="move"
@@ -3912,7 +3914,9 @@ func _publish_faction_views():
 			record.visual_yaw=ent.body.rotation.y
 			if ent.category=="unit":
 				record.combat_kills=combat_veterancy.count(ent.id);record.veterancy_rank=combat_veterancy.rank(ent.id)
-				if ent.team==team:record.target_policy=ent.get("target_policy","nearest")
+				if ent.team==team:
+					record.target_policy=ent.get("target_policy","nearest")
+					if ent.has("escort_target"):record.escort_target=ent.escort_target
 				# Public visible pose cues, never enemy command targets/path coordinates.
 				record.visual_moving=not ent.path.is_empty() and not ent.get("advance_engaged",false)
 				record.visual_working=ent.state in ["gather","build","repair"] and ent.path.is_empty()
@@ -4600,6 +4604,7 @@ func _update_hud():
 	_refresh_training_batch_button()
 	_refresh_group_training()
 	_refresh_wounded_retreat_button()
+	_refresh_escort_batch_button()
 	_refresh_clear_site_button()
 	_refresh_clear_exit_button()
 	queue_label.visible=not queue_label.text.is_empty()
@@ -4697,6 +4702,7 @@ func _rebuild_actions(selection):
 	group_train_button=null
 	clear_exit_button=null
 	wounded_retreat_button=null
+	escort_batch_button=null
 	if touch_command and unit_command_kind=="route":
 		actions.add_child(_button("出發 %d / 5" % tactical_draft.size(),_confirm_tactical_route,110))
 		actions.add_child(_button("撤銷末點",func():
@@ -4856,6 +4862,11 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
 		actions.add_child(_button("護送",_start_escort_command,100))
+		if EscortBatch.supports(faction_views[0].records(),selected):
+			escort_batch_button=_button("分隊護送",_request_escort_batch,140)
+			escort_batch_button.name="EscortBatch";escort_batch_button.set_meta("selection_source",selected.duplicate())
+			escort_batch_button.tooltip_text="把所選護衛均分護送所選攻城車，最多三輛；保留車的指令與已有護送，停止或新指令可退出。"
+			actions.add_child(escort_batch_button)
 	if not WoundedRetreat.injured(faction_views[0].records(),selected).is_empty():
 		wounded_retreat_button=_button("傷兵撤回據點",_retreat_wounded,150)
 		wounded_retreat_button.name="WoundedRetreat";wounded_retreat_button.set_meta("selection_source",selected.duplicate())
@@ -7582,6 +7593,7 @@ func _order_escort(ids,target_id,team):
 	chosen.sort()
 	for id in chosen:
 		var guard=_get_entity(id)
+		if guard.mode=="ESCORT" and guard.get("escort_target",-1)==target_id:continue
 		if team==0:_path_new_command(guard)
 		_set_stance(guard,"ESCORT")
 		guard.escort_target=target_id;guard.escort_next_tick=tick_count
@@ -8059,3 +8071,19 @@ func _ai_archer_spacing(ent,records):
 		if command.get("team",-1)==1 and ent.id in command.get("ids",[]):return false
 	_submit("order",{"ids":[ent.id],"target":-1,"position":resolved},1)
 	return true
+
+func _refresh_escort_batch_button():
+	if not is_instance_valid(escort_batch_button):return
+	var plan=EscortBatch.plan(faction_views[0].records(),selected,commands)
+	var blocked=not _squad_actions_available() or selected!=escort_batch_button.get_meta("selection_source",[])
+	_bind_squad_button(escort_batch_button,EscortBatch.signature(plan),blocked)
+	escort_batch_button.text="分隊護送" if plan.is_empty() else "分隊護送 %d 輛" % plan.size()
+
+func _request_escort_batch():
+	if not _squad_actions_available() or not is_instance_valid(escort_batch_button):return
+	var plan=EscortBatch.plan(faction_views[0].records(),selected,commands)
+	if escort_batch_button.disabled or selected!=escort_batch_button.get_meta("selection_source",[]) or EscortBatch.signature(plan)!=escort_batch_button.get_meta("squad_ids",[]):
+		_refresh_escort_batch_button();return
+	_cancel_mode()
+	for group in plan:_submit("escort",group)
+	_refresh_escort_batch_button()
