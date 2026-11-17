@@ -1,4 +1,4 @@
-name: Capture v92 visible own range references
+name: Capture v93 ordinary siege breach priority
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [range]
+        scenario: [siege]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,22 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14332600350/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='7e11484a3bbd9460a3f8e902b3a7dfc0998398bcaf390eac60915f2609cbeb1f'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14333727020/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='b72bc9b7452cf504605d870b076b173dd3faa68bf552ef561d3b02bb6b77a327'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='2e021e351769d26b3f416aee0ea7a9d919d3a052e3c7491cbb2520bf7e2e7b34'
+          assert hashlib.sha256(pck).hexdigest()=='6247bd785906b494bd88884ce366d7449defde878354ea465555fc626fb35b64'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-range.gd /tmp/capture/capture.gd
+          cp ci/capture-siege.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v92-range-${{ matrix.scenario }}
+          name: genuine-v93-siege-${{ matrix.scenario }}
           path: |
-            /tmp/v92-range-capture/*.png
-            /tmp/v92-range-capture/report.json
+            /tmp/v93-siege-capture/*.png
+            /tmp/v93-siege-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
