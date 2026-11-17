@@ -321,4 +321,30 @@ class ProductionWaitReportSchemaTests(unittest.TestCase):
                         with self.assertRaises(ValueError):read(raw)
 
 
+class BuildingAttentionWaitingSchemaTests(unittest.TestCase):
+    """CI-observed 28 checks retain all original 25, adding waiting-layout checks."""
+    def test_frozen_report_and_waiting_assertions_required(self):
+        import copy
+        import validate_latest_contracts as validator
+        report = {'checks': [{'name': 'unassigned sites sorted', 'passed': True}, {'name': 'only completed damaged buildings need repair', 'passed': True}, {'name': 'active builder protects assigned site', 'passed': True}, {'name': 'pending own order protects site', 'passed': True}, {'name': 'enemy order does not protect site', 'passed': True}, {'name': 'exclude { "owned": false }', 'passed': True}, {'name': 'exclude { "alive": false }', 'passed': True}, {'name': 'exclude { "remembered": true }', 'passed': True}, {'name': 'exclude { "team": 1 }', 'passed': True}, {'name': 'exclude { "category": "unit" }', 'passed': True}, {'name': 'native damaged base counted', 'passed': True}, {'name': 'native button locates building', 'passed': True}, {'name': 'existing repair action exposed', 'passed': True}, {'name': 'navigation does not repair spend or command', 'passed': True}, {'name': 'unfinished site opens existing resume control', 'passed': True}, {'name': 'stale pending site cannot select', 'passed': True}, {'name': 'pause disables navigation', 'passed': True}, {'name': 'hidden tab cannot navigate', 'passed': True}, {'name': 'fits 320 BuildingAttention_waiting', 'passed': True}, {'name': 'fits 320 BuildingAttention_unassigned', 'passed': True}, {'name': 'fits 320 BuildingAttention_damaged', 'passed': True}, {'name': 'fits 390 BuildingAttention_waiting', 'passed': True}, {'name': 'fits 390 BuildingAttention_unassigned', 'passed': True}, {'name': 'fits 390 BuildingAttention_damaged', 'passed': True}, {'name': 'fits 844 BuildingAttention_waiting', 'passed': True}, {'name': 'fits 844 BuildingAttention_unassigned', 'passed': True}, {'name': 'fits 844 BuildingAttention_damaged', 'passed': True}, {'name': 'economy conserved', 'passed': True}], 'failed': 0, 'scope': 'Controlled records and native selection/UI; not natural match or physical phone acceptance', 'suite': 'building_attention_contract'}
+        added = ['fits 320 BuildingAttention_waiting', 'fits 390 BuildingAttention_waiting', 'fits 844 BuildingAttention_waiting']
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(d):
+                (stage/'godot.log').write_text(json.dumps(d)+'\n')
+                return validator.read_report(stage,'building_attention_contract')
+            self.assertEqual(read(report),report)
+            for name in added:
+                i=next(i for i,c in enumerate(report['checks']) if c['name']==name)
+                for kind in ('missing','false','nonbool','rename','extra','reorder'):
+                    bad=copy.deepcopy(report)
+                    if kind=='missing':bad['checks'].pop(i)
+                    elif kind=='false':bad['checks'][i]['passed']=False
+                    elif kind=='nonbool':bad['checks'][i]['passed']=1
+                    elif kind=='rename':bad['checks'][i]['name']='wrong'
+                    elif kind=='extra':bad['checks'].append(bad['checks'][i])
+                    else:bad['checks'][i],bad['checks'][i+1]=bad['checks'][i+1],bad['checks'][i]
+                    with self.subTest(name=name,kind=kind):
+                        with self.assertRaises(ValueError):read(bad)
+
 if __name__=='__main__':unittest.main(verbosity=2)
