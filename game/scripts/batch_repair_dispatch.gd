@@ -4,12 +4,12 @@ const Gather=preload("res://scripts/idle_gather_dispatch.gd")
 static func orders(records: Dictionary,pending: Array,tick: int)->Array:
  var targets=[]
  for b in records.values():
-  if not b.get("owned",false) or not b.get("alive",false) or b.get("remembered",true) or b.get("team",-1)!=0 or b.get("category","")!="building" or not b.get("built",false):continue
+  if not b.get("owned",false) or not b.get("alive",false) or b.get("remembered",true) or b.get("team",-1)!=0 or (b.get("category","")!="building" and b.get("kind","")!="siege") or not b.get("built",false):continue
   if b.get("hp",0)<=0 or b.get("hp",0)>=b.get("max_hp",0) or Gather.threatened(b.pos,records):continue
   targets.append(b)
  targets.sort_custom(func(a,b):
-  var ap=0 if a.kind=="town_center" else 1 if a.kind=="tower" else 2
-  var bp=0 if b.kind=="town_center" else 1 if b.kind=="tower" else 2
+  var ap=0 if a.kind=="town_center" else 1 if a.kind=="tower" else 2 if a.kind=="siege" else 3
+  var bp=0 if b.kind=="town_center" else 1 if b.kind=="tower" else 2 if b.kind=="siege" else 3
   if ap!=bp:return ap<bp
   var ar=float(a.hp)/a.max_hp;var br=float(b.hp)/b.max_hp
   return a.id<b.id if ar==br else ar<br)

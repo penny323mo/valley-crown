@@ -926,7 +926,7 @@ func _execute(command):
 			if command.has("repair_batch"):
 				if typeof(command.repair_batch)!=TYPE_BOOL or not command.repair_batch or not command.get("repair_dispatch",false) or typeof(command.get("source_work_epoch",null))!=TYPE_INT:return
 				var worker=_get_entity(command.ids[0])
-				if worker.get("work_epoch",-1)!=command.source_work_epoch or target.category!="building":return
+				if worker.get("work_epoch",-1)!=command.source_work_epoch or (target.category!="building" and target.kind!="siege"):return
 				if IdleGatherDispatch.threatened(worker.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(target.pos,faction_views[0].records()):return
 				for other in entities:
 					if other.alive and other.team==0 and other.kind=="villager" and other.state=="repair" and other.target==target_id:return
@@ -1573,6 +1573,17 @@ func _free_adjacent(target,from,avoid_units=false,team=-1,mover={}):
 			if occupied: continue
 		if dist<best_dist: best=world; best_dist=dist
 	return best
+
+# Repair keeps its accepted contact slot while walking around local traffic.
+# Rechoosing by the worker's changing position can invalidate that same route
+# every tick. Use only the current work request and faction-known free cells.
+func _repair_adjacent(ent,target):
+	if ent.get("path_request_epoch",-1)==ent.work_epoch and ent.get("path_request_target",-1)==target.id and ent.get("path_request_state","")=="repair":
+		var goal=ent.get("path_request_goal",Vector3.INF)
+		if goal!=Vector3.INF and _perimeter_cells(target).has(_cell(goal)):
+			var grid=_route_grid(ent)
+			if not grid.is_point_solid(_cell(goal)) and _known_destination_clear(ent,goal):return goal
+	return _free_adjacent(target,ent.pos,false,ent.team,ent)
 
 # --- Faction-known occupancy shared by point and work routing ---
 func _is_work_path(ent):
@@ -2716,7 +2727,7 @@ func _move_unit_phase(ent,dt):
 			ent.pos=before; _finish_attack(ent)
 	elif ent.state in ["build","repair"] and target.alive:
 		if ent.state=="gather" and ent.pos.distance_to(target.pos)<1.65: return
-		var adjacent=_free_adjacent(target,ent.pos,false,ent.team,ent)
+		var adjacent=_repair_adjacent(ent,target) if ent.state=="repair" else _free_adjacent(target,ent.pos,false,ent.team,ent)
 		if adjacent!=Vector3.INF and ent.pos.distance_to(adjacent)>0.3: _move(ent,adjacent,dt)
 
 func _resource_type(ent):
@@ -2918,7 +2929,7 @@ func _update_unit(ent,dt):
 			# even en route or during a later damage lockout, not at payment due.
 			if economy.bank_milli(ent.team).wood<1000: ent.state="idle"; return
 			if ent.kind!="villager" or target.team!=ent.team or not _repair_target_ready(target) or target.hp>=target.max_hp: ent.state="idle"; return
-			var adjacent=_free_adjacent(target,ent.pos,false,ent.team,ent)
+			var adjacent=_repair_adjacent(ent,target)
 			if adjacent==Vector3.INF: ent.state="idle"; return
 			if ent.pos.distance_to(adjacent)>0.3: return
 			if tick_count-target.last_damage_tick<100: ent.work_ticks=0; return
@@ -2926,7 +2937,7 @@ func _update_unit(ent,dt):
 			# route-blocked repair order must not veto actual repair work.
 			for other in entities:
 				if not other.alive or other.id>=ent.id or other.kind!="villager" or other.team!=ent.team or other.state!="repair" or other.target!=target.id: continue
-				var other_adjacent=_free_adjacent(target,other.pos,false,other.team,other)
+				var other_adjacent=_repair_adjacent(other,target)
 				if other_adjacent!=Vector3.INF and other.pos.distance_to(other_adjacent)<=0.3: return
 			if ent.last_repair_tick==tick_count or target.get("last_repair_work_tick",-1)==tick_count: return
 			ent.last_repair_tick=tick_count; target.last_repair_work_tick=tick_count; ent.work_ticks+=1
@@ -4269,7 +4280,7 @@ func _create_ui():
 	batch_construction_button=_button("",_dispatch_batch_construction,160);batch_construction_button.name="BatchConstructionDispatch";menu_box.add_child(batch_construction_button)
 	batch_construction_button.tooltip_text="最多派三名空手閒置村民續建不同無人施工的工地。優先民居及接近完成的建築；保留原進度，不重收建築費，不搶現有工作，路線仍可能受阻。"
 	batch_repair_button=_button("",_dispatch_batch_repair,160);batch_repair_button.name="BatchRepairDispatch";menu_box.add_child(batch_repair_button)
-	batch_repair_button.tooltip_text="最多派三名空手閒置村民，維修不同受損建築。優先主堡、守望塔；不搶現有工作，避開已知敵人。每人每秒消耗1木材修復5生命，路線仍可能受阻。"
+	batch_repair_button.tooltip_text="最多派三名空手閒置村民，維修不同受損建築及已停止的攻城車。優先主堡、守望塔、攻城車；不搶現有工作，避開已知敵人。每人每秒消耗1木材修復5生命，路線仍可能受阻。"
 	var reassign_help=_label("選取中的採集村民 · 每次最多改派 3 人，保留原負重",13)
 	reassign_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(reassign_help)
 	var reassign_row=HFlowContainer.new();reassign_row.add_theme_constant_override("h_separation",6);menu_box.add_child(reassign_row)
@@ -7440,7 +7451,7 @@ func _refresh_idle_dispatch_buttons():
 	if is_instance_valid(batch_repair_button):
 		var repairs=BatchRepairDispatch.orders(faction_views[0].records(),commands,tick_count)
 		_bind_squad_button(batch_repair_button,repairs,not _squad_actions_available() or economy.bank_milli(0).get("wood",0)<Economy.SCALE)
-		batch_repair_button.text="派 %d 人維修建築" % repairs.size()
+		batch_repair_button.text="派 %d 人維修建築／攻城車" % repairs.size()
 	for resource in idle_dispatch_buttons:
 		var button=idle_dispatch_buttons[resource]
 		var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource)
