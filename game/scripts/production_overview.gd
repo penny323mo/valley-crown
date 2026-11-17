@@ -1,9 +1,10 @@
 extends RefCounted
 ## Completed, currently owned production buildings only. No hidden enemy queues.
+const Rules=preload("res://scripts/rules.gd")
 const KINDS=["town_center","barracks","range","stable","workshop"]
 static func snapshot(records: Dictionary) -> Dictionary:
 	var result={}
-	for kind in KINDS: result[kind]={"ids":[],"idle":0,"busy":0,"automatic":0,"queued":0}
+	for kind in KINDS: result[kind]={"ids":[],"idle":0,"busy":0,"automatic":0,"queued":0,"waiting":0}
 	for id in records:
 		var b=records[id]
 		if not b is Dictionary or b.get("id",-1)!=id or not b.get("alive",false) or not b.get("owned",false) or b.get("remembered",false): continue
@@ -12,7 +13,8 @@ static func snapshot(records: Dictionary) -> Dictionary:
 		group.ids.append(id)
 		var count=b.get("queue",[]).size()
 		group.queued+=count
-		if count>0: group.busy+=1
+		if waiting_for_birth(b):group.waiting+=1
+		elif count>0: group.busy+=1
 		elif not b.get("repeat_kind","").is_empty(): group.automatic+=1
 		else: group.idle+=1
 	for kind in KINDS: result[kind].ids.sort()
@@ -21,3 +23,9 @@ static func next_id(ids: Array,previous: int) -> int:
 	if ids.is_empty(): return -1
 	var index=ids.find(previous)
 	return ids[(index+1)%ids.size()]
+
+static func waiting_for_birth(record: Dictionary) -> bool:
+	var queue=record.get("queue",[])
+	if not queue is Array or queue.is_empty() or not queue[0] is Dictionary:return false
+	var front=queue[0]
+	return front.get("kind","") in Rules.UNIT_KINDS and not front.get("research",false) and not front.get("trade",false) and front.get("remaining_ticks",1)<=0

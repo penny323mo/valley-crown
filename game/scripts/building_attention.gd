@@ -1,7 +1,8 @@
 extends RefCounted
+const ProductionOverview=preload("res://scripts/production_overview.gd")
 ## Owned live records only. Counts indicate assignments, not reachability.
 static func snapshot(records: Dictionary,commands: Array) -> Dictionary:
-	var result={"unfinished":[],"unassigned":[],"damaged":[]}
+	var result={"unfinished":[],"unassigned":[],"damaged":[],"waiting":[]}
 	var assigned={}
 	for r in records.values():
 		if r.get("owned",false) and r.get("alive",false) and not r.get("remembered",false) and r.get("team",-1)==0 and r.get("kind","")=="villager" and r.get("state","")=="build":assigned[r.get("target",-1)]=true
@@ -14,5 +15,6 @@ static func snapshot(records: Dictionary,commands: Array) -> Dictionary:
 			result.unfinished.append(id)
 			if not assigned.has(id):result.unassigned.append(id)
 		elif b.get("hp",0)<b.get("max_hp",0):result.damaged.append(id)
+		if b.get("built",false) and b.get("kind","") in ProductionOverview.KINDS and ProductionOverview.waiting_for_birth(b):result.waiting.append(id)
 	for key in result:result[key].sort()
 	return result

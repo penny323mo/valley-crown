@@ -4320,10 +4320,11 @@ func _create_ui():
 		production_button.add_theme_font_size_override("font_size",12)
 		menu_box.add_child(production_button); production_buttons[kind]=production_button
 		shortcut_sections.production.append(production_button)
-	for category in ["unassigned","damaged"]:
+	for category in ["waiting","unassigned","damaged"]:
 		var key=category
 		var button=_button("",func():_focus_building_attention(key),170)
 		button.name="BuildingAttention_"+key;button.tooltip_text="輪流選取並前往需要處理的己方建築。只定位，不會自行派工或付費；仍須使用續建／維修。"
+		if key=="waiting":button.tooltip_text="訓練已完成但尚未出兵；前往查看人口或出口提示。只定位，不取消隊列或重複付費。"
 		menu_box.add_child(button);building_attention_buttons[key]=button;shortcut_sections.production.append(button)
 
 	var nav=HFlowContainer.new(); nav.add_theme_constant_override("h_separation",6); nav.add_theme_constant_override("v_separation",6); menu_box.add_child(nav)
@@ -7218,7 +7219,7 @@ func _refresh_production_buttons():
 		var group=status[kind]
 		var button=production_buttons[kind]
 		_bind_squad_button(button,group.ids,not _squad_actions_available())
-		button.text="%s %d · 隊列%d\n閒置%d · 生產%d · 自動待產%d" % [Rules.NAMES[kind],group.ids.size(),group.queued,group.idle,group.busy,group.automatic]
+		button.text="%s %d · 隊列%d\n閒置%d · 生產%d · 待出兵%d · 自動待產%d" % [Rules.NAMES[kind],group.ids.size(),group.queued,group.idle,group.busy,group.waiting,group.automatic]
 
 func _focus_production(kind):
 	if kind not in ProductionOverview.KINDS or not _squad_actions_available() or not compact_menu.visible: return
@@ -7605,7 +7606,7 @@ func _refresh_building_attention():
 	for category in building_attention_buttons:
 		var button=building_attention_buttons[category]
 		_bind_squad_button(button,status[category],not _squad_actions_available())
-		button.text=("待接手工地" if category=="unassigned" else "受損建築")+" · %d · 下一座" % status[category].size()
+		button.text=("待出兵建築" if category=="waiting" else ("待接手工地" if category=="unassigned" else "受損建築"))+" · %d · 下一座" % status[category].size()
 
 func _focus_building_attention(category):
 	if not _squad_actions_available() or not compact_menu.visible or not building_attention_buttons.has(category):return
