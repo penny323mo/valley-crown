@@ -14,6 +14,13 @@ const Rules=preload("res://scripts/rules.gd")
 var checkpoint_path=CheckpointStore.PATH
 var expedition_checkpoint_path=ExpeditionCheckpointStore.PATH
 var checkpoint_status=""
+const AutoCheckpoint=preload("res://scripts/auto_checkpoint.gd")
+var auto_checkpoint_path=AutoCheckpoint.PATH
+var auto_checkpoint_enabled=false
+var auto_checkpoint_status=""
+var auto_checkpoint_last_attempt=""
+var auto_checkpoint_pending=""
+var auto_checkpoint_writes=0
 var backup_name=""
 var backup_expedition=false
 var backup_info={}
@@ -175,7 +182,7 @@ func _ready():
 	buttons.add_theme_constant_override("separation", 10)
 	card.add_child(buttons)
 	footer = Label.new()
-	footer.text = "關閉遊戲不會保留戰役。"
+	footer.text = "關閉前請確認存檔成功。"
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.add_theme_font_size_override("font_size", 13)
 	footer.add_theme_color_override("font_color", Color("b8b8ae"))
@@ -200,6 +207,7 @@ func _layout():
 	var short_landscape = available.x > available.y and available.y < 500.0
 	var margin = 24.0 if available.x >= 360.0 else 16.0
 	var home = page == "home"
+	var home_auto=home and (not auto_checkpoint_status.is_empty() or FileAccess.file_exists(auto_checkpoint_path))
 	var width = minf(410.0 if wide else 440.0, available.x - margin * 2.0)
 	var x = available.x * 0.08 if wide else (available.x - width) * 0.5
 	crest.visible = false
@@ -235,7 +243,7 @@ func _layout():
 	var height: float
 	var y: float
 	if home:
-		height = actions_height + (48.0 if short_landscape and buttons.get_child_count()>3 else (104.0 if short_landscape else (100.0 if buttons.get_child_count()>4 else 144.0)))
+		height = actions_height + ((100.0 if home_auto else 48.0) if short_landscape and buttons.get_child_count()>3 else (104.0 if short_landscape else (100.0 if buttons.get_child_count()>4 else 144.0)))
 		y = minf(available.y - height - 28.0, available.y * 0.49) if not short_landscape else available.y - height - 16.0
 		y = maxf(16.0, y)
 		identity.position = Vector2(x, maxf(14.0, y - identity_height - 24.0))
@@ -437,8 +445,17 @@ func _show_page(next_page: String):
 			_add_button("讀取存檔（取代目前戰役）", "LoadCheckpointButton", _load_checkpoint)
 		if FileAccess.file_exists(expedition_checkpoint_path):
 			_add_button("讀取遠征存檔（取代目前戰役）", "LoadExpeditionCheckpointButton", func(): _load_checkpoint(true))
+		_add_button("自動備存設定", "AutoCheckpointSettingsButton", func():_show_page("auto_checkpoint"))
 		_add_button("本機備存", "CheckpointBackupsButton", func(): _show_page("checkpoint_backups"))
 		_add_button("返回", "CheckpointBackButton", func(): _show_page("home"))
+	elif page == "auto_checkpoint":
+		heading.text="自動備存"
+		description.text="\n\n自動備存："+("本次開啟" if auto_checkpoint_enabled else "關閉")+"。只於正常暫停時保存普通戰役至獨立槽，不覆蓋手動存檔；重新開啟遊戲後預設關閉。強制關閉前未必能保存，只支援相同版本。\n"+auto_checkpoint_status
+		if FileAccess.file_exists(auto_checkpoint_path):description.text+="\n"+_auto_slot_summary()
+		_add_button("關閉自動備存" if auto_checkpoint_enabled else "本次開啟自動備存", "ToggleAutoCheckpointButton", _toggle_auto_checkpoint)
+		if FileAccess.file_exists(auto_checkpoint_path):
+			_add_button("讀取自動備存（取代本局）", "LoadAutoCheckpointButton", _load_auto_checkpoint)
+		_add_button("返回存檔", "AutoCheckpointBackButton", func():_show_page("checkpoint"))
 	elif page == "checkpoint_backups":
 		heading.text="本機備存"
 		description.text=checkpoint_status+"\n\n保留已儲存進度，不是目前未儲存戰役。相同版本同類備存可讀，讀取不覆寫存檔；舊版不會轉換。"
@@ -491,6 +508,10 @@ func _show_page(next_page: String):
 		else:
 			_add_button("開始戰役", "StartMatchButton", func(): _show_page("battle_groups"))
 			_add_button("前線遠征任務", "ExpeditionHomeButton", func(): selected_mode="expedition";selected_victory_mode="conquest";_show_page("setup"))
+		if not is_instance_valid(match_node) and FileAccess.file_exists(auto_checkpoint_path):
+			_add_button("繼續上次（自動備存）", "ContinueAutoCheckpointButton", _load_auto_checkpoint)
+			description.text+="\n"+_auto_slot_summary()
+		if not auto_checkpoint_status.is_empty():description.text+="\n"+auto_checkpoint_status
 		_add_button("兵種與建築圖鑑", "CatalogueMenuButton", func(): manual_section=0;manual_index=0;_show_page("manual"))
 		_add_button("本機存檔", "CheckpointMenuButton", func(): _show_page("checkpoint"))
 		_add_button("教學", "HelpButton", func(): _show_page("help"))
@@ -531,6 +552,7 @@ func _replace_match():
 	match_node.main_menu_requested.connect(_open_menu)
 	match_node.restart_requested.connect(_restart_match)
 	match_node.setup_requested.connect(_reconfigure_finished_match)
+	_connect_auto_checkpoint(match_node)
 	add_child(match_node)
 	_release_menu_focus()
 	manual_preview.clear_model()
@@ -548,6 +570,7 @@ func _open_menu():
 	match_node._quarantine_camera_keys()
 	match_node.paused = true
 	match_node.tick_accumulator = 0.0
+	_schedule_auto_checkpoint(match_node)
 	match_node._sync_audio()
 	match_node.process_mode = Node.PROCESS_MODE_DISABLED
 	match_node.hide()
@@ -703,9 +726,11 @@ func _load_checkpoint(expedition=false):
 	transition_busy=true
 	call_deferred("_restore_checkpoint",expedition)
 
-func _restore_checkpoint(expedition=false,backup_name=""):
+func _restore_checkpoint(expedition=false,backup_name="",automatic=false):
 	var result={}
-	if not backup_name.is_empty():
+	if automatic:
+		result=AutoCheckpoint.read_slot(Rules.BUILD_ID,auto_checkpoint_path)
+	elif not backup_name.is_empty():
 		result=CheckpointBackups.read(expedition_checkpoint_path if expedition else checkpoint_path,backup_name,Rules.BUILD_ID,expedition)
 	else:
 		result=ExpeditionCheckpointStore.read_slot(Rules.BUILD_ID,expedition_checkpoint_path) if expedition else CheckpointStore.read_slot(Rules.BUILD_ID,checkpoint_path)
@@ -726,6 +751,7 @@ func _restore_checkpoint(expedition=false,backup_name=""):
 	match_node=candidate
 	selected_mode=candidate.skirmish_mode;selected_victory_mode=candidate.victory_mode;selected_layout=candidate.layout_id;selected_difficulty=candidate.ai_difficulty
 	candidate.main_menu_requested.connect(_open_menu);candidate.restart_requested.connect(_restart_match);candidate.setup_requested.connect(_reconfigure_finished_match)
+	_connect_auto_checkpoint(candidate)
 	candidate.process_mode=Node.PROCESS_MODE_DISABLED
 	candidate.set_process(true)
 	checkpoint_status="已讀取存檔，戰役保持暫停。按繼續返回。"
@@ -758,3 +784,39 @@ func _reconfigure_finished_match():
 	if not is_instance_valid(match_node) or not match_node.game_over or transition_busy:return
 	selected_mode=match_node.skirmish_mode;selected_victory_mode=match_node.victory_mode;selected_layout=match_node.layout_id;selected_difficulty=match_node.ai_difficulty
 	_open_menu();_show_page("battle_groups")
+
+func _connect_auto_checkpoint(game):
+	game.paused_checkpoint_requested.connect(func():_schedule_auto_checkpoint(game))
+
+func _toggle_auto_checkpoint():
+	auto_checkpoint_enabled=not auto_checkpoint_enabled
+	auto_checkpoint_last_attempt=""
+	if auto_checkpoint_enabled and is_instance_valid(match_node):_schedule_auto_checkpoint(match_node)
+	_show_page("auto_checkpoint")
+
+func _schedule_auto_checkpoint(game):
+	if not auto_checkpoint_enabled or transition_busy or game!=match_node or not AutoCheckpoint.supported(game) or not game.paused:return
+	var key=str(game.get_instance_id())+":"+str(game.tick_count)
+	if key==auto_checkpoint_last_attempt or key==auto_checkpoint_pending:return
+	auto_checkpoint_pending=key
+	call_deferred("_write_auto_checkpoint",game.get_instance_id(),key)
+
+func _write_auto_checkpoint(instance_id,key):
+	if auto_checkpoint_pending==key:auto_checkpoint_pending=""
+	if not auto_checkpoint_enabled or transition_busy or not is_instance_valid(match_node) or match_node.get_instance_id()!=instance_id or not match_node.paused or not AutoCheckpoint.supported(match_node):return
+	var current=str(instance_id)+":"+str(match_node.tick_count)
+	if current!=key or key==auto_checkpoint_last_attempt:return
+	auto_checkpoint_last_attempt=key
+	var result={"ok":false,"reason":"SLOT_CONFLICT"} if ProjectSettings.globalize_path(auto_checkpoint_path) in [ProjectSettings.globalize_path(checkpoint_path),ProjectSettings.globalize_path(expedition_checkpoint_path)] else AutoCheckpoint.save_slot(match_node,auto_checkpoint_path)
+	auto_checkpoint_status="上次自動備存成功：遊戲 %d 秒。" % int(result.tick/20) if result.ok else "自動備存失敗，舊備存未替換："+str(result.get("reason","UNKNOWN"))
+	if result.ok:auto_checkpoint_writes+=1
+	if menu_layer.visible and page in ["home","checkpoint","auto_checkpoint"]:_show_page(page)
+
+func _load_auto_checkpoint():
+	if transition_busy:return
+	transition_busy=true
+	call_deferred("_restore_checkpoint",false,"",true)
+
+func _auto_slot_summary():
+	var result=AutoCheckpoint.read_slot(Rules.BUILD_ID,auto_checkpoint_path)
+	return "可繼續：遊戲 %d 秒。讀取後保持暫停。" % int(result.data.game.tick_count/20) if result.ok else "現有自動備存暫不可讀："+str(result.get("reason","UNKNOWN"))

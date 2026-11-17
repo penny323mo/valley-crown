@@ -3,7 +3,7 @@
   "upstream_sha256": "dce08bd4fd91aa8aa76ed8fea4b694c2dfb8550f67871e326843212ddbeb88b4",
   "license": "assets/fonts/NOTO-LICENSE.txt (SIL Open Font License 1.1)",
   "renamed_family": "Valley Crown UI",
-  "subset_sha256": "131ba4023e71278864b2f117bed75dc66f7600fafbbc043efa8d1327b8dfce89",
+  "subset_sha256": "224f3fa22768faf8af3cf9558e65067bbe203f34db508c29efd4ba5475a8600f",
   "required_codepoints": [
     32,
     33,
@@ -411,6 +411,7 @@
     24341,
     24369,
     24373,
+    24375,
     24418,
     24433,
     24441,
@@ -520,6 +521,7 @@
     26355,
     26356,
     26366,
+    26367,
     26368,
     26371,
     26377,
@@ -543,6 +545,7 @@
     26847,
     26997,
     27085,
+    27133,
     27161,
     27169,
     27171,
@@ -602,6 +605,7 @@
     29280,
     29289,
     29376,
+    29544,
     29575,
     29579,
     29609,
@@ -888,7 +892,7 @@
     65307,
     65311
   ],
-  "coverage_count": 882,
-  "bytes": 420728,
+  "coverage_count": 886,
+  "bytes": 422884,
   "scope": "Base UI glyphs plus all current runtime GDScript non-ASCII text; data coverage, not render acceptance"
 }

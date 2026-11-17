@@ -7,6 +7,7 @@ var tactical_final_advance=false
 signal main_menu_requested
 signal restart_requested
 signal setup_requested
+signal paused_checkpoint_requested
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
 const EscortPolicy=preload("res://scripts/escort_policy.gd")
 const AIGatherLoad=preload("res://scripts/ai_gather_load.gd")
@@ -796,6 +797,7 @@ func _tick(dt):
 		paused=true; inactivity_paused=true; tick_accumulator=0; _cancel_mode()
 		_sync_audio()
 		_message("180 秒內沒有採集、建造或交戰進展，已暫停。按繼續可重設計時。",INF)
+		paused_checkpoint_requested.emit()
 	if ai_enabled and skirmish_mode not in ["survival","expedition","escort"] and not game_over and not paused and tick_count%20==0: _ai_update()
 	_update_repeat_training()
 
@@ -5164,7 +5166,9 @@ func _toggle_pause():
 		_message("請先返回遊戲視窗，再按繼續。",3); return
 	paused=not paused; tick_accumulator=0
 	_sync_audio()
-	if paused: _cancel_mode(); _message("已暫停。按繼續返回戰場。",30)
+	if paused:
+		_cancel_mode(); _message("已暫停。按繼續返回戰場。",30)
+		paused_checkpoint_requested.emit()
 	else:
 		background_paused=false
 		if inactivity_paused: no_progress_ticks=0; inactivity_paused=false
@@ -5180,6 +5184,7 @@ func _notification(what):
 		if not game_over: paused=true; background_paused=true; tick_accumulator=0
 		_sync_audio()
 		_cancel_mode(); _message("已自動暫停。返回後按繼續。",30)
+		if not game_over:paused_checkpoint_requested.emit()
 	elif what==NOTIFICATION_APPLICATION_FOCUS_IN:
 		if not application_focused or background_paused: discard_return_delta=true
 		application_focused=true
