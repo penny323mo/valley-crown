@@ -138,6 +138,7 @@ const ArmyRecruitment=preload("res://scripts/army_recruitment.gd")
 var army_roster_buttons={}
 var shortcut_scroll: ScrollContainer
 var shortcut_header: VBoxContainer
+const CommandIcons=preload("res://scripts/command_icons.gd")
 const ProductionOverview=preload("res://scripts/production_overview.gd")
 var production_buttons={}
 var production_cursor={}
@@ -296,6 +297,10 @@ var touch_gesture=false
 var touch_origin=Vector2.ZERO
 var touch_previous_center=Vector2.ZERO
 var touch_previous_distance=0.0
+var touch_pinch_anchor_distance=0.0
+var touch_pinch_active=false
+const TOUCH_PINCH_SLOP_PIXELS=12.0
+const TOUCH_PINCH_SLOP_RATIO=0.06
 var middle_drag=false
 var hud_bottom: PanelContainer
 var hud_top: PanelContainer
@@ -3235,7 +3240,7 @@ func _aftermath_input(event):
 			var first=touch_points[ids[0]];var second=touch_points[ids[1]]
 			var center=(first+second)*0.5;var distance=first.distance_to(second)
 			_pan_camera(touch_previous_center-center)
-			if touch_previous_distance>0:camera_zoom=clampf(camera_zoom*touch_previous_distance/maxf(1,distance),15,46)
+			_update_touch_pinch(distance)
 			touch_previous_center=center;touch_previous_distance=distance
 
 # --- Fair, finite-frequency Demo AI01 ---
@@ -4288,6 +4293,7 @@ func _create_ui():
 		wounded_button.add_theme_font_size_override("font_size",12);wounded_button.tooltip_text="只選此兵種的受傷單位，不自動撤退或治療。選中後可使用原有回城／維修功能。";row.add_child(wounded_button)
 		var recruit_button=_button("",func():_recruit_from_roster(kind),160);recruit_button.name="ArmyRecruit_"+kind
 		recruit_button.add_theme_font_size_override("font_size",12);recruit_button.tooltip_text="毋須選建築：最多補充 3 名，分配到可用的較短生產隊列。照常付款及佔人口；不會自動重複，也不改集結點。";row.add_child(recruit_button)
+		for icon_button in [all_button,wounded_button,recruit_button]:CommandIcons.apply(icon_button,kind)
 		army_roster_buttons[kind]={"all":all_button,"wounded":wounded_button,"recruit":recruit_button}
 	var production_help=_label("生產總覽 · 點按輪流前往同類建築",13)
 	production_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(production_help)
@@ -4295,6 +4301,7 @@ func _create_ui():
 	for production_kind in ProductionOverview.KINDS:
 		var kind=production_kind
 		var production_button=_button("",func(): _focus_production(kind),160)
+		CommandIcons.apply(production_button,kind)
 		production_button.name="Production_"+kind
 		production_button.tooltip_text="顯示已落實隊列，含研發。自動待產指連續生產開啟但隊列為空；可能等待資源或人口。點按只選取建築，不會付費或生產。"
 		production_button.add_theme_font_size_override("font_size",12)
@@ -4427,6 +4434,7 @@ func _cancel_pointer_streams():
 				button.disabled=true; button.disabled=false
 	dragging=false; drag_active=false; middle_drag=false
 	touch_points.clear(); touch_world_epochs.clear(); touch_camera_pair.clear()
+	touch_pinch_active=false; touch_pinch_anchor_distance=0.0
 	all_touch_ids.clear(); gui_touch_press.clear(); action_touch_scroll.clear(); touch_gesture=false
 	if is_instance_valid(drag_rect): drag_rect.hide()
 
@@ -4682,7 +4690,7 @@ func _update_hud():
 		elif has_unit and compact_ui:
 			selection_detail.text+=" · 點空地移動／敵軍攻擊／資源採集"
 	if build_mode.is_empty():
-		help_label.text="點選單位，再點空地移動、敵軍攻擊或資源採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。窄畫面可左右滑動底列，查看全部行動。" if compact_ui else "左鍵選取／框選，再點目標落指令 · 右鍵亦可落指令 · WASD／方向鍵平移 · 滾輪縮放 · 空白鍵返回主堡"
+		help_label.text="點選單位，再點空地移動、敵軍攻擊或資源採集。單指拖曳框選；雙指移鏡／縮放。窄畫面可左右滑動底列，查看全部行動。" if compact_ui else "左鍵選取／框選，再點目標落指令 · 右鍵亦可落指令 · WASD／方向鍵平移 · 滾輪縮放 · 空白鍵返回主堡"
 		if touch_command: help_label.text="指定目標：點擊地面、資源或可見敵軍；一般移動和攻擊毋須按此鈕。"
 		if touch_command and unit_command_kind=="route":
 			selection_summary.text="規劃路線 %d / 5" % tactical_draft.size()
@@ -4806,6 +4814,7 @@ func _rebuild_actions(selection):
 		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
 			var button=_button(Rules.NAMES[kind]+"\n"+Rules.cost_label(kind)+( "\n建成後自動耕作" if kind=="farm" else "")+( "\n需城防時代" if not _kind_unlocked(kind,0) else ""),func(): _start_build(choice),100)
+			CommandIcons.apply(button,kind)
 			button.disabled=not _kind_unlocked(kind,0); actions.add_child(button)
 			# Preserve the first build target in the small-phone viewport; shelter remains next in the scroll strip.
 			if kind==Rules.BUILDABLE_KINDS[0]:actions.add_child(shelter_button)
@@ -4825,7 +4834,8 @@ func _rebuild_actions(selection):
 				actions.add_child(_button("取消集合點設定",func(): _submit("rally",{"building":ent.id,"clear":true}),120))
 			for kind in Rules.products_for(ent.kind):
 				var choice=kind
-				actions.add_child(_button("訓練"+Rules.NAMES[kind]+"\n"+Rules.cost_label(kind),func(): _submit("train",{"building":ent.id,"kind":choice}),120))
+				var train_button=_button("訓練"+Rules.NAMES[kind]+"\n"+Rules.cost_label(kind),func(): _submit("train",{"building":ent.id,"kind":choice}),120)
+				CommandIcons.apply(train_button,kind);actions.add_child(train_button)
 			if "villager" not in Rules.products_for(ent.kind):
 				var repeat_product=Rules.PRODUCES[ent.kind]
 				var repeat_generation=ent.get("repeat_generation",0)
@@ -4862,6 +4872,7 @@ func _rebuild_actions(selection):
 			for item in ent.queue:
 				var queue_id=item.queue_id
 				var cancel=_button("",func(): _queue_cancel_request(ent.id,queue_id),220 if item.kind=="age2" else 150)
+				CommandIcons.apply(cancel,item.kind)
 				cancel.name="CancelQueue%d" % queue_id
 				actions.add_child(cancel); queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
 		if ent.owned and ent.built and ent.kind=="storehouse":
@@ -5257,6 +5268,16 @@ func _box_point_in_world(point):
 	for boundary in [hud_top,hud_bottom,minimap,compact_menu_dismiss,end_panel,tutorial_panel,context_details]:
 		if is_instance_valid(boundary) and boundary.is_visible_in_tree() and boundary.get_global_rect().has_point(point): return false
 	return true
+
+func _show_box_preview(rect):
+	drag_rect.position=rect.position; drag_rect.size=rect.size; drag_rect.show()
+	var count=drag_rect.get_node_or_null("SelectionCount")
+	if count==null:
+		count=Label.new();count.name="SelectionCount";count.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		count.position=Vector2(4,4);count.add_theme_color_override("font_color",GOLD)
+		count.add_theme_color_override("font_shadow_color",Color.BLACK);count.add_theme_constant_override("shadow_offset_x",1);count.add_theme_constant_override("shadow_offset_y",1)
+		drag_rect.add_child(count)
+	count.text=str(_box_selection_ids(rect).size())
 
 func _box_selection_ids(rect):
 	var ids=[]
@@ -5714,12 +5735,25 @@ func _sync_touch_camera_pair():
 		for index in [ids[0],ids[1]]: pair.append([index,touch_world_epochs[index]])
 	if pair!=touch_camera_pair:
 		touch_camera_pair=pair
+		touch_pinch_active=false; touch_pinch_anchor_distance=0.0
 		if pair.size()==2:
 			# Called before the next drag replaces its stored position.
 			var first=touch_points[ids[0]]; var second=touch_points[ids[1]]
 			touch_previous_center=(first+second)*0.5
 			touch_previous_distance=first.distance_to(second)
+			touch_pinch_anchor_distance=touch_previous_distance
 	return ids
+
+func _update_touch_pinch(distance):
+	# Pan always follows the centroid. Span jitter is not zoom intent. Compare
+	# cumulative span to this press pair's baseline, not each tiny drag delta.
+	if not touch_pinch_active:
+		var threshold=maxf(TOUCH_PINCH_SLOP_PIXELS,touch_pinch_anchor_distance*TOUCH_PINCH_SLOP_RATIO)
+		if touch_pinch_anchor_distance>0 and absf(distance-touch_pinch_anchor_distance)>threshold:
+			# Rebase at activation: never apply the dead zone as a zoom jump.
+			touch_pinch_active=true
+		return
+	if touch_previous_distance>0: camera_zoom=clampf(camera_zoom*touch_previous_distance/maxf(1,distance),15,46)
 
 func _cleanup_touch_release(index,press_epoch):
 	if touch_press_epochs.get(index,-1)!=press_epoch: return
@@ -5784,7 +5818,7 @@ func _unhandled_input(event):
 		if middle_drag: _pan_camera(-event.relative)
 		if dragging and build_mode.is_empty() and event.position.distance_to(drag_start)>8:
 			drag_active=true; var rect=Rect2(drag_start,event.position-drag_start).abs()
-			drag_rect.position=rect.position; drag_rect.size=rect.size; drag_rect.show()
+			_show_box_preview(rect)
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			touch_points[event.index]=event.position
@@ -5810,8 +5844,7 @@ func _unhandled_input(event):
 				_clear_touch_hold()
 				if complete: _select(_box_selection_ids(rectangle))
 				return
-			var held=touch_hold.get("index",-1)==event.index and _touch_hold_clock()-touch_hold.get("started",0)>=TOUCH_HOLD_MSEC
-			var should_tap=not held and not event.canceled and touch_points.has(event.index) and touch_points.size()==1 and not touch_gesture and event.position.distance_to(touch_origin)<14
+			var should_tap=not event.canceled and touch_points.has(event.index) and touch_points.size()==1 and not touch_gesture and event.position.distance_to(touch_origin)<14
 			touch_points.erase(event.index); touch_world_epochs.erase(event.index)
 			_sync_touch_camera_pair()
 			if touch_hold.get("index",-1)==event.index: _clear_touch_hold()
@@ -5825,25 +5858,23 @@ func _unhandled_input(event):
 			var first=touch_points[active_world_ids[0]]; var second=touch_points[active_world_ids[1]]
 			var center=(first+second)*0.5; var distance=first.distance_to(second)
 			_pan_camera(touch_previous_center-center)
-			if touch_previous_distance>0: camera_zoom=clampf(camera_zoom*touch_previous_distance/maxf(1,distance),15,46)
+			_update_touch_pinch(distance)
 			touch_previous_center=center; touch_previous_distance=distance
 		elif (box_select_mode or touch_box_automatic) and touch_box_index==event.index:
 			if event.position.distance_to(touch_box_origin)>=14: touch_box_active=true
 			if touch_box_active:
 				var rect=Rect2(touch_box_origin,event.position-touch_box_origin).abs()
-				drag_rect.position=rect.position; drag_rect.size=rect.size; drag_rect.show()
+				_show_box_preview(rect)
 		# A multi-finger gesture remains quarantined until all fingers release.
 		elif not build_mode.is_empty() and not touch_gesture:
 			pointer_world=_point(_cell(_world_at(event.position))); build_preview_held=true
 		elif not touch_gesture and touch_hold.get("index",-1)==event.index and touch_hold.get("epoch",-1)==touch_press_epochs.get(event.index,-2):
 			var distance=event.position.distance_to(touch_hold.origin)
-			if _touch_hold_clock()-touch_hold.started>=TOUCH_HOLD_MSEC:
-				if distance>=14:
-					touch_box_automatic=true; touch_box_index=event.index; touch_box_origin=touch_hold.origin; touch_box_active=true
-					var rect=Rect2(touch_box_origin,event.position-touch_box_origin).abs()
-					drag_rect.position=rect.position; drag_rect.size=rect.size; drag_rect.show()
-			elif distance>=14:
-				_clear_touch_hold(); touch_gesture=true
+			# One-finger drag always box-selects; only displacement, not hold time,
+			# disambiguates from a tap. Two-finger camera input is handled above.
+			if distance>=14:
+				touch_box_automatic=true; touch_box_index=event.index; touch_box_origin=touch_hold.origin; touch_box_active=true
+				_show_box_preview(Rect2(touch_box_origin,event.position-touch_box_origin).abs())
 		elif touch_gesture or event.position.distance_to(touch_origin)>=14:
 			# Single-finger movement never pans or becomes a late tap/order.
 			touch_gesture=true; touch_command=false; rally_building=-1

@@ -359,7 +359,7 @@ func _show_page(next_page: String):
 		child.queue_free()
 	if page == "help":
 		heading.text = "教學"
-		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取，再點空地移動或敵軍攻擊；右擊亦可指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
+		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指拖曳框選；雙指移鏡／縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取，再點空地移動或敵軍攻擊；右擊亦可指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
 		_add_button("設定引導練習", "GuidedPracticeButton", func(): _show_page("tutorial_confirm") if is_instance_valid(match_node) and not match_node.game_over else _choose_battle("practice"))
 		description.text+="\n\n引導練習：正常採集、付費建造與訓練；電腦不主動遠征，靠近仍會交戰。"
 		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode not in ["battle","fortress","survival","expedition","escort","breach"]:

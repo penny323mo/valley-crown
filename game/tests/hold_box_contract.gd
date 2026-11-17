@@ -16,6 +16,8 @@ class Fixture:
  func _update_hud(): pass
  func _world_at(point): return Vector3(point.x,0,point.y)
  func _box_point_in_world(_point): return world_ok
+ func _show_box_preview(rect):
+  drag_rect.position=rect.position;drag_rect.size=rect.size;drag_rect.show()
  func _box_selection_ids(rect): boxes.append(rect); return [42,43]
  func _select(ids): selected=ids.duplicate()
 var checks=[]
@@ -39,9 +41,9 @@ func _initialize():
  var g=fixture();touch(g,0,origin,true);g.now+=349;touch(g,0,origin,false)
  check("short stationary press remains contextual tap",g.taps.size()==1 and g.boxes.is_empty());dispose(g)
  g=fixture();touch(g,0,origin,true);g.now+=350;touch(g,0,origin,false)
- check("long hold alone cannot issue movement",g.taps.is_empty() and g.boxes.is_empty() and g.selected==[42]);dispose(g)
+ check("long stationary press remains a single contextual tap",g.taps.size()==1 and g.boxes.is_empty() and g.selected==[42]);dispose(g)
  g=fixture();touch(g,0,origin,true);g.now+=349;drag(g,0,origin+Vector2(20,20),Vector2(20,20));g.now+=100;drag(g,0,origin+Vector2(60,60),Vector2(40,40));touch(g,0,origin,false)
- check("early single swipe cannot pan or arm later",g.pans.is_empty() and g.boxes.is_empty() and g.taps.is_empty());dispose(g)
+ check("early single drag keeps box ownership even on zero-area release",g.pans.is_empty() and g.boxes.is_empty() and g.taps.is_empty() and g.selected==[42]);dispose(g)
  for delta in [Vector2(60,50),Vector2(-60,50),Vector2(60,-50),Vector2(-60,-50)]:
   g=fixture();touch(g,0,origin,true);g.now+=350;drag(g,0,origin+delta,delta)
   check("hold shows rectangle "+str(delta),g.touch_box_automatic and g.drag_rect.visible and g.drag_rect.get_rect()==Rect2(origin,delta).abs())

@@ -14,6 +14,9 @@ class Fixture:
 	func _update_hud(): pass
 	func _world_at(point): return Vector3(point.x,0,point.y)
 	func _box_point_in_world(_point): return true
+	# Count completed selection only; actual preview/query is covered by routed touch_navigation_contract.
+	func _show_box_preview(rect):
+		drag_rect.position=rect.position;drag_rect.size=rect.size;drag_rect.show()
 	func _box_selection_ids(rect): boxes.append(rect); return [42]
 	func _select(ids): selected=ids.duplicate()
 var checks=[]
@@ -54,7 +57,7 @@ func _initialize():
 		var epoch=g.touch_press_epochs[0]
 		touch(g,0,Vector2(100,100),false,world_release)
 		drag(g,2,Vector2(410,100),Vector2(10,0))
-		check("3 to 2 rebases without jump "+str(world_release),g.pans==[Vector2(-5,0)] and is_equal_approx(g.camera_zoom,30.0*200.0/210.0))
+		check("3 to 2 rebases without jump "+str(world_release),g.pans==[Vector2(-5,0)] and is_equal_approx(g.camera_zoom,30.0))
 		check("released GUI/world ID excluded from camera pair",g.touch_camera_pair==[[1,g.touch_press_epochs[1]],[2,g.touch_press_epochs[2]]])
 		g._cleanup_touch_release(0,epoch)
 		check("deferred cleanup preserves active pair",g.touch_camera_pair==[[1,g.touch_press_epochs[1]],[2,g.touch_press_epochs[2]]])
@@ -66,7 +69,7 @@ func _initialize():
 	drag(g,0,Vector2(910,100),Vector2(10,0))
 	check("reused GUI ID cannot drag retained old world point",g.pans.is_empty() and g.touch_points[0]==Vector2(100,100))
 	drag(g,2,Vector2(410,100),Vector2(10,0))
-	check("GUI reuse cannot contaminate pinch pair",g.pans==[Vector2(-5,0)] and is_equal_approx(g.camera_zoom,30.0*200.0/210.0))
+	check("GUI reuse cannot contaminate pinch pair",g.pans==[Vector2(-5,0)] and is_equal_approx(g.camera_zoom,30.0))
 	g._cleanup_touch_release(0,old_epoch)
 	check("old cleanup cannot erase newer press epoch",g.touch_press_epochs[0]!=old_epoch and 0 in g.all_touch_ids)
 	dispose(g)
@@ -76,7 +79,7 @@ func _initialize():
 	touch(g,0,Vector2(100,100),false,false);touch(g,0,Vector2(400,100),true)
 	g._cleanup_touch_release(0,old_epoch)
 	drag(g,0,Vector2(410,100),Vector2(10,0))
-	check("reused world ID rebases to new press lifetime",g.pans==[Vector2(-5,0)] and is_equal_approx(g.camera_zoom,30.0*200.0/210.0) and g.touch_world_epochs[0]==g.touch_press_epochs[0])
+	check("reused world ID rebases to new press lifetime",g.pans==[Vector2(-5,0)] and is_equal_approx(g.camera_zoom,30.0) and g.touch_world_epochs[0]==g.touch_press_epochs[0])
 	dispose(g)
 	g=fixture();trio(g)
 	drag(g,2,Vector2(410,100),Vector2(10,0))
