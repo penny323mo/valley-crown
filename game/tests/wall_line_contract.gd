@@ -6,6 +6,8 @@ const Restore=preload("res://scripts/checkpoint_restore.gd")
 var checks=[]
 var g
 var crew=[]
+var layout_geometry=[]
+var layout_label=""
 func check(n,v):
  checks.append({"name":n,"passed":bool(v)})
  if not v:push_error(n)
@@ -133,9 +135,86 @@ func run():
  release(new_button)
  check("newer replacement button press still confirms exactly once",g.commands.size()==3)
  check("ledger audit remains conserved",g.economy.audit().ok)
+ g.free()
+ await run_layout()
  finish()
 func finish():
  var failed=checks.filter(func(c):return not c.passed).size()
- print(JSON.stringify({"suite":"wall_line_contract","checks":checks,"failed":failed,"scope":"Controlled current game UI planning plus actual paid commands, ticks, travel, construction and checkpoint continuation; no phone or natural battle claim."}))
+ print(JSON.stringify({"suite":"wall_line_contract","checks":checks,"failed":failed,"geometry":layout_geometry,"scope":"Controlled current game UI planning plus actual paid commands, ticks, travel, construction and checkpoint continuation; no phone or natural battle claim."}))
  if is_instance_valid(g):g.free()
  quit(1 if failed else 0)
+
+# Same four-size 76-check layout regression: actual Control geometry and routed
+# synthetic screen touches/drags. Not rendered-image or physical-device QA.
+func layout_check(n,v):
+ check("layout "+layout_label+" "+n,v)
+func layout_settle():
+ for i in 5:await process_frame
+func layout_touch(p,down):
+ var e=InputEventScreenTouch.new();e.index=3;e.position=p;e.pressed=down
+ root.push_input(e,true)
+func layout_drag(a,b):
+ layout_touch(a,true)
+ var e=InputEventScreenDrag.new();e.index=3;e.position=b;e.relative=b-a
+ root.push_input(e,true);layout_touch(b,false)
+func layout_tap(button):
+ var p=button.get_global_rect().get_center()
+ layout_touch(p,true);layout_touch(p,false)
+func layout_reveal(button):
+ var viewport=g.action_scroll.get_global_rect()
+ for i in 12:
+  if viewport.encloses(button.get_global_rect()):return true
+  var center=viewport.get_center();var delta=minf(120,viewport.size.x*.35)
+  if button.get_global_rect().position.x<viewport.position.x:layout_drag(center-Vector2(delta/2,0),center+Vector2(delta/2,0))
+  else:layout_drag(center+Vector2(delta/2,0),center-Vector2(delta/2,0))
+  await layout_settle()
+ return viewport.encloses(button.get_global_rect())
+func layout_row_plot():
+ var w=g._get_entity(g._selected_builder())
+ for dz in range(-12,13):
+  for dx in range(-12,13):
+   g.pointer_world=g._snap_build_position("wall",w.pos+Vector3(dx,0,dz))
+   if g._build_preview_reason().is_empty():g.build_preview_held=true;return true
+ return false
+func run_layout():
+ for size in [Vector2i(390,844),Vector2i(320,568),Vector2i(568,320),Vector2i(1280,800)]:
+  root.size=size;await layout_settle();layout_label=str(size)
+  g=load("res://main.tscn").instantiate();g.history_path="user://wall-line-layout-"+str(Time.get_ticks_usec());root.add_child(g);g.set_process(false);g.test_mode=true;g.ai_enabled=false;g._test_reset();g.set_process(false);await layout_settle()
+  var ids=[]
+  for e in g.entities:
+   if e.team==0 and e.alive and e.kind=="villager" and ids.size()<3:ids.append(e.id)
+  g._publish_faction_views();g._select(ids);g._start_build("wall");await layout_settle();g._layout_ui();await layout_settle()
+  layout_check("actual viewport requested",root.get_visible_rect().size==Vector2(size))
+  var bounds=Rect2(Vector2.ZERO,Vector2(size));var top=g.hud_top.get_global_rect();var bottom=g.hud_bottom.get_global_rect()
+  layout_check("top and bottom contained",bounds.encloses(top) and bounds.encloses(bottom))
+  layout_check("HUD no overlap with battlefield gap",top.end.y+40<bottom.position.y)
+  var count=g.actions.get_node("WallLineCount")
+  layout_check("scroll reaches count",await layout_reveal(count))
+  layout_check("scroll issues no commands",g.commands.is_empty() and g.wall_line_count==1)
+  layout_tap(count);await layout_settle();layout_check("touch count activates once",g.wall_line_count==2)
+  count=g.actions.get_node("WallLineCount");layout_check("count still reachable",await layout_reveal(count));layout_tap(count);await layout_settle();layout_check("touch count reaches three",g.wall_line_count==3)
+  var direction=g.actions.get_node("WallLineDirection");layout_check("scroll reaches direction",await layout_reveal(direction));layout_tap(direction);await layout_settle();layout_check("touch direction activates once",g.wall_line_vertical and not g.build_preview_held)
+  layout_check("UI touches no world build",g.commands.is_empty() and g.selected==ids)
+  layout_check("visible legal row fixture found",layout_row_plot());g._update_ghost();g._update_hud();await layout_settle()
+  layout_check("scroll back reaches confirm",await layout_reveal(g.build_confirm))
+  top=g.hud_top.get_global_rect();bottom=g.hud_bottom.get_global_rect()
+  layout_check("row plan HUD stays within viewport",bounds.encloses(top) and bounds.encloses(bottom))
+  layout_check("row plan leaves battlefield gap",top.end.y+40<bottom.position.y)
+  var overlap=false
+  var rects=[]
+  for button in g.actions.get_children():
+   if button is Button:
+    for other in rects:
+     if other.intersects(button.get_global_rect()):overlap=true
+    rects.append(button.get_global_rect())
+  layout_check("row action buttons do not overlap",not overlap)
+  var buttons=[]
+  for b in g.actions.get_children():
+   if b is Button:buttons.append({"text":b.text,"rect":str(b.get_global_rect())})
+  layout_geometry.append({"size":str(size),"top":str(top),"bottom":str(bottom),"scroll":str(g.action_scroll.get_global_rect()),"buttons":buttons,"summary":g.selection_summary.text,"queue":g.queue_label.text})
+  layout_tap(g.build_confirm);await layout_settle();layout_check("touch confirm exactly three queued commands",g.commands.size()==3)
+  layout_check("confirm exits placement without changing selected workers",g.build_mode.is_empty() and g.selected==ids)
+  var unique={}
+  for command in g.commands:unique[command.builder]=true
+  layout_check("UI leaked no extra orders",g.commands.all(func(c):return c.type=="build" and c.kind=="wall") and unique.size()==3)
+  g.free();await layout_settle()

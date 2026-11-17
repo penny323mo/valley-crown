@@ -4323,6 +4323,9 @@ func _layout_ui():
 	for label in [selection_summary,queue_label]:
 		if label.get_parent()!=info_parent: label.reparent(info_parent)
 	queue_label.custom_minimum_size.x=0 if narrow or queue_label.text.is_empty() else 222
+	# The compact row price must own its measured one-line width, rather than
+	# shrinking to a one-glyph column beside the expanding summary label.
+	queue_label.autowrap_mode=TextServer.AUTOWRAP_OFF if short_ui and build_mode=="wall" and wall_line_count>1 else TextServer.AUTOWRAP_WORD_SMART
 	compact_narrow_info.visible=stack_info
 	var margin=6.0 if short_ui or narrow else 8.0
 	var width=size.x-margin*2
@@ -4579,6 +4582,12 @@ func _update_hud():
 		help_label.text=selection_detail.text
 	if not build_mode.is_empty() or rally_building>=0 or touch_command or box_select_mode:
 		selection_summary.text=selection_detail.text.split("；")[0]
+	if short_ui and build_mode=="wall" and wall_line_count>1:
+		# Short landscape shares a row with price. Keep full instructions in
+		# Details instead of competing minimum widths wrapping the HUD offscreen.
+		var reason=_build_preview_reason()
+		selection_summary.text=("位置已選，按確認" if build_preview_held else "點空地選位置") if reason.is_empty() else "不可建造，見詳情"
+		queue_label.text="%d段 · 木%d" % [wall_line_count,wall_line_count*30]
 	call_deferred("_layout_ui")
 
 func _rebuild_actions(selection):
