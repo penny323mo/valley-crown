@@ -1,4 +1,4 @@
-name: Capture v89 guided practice into matching evidence directory
+name: Capture v90 opt-in autosave and exact paused restore
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [guided_practice]
+        scenario: [pause_recovery]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,22 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14327405392/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='8cd6343544e08872dcde841738e167d5fe1064c33ef97d022de50706301b86e4'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14327108948/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='2746c9f384df0b7722819636e77025f41168db872e8797f9e844151a58ba38f7'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='fe58b3ac563dbba01e6c80f2f35087dba3306816ecc05cd584780a9cd72f70c8'
+          assert hashlib.sha256(pck).hexdigest()=='a8ec6a3ff650b3780c379c77271e272cf7ca256554faeeecf293f494c8a9f802'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-tutorial.gd /tmp/capture/capture.gd
+          cp ci/capture-autosave.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v89-tutorial-${{ matrix.scenario }}
+          name: genuine-v90-autosave-${{ matrix.scenario }}
           path: |
-            /tmp/v89-capture/*.png
-            /tmp/v89-capture/report.json
+            /tmp/v90-autosave-capture/*.png
+            /tmp/v90-autosave-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
