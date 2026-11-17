@@ -4889,10 +4889,6 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("警戒前進",_start_advance_command,100))
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
-		var withdraw_button=_button("整隊撤離",_start_withdraw_command,110)
-		withdraw_button.name="ArmyWithdraw"
-		withdraw_button.tooltip_text="點撤離地點；只移動所選軍隊，遠程在前、近戰在後。沿途不迎擊但仍會受傷；地形會調整落點，不保證保持陣形。"
-		actions.add_child(withdraw_button)
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
 		actions.add_child(_button("護送",_start_escort_command,100))
 		if EscortBatch.supports(faction_views[0].records(),selected):
@@ -4921,6 +4917,10 @@ func _rebuild_actions(selection):
 
 	if _has_selected_military():
 		actions.add_child(_button("戰術路線",_start_tactical_route,100))
+		var withdraw_button=_button("整隊撤離",_start_withdraw_command,110)
+		withdraw_button.name="ArmyWithdraw"
+		withdraw_button.tooltip_text="點撤離地點；只移動所選軍隊，遠程在前、近戰在後。沿途不迎擊但仍會受傷；地形會調整落點，不保證保持陣形。"
+		actions.add_child(withdraw_button)
 
 func _place_context_detail_action():
 	if not is_instance_valid(actions) or not is_instance_valid(context_detail_button):return
