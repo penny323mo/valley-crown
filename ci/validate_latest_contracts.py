@@ -187,7 +187,7 @@ def read_report(stage,suite):
  if suite in ARMY_CONTRACTS:
   spec=ARMY_CONTRACTS[suite];rows=[l for l in log.splitlines() if l.startswith('{')]
   require(len(rows)==1,'Missing/duplicate army report')
-  d=parse_json(rows[0]);expected_keys={'suite','checks','failed'} | set(spec.get('identity',{})) | ({'scope'} if suite=='army_formation_integration' or 'scope' in spec else set()) | ({'geometry'} if suite=='wall_line_contract' else set());require(set(d)==expected_keys and d['suite']==spec['suite'] and d['failed']==0,'Wrong army report identity')
+  d=parse_json(rows[0]);expected_keys={'suite','checks','failed'} | set(spec.get('identity',{})) | ({'scope'} if suite=='army_formation_integration' or 'scope' in spec else set()) | ({'geometry'} if suite=='wall_line_contract' else set());require(set(d)==expected_keys and d['suite']==spec['suite'] and type(d['failed']) is int and d['failed']==0,'Wrong army report identity')
   if suite=='wall_line_contract':
    geometry=d['geometry'];require(type(geometry) is list and len(geometry)==4,'Wrong wall geometry count')
    require([g.get('size') for g in geometry]==['(390, 844)','(320, 568)','(568, 320)','(1280, 800)'],'Wrong wall viewport identities')

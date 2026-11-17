@@ -178,4 +178,25 @@ class CurrentObjectiveMenuContractTests(unittest.TestCase):
             with self.assertRaises(ValueError):read(bad)
 
 
+class DifficultyFailureCountSchemaTests(unittest.TestCase):
+    """Synthetic admission negatives, not substitute gameplay evidence."""
+    def test_difficulty_suites_require_integer_zero_failed(self):
+        import validate_latest_contracts as validator
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            for suite,count in (('ai_difficulty_contract',26),('difficulty_menu_contract',15)):
+                spec=validator.ARMY_CONTRACTS[suite]
+                self.assertEqual(validator.COUNTS[suite],count)
+                report={'suite':spec['suite'],'checks':[{'name':name,'passed':True} for name in spec['names']],'failed':0,'scope':spec['scope']}
+                report.update(spec.get('identity',{}))
+                def read(value):
+                    (stage/'godot.log').write_text(json.dumps(value)+'\n')
+                    return validator.read_report(stage,suite)
+                self.assertEqual(read(report),report)
+                for failed in (False,True,0.0,1.0,'0',None,[],{}):
+                    with self.subTest(suite=suite,failed=repr(failed)):
+                        bad=copy.deepcopy(report);bad['failed']=failed
+                        with self.assertRaises(ValueError):read(bad)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
