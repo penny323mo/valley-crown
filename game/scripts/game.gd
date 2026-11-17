@@ -378,6 +378,8 @@ var traffic_tick_segments={}
 const BattlefieldLayout=preload("res://scripts/battlefield_layout.gd")
 var layout_id="valley"
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
+const AIDifficulty=preload("res://scripts/ai_difficulty.gd")
+var ai_difficulty="standard"
 var skirmish_mode="standard"
 const SiegeChallenge=preload("res://scripts/siege_challenge.gd")
 var siege_challenge=SiegeChallenge.new()
@@ -401,6 +403,7 @@ func _ready():
 	skirmish_mode=SkirmishPolicy.valid(skirmish_mode)
 	victory_mode=valid_victory_mode(victory_mode)
 	if victory_mode in ["control","supply"]: skirmish_mode="standard"
+	ai_difficulty=AIDifficulty.valid_for(skirmish_mode,victory_mode,ai_difficulty)
 	layout_id=BattlefieldLayout.valid(layout_id) if BattlefieldLayout.supported(skirmish_mode,victory_mode) else "valley"
 	_sync_web_display_scale()
 	audio_cues=preload("res://scripts/audio_cues.gd").new(); add_child(audio_cues)
@@ -3562,7 +3565,7 @@ func _ai_army(records,castle):
 		# Reinforcement is a whole home-mustered cohort, never a stream of
 		# isolated recruits. Defense/recovery/retreat above retain precedence.
 		var reserves=army.filter(func(ent):return ent.kind in ["spearman","archer","cavalry","siege"] and ent.id not in ai_raid_members)
-		var reinforcement=AIRaidReinforcement.batch(reserves,ai_raid_members,castle,skirmish_mode,tick_count,ai_last_raid_tick)
+		var reinforcement=AIRaidReinforcement.batch(reserves,ai_raid_members,castle,skirmish_mode,tick_count,ai_last_raid_tick,ai_difficulty,victory_mode)
 		if not reinforcement.is_empty():
 			ai_raid_members.append_array(reinforcement)
 			ai_raid_departure_count+=reinforcement.size()
@@ -3575,10 +3578,12 @@ func _ai_army(records,castle):
 	var mustered=[]
 	for ent in army:
 		if ent.state=="idle" and _attack_distance(ent.pos,castle)<=3.0: mustered.append(ent)
-	if mustered.size()>=SkirmishPolicy.muster(skirmish_mode) and not enemy_keep.is_empty() and tick_count-ai_last_raid_tick>=SkirmishPolicy.interval(skirmish_mode):
+	if mustered.size()>=SkirmishPolicy.muster(skirmish_mode) and not enemy_keep.is_empty() and tick_count-ai_last_raid_tick>=AIDifficulty.interval(skirmish_mode,victory_mode,ai_difficulty) and AIDifficulty.initial_ready(skirmish_mode,victory_mode,ai_difficulty,tick_count):
 		ai_raid_members.clear()
-		for ent in mustered: ai_raid_members.append(ent.id)
-		ai_raid_departure_count=mustered.size(); ai_raid_keep=enemy_keep.duplicate(true); ai_last_raid_tick=tick_count; ai_raids+=1
+		var cohort=[]
+		for ent in mustered:cohort.append(ent.id)
+		ai_raid_members=AIDifficulty.limit(cohort,skirmish_mode,victory_mode,ai_difficulty)
+		ai_raid_departure_count=ai_raid_members.size(); ai_raid_keep=enemy_keep.duplicate(true); ai_last_raid_tick=tick_count; ai_raids+=1
 		_submit("order",{"ids":ai_raid_members.duplicate(),"target":-1 if enemy_keep.remembered else enemy_keep.id,"position":enemy_keep.pos},1)
 		ai_status.army="raid_departure"; return
 	for ent in army:

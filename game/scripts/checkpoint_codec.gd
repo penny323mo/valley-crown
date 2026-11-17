@@ -20,7 +20,7 @@ const GAME_FIELDS=[
  "ai_enabled","ai_clock","raid_clock","ai_raids","ai_opening_assigned","ai_last_raid_tick","ai_raid_members",
  "ai_home_defense_targets","ai_raid_departure_count","ai_raid_keep","ai_raid_retreating","ai_scout_attempts","ai_scout_moves",
  "ai_claimed_workers","ai_build_submitted","ai_budget","ai_status","ai_site_recovery","ai_fortify_attempts","ai_control_targets",
- "layout_id","skirmish_mode","victory_mode","battle_speed","visible_cells","explored_cells","unit_action_cues",
+ "layout_id","skirmish_mode","victory_mode","ai_difficulty","battle_speed","visible_cells","explored_cells","unit_action_cues",
  "selected","groups","camera_focus","camera_zoom","idle_worker_cursor","vacant_farm_cursor","production_cursor","building_attention_cursor",
  "spawn_availability_polls","spawn_candidate_checks","owned_motion_witness_tick"]
 const MODULE_FIELDS={
@@ -158,7 +158,7 @@ static func game_types(record:Dictionary)->bool:
    if not record[key] is bool:return false
   elif key in arrays:
    if not record[key] is Array:return false
-  elif key in ["layout_id","skirmish_mode","victory_mode"]:
+  elif key in ["layout_id","skirmish_mode","victory_mode","ai_difficulty"]:
    if not record[key] is String:return false
   elif key=="camera_focus":
    if not record[key] is Vector3 or not finite_position(record[key]):return false
@@ -167,6 +167,8 @@ static func game_types(record:Dictionary)->bool:
  # Unlike a new-game menu default, a saved unknown layout must never silently
  # fall back to valley. World identity is part of the exact-build authority.
  if Layout.valid(record.layout_id)!=record.layout_id:return false
+ if record.ai_difficulty not in ["standard","easy"]:return false
+ if record.ai_difficulty=="easy" and (record.skirmish_mode!="standard" or record.victory_mode!="conquest"):return false
  if record.layout_id!="valley" and not Layout.supported(record.skirmish_mode,record.victory_mode):return false
  if record.battle_speed not in [0.5,1.0,2.0]:return false
  for key in ["age_completed_tick","military_tech_completed","completed_builds","trained_total","repeat_train_cursor","recovery_ticks"]:

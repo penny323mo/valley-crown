@@ -1,4 +1,5 @@
 extends RefCounted
+const Difficulty=preload("res://scripts/ai_difficulty.gd")
 ## Presentation catalogue of existing supported configurations; no new AI rules.
 const GROUPS=["經濟對戰","目標爭奪","立即交戰","劇本挑戰"]
 const OPTIONS=[
@@ -16,7 +17,7 @@ static func option(id:String)->Dictionary:
  for item in OPTIONS:
   if item.id==id:return item
  return {}
-static func briefing(mode:String,victory:String)->String:
+static func briefing(mode:String,victory:String,difficulty:String="standard")->String:
  var opening="5 名村民、1 名斥候及標準起始資源；由採集與建造開始。"
  var enemy="標準電腦：至少 5 兵出征，兩次遠征至少相隔 90 秒。"
  var win="摧毀敵方主堡。"
@@ -38,6 +39,7 @@ static func briefing(mode:String,victory:String)->String:
   opening+="可用分開本機存檔，普通戰役存檔不變；只支援相同版本。"
   enemy="固定守軍與一次 6 人反攻，不使用經濟 AI，不消耗敵方資源；攻破哨站後 30 秒出發。"
   win="送抵100糧與付費訓練2軍人、探索箭塔、攻破哨站、擊退反攻、摧毀敵堡，依次完成五階段。"
+ if Difficulty.easy(mode,victory,difficulty):enemy="較低襲擊壓力："+Difficulty.details("easy")
  if victory!="control" and mode in ["standard","pressure","battle","fortress"]:enemy+="出征騎兵會襲擊視野內無護衛的外圍村民；派兵護衛或撤回主堡。"
  if mode in ["battle","fortress"]:opening+="此為對稱劇本開局，非付費建造或研究所得。"
  if victory=="control":

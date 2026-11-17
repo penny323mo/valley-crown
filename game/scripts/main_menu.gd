@@ -31,6 +31,8 @@ var manual_index=0
 var manual_back_page="help"
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 var selected_mode="standard"
+const AIDifficulty=preload("res://scripts/ai_difficulty.gd")
+var selected_difficulty="standard"
 var selected_victory_mode="conquest"
 var match_node
 var menu_layer: CanvasLayer
@@ -393,14 +395,24 @@ func _show_page(next_page: String):
 		_add_button("返回分類","BattleOptionsBackButton",func(): _show_page("battle_groups"))
 	elif page == "setup":
 		heading.text = "戰役設定"
+		selected_difficulty=AIDifficulty.valid_for(selected_mode,selected_victory_mode,selected_difficulty)
 		selected_layout=BattlefieldLayout.valid(selected_layout) if BattlefieldLayout.supported(selected_mode,selected_victory_mode) else "valley"
 		if BattlefieldLayout.supported(selected_mode,selected_victory_mode):
 			battlefield_preview.configure(selected_layout);battlefield_preview.show()
-		description.text="戰場："+BattlefieldLayout.title(selected_layout)+"\n"+BattlefieldLayout.details(selected_layout)+"\n\n"+BattleSelection.briefing(selected_mode,selected_victory_mode)
+		description.text="戰場："+BattlefieldLayout.title(selected_layout)+"\n"+BattlefieldLayout.details(selected_layout)+"\n\n"+BattleSelection.briefing(selected_mode,selected_victory_mode,selected_difficulty)
+		if AIDifficulty.supported(selected_mode,selected_victory_mode):
+			description.text+="\n\n電腦難度："+AIDifficulty.title(selected_difficulty)
+			_add_button("電腦難度："+AIDifficulty.title(selected_difficulty),"ChooseDifficultyButton",func():_show_page("difficulty"))
 		if BattlefieldLayout.supported(selected_mode,selected_victory_mode):_add_button("選擇戰場", "ChooseLayoutButton", func(): _show_page("battlefield"))
 		_add_button("選擇其他戰役", "ChooseBattleButton", func(): _show_page("battle_groups"))
 		_add_button("出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("home"))
+	elif page == "difficulty":
+		heading.text="電腦難度"
+		description.text="只適用於標準戰役。\n\n"+AIDifficulty.title("easy")+"\n"+AIDifficulty.details("easy")+"\n\n標準\n"+AIDifficulty.details("standard")
+		_add_button("較低襲擊壓力","DifficultyEasyButton",func():selected_difficulty="easy";_show_page("setup"))
+		_add_button("標準","DifficultyStandardButton",func():selected_difficulty="standard";_show_page("setup"))
+		_add_button("返回","DifficultyBackButton",func():_show_page("setup"))
 	elif page == "battlefield":
 		heading.text="選擇戰場"
 		description.text="經典谷地：保留原有開局與資源布局。\n\n雙翼林地：中場林帶與兩翼資源路線；樹木仍可正常砍伐，空地仍可自由建造。\n\n只改戰場布局，不贈送資源或軍隊；普通對戰 AI、視野與付費規則不變。"
@@ -468,6 +480,8 @@ func _show_page(next_page: String):
 			else:
 				description.text = "戰役已結束。\n查看總結，或再開一局。"
 				_add_button("戰役總結", "MatchReportButton", _review_finished_match)
+			if AIDifficulty.supported(match_node.skirmish_mode,match_node.victory_mode):
+				description.text+="\n本局電腦："+AIDifficulty.title(match_node.ai_difficulty)
 			_add_button("新戰役", "NewMatchButton", func(): _show_page("confirm") if not match_node.game_over else _show_page("battle_groups"))
 		else:
 			_add_button("開始戰役", "StartMatchButton", func(): _show_page("battle_groups"))
@@ -491,6 +505,7 @@ func _restart_match():
 		selected_mode=match_node.skirmish_mode
 		selected_victory_mode=match_node.victory_mode
 		selected_layout=match_node.layout_id
+		selected_difficulty=match_node.ai_difficulty
 	_start_match()
 
 func _start_match():
@@ -504,6 +519,7 @@ func _replace_match():
 		remove_child(match_node)
 		match_node.queue_free()
 	match_node = MATCH_SCENE.instantiate()
+	match_node.ai_difficulty=AIDifficulty.valid_for(selected_mode,selected_victory_mode,selected_difficulty)
 	match_node.skirmish_mode=selected_mode
 	match_node.layout_id=selected_layout if BattlefieldLayout.supported(selected_mode,selected_victory_mode) else "valley"
 	match_node.victory_mode=selected_victory_mode
@@ -693,6 +709,7 @@ func _restore_checkpoint(expedition=false,backup_name=""):
 		transition_busy=false;_show_page("checkpoint");return
 	# Build a disposable replacement before touching the player's current game.
 	var candidate=MATCH_SCENE.instantiate()
+	candidate.ai_difficulty=result.data.game.ai_difficulty
 	candidate.skirmish_mode=result.data.game.skirmish_mode
 	candidate.layout_id=result.data.game.layout_id
 	candidate.victory_mode=result.data.game.victory_mode
@@ -702,7 +719,7 @@ func _restore_checkpoint(expedition=false,backup_name=""):
 		transition_busy=false;_show_page("checkpoint");return
 	if is_instance_valid(match_node):remove_child(match_node);match_node.queue_free()
 	match_node=candidate
-	selected_mode=candidate.skirmish_mode;selected_victory_mode=candidate.victory_mode;selected_layout=candidate.layout_id
+	selected_mode=candidate.skirmish_mode;selected_victory_mode=candidate.victory_mode;selected_layout=candidate.layout_id;selected_difficulty=candidate.ai_difficulty
 	candidate.main_menu_requested.connect(_open_menu);candidate.restart_requested.connect(_restart_match);candidate.setup_requested.connect(_reconfigure_finished_match)
 	candidate.process_mode=Node.PROCESS_MODE_DISABLED
 	candidate.set_process(true)
@@ -734,5 +751,5 @@ func _choose_battle(id:String):
 	_show_page("setup")
 func _reconfigure_finished_match():
 	if not is_instance_valid(match_node) or not match_node.game_over or transition_busy:return
-	selected_mode=match_node.skirmish_mode;selected_victory_mode=match_node.victory_mode;selected_layout=match_node.layout_id
+	selected_mode=match_node.skirmish_mode;selected_victory_mode=match_node.victory_mode;selected_layout=match_node.layout_id;selected_difficulty=match_node.ai_difficulty
 	_open_menu();_show_page("battle_groups")
