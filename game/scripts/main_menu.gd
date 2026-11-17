@@ -362,7 +362,7 @@ func _show_page(next_page: String):
 		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取，再點空地移動或敵軍攻擊；右擊亦可指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
 		_add_button("設定引導練習", "GuidedPracticeButton", func(): _show_page("tutorial_confirm") if is_instance_valid(match_node) and not match_node.game_over else _choose_battle("practice"))
 		description.text+="\n\n引導練習：正常採集、付費建造與訓練；電腦不主動遠征，靠近仍會交戰。"
-		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode not in ["battle","fortress","survival","expedition","escort"]:
+		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode not in ["battle","fortress","survival","expedition","escort","breach"]:
 			_add_button("恢復本局引導", "ResumeTutorialButton", func(): match_node._resume_tutorial();_show_page("help"))
 			description.text+="\n本局引導："+("已收起" if match_node.demo_tutorial.skipped else "顯示中")+"；恢復保留已完成步驟，不重開戰役。"
 		_add_button("戰場手冊", "FieldManualButton", func(): _show_page("manual"))
@@ -435,11 +435,11 @@ func _show_page(next_page: String):
 	elif page == "checkpoint":
 		heading.text="本機戰役存檔"
 		description.text=checkpoint_status+"\n\n普通戰役與遠征各保留一個本機存檔，再次儲存只取代同類存檔。不相容的舊存檔會先保留本機備存，備存失敗就不會覆寫。備存不等於跨版本可讀，仍只支援相同遊戲版本。讀取後保持暫停，不計離線時間。瀏覽器清除資料或私密模式可能令存檔消失；不會跨裝置同步。"
-		if is_instance_valid(match_node) and match_node.skirmish_mode=="escort":
-			description.text="護送拓荒隊暫不支援存檔；普通戰役與遠征存檔不變。\n\n"+description.text
+		if is_instance_valid(match_node) and match_node.skirmish_mode in ["escort","breach"]:
+			description.text=SkirmishPolicy.title(match_node.skirmish_mode)+"暫不支援存檔；普通戰役與遠征存檔不變。\n\n"+description.text
 		if is_instance_valid(match_node) and match_node.skirmish_mode=="expedition":
 			description.text="遠征使用分開存檔，普通戰役存檔不變。\n\n"+description.text
-		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode!="escort":
+		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode not in ["escort","breach"]:
 			_add_button("儲存目前戰役", "SaveCheckpointButton", _save_checkpoint)
 		if FileAccess.file_exists(checkpoint_path):
 			_add_button("讀取存檔（取代目前戰役）", "LoadCheckpointButton", _load_checkpoint)

@@ -10,6 +10,7 @@ const OPTIONS=[
  {"id":"supply","group":1,"mode":"standard","victory":"supply","title":"資源爭奪戰"},
  {"id":"battle","group":2,"mode":"battle","victory":"conquest","title":"快速交戰"},
  {"id":"fortress","group":2,"mode":"fortress","victory":"conquest","title":"城防會戰"},
+ {"id":"breach","group":3,"mode":"breach","victory":"conquest","title":"攻城突破"},
  {"id":"survival","group":3,"mode":"survival","victory":"conquest","title":"三波守城挑戰"},
  {"id":"escort","group":3,"mode":"escort","victory":"conquest","title":"護送拓荒隊"},
  {"id":"expedition","group":3,"mode":"expedition","victory":"conquest","title":"前線遠征"}]
@@ -26,6 +27,10 @@ static func briefing(mode:String,victory:String,difficulty:String="standard")->S
  elif mode=="pressure":enemy="積極電腦：至少 3 兵出征，兩次遠征至少相隔 60 秒；較早小隊進攻。"
  elif mode=="battle":opening="雙方開局已有城防時代、額外民居、長槍兵 2、弓手 2、騎兵 1、攻城車 1；保留村民、斥候與資源。"
  elif mode=="fortress":opening="雙方已有城防時代、兵營／靶場／馬廄／工坊、兩座箭塔與三座民居，長槍兵 4、弓手 4、騎兵 2、攻城車 2；保留村民、斥候與資源。"
+ elif mode=="breach":
+  opening="我方已有城防基地、兩座箭塔、槍兵4、弓手4、騎兵2及攻城車2在前線集結；保留村民、斥候及標準資源。"
+  enemy="固定木柵、兩座箭塔及4名守軍；無經濟AI、無中途增援。初始配置不是付費所得，正常視野、尋路及傷害不變。"
+  win="先摧毀木柵內前哨箭塔，再攻下敵堡。可正常採集補兵；任務暫不支援存檔。"
  elif mode=="survival":
   opening="完整城防基地、兩座箭塔及 12 名混合軍隊，45 秒後第一波。"
   enemy="固定三波劇本增援，普通經濟 AI 關閉，不消耗敵方資源；每波清除後有 45 秒整備。"
