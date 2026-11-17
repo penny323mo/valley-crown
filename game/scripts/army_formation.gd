@@ -3,7 +3,7 @@ extends RefCounted
 ## Owned military input; no enemy/world access and no mutation.
 const Rules=preload("res://scripts/rules.gd")
 const TYPES=["line","spread"]
-static func plan(units: Array, destination: Vector3, style: String) -> Dictionary:
+static func plan(units: Array, destination: Vector3, style: String, withdrawing: bool=false) -> Dictionary:
 	if style not in TYPES or not destination.is_finite() or units.is_empty(): return {}
 	var members=[]; var seen={}; var center=Vector3.ZERO
 	for unit in units:
@@ -17,6 +17,7 @@ static func plan(units: Array, destination: Vector3, style: String) -> Dictionar
 	forward=forward.normalized() if forward.length_squared()>0.01 else Vector3(0,0,-1)
 	var side=Vector3(-forward.z,0,forward.x)
 	var rank={"spearman":0,"cavalry":0,"scout":0,"archer":1,"siege":2}
+	if withdrawing: rank={"spearman":2,"cavalry":2,"scout":2,"archer":1,"siege":0}
 	members.sort_custom(func(a,b): return rank[a.kind]<rank[b.kind] if rank[a.kind]!=rank[b.kind] else a.id<b.id)
 	var spacing=3.0 if style=="spread" else 1.5
 	var columns=mini(8,maxi(2,ceili(sqrt(members.size())*1.5)))

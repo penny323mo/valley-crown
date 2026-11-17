@@ -994,6 +994,7 @@ func _execute(command):
 				index+=1
 			if index==0: return _reject_command(team,"請選取自己的存活單位。")
 		"target_policy": _set_target_policy(command.get("ids",[]),command.get("policy",""),team)
+		"withdraw": _order_withdraw(command.get("ids",[]),command.get("position",Vector3.INF),team)
 		"advance": _order_advance(command.get("ids",[]),command.get("position",Vector3.INF),team,command.get("formation",""))
 		"escort": _order_escort(command.get("ids",[]),command.get("target",-1),team)
 		"patrol": _order_patrol(command.get("ids",[]),command.get("position",Vector3.INF),team)
@@ -2362,6 +2363,28 @@ func _submit_target_policy(policy):
 	if not _squad_actions_available():return
 	_cancel_pointer_streams()
 	_submit("target_policy",{"ids":selected.duplicate(),"policy":policy})
+
+func _order_withdraw(ids,position,team):
+	# Destination arrangement only. Ordinary MOVE remains vulnerable and does
+	# not fire en route; no persistent retreat state, speed or damage changes.
+	if team not in [0,1] or not ids is Array or ids.size()>Rules.POP_LIMIT or not position is Vector3 or not position.is_finite():return false
+	if absf(position.x)>=Rules.MAP_WORLD_LIMIT or absf(position.z)>=Rules.MAP_WORLD_LIMIT:return false
+	for id in ids:
+		if not id is int:return false
+	var members=[];var seen={}
+	for id in ids:
+		var ent=_get_entity(id)
+		if seen.has(id) or ent.is_empty() or not ent.alive or _garrisoned(ent) or ent.team!=team or ent.category!="unit" or ent.kind not in Rules.UNIT_KINDS or ent.kind=="villager":continue
+		seen[id]=true;members.append(ent)
+	members.sort_custom(func(a,b):return a.id<b.id)
+	var slots=ArmyFormation.plan(members,position,"line",true)
+	var reserved={};var military=[]
+	for ent in members:military.append(ent.id)
+	for ent in members:
+		_path_new_command(ent)
+		_order_move(ent,slots[ent.id],reserved,military)
+		if ent.state=="move":reserved[_cell(ent.dest)]=true
+	return not members.is_empty()
 
 func _order_advance(ids,position,team,formation=""):
 	if typeof(formation)!=TYPE_STRING or formation not in ["","line","spread"]: return _reject_command(team,"陣形指令已失效。")
@@ -4660,6 +4683,8 @@ func _update_hud():
 	if touch_command and unit_command_kind=="advance":
 		selection_detail.text=("分散" if advance_formation=="spread" else "橫列")+"前進：點目的地，近戰在前、遠程在後；地形會調整落點。" if advance_formation!="" else "警戒前進：點目的地；射程內迎擊，敵軍離開後繼續，不追擊。"
 		help_label.text=selection_detail.text
+	if touch_command and unit_command_kind=="withdraw":
+		selection_detail.text="整隊撤離：點地點；遠程在前、近戰在後，不途中迎擊但仍會受傷。村民不動。"
 	if touch_command and unit_command_kind=="patrol":
 		selection_detail.text="巡邏：點另一端，在原位與目的地來回；射程內迎擊，不追擊。停止或新指令可結束。"
 		help_label.text=selection_detail.text
@@ -4864,6 +4889,10 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("警戒前進",_start_advance_command,100))
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
+		var withdraw_button=_button("整隊撤離",_start_withdraw_command,110)
+		withdraw_button.name="ArmyWithdraw"
+		withdraw_button.tooltip_text="點撤離地點；只移動所選軍隊，遠程在前、近戰在後。沿途不迎擊但仍會受傷；地形會調整落點，不保證保持陣形。"
+		actions.add_child(withdraw_button)
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
 		actions.add_child(_button("護送",_start_escort_command,100))
 		if EscortBatch.supports(faction_views[0].records(),selected):
@@ -5034,6 +5063,13 @@ func _has_selected_military():
 		var record=faction_views[0].get_record(id)
 		if record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and record.get("kind","") in Rules.UNIT_KINDS and record.kind!="villager" and not record.get("remembered",false): return true
 	return false
+
+func _start_withdraw_command():
+	if not _squad_actions_available() or not _has_selected_military():return
+	_cancel_mode()
+	unit_command_kind="withdraw";touch_command=true
+	_update_hud()
+	_message("點撤離地點：軍隊不途中迎擊，仍會受傷；村民維持原工作。",6)
 
 func _start_patrol_command():
 	if paused or game_over or not application_focused or application_suspended or not _has_selected_military(): return
@@ -5478,7 +5514,7 @@ func _send_world_order(screen,contextual=false):
 
 	if touch_command and unit_command_kind=="escort":
 		_submit_escort_target(_pick(screen));return
-	if touch_command and unit_command_kind in ["advance","patrol"]:
+	if touch_command and unit_command_kind in ["advance","patrol","withdraw"]:
 		var destination=_world_at(screen)
 		var payload={"ids":selected.duplicate(),"position":destination}
 		if unit_command_kind=="advance" and advance_formation!="": payload.formation=advance_formation
