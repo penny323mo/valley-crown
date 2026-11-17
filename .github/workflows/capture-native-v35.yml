@@ -1,4 +1,4 @@
-name: Capture v96 ordinary army withdrawal
+name: Capture v97 ordinary siege breach journey
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [withdraw]
+        scenario: [breach]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,22 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14340311558/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='094c86e609d2128cb962eb6e636e8c8099a5853a1ccd1963dfd56ff236caa2ba'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14345362026/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='9715f3039d99048992d63eb40b5d5794997a7baf9d785c2772fc750602480656'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='7f76be0ac3a4f8fc5c7e4a976c5ef1f8b693f8757a3d93c6a7089a28755bba58'
+          assert hashlib.sha256(pck).hexdigest()=='9e7e300d1400c98c980a5276629b53453b29a2e26d9baa5ce9242725a15d0efb'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-withdraw.gd /tmp/capture/capture.gd
+          cp ci/capture-breach.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v96-withdraw-${{ matrix.scenario }}
+          name: genuine-v97-breach-${{ matrix.scenario }}
           path: |
-            /tmp/v96-withdraw-capture/*.png
-            /tmp/v96-withdraw-capture/report.json
+            /tmp/v97-breach-capture/*.png
+            /tmp/v97-breach-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
