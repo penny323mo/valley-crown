@@ -88,4 +88,49 @@ class Contracts(unittest.TestCase):
             bad=copy.deepcopy(good);del bad[key]
             with self.assertRaises(ValueError):v.validate_monitor(bad)
 
+class LatestTouchNames(unittest.TestCase):
+    """Synthetic parser mutation tests, not native execution evidence."""
+    def test_exact_hold_names_and_mutations(self):
+        import validate_latest_contracts as latest
+        names=latest.INPUT_CONTRACTS['hold_box_contract']['names']
+        self.assertEqual(len(names),24)
+        self.assertEqual(names[1:3],['long stationary press remains a single contextual tap','early single drag keeps box ownership even on zero-area release'])
+        rows=[{'name':n,'passed':True} for n in names]
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'godot.log'
+            p.write_text('HOLD_BOX_CONTRACT '+json.dumps(rows)+'\n')
+            latest.read_report(td,'hold_box_contract')
+            for mode in ['old','reordered','missing','failed','extra']:
+                r=copy.deepcopy(rows)
+                if mode=='old':r[1]['name']='long hold alone cannot issue movement'
+                elif mode=='reordered':r.reverse()
+                elif mode=='missing':r.pop()
+                elif mode=='failed':r[0]['passed']=False
+                else:r[0]['extra']=True
+                p.write_text('HOLD_BOX_CONTRACT '+json.dumps(r)+'\n')
+                with self.assertRaises(ValueError):latest.read_report(td,'hold_box_contract')
+    def test_continuity_exact_schema_and_mutations(self):
+        import validate_latest_contracts as latest
+        self.assertIn('touch_camera_continuity_contract',latest.SUITES)
+        self.assertEqual(latest.COUNTS['touch_camera_continuity_contract'],18)
+        d={'checks':[{'name':n,'passed':True} for n in latest.CONTINUITY_SPEC['names']], 'failure_count':0,'scope':latest.CONTINUITY_SPEC['scope']}
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'godot.log';prefix='TOUCH_CAMERA_CONTINUITY '
+            p.write_text(prefix+json.dumps(d)+'\n');latest.read_report(td,'touch_camera_continuity_contract')
+            for mode in ['duplicate','missing','reorder','name','failed','boolcount','scope','extra','checkextra','script_error']:
+                r=copy.deepcopy(d)
+                if mode=='missing':r['checks'].pop()
+                elif mode=='reorder':r['checks'].reverse()
+                elif mode=='name':r['checks'][0]['name']='unknown'
+                elif mode=='failed':r['checks'][0]['passed']=False
+                elif mode=='boolcount':r['failure_count']=False
+                elif mode=='scope':r['scope']='phone accepted'
+                elif mode=='extra':r['extra']=1
+                elif mode=='checkextra':r['checks'][0]['extra']=1
+                text=prefix+json.dumps(r)+'\n'
+                if mode=='duplicate':text+=text
+                if mode=='script_error':text+='SCRIPT ERROR: failure\n'
+                p.write_text(text)
+                with self.assertRaises(ValueError):latest.read_report(td,'touch_camera_continuity_contract')
+
 if __name__=='__main__':unittest.main(verbosity=2)

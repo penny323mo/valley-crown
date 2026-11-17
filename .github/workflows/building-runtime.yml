@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'd80fc1794e4e3e8f41e1801f2ba5ee60943e9cff5d09ed35d24ad8a19e20bb38  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '2eaa201e750d0401f47d9d0f05fb9f647071a698d9215326118c57c1958f4f79  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -488,6 +488,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/tactical_route_input_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/touch_navigation_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/touch_navigation_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/touch_camera_continuity_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/touch_camera_continuity_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/pinch_intent_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/pinch_intent_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/command_icons_contract/receipt.json

@@ -125,6 +125,7 @@ class PackageTests(unittest.TestCase):
                 d['geometry']=[{'size':size,'top':'synthetic schema fixture','bottom':'synthetic schema fixture','scroll':'synthetic schema fixture','queue':'synthetic schema fixture','summary':'synthetic schema fixture','buttons':[{'text':'synthetic schema fixture','rect':'synthetic schema fixture'} for _ in range(6)]} for size in ['(390, 844)','(320, 568)','(568, 320)','(1280, 800)']]
                 line=json.dumps(d)
             if suite=='army_formation_integration':d=json.loads(line);d['scope']='Controlled actual game handlers; not natural battle or rendered acceptance';line=json.dumps(d)
+            if suite=='touch_camera_continuity_contract':line=latest.CONTINUITY_SPEC['prefix']+' '+json.dumps({'checks':[{'name':n,'passed':True} for n in latest.CONTINUITY_SPEC['names']],'failure_count':0,'scope':latest.CONTINUITY_SPEC['scope']})
             if suite in latest.INPUT_CONTRACTS:line=latest.INPUT_CONTRACTS[suite]['prefix']+' '+json.dumps([{'name':n,'passed':True} for n in latest.INPUT_CONTRACTS[suite]['names']])
             (stage/'godot.log').write_text(line+'\n');result=mon(stage)
             latest_rows.append({'suite':suite,'monitor':result,'report':latest.read_report(stage,suite),'assertions_executed':latest.COUNTS[suite],'receipt_sha256':q.sha(stage/'receipt.json'),'log_sha256':q.sha(stage/'godot.log')})
