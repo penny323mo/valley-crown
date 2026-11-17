@@ -429,6 +429,9 @@ func _ready():
 		var overlay=preload("res://scripts/tactical_route_overlay.gd").new()
 		overlay.name="TacticalRouteOverlay";overlay.game=self;overlay.mouse_filter=Control.MOUSE_FILTER_IGNORE
 		ui.add_child(overlay);ui.move_child(overlay,0);overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var range_overlay=preload("res://scripts/range_reference_overlay.gd").new()
+	range_overlay.name="RangeReferenceOverlay";range_overlay.game=self;range_overlay.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	ui.add_child(range_overlay);ui.move_child(range_overlay,0);range_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	audio_cues.observe(faction_views[0].records(),tick_count,Time.get_ticks_msec())
 	if skirmish_mode in ["battle","fortress","survival"] and victory_mode=="conquest":
 		var army=[]
@@ -4479,6 +4482,7 @@ func _rally_detail(record):
 
 func _update_hud():
 	if not is_instance_valid(top_resources): return
+	selection_detail.tooltip_text=""
 	_refresh_control_point_marker()
 	_refresh_idle_worker_button()
 	_refresh_attack_alert()
@@ -4542,6 +4546,9 @@ func _update_hud():
 		if ent.kind=="storehouse" and ent.get("supply_station",false):selection_detail.text+=" · 7 距離內安全待命 10 秒，每 2 秒回 1 生命；不疊加，資源交付不變"
 		if ent.kind=="town_center" and ent.owned:selection_detail.text+=" · 避難 %d/5 · 途中 %d；主堡被毀，堡內村民亦會死亡；出堡後需重新指派工作" % [ent.get("garrison_count",0),ent.get("garrison_pending_count",0)]
 		if ent.has("garrison_pending"):selection_detail.text+=" · 正步行入堡避難"
+		if ent.kind in ["archer","tower"] and ent.built:
+			selection_detail.text+=" · 射程參考 %.1f（至目標邊緣，須可見）" % Rules.RANGE[ent.kind]
+			selection_detail.tooltip_text="青色線表示至目標邊緣的射程；仍須看見目標才能射擊。只在當前視野內顯示。"
 		if ent.kind=="town_center": selection_detail.text+=" · 步兵／弓手／騎兵在堡旁安全待命 10 秒後，每 2 秒回 1 生命"
 		if worker_evacuations.has(ent.id): selection_detail.text+=" · "+_worker_safety_label(ent)
 		if ent.kind=="farm" and ent.built: selection_detail.text+=" · 選村民後點農田耕作，每田一人"
@@ -4636,6 +4643,7 @@ func _update_hud():
 		if build_mode=="wall" and wall_line_count>1:help_label.text="%d 段木柵／木材 %d／每段一人。" % [wall_line_count,wall_line_count*30]+help_label.text
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		selection_detail.text=help_label.text
+		if build_mode=="tower":selection_detail.text+=" · 射程參考 %.1f（至目標邊緣，須可見）" % Rules.RANGE.tower
 		queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else Rules.cost_label(build_mode))+(" · 資源不足" if not _can_pay({"wood":30*wall_line_count} if build_mode=="wall" else COSTS[build_mode],0) else ""); queue_label.show()
 	if rally_building>=0:
 		selection_detail.text="警戒集合點：點可見空地；新軍隊射程內迎擊，敵軍離開後繼續前進，不追擊。" if rally_mode=="advance" else "點可見空地設定集合點；主堡亦可點資源，讓新村民自動採集。"
