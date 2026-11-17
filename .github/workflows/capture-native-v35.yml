@@ -1,4 +1,4 @@
-name: Capture v84 paid wall-row preview construction and completion
+name: Capture v84 paid wall rows from clear overhead inspection camera
 on:
   push:
     branches: [main]

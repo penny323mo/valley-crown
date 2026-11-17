@@ -50,6 +50,10 @@ func run():
  check("visible legal three-segment placement",found)
  check("preview costs nothing",g.economy.bank_milli(0)==original)
  var points=g._wall_line_points().duplicate()
+ # Oblique overhead inspection only: keep the completed row readable above trees.
+ g.camera_focus=points[1];g.camera_zoom=10
+ g.camera.position=g.camera_focus+Vector3(0,24,6)
+ g.camera.look_at(g.camera_focus);g.camera.size=g.camera_zoom
  await shot("preview")
  check("preview quantity and total price visible",shots[-1].queue_visible and "3" in shots[-1].queue_text and "90" in shots[-1].queue_text)
  var before=[]
