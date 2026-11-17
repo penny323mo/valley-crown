@@ -5473,6 +5473,26 @@ func _resource_ray_distance(record,ray_origin,ray_direction):
 			if world_hit.is_finite(): nearest=minf(nearest,ray_origin.distance_squared_to(world_hit))
 	return nearest
 
+# Refine only ordinary friendly selection. Explicit orders and enemy/resource
+# targeting keep the existing picker, including resource mesh ray hits.
+func _friendly_unit_pick(screen,winner):
+	var building=faction_views[0].get_record(winner)
+	if not building.get("owned",false) or not building.get("alive",false) or building.get("remembered",true) or building.get("category","")!="building":return winner
+	# A selected villager tapping its farm means work, not selection.
+	if not paused and building.get("built",false) and building.get("kind","")=="farm" and _selected_builder()>=0:return winner
+	var center=camera.unproject_position(building.pos+Vector3(0,1,0))
+	if not center.is_finite():return winner
+	var closest=minf(34.0 if compact_ui else 24.0,center.distance_to(screen))
+	var result=winner
+	for record in faction_views[0].records().values():
+		if not record.get("owned",false) or record.get("team",-1)!=0 or not record.get("alive",false) or record.get("remembered",true) or record.get("category","")!="unit":continue
+		var point=camera.unproject_position(record.pos+Vector3(0,.6,0))
+		if not point.is_finite():continue
+		var distance=point.distance_to(screen)
+		if distance<closest or (distance==closest and result!=winner and record.id<result):
+			closest=distance;result=record.id
+	return result
+
 func _pick(screen,allow_enemy=true):
 	if not screen.is_finite(): return -1
 	var best=-1; var distance=34.0 if compact_ui else 24.0
@@ -5600,7 +5620,7 @@ func _tap(screen,is_touch):
 		return
 	if not paused and touch_command:
 		_send_world_order(screen); return
-	var id=_pick(screen,contextual_pointer)
+	var id=_friendly_unit_pick(screen,_pick(screen,contextual_pointer))
 	var tapped=faction_views[0].get_record(id)
 	if contextual_pointer and not paused and tapped.get("owned",false) and tapped.get("kind","")=="farm" and tapped.get("built",false) and _selected_builder()>=0:
 		_send_world_order(screen,true); _update_hud(); return
