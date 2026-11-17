@@ -1,5 +1,5 @@
 {
-  "build": "vc-ba4bce8252ed",
+  "build": "vc-0942e8421ff7",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -181,7 +181,7 @@
     "scripts/field_manual.gd": "23cb2f091e598170bf88a2bac2ea7819dca770f88f8500cb5be77670fd64b71e",
     "scripts/frontier_escort.gd": "0fca8cf472dd270a78714efd1b371c5cfc2469678451500f9edfa1a30d432bbb",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "ac9a255461df7a3277505bcae6ba228b4234b3fa69e0d33b07ce77feb01c0761",
+    "scripts/game.gd": "8e4954e3742f3eb3c5ee224f954c5d7a4340c07d49c3e0b297fb2e401886303d",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/garrison_checkpoint.gd": "85b9c4696b7b632600e2fe81c083015edb482f07bf100a4c08be43fba0f88427",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
@@ -216,7 +216,7 @@
     "scripts/rest_recovery.gd": "d7c5e3037c5e8bbd143be07b2c7214ad1b7546e4bf1642ef36ec68a3d3ec28e9",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "f5e33c1ba04b46753b359208a59444cb5ca26a885e0e7611be06d49be928111b",
+    "scripts/rules.gd": "1fc6c5a6635d7c32db662b592ac73d0ee6ac534cd288ca1a79a120b40c65f206",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",
@@ -228,7 +228,7 @@
     "scripts/supply_station_visual.gd": "42d017862e4d5c8b098a44617b4517377e28ac72c18b0578ab94cab782defa63",
     "scripts/tactical_route.gd": "3477c96bd0badca69e608b0b86eec030e893ef244a795d3df2027161bdb8a5f7",
     "scripts/tactical_route_overlay.gd": "87a46f6a24fa0cb03e54eec05419c01e0d23f5c98682773b458b67e78198a83e",
-    "scripts/target_priority.gd": "3aba528d7ff0a084007a588ac69abf0e51014b26b5fd6c31e462f99ec6339266",
+    "scripts/target_priority.gd": "20f2b15dc21e04ee17392343b60442ba6683cf53d846abcd3901daffa5c4c57f",
     "scripts/trade_checkpoint.gd": "7d1d4d9117510a593e61b256ce5b375e66490046f234c8e6304554a938594abd",
     "scripts/trade_policy.gd": "e3436fe753a9782fb5ed963faeb446ad0f0156383846782d91d8151a7413ffd3",
     "scripts/training_batch.gd": "f23507b0ef7a777ba71c968a880ca1d2f741e37ce49c0cbab57a497ef95516af",
