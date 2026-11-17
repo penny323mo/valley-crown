@@ -68,7 +68,7 @@ jobs:
           assert readback==data
           print('Durable archive readback verified',row['artifact_id'])
           PY
-          GITHUB_SHA=265611c5ed66cfd7413d846af20844ce3dc99138 python3 scripts/publish_web_seed.py --build vc-b38fa8cb667b --directory seed-approved --catalog approved-catalog.json
+          GITHUB_SHA=265611c5ed66cfd7413d846af20844ce3dc99138 python3 scripts/publish_web_seed.py --build vc-354618426ce6 --directory seed-approved --catalog approved-catalog.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: approved-current-seed-receipt
