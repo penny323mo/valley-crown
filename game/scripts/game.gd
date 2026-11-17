@@ -98,6 +98,7 @@ var trade_building=-1
 var tutorial_panel: PanelContainer
 var tutorial_label: Label
 var tutorial_skip: Button
+var tutorial_locate: Button
 
 var entities: Array = []
 var selected: Array = []
@@ -4085,7 +4086,10 @@ func _create_ui():
 	context_details.mouse_force_pass_scroll_events=false
 	var detail_stack=VBoxContainer.new();context_details.add_child(detail_stack)
 	var close_details=_button("關閉",func():_toggle_context_details(""),60);close_details.name="CloseBattleDetails"
-	detail_stack.add_child(close_details)
+	var detail_actions=HBoxContainer.new();detail_stack.add_child(detail_actions)
+	detail_actions.add_child(close_details)
+	tutorial_locate=_button("定位本步目標",_locate_tutorial,160);tutorial_locate.name="LocateTutorialButton"
+	detail_actions.add_child(tutorial_locate)
 	context_details_scroll=ScrollContainer.new();context_details_scroll.name="BattleDetailsScroll"
 	context_details_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
 	context_details_scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_AUTO
@@ -4373,7 +4377,8 @@ func _layout_context_details(view_size):
 	selection_detail.visible=context_detail_kind=="selection"
 	guidance_detail.visible=context_detail_kind=="guidance"
 	_refresh_trade_panel()
-	guidance_detail.text=toast_label.text if toast_time>0 else demo_tutorial.text(paused)
+	guidance_detail.text=toast_label.text if toast_time>0 else demo_tutorial.checklist(paused)
+	_refresh_tutorial_locator()
 	context_detail_button.text="收起" if context_detail_kind=="selection" else "詳情"
 	var width=minf(520,view_size.x-12)
 	var top=hud_top.position.y+hud_top.size.y+4
@@ -6417,6 +6422,25 @@ func _create_tutorial_ui():
 	_refresh_tutorial()
 	_layout_tutorial()
 
+func _refresh_tutorial_locator():
+	if not is_instance_valid(tutorial_locate):return
+	tutorial_locate.visible=context_detail_kind=="guidance" and toast_time<=0 and not demo_tutorial.skipped
+	tutorial_locate.disabled=paused or game_over or demo_tutorial.step()>=demo_tutorial.KEYS.size()
+
+func _locate_tutorial():
+	if paused or game_over or demo_tutorial.skipped or context_detail_kind!="guidance" or toast_time>0:return
+	var target=demo_tutorial.locate(faction_views[0].records())
+	if not target.ok:
+		_message(target.reason,4);return
+	camera_focus=target.position;_camera_update()
+
+func _resume_tutorial():
+	# A completed age cannot be researched again. Recover only this authoritative
+	# own permanent fact; skipped event accumulation remains unchanged.
+	demo_tutorial.resume()
+	if age_completed_tick[0]>=0:demo_tutorial.record("age2")
+	_refresh_tutorial()
+
 func _skip_tutorial():
 	demo_tutorial.skip()
 	_refresh_tutorial()
@@ -6431,7 +6455,8 @@ func _refresh_tutorial():
 	tutorial_label.text=demo_tutorial.text(paused)
 	tutorial_skip.text="收起" if demo_tutorial.step()==demo_tutorial.KEYS.size() else "跳過"
 	if is_instance_valid(guidance_detail):
-		guidance_detail.text=toast_label.text if feedback else demo_tutorial.text(paused)
+		guidance_detail.text=toast_label.text if feedback else demo_tutorial.checklist(paused)
+	_refresh_tutorial_locator()
 
 func _layout_tutorial():
 	if not is_instance_valid(tutorial_panel): return

@@ -1,5 +1,5 @@
 extends RefCounted
-## Session-only, value-only observer. No commands, authority references or persistence.
+## Value-only observer and presentation. Checkpointed achieved/skipped state; no commands.
 const KEYS = ["select", "gather", "deposit", "house", "barracks", "soldier", "age2", "advanced_building", "advanced_unit", "combat"]
 const HINTS = [
 	"點選己方村民，開始建立聚落。",
@@ -29,3 +29,32 @@ func text(paused: bool) -> String:
 	var i = step()
 	if i == KEYS.size(): return "教學完成！採集、建造、研究、出兵與攻擊已掌握。"
 	return ("已暫停 · " if paused else "") + "教學 %d/%d：" % [i+1,KEYS.size()] + HINTS[i]
+
+const TITLES=["選取村民","採集資源","送回資源","完成民居","完成兵營","訓練士兵","研究時代","完成進階建築","訓練進階兵種","實際交戰"]
+func resume(): skipped=false
+func checklist(paused:bool)->String:
+	var lines=[text(paused),"定位只移動鏡頭，不選取或下令。"]
+	for i in KEYS.size():
+		lines.append(("[完成] " if achieved.has(KEYS[i]) else "[目前] " if i==step() else "[待做] ")+str(i+1)+". "+TITLES[i])
+	return "\n".join(lines)
+func locate(records:Dictionary)->Dictionary:
+	var i=step()
+	if i>=KEYS.size():return {"ok":false,"reason":"教學已完成。"}
+	var kinds=[]
+	match KEYS[i]:
+		"select","house","barracks","advanced_building":kinds=["villager"]
+		"gather":kinds=["berry","pine","oak"]
+		"deposit","age2":kinds=["town_center"]
+		"soldier":kinds=["barracks"]
+		"advanced_unit":kinds=["stable","workshop"]
+		"combat":kinds=["spearman","archer","cavalry","siege","scout"]
+	var ids=records.keys();ids.sort()
+	for id in ids:
+		var r=records[id]
+		if not r.get("alive",false) or r.get("remembered",false) or r.get("kind","") not in kinds:continue
+		if KEYS[i]=="gather":
+			if r.get("category","")!="resource":continue
+		elif not r.get("owned",false):continue
+		if r.get("category","")=="building" and not r.get("built",false):continue
+		return {"ok":true,"id":id,"position":r.pos}
+	return {"ok":false,"reason":"未找到所需的己方單位、已完工建築或視野內資源；請先按本步提示準備。"}

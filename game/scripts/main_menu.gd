@@ -223,7 +223,7 @@ func _layout():
 	if latin_name.visible:
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
-	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","setup"]) else 1)
+	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","setup","help"]) else 1)
 	var button_height=54.0
 	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0
 	var button_gap=10
@@ -352,6 +352,11 @@ func _show_page(next_page: String):
 	if page == "help":
 		heading.text = "教學"
 		description.text = "採集資源，建造民居與兵營，訓練士兵，探索霧谷。\n\n觸控：點選己方單位，再點空地移動、敵人攻擊。村民點樹木或漿果採集。單指按住再拖曳框選；雙指拖曳平移、張合縮放。\n\n建造：選村民→民居或兵營→選位置→確認；等待施工完成。負重送回主堡後入庫。\n\nMouse：左擊選取，再點空地移動或敵軍攻擊；右擊亦可指令。WASD／方向鍵平移；滾輪縮放。P 暫停。"
+		_add_button("設定引導練習", "GuidedPracticeButton", func(): _show_page("tutorial_confirm") if is_instance_valid(match_node) and not match_node.game_over else _choose_battle("practice"))
+		description.text+="\n\n引導練習：正常採集、付費建造與訓練；電腦不主動遠征，靠近仍會交戰。"
+		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode not in ["battle","fortress","survival","expedition","escort"]:
+			_add_button("恢復本局引導", "ResumeTutorialButton", func(): match_node._resume_tutorial();_show_page("help"))
+			description.text+="\n本局引導："+("已收起" if match_node.demo_tutorial.skipped else "顯示中")+"；恢復保留已完成步驟，不重開戰役。"
 		_add_button("戰場手冊", "FieldManualButton", func(): _show_page("manual"))
 		_add_button("本機戰績", "BattleHistoryButton", func(): _show_page("history"))
 		_add_button("返回", "BackButton", func(): _show_page("home"))
@@ -465,10 +470,10 @@ func _show_page(next_page: String):
 		if compatible:_add_button("讀取備存（取代目前戰役）","LoadBackupButton",func(): _load_checkpoint_backup(backup_expedition,backup_name))
 		_add_button("返回備存","BackupDetailBackButton",func(): _show_page("checkpoint_backup_slot"))
 
-	elif page == "confirm":
+	elif page in ["confirm","tutorial_confirm"]:
 		heading.text = "開始新戰役？"
 		description.text = "目前未儲存的戰役與教學會重新開始。本機存檔不會被新戰役覆蓋。"
-		_add_button("設定新戰役", "ConfirmNewMatchButton", func(): _show_page("battle_groups"))
+		_add_button("設定新戰役", "ConfirmNewMatchButton", func(): _choose_battle("practice") if page=="tutorial_confirm" else _show_page("battle_groups"))
 		_add_button("保留目前戰役", "CancelNewMatchButton", func(): _show_page("home"))
 	else:
 		heading.text = "霧谷王旗"
