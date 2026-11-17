@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-a36fbb057cd5-717f7643
+  group: building-runtime-vc-63259635d38c-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 5b58458aed8b76e1d70673acb84bc59c6d2f3fdd
+      BUILDING_RUNTIME_SOURCE_COMMIT: 42c339412faa155dde1db50efa4bc822159144ca
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '380615564b07cef717a65e9f83b6a602e118e5006196eb5c99dd16803cb9f345  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '4f7edab847ae970069aa82f3b365d11de17f27241dd24cfaa2234a148da32bf0  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -388,6 +388,12 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/army_box_selection_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/army_withdraw_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/army_withdraw_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/breach_mission_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/breach_mission_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/breach_menu_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/breach_menu_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/breach_mission_journey/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/breach_mission_journey/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
