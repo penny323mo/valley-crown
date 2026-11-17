@@ -16,6 +16,7 @@ func releases():
 func shot(stage):
  if stage=="final-observed-state":
   g.camera_focus=(a.pos+b.pos)*0.5;g._camera_update()
+ g._refresh_fog() # Normal render refresh from existing visibility; no visibility mutation.
  g._update_visuals(0);g._update_hud()
  var s={"stage":stage,"tick":g.tick_count,"rendered":false,"archer":{"pos":str(a.pos),"hp":a.hp,"alive":a.alive,"state":a.state},"spearman":{"pos":str(b.pos),"hp":b.hp,"alive":b.alive},"ledger":releases(),"ai_status":g.ai_status.duplicate(true)}
  if DisplayServer.get_name()!="headless":

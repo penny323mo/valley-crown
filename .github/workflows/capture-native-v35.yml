@@ -1,4 +1,4 @@
-name: Capture v86 full AI archer spacing duel
+name: Capture v86 archer duel with normal fog render refresh
 on:
   push:
     branches: [main]
