@@ -1,4 +1,4 @@
-name: Capture v94 selected escort teams
+name: Capture v95 military-only box selection
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [escort]
+        scenario: [army]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,22 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14336341226/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='aba2c3b971a6ce5acd617cfff05312dbf4d54ea78474516e28079a54a8aa8508'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14337197903/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='6c49203beb624dd6216b06563e1077c44fa1e9e7ed168506733d78c4f8c02280'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='8021ae40479192a098af3a77037fe774a013bc2ea2463cf61a79ee0c7b519184'
+          assert hashlib.sha256(pck).hexdigest()=='b47987c3ac66175f5718b1edf03e57b86b6f5b10ebfb8e1a51a62c6f1e386a5e'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-escort.gd /tmp/capture/capture.gd
+          cp ci/capture-army.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v94-escort-${{ matrix.scenario }}
+          name: genuine-v95-army-${{ matrix.scenario }}
           path: |
-            /tmp/v94-escort-capture/*.png
-            /tmp/v94-escort-capture/report.json
+            /tmp/v95-army-capture/*.png
+            /tmp/v95-army-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
