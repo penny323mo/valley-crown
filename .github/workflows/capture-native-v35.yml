@@ -1,4 +1,4 @@
-name: Capture v98 touch controls and command icons
+name: Capture v99 precise friendly selection
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [touch-icons]
+        scenario: [pick]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,30 +32,30 @@ jobs:
           import sys,pathlib,os,hashlib,json
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,verified_members
-          row={'artifact_id': 14352901322, 'run_id': 44134348202, 'build': 'vc-3f88723c3b41', 'metadata_sha256': '91fdcf37e6a3f3f3b302a156c229580cc1960cdb758d56970ed99b580982c35e', 'zip_sha256': '0bcc2ff5a54f6fa1392254843af975614bb98a55204238906262ec70d92ec144'}
+          row={'artifact_id': 14355442124, 'run_id': 44140499915, 'build': 'vc-4d3a847269b9', 'metadata_sha256': '7c78b4811bfa14f3ca4dec260b7060dfccec0b844cc14abe1e52008ac7244476', 'zip_sha256': '99af78bfd4c524d9171ea6dce70edd77f29d57857241cf695133c75bd84de2c4'}
           g=GitHub(os.environ['GITHUB_REPOSITORY'])
-          run=g.request('/actions/runs/44134348202')
-          assert run['conclusion']=='success' and run['head_sha']=='da264b83173a7731722d44d4313e8d10c995cdb1' and run['run_attempt']==1
+          run=g.request('/actions/runs/44140499915')
+          assert run['conclusion']=='success' and run['head_sha']=='fb92c9487521b05ce0c60981b76bbcb3a5735d28' and run['run_attempt']==1
           meta=g.request('/actions/artifacts/'+str(row['artifact_id']))
           assert not meta['expired'] and meta['workflow_run']['id']==row['run_id']
           data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
           files=verified_members(data,row)
           m=json.loads(files['candidate-metadata.json'])
-          assert m['source_commit']=='5d7723a408375e204dc6f36f153a54c174e9aac4' and m['game_tree']=='72acbebd3b4811765c74e256bb162721c3ace8a0'
+          assert m['source_commit']=='03393eeed4367ed2de5a3b1e39cad94601ff9af1' and m['game_tree']=='f3429fcfa4c3a702810350d418ff3b74245c8001'
           pck=files['artifacts/clean-a/index.pck']
-          assert hashlib.sha256(pck).hexdigest()=='ac462f031cc595677e6bf7850574234203b7c35f27537bf4115f5c193768dad1'
+          assert hashlib.sha256(pck).hexdigest()=='7bf35dbf8fc67fea3fb401643e54f0dec99401d3768fb18eef30dc99bb6a4562'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
-          assert hashlib.sha256(pathlib.Path('ci/capture-touch-icons.gd').read_bytes()).hexdigest()=='bd6523f7a5f94619fafed40956e7a79f08ab01a2fda5095a73ad6bcf39363abf'
+          assert hashlib.sha256(pathlib.Path('ci/capture-pick.gd').read_bytes()).hexdigest()=='d415a67ea75f943a55e1c31e0afbc45ebc17630a6fe54410c67eb4e29ae26b36'
           PYCODE
-          cp ci/capture-touch-icons.gd /tmp/capture/capture.gd
+          cp ci/capture-pick.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
-        run: python3 ci/capture-touch-icons-guard.py
+        run: python3 ci/capture-pick-guard.py
       - name: Verify rendered product capture identity and successful checks
         run: |
           python3 - <<'PYVERIFY'
           import json,pathlib,hashlib
-          r=json.loads(pathlib.Path('/tmp/touch-icons-capture/report.json').read_text())
-          assert r['build']=='vc-3f88723c3b41' and r['driver_sha256']=='bd6523f7a5f94619fafed40956e7a79f08ab01a2fda5095a73ad6bcf39363abf'
+          r=json.loads(pathlib.Path('/tmp/pick-capture/report.json').read_text())
+          assert r['build']=='vc-4d3a847269b9' and r['driver_sha256']=='d415a67ea75f943a55e1c31e0afbc45ebc17630a6fe54410c67eb4e29ae26b36'
           assert type(r['failed']) is int and r['failed']==0 and r['checks'] and all(c['passed'] is True for c in r['checks'])
           assert r['captures'] and all(c['metadata_only'] is False and pathlib.Path(c['file']).is_file() for c in r['captures'])
           assert all(hashlib.sha256(pathlib.Path(c['file']).read_bytes()).hexdigest()==c['sha256'] for c in r['captures'])
@@ -63,10 +63,10 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v98-touch-icons-${{ matrix.scenario }}
+          name: genuine-v99-pick-${{ matrix.scenario }}
           path: |
-            /tmp/touch-icons-capture/*.png
-            /tmp/touch-icons-capture/report.json
+            /tmp/pick-capture/*.png
+            /tmp/pick-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
