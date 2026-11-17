@@ -50,3 +50,8 @@ func acknowledge(sequence: int,tick: int) -> Dictionary:
 			entry.acknowledged=true
 			return current
 	return {}
+
+# Read-only presentation snapshot: only frozen own-victim positions, no attackers.
+func pending(tick: int) -> Array:
+	_prune(tick)
+	return entries.filter(func(entry):return not entry.acknowledged).duplicate(true)

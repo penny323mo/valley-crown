@@ -71,6 +71,13 @@ func _draw():
   if e.remembered: col=Color("777b79")
   var r=3.3 if e.category=="building" else 1.7
   draw_circle(p,r,col)
+ # Frozen locations where our own property took settled damage, never enemy
+ # locations or terrain. Acknowledged and expired alerts disappear together.
+ if not game.game_over:
+  for alert in game.battle_alerts.pending(game.tick_count):
+   var uv=Vector2((alert.position.x+Rules.MAP_HALF)/float(Rules.MAP_SIZE),(alert.position.z+Rules.MAP_HALF)/float(Rules.MAP_SIZE))
+   var p=area.position+uv.clamp(Vector2.ZERO,Vector2.ONE)*area.size
+   draw_arc(p,5.0,0,TAU,20,Color("ffb34f"),2.0,true)
  # Camera footprint follows real projected viewport corners at every zoom.
  # A fixed 74x50 pixel box would misrepresent the enlarged battlefield.
  var view_size=game.get_viewport().get_visible_rect().size

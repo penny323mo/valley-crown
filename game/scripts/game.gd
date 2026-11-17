@@ -329,6 +329,7 @@ var battle_alerts=BattleAlerts.new()
 var match_report=MatchReport.new()
 var last_match_report={}
 var attack_alert_button: Button
+var battle_jump_button: Button
 var attack_ledger=AttackLedger.new()
 var delivered_total:
 	get:
@@ -4185,6 +4186,7 @@ func _create_ui():
 	top_resources=_label("",16); top_resources.size_flags_horizontal=Control.SIZE_EXPAND_FILL; compact_top_line.add_child(top_resources)
 	time_label=_label("",14); compact_top_line.add_child(time_label)
 	pause_button=_button("暫停",func(): _toggle_pause(),60); compact_top_line.add_child(pause_button)
+	battle_jump_button=_button("受襲",func():_focus_battle_jump(),54); battle_jump_button.name="BattleJump";compact_top_line.add_child(battle_jump_button);battle_jump_button.hide()
 	compact_menu_button=_button("選單",func(): _toggle_compact_menu(),60); compact_top_line.add_child(compact_menu_button)
 	hud_bottom=PanelContainer.new(); hud_bottom.name="CompactContextPanel"; ui.add_child(hud_bottom); hud_bottom.add_theme_stylebox_override("panel",_compact_panel_style())
 	compact_bottom_stack=VBoxContainer.new(); compact_bottom_stack.add_theme_constant_override("separation",4); hud_bottom.add_child(compact_bottom_stack)
@@ -4457,12 +4459,13 @@ func _layout_ui():
 	var size=get_viewport().get_visible_rect().size
 	short_ui=size.y<560; compact_ui=size.x<760 or short_ui
 	var narrow=size.x<620
-	var stack_resources=size.x<480
+	var has_alert=not game_over and not battle_alerts.peek(tick_count).is_empty()
+	var stack_resources=size.x<480 or (has_alert and size.x<760)
 	if stack_resources and top_resources.get_parent()!=compact_top_stack:
 		top_resources.reparent(compact_top_stack); compact_top_stack.move_child(top_resources,0)
 	elif not stack_resources and top_resources.get_parent()!=compact_top_line:
 		top_resources.reparent(compact_top_line); compact_top_line.move_child(top_resources,1)
-	compact_brand.visible=size.x>=620 or stack_resources
+	compact_brand.visible=(size.x>=620 or stack_resources) and not (has_alert and size.x<1000)
 	compact_brand.size_flags_horizontal=Control.SIZE_EXPAND_FILL if stack_resources else Control.SIZE_FILL
 	compact_menu_button.text=_shortcut_menu_caption()
 	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
@@ -6444,6 +6447,26 @@ func _refresh_attack_alert():
 	if not current.is_empty():
 		attack_alert_button.text="前往受襲位置 · "+Rules.NAMES.get(current.kind,current.kind)
 	compact_menu_button.text=_shortcut_menu_caption()
+	if is_instance_valid(battle_jump_button):
+		if battle_jump_button.get_meta("alert_sequence",-1)!=sequence:
+			for index in gui_touch_press.keys():
+				if gui_touch_press[index].button.get_ref()==battle_jump_button:gui_touch_press.erase(index)
+			if battle_jump_button.button_pressed:
+				battle_jump_button.disabled=true;battle_jump_button.disabled=false
+			battle_jump_button.set_meta("alert_sequence",sequence)
+		var was_visible=battle_jump_button.visible
+		battle_jump_button.visible=not current.is_empty()
+		battle_jump_button.disabled=attack_alert_button.disabled
+		battle_jump_button.text="受襲%d" % battle_alerts.pending(tick_count).size()
+		battle_jump_button.tooltip_text=attack_alert_button.text+"；只移動鏡頭，不改部隊指令。"
+		if was_visible!=battle_jump_button.visible:_defer_layout()
+	if is_instance_valid(minimap):minimap.queue_redraw()
+
+func _focus_battle_jump():
+	if not is_instance_valid(battle_jump_button) or battle_jump_button.disabled:return
+	var current=battle_alerts.peek(tick_count)
+	if current.is_empty() or current.sequence!=battle_jump_button.get_meta("alert_sequence",-1):return
+	_focus_attack_alert()
 
 func _focus_attack_alert():
 	if paused or game_over or not application_focused or application_suspended or not is_instance_valid(attack_alert_button): return
