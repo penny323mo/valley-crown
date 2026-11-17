@@ -206,6 +206,7 @@ var rally_group=[]
 var rally_mode="move"
 # UX01 selection intent only; no simulation command or world-state mutation.
 var box_select_mode=false
+var box_select_military_only=false
 var touch_box_index=-1
 var touch_box_origin=Vector2.ZERO
 var touch_box_active=false
@@ -4278,6 +4279,9 @@ func _create_ui():
 		policy_button.tooltip_text="先選軍隊；克制優先會讓攻城車優先攻擊範圍內可見建築。直接點敵人仍優先，不擴大射程或追擊範圍。"
 		menu_box.add_child(policy_button);shortcut_sections.army.append(policy_button)
 	var box_select=_button("框選單位",func(): _compact_menu_action(_start_box_select),110);menu_box.add_child(box_select);shortcut_sections.army.append(box_select)
+	var army_box=_button("框選軍隊",func(): _compact_menu_action(func():_start_box_select(true)),110)
+	army_box.name="ArmyBoxSelect";army_box.tooltip_text="這次拖曳只選軍隊及斥候，不選村民；不會改動任何單位的指令。"
+	menu_box.add_child(army_box);shortcut_sections.army.append(army_box)
 	var squad_help=_label("軍隊編組：先選部隊再存入；重選不會落指令。",13)
 	squad_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(squad_help);shortcut_sections.army.append(squad_help)
 	for slot in range(SquadSelection.SLOT_COUNT):
@@ -4663,8 +4667,8 @@ func _update_hud():
 		selection_detail.text="護送：點自己的村民或攻城車。自動移動，迎擊附近敵軍；停止或新指令結束。"
 		help_label.text=selection_detail.text
 	if box_select_mode:
-		selection_title.text="框選單位"
-		selection_detail.text="在戰場按住移動，選取框內單位；取消可返回選取。"
+		selection_title.text="框選軍隊" if box_select_military_only else "框選單位"
+		selection_detail.text="框內只選軍隊，不選村民；完成或取消後恢復一般選取。" if box_select_military_only else "在戰場按住移動，選取框內單位；取消可返回選取。"
 		queue_label.hide()
 		help_label.text=selection_detail.text
 	if not build_mode.is_empty() or rally_building>=0 or touch_command or box_select_mode:
@@ -5148,13 +5152,13 @@ func _consume_box_cancel_repeat(event,viewport):
 	viewport.set_input_as_handled()
 	return true
 
-func _start_box_select():
+func _start_box_select(military_only=false):
 	if game_over: return
 	_cancel_mode()
 	box_previous_input_accumulation=Input.use_accumulated_input
 	box_input_accumulation_owned=true
 	Input.use_accumulated_input=false
-	box_select_mode=true
+	box_select_mode=true;box_select_military_only=military_only
 	_update_hud()
 
 func _restore_box_input_accumulation():
@@ -5187,7 +5191,7 @@ func _clear_touch_hold():
 func _clear_box_select():
 	_clear_touch_hold()
 	_restore_box_input_accumulation()
-	box_select_mode=false; touch_box_index=-1; touch_box_active=false
+	box_select_mode=false; box_select_military_only=false; touch_box_index=-1; touch_box_active=false
 	if is_instance_valid(drag_rect): drag_rect.hide()
 
 func _box_point_in_world(point):
@@ -5199,6 +5203,7 @@ func _box_point_in_world(point):
 func _box_selection_ids(rect):
 	var ids=[]
 	for ent in faction_views[0].records().values():
+		if box_select_military_only and ent.get("kind","")=="villager":continue
 		if ent.alive and ent.owned and ent.team==0 and ent.category=="unit" and not ent.remembered and rect.has_point(camera.unproject_position(ent.pos+Vector3(0,0.6,0))): ids.append(ent.id)
 	return ids
 
@@ -6009,6 +6014,7 @@ func _test_check(name,passed,detail=""):
 	print(("PASS " if passed else "FAIL ")+name+" "+detail)
 
 func _test_reset(initial_stocks_units=INITIAL_STOCKS):
+	_clear_box_select()
 	aftermath_view=false
 	if is_instance_valid(aftermath_bar):aftermath_bar.hide()
 	if is_instance_valid(hud_top):hud_top.show();hud_bottom.show()
