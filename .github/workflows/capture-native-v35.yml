@@ -1,4 +1,4 @@
-name: Capture v89 guided practice and actual tutorial progress
+name: Capture v89 guided practice into matching evidence directory
 on:
   push:
     branches: [main]
@@ -46,8 +46,8 @@ jobs:
         with:
           name: genuine-v89-tutorial-${{ matrix.scenario }}
           path: |
-            /tmp/v89-tutorial-capture/*.png
-            /tmp/v89-tutorial-capture/report.json
+            /tmp/v89-capture/*.png
+            /tmp/v89-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
