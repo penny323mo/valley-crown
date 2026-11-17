@@ -240,7 +240,9 @@ var end_panel: Panel
 var end_scroll: ScrollContainer
 var end_report_label: Label
 var end_tabs: HBoxContainer
-var end_actions: HBoxContainer
+var end_actions: GridContainer
+var aftermath_view=false
+var aftermath_bar: PanelContainer
 var end_report_page="overview"
 var end_title: Label
 var end_body: Label
@@ -709,7 +711,7 @@ func _process(delta):
 		if paused or game_over: tick_accumulator=0.0
 	else: tick_accumulator=0.0
 	var visual_delta=minf(elapsed,0.1)
-	if not game_over and application_focused and not application_suspended: _camera_input(visual_delta)
+	if (not game_over or aftermath_view) and application_focused and not application_suspended: _camera_input(visual_delta)
 	_camera_update()
 	_update_visuals(minf(elapsed*battle_speed,0.1))
 	if frame_counter%4==0: _update_hud(); _refresh_fog()
@@ -3138,8 +3140,52 @@ func _layout_end_report(view_size: Vector2):
 	var inner=extent.x-32
 	end_title.position=Vector2(16,12); end_title.size=Vector2(inner,36)
 	end_tabs.position=Vector2(16,56); end_tabs.size=Vector2(inner,46)
-	end_scroll.position=Vector2(16,112); end_scroll.size=Vector2(inner,maxf(1,extent.y-180))
-	end_actions.position=Vector2(16,extent.y-58); end_actions.size=Vector2(inner,46)
+	end_scroll.position=Vector2(16,112); end_scroll.size=Vector2(inner,maxf(1,extent.y-232))
+	end_actions.position=Vector2(16,extent.y-110); end_actions.size=Vector2(inner,98)
+	for button in end_actions.get_children():button.custom_minimum_size.y=46
+	if is_instance_valid(aftermath_bar):
+		aftermath_bar.position=Vector2(6,6);aftermath_bar.size=Vector2(view_size.x-12,48)
+
+func _camera_navigation_allowed():
+	return application_focused and not application_suspended and (aftermath_view if game_over else not paused)
+
+func _set_aftermath_view(enabled):
+	if not game_over or last_match_report.is_empty():return
+	_cancel_pointer_streams();_quarantine_camera_keys();_release_world_camera_focus()
+	aftermath_view=enabled
+	compact_menu.hide();compact_menu_dismiss.hide();context_details.hide()
+	hud_top.visible=not enabled;hud_bottom.visible=not enabled
+	end_panel.visible=not enabled;aftermath_bar.visible=enabled
+	if not enabled:_show_match_report_page(end_report_page)
+	_layout_ui()
+
+func _aftermath_input(event):
+	if not _camera_navigation_allowed():return
+	if (event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT,MOUSE_BUTTON_RIGHT,MOUSE_BUTTON_MIDDLE]) or (event is InputEventScreenTouch and event.pressed):_release_world_camera_focus()
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode==KEY_ESCAPE:
+		_set_aftermath_view(false);return
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode==KEY_SPACE:
+		camera_focus=MapRoutes.home(0);return
+	if event is InputEventMouseButton:
+		if event.button_index==MOUSE_BUTTON_MIDDLE:middle_drag=event.pressed
+		elif event.pressed and event.button_index==MOUSE_BUTTON_WHEEL_UP:camera_zoom=maxf(15,camera_zoom-2)
+		elif event.pressed and event.button_index==MOUSE_BUTTON_WHEEL_DOWN:camera_zoom=minf(46,camera_zoom+2)
+	elif event is InputEventMouseMotion and middle_drag:_pan_camera(-event.relative)
+	elif event is InputEventScreenTouch:
+		if event.pressed and not event.canceled:
+			touch_points[event.index]=event.position;touch_world_epochs[event.index]=touch_press_epochs.get(event.index,-1)
+		else:touch_points.erase(event.index);touch_world_epochs.erase(event.index)
+		_sync_touch_camera_pair()
+	elif event is InputEventScreenDrag:
+		var ids=_sync_touch_camera_pair()
+		if event.index not in ids:return
+		touch_points[event.index]=event.position
+		if ids.size()>=2:
+			var first=touch_points[ids[0]];var second=touch_points[ids[1]]
+			var center=(first+second)*0.5;var distance=first.distance_to(second)
+			_pan_camera(touch_previous_center-center)
+			if touch_previous_distance>0:camera_zoom=clampf(camera_zoom*touch_previous_distance/maxf(1,distance),15,46)
+			touch_previous_center=center;touch_previous_distance=distance
 
 # --- Fair, finite-frequency Demo AI01 ---
 # Defaults are documented in AI_POLICY.md. This layer submits ordinary commands;
@@ -4268,16 +4314,24 @@ func _create_ui():
 	var end_content=VBoxContainer.new(); end_content.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_content.add_theme_constant_override("separation",12); end_scroll.add_child(end_content)
 	end_body=_label("",15); end_body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; end_content.add_child(end_body)
 	end_report_label=_label("",15); end_report_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; end_report_label.add_theme_constant_override("line_spacing",4); end_content.add_child(end_report_label)
-	end_actions=HBoxContainer.new(); end_actions.add_theme_constant_override("separation",8); end_panel.add_child(end_actions)
+	end_actions=GridContainer.new(); end_actions.columns=2; end_actions.add_theme_constant_override("h_separation",8);end_actions.add_theme_constant_override("v_separation",6); end_panel.add_child(end_actions)
+	var inspect=_button("查看戰場",func():_set_aftermath_view(true),80);inspect.name="InspectBattlefieldButton";inspect.size_flags_horizontal=Control.SIZE_EXPAND_FILL;end_actions.add_child(inspect)
 	var restart=_button("同局再戰",_request_restart,80);restart.name="ReplayMatchButton"; restart.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(restart)
 	var setup=_button("重新設定",func():
 		if game_over:setup_requested.emit()
 	,80);setup.name="ReconfigureMatchButton";setup.size_flags_horizontal=Control.SIZE_EXPAND_FILL;end_actions.add_child(setup)
 	var menu=_button("主選單",_request_main_menu,80);menu.name="EndMainMenuButton"; menu.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(menu)
 	end_panel.hide()
+	aftermath_bar=PanelContainer.new();aftermath_bar.name="AftermathBar";aftermath_bar.add_theme_stylebox_override("panel",_compact_panel_style());ui.add_child(aftermath_bar)
+	aftermath_bar.mouse_filter=Control.MOUSE_FILTER_STOP;aftermath_bar.mouse_force_pass_scroll_events=false
+	var aftermath_row=HBoxContainer.new();aftermath_bar.add_child(aftermath_row)
+	var aftermath_label=_label("戰役結束 · 只看戰場",14);aftermath_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL;aftermath_row.add_child(aftermath_label)
+	var report_back=_button("返回總結",func():_set_aftermath_view(false),96);report_back.name="ReturnMatchReportButton";aftermath_row.add_child(report_back)
+	aftermath_bar.tooltip_text="雙指拖曳與縮放、滑鼠中鍵與滾輪，或小地圖巡視。不能選取或下令，迷霧保持結束時狀態。"
+	aftermath_bar.hide()
 	# Child controls may bubble wheel events to their ScrollContainer, but the
 	# owning UI boundary must consume leftovers (including at scroll limits).
-	for boundary in [hud_top,hud_bottom,compact_menu,compact_menu_dismiss,minimap,end_panel]:
+	for boundary in [hud_top,hud_bottom,compact_menu,compact_menu_dismiss,minimap,end_panel,aftermath_bar]:
 		boundary.mouse_force_pass_scroll_events=false
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 	get_viewport().gui_focus_changed.connect(_on_ui_camera_focus_changed)
@@ -4354,7 +4408,7 @@ func _layout_ui():
 	var bottom_height=hud_bottom.get_combined_minimum_size().y
 	hud_bottom.size.y=bottom_height; hud_bottom.position=Vector2(margin,size.y-bottom_height-margin)
 	minimap.size=Vector2(124,124); minimap.position=Vector2(margin,hud_bottom.position.y-132)
-	minimap.visible=compact_map_choice==1 or (compact_map_choice==-1 and size.x>=1000 and not short_ui)
+	minimap.visible=aftermath_view or compact_map_choice==1 or (compact_map_choice==-1 and size.x>=1000 and not short_ui)
 	compact_menu.position=Vector2(maxf(margin,size.x-380-margin),hud_top.position.y+hud_top.size.y+6)
 	compact_menu.size=Vector2(minf(380,width),minf(340,size.y-compact_menu.position.y-margin))
 	compact_menu_dismiss.position=Vector2(0,hud_top.position.y+hud_top.size.y)
@@ -5601,6 +5655,9 @@ func _cleanup_mouse_release():
 	if is_instance_valid(drag_rect): drag_rect.hide()
 
 func _unhandled_input(event):
+	if game_over:
+		if aftermath_view:_aftermath_input(event)
+		get_viewport().set_input_as_handled();return
 	# Only a genuinely world-routed press releases lingering HUD focus. UI
 	# buttons and dismissal shields consume their own presses before this.
 	if (event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT,MOUSE_BUTTON_RIGHT,MOUSE_BUTTON_MIDDLE]) or (event is InputEventScreenTouch and event.pressed):
@@ -5933,6 +5990,9 @@ func _test_check(name,passed,detail=""):
 	print(("PASS " if passed else "FAIL ")+name+" "+detail)
 
 func _test_reset(initial_stocks_units=INITIAL_STOCKS):
+	aftermath_view=false
+	if is_instance_valid(aftermath_bar):aftermath_bar.hide()
+	if is_instance_valid(hud_top):hud_top.show();hud_bottom.show()
 	demo_tutorial.reset()
 	building_damage_presenter.clear()
 	order_routes.clear()

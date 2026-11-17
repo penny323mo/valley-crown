@@ -590,7 +590,7 @@ func _finish_report_review():
 	match_node._cancel_pointer_streams()
 	match_node.process_mode = Node.PROCESS_MODE_INHERIT
 	match_node.show(); match_node.ui.show()
-	match_node.end_panel.show()
+	match_node._set_aftermath_view(false)
 	match_node._layout_ui()
 	_release_menu_focus()
 	manual_preview.clear_model()

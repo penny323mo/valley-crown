@@ -36,7 +36,7 @@ func track_pointer(event,viewport):
  # Called after the game's global identity/epoch tracker, before GUI/world.
  # An owned stream is consumed to release even after leaving/hiding the map.
  if pointer.is_empty():return
- if not is_visible_in_tree() or game.paused or game.game_over:pointer.valid=false
+ if not is_visible_in_tree() or not game._camera_navigation_allowed():pointer.valid=false
  if pointer.kind=="touch":
   if game.touch_gesture or game.all_touch_ids.size()>1:pointer.valid=false
   if event is InputEventScreenTouch and event.index==pointer.id:
@@ -88,7 +88,7 @@ func _gui_input(event):
  if not is_instance_valid(game):return
  if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouseButton or event is InputEventMouseMotion:
   accept_event()
- if game.paused or game.game_over or not is_visible_in_tree():return
+ if not game._camera_navigation_allowed() or not is_visible_in_tree():return
  if event is InputEventScreenTouch and event.pressed:
   if not pointer.is_empty():return
   if event.canceled or game.all_touch_ids.size()!=1 or event.index not in game.all_touch_ids or game.touch_gesture:return
