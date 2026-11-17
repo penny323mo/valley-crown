@@ -34,8 +34,18 @@ func run():
  var zoom=g.camera_zoom;await mouse(p,MOUSE_BUTTON_WHEEL_UP,true)
  check("wheel zoom works in inspection",g.camera_zoom<zoom)
  before=g.camera_focus;zoom=g.camera_zoom
- await touch(p,10,true);await touch(p+Vector2(80,0),11,true);await drag(p+Vector2(120,20),11,Vector2(40,20));await touch(p,10,false);await touch(p+Vector2(120,20),11,false)
- check("two finger pan and pinch work",g.camera_focus!=before and g.camera_zoom!=zoom)
+ await touch(p,10,true);await touch(p+Vector2(80,0),11,true)
+ # Small staggered pan must move the camera without accidental span zoom.
+ await drag(p+Vector2(4,0),10,Vector2(4,0))
+ await drag(p+Vector2(85,0),11,Vector2(5,0))
+ var pan_without_zoom=g.camera_focus!=before and is_equal_approx(g.camera_zoom,zoom) and not g.touch_pinch_active
+ # Crossing the intent gate rebases; only subsequent deliberate pinch zooms.
+ await drag(p+Vector2(110,0),11,Vector2(25,0))
+ var activation_without_jump=g.touch_pinch_active and is_equal_approx(g.camera_zoom,zoom)
+ await drag(p+Vector2(130,0),11,Vector2(20,0))
+ var deliberate_zoom=g.camera_zoom<zoom and is_equal_approx(g.camera_zoom,zoom*106.0/126.0)
+ await touch(p+Vector2(4,0),10,false);await touch(p+Vector2(130,0),11,false)
+ check("two finger pan and pinch work",pan_without_zoom and activation_without_jump and deliberate_zoom and g.camera_focus!=before and g.commands==commands and g.selected==selected)
  before=g.camera_focus
  var mp=g.minimap.get_global_rect().get_center()+Vector2(24,8)
  await mouse(mp,MOUSE_BUTTON_LEFT,true);await mouse(mp,MOUSE_BUTTON_LEFT,false)
