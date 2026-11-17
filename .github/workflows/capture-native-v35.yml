@@ -1,4 +1,4 @@
-name: Capture v100 paid siege maintenance
+name: Capture v101 direct battlefield alerts
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [siege-service]
+        scenario: [battle-alert]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,32 +32,32 @@ jobs:
           import sys,pathlib,os,hashlib,json
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,verified_members
-          row={'artifact_id': 14359192015, 'run_id': 44146285993, 'build': 'vc-6d18e3dd5d49', 'metadata_sha256': '70bdaa880f148227de2a4fadff8163a256445ac4dadfa8a780f3b70b4c8c8b57', 'zip_sha256': '12ddc73f1815e44a01c858dc3a9c11d07d108923db5b24da0082353498283422'}
+          row={'artifact_id': 14361082072, 'run_id': 44152827796, 'build': 'vc-df68301ec65f', 'metadata_sha256': '6c7941ab9f76064ba9e2650f4920a804f75b8d27204b69e17bcbc082132cf975', 'zip_sha256': '8ebe8f319c16c7916499fe61b72915fe4bfb6e76eedbc623d465777718d10eba'}
           g=GitHub(os.environ['GITHUB_REPOSITORY'])
-          run=g.request('/actions/runs/44146285993')
-          assert run['conclusion']=='success' and run['head_sha']=='02222010147e1c45d2a975ed0bf155c5d988e17b' and run['run_attempt']==1
+          run=g.request('/actions/runs/44152827796')
+          assert run['conclusion']=='success' and run['head_sha']=='9125e6cfc33f2ef4f7f72efb41596c18c095f042' and run['run_attempt']==1
           meta=g.request('/actions/artifacts/'+str(row['artifact_id']))
           assert not meta['expired'] and meta['workflow_run']['id']==row['run_id']
           data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
           files=verified_members(data,row)
           m=json.loads(files['candidate-metadata.json'])
-          assert m['source_commit']=='dc16ef4b9081ac20375869092fe87857ae6eda00' and m['game_tree']=='eff66eb1545fdde727199a6a452f2f57fac6ec0f'
+          assert m['source_commit']=='4d9e6bf51ab7a9429e4bce528d9541043a1b68d2' and m['game_tree']=='6a8618282afdb0ee120b99f259ad7f8df5249b5e'
           pck=files['artifacts/clean-a/index.pck']
-          assert hashlib.sha256(pck).hexdigest()=='6220dce7e6288b0ca2ea525bf3221c25e2675fed93e37bfcec588637a52242f9'
+          assert hashlib.sha256(pck).hexdigest()=='2f0cbffe0c0c8245d50a8cc0e4c29f44d9ef3a9d9e4c10ef6bef9fef6b3afc97'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
-          assert hashlib.sha256(pathlib.Path('ci/capture-siege-service.gd').read_bytes()).hexdigest()=='b64e30361ce070a8093621553a95f79b72556ba927f884c6280423a61663eeb9'
+          assert hashlib.sha256(pathlib.Path('ci/capture-alerts.gd').read_bytes()).hexdigest()=='b8dd833a336491bdfe5e462ca0e0107c297f589662b9f5e23a2eb026b67331e2'
           PYCODE
-          cp ci/capture-siege-service.gd /tmp/capture/capture.gd
+          cp ci/capture-alerts.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: |
-          echo '22f97ec51bc82ecde1bdd339799a7e2039292b11a0d4c8270b54e4455c8b3c1b  ci/capture-siege-service-guard.py' | sha256sum -c -
-          python3 ci/capture-siege-service-guard.py
+          echo '25dda9a85adb10eaf3a87ca98f1a12d005c2ef3f2940a04b90c3c31288455fc0  ci/capture-alerts-guard.py' | sha256sum -c -
+          python3 ci/capture-alerts-guard.py
       - name: Verify rendered product capture identity and successful checks
         run: |
           python3 - <<'PYVERIFY'
           import json,pathlib,hashlib
-          r=json.loads(pathlib.Path('/tmp/siege-service-capture/report.json').read_text())
-          assert r['build']=='vc-6d18e3dd5d49' and r['driver_sha256']=='b64e30361ce070a8093621553a95f79b72556ba927f884c6280423a61663eeb9'
+          r=json.loads(pathlib.Path('/tmp/battle-alert-capture/report.json').read_text())
+          assert r['build']=='vc-df68301ec65f' and r['driver_sha256']=='b8dd833a336491bdfe5e462ca0e0107c297f589662b9f5e23a2eb026b67331e2'
           assert type(r['failed']) is int and r['failed']==0 and len(r['checks'])==11 and all(c['passed'] is True for c in r['checks'])
           assert len(r['captures'])==3 and all(c['metadata_only'] is False and pathlib.Path(c['file']).is_file() for c in r['captures'])
           assert all(hashlib.sha256(pathlib.Path(c['file']).read_bytes()).hexdigest()==c['sha256'] for c in r['captures'])
@@ -65,10 +65,10 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v100-siege-service-${{ matrix.scenario }}
+          name: genuine-v101-battle-alert-${{ matrix.scenario }}
           path: |
-            /tmp/siege-service-capture/*.png
-            /tmp/siege-service-capture/report.json
+            /tmp/battle-alert-capture/*.png
+            /tmp/battle-alert-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
