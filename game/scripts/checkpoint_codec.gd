@@ -19,7 +19,7 @@ const GAME_FIELDS=[
  "recovery_ticks","no_progress_ticks","progress_serial","future_recovery_events","_surrender_intent",
  "ai_enabled","ai_clock","raid_clock","ai_raids","ai_opening_assigned","ai_last_raid_tick","ai_raid_members",
  "ai_home_defense_targets","ai_raid_departure_count","ai_raid_keep","ai_raid_retreating","ai_scout_attempts","ai_scout_moves",
- "ai_claimed_workers","ai_build_submitted","ai_budget","ai_status","ai_site_recovery","ai_control_targets",
+ "ai_claimed_workers","ai_build_submitted","ai_budget","ai_status","ai_site_recovery","ai_fortify_attempts","ai_control_targets",
  "layout_id","skirmish_mode","victory_mode","battle_speed","visible_cells","explored_cells","unit_action_cues",
  "selected","groups","camera_focus","camera_zoom","idle_worker_cursor","vacant_farm_cursor","production_cursor","building_attention_cursor",
  "spawn_availability_polls","spawn_candidate_checks","owned_motion_witness_tick"]
@@ -224,6 +224,16 @@ static func validation_result(data)->Dictionary:
    if not intent.site is int or intent.site<0 or not intent.resource is int or intent.resource<0 or not intent.type is String or intent.type not in ["food","wood","stone","iron"]:return failure("CONSTRUCTION_RETURN_TYPES")
    if entity.kind!="villager" or entity.team!=0 or not entity.alive or entity.state!="build" or entity.target!=intent.site:return failure("CONSTRUCTION_RETURN_WORKER")
   if not entity.state is String or not entity.mode is String or entity.state.length()>64 or entity.mode.length()>64:return failure("ENTITY_STATE")
+ var fortify=data.game.ai_fortify_attempts
+ if fortify.size()>4:return failure("AI_FORTIFY_BOUNDS")
+ var fortify_count=0
+ for tower_id in fortify:
+  var mask=fortify[tower_id]
+  if not tower_id is int or not mask is int or mask<1 or mask>3:return failure("AI_FORTIFY_TYPES")
+  var tower=by_id.get(tower_id,{})
+  if tower.is_empty() or tower.kind!="tower" or tower.team!=1:return failure("AI_FORTIFY_TOWER")
+  fortify_count+=(mask&1)+((mask>>1)&1)
+ if fortify_count>4:return failure("AI_FORTIFY_LIMIT")
  for entity in data.entities:
   if entity.has("construction_return"):
    var site=by_id.get(entity.construction_return.site,{})

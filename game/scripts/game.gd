@@ -18,6 +18,7 @@ const BattleAlerts = preload("res://scripts/battle_alerts.gd")
 const MatchReport = preload("res://scripts/match_report.gd")
 const SquadSelection = preload("res://scripts/squad_selection.gd")
 const RaidTactics = preload("res://scripts/raid_tactics.gd")
+const AIFortify=preload("res://scripts/ai_fortify.gd")
 const AIResourceOutpost=preload("res://scripts/ai_resource_outpost.gd")
 const ScoutFrontier=preload("res://scripts/scout_frontier.gd")
 const HomeDefenseAllocation = preload("res://scripts/home_defense_allocation.gd")
@@ -3154,6 +3155,7 @@ var ai_build_submitted=false
 var ai_budget={}
 var ai_status={}
 var ai_site_recovery={}
+var ai_fortify_attempts={}
 var owned_motion_witness_tick=-1
 
 func _ai_records():
@@ -3732,6 +3734,7 @@ func _ai_update():
 				_submit("train",{"building":building.id,"kind":goal},1); _ai_reserve_budget(goal)
 				break
 	_ai_military_research(records,castle,workers.size())
+	_ai_fortify(records)
 	var desired=_ai_resource_gap(records,workers.size()+queued_workers,capacity,living+reserved)
 	# Keep two food gatherers; balance the rest toward the next real paid goal.
 	# Reassign one compatible worker per turn, not every worker on every tick.
@@ -5931,7 +5934,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 	_surrender_intent.clear()
 	ai_opening_assigned=false; ai_last_raid_tick=-AI_RAID_INTERVAL_TICKS; ai_raids=0
 	ai_home_defense_targets.clear(); ai_raid_members.clear(); ai_raid_departure_count=0; ai_raid_keep.clear(); ai_raid_retreating=false
-	ai_scout_attempts.clear(); ai_scout_moves.clear(); ai_claimed_workers.clear(); ai_build_submitted=false; ai_budget.clear(); ai_status.clear(); ai_site_recovery.clear(); owned_motion_witness_tick=-1
+	ai_scout_attempts.clear(); ai_scout_moves.clear(); ai_claimed_workers.clear(); ai_build_submitted=false; ai_budget.clear(); ai_status.clear(); ai_site_recovery.clear(); ai_fortify_attempts.clear(); owned_motion_witness_tick=-1
 	application_focused=true; application_suspended=false; background_paused=false; discard_return_delta=false; tick_accumulator=0.0
 	for team in 2:
 		visible_cells[team].fill(0); explored_cells[team].fill(0)
@@ -7878,3 +7881,37 @@ func _refresh_trade_panel():
 	for kind in trade_buttons:
 		var recipe=TradePolicy.RECIPES[kind]
 		trade_buttons[kind].disabled=paused or game_over or pending or not _age2(0) or record.get("queue",[]).size()>=5 or economy.bank_milli(0).get(recipe.from,0)<recipe.input*Economy.SCALE
+
+# Optional fortification runs only after critical progression/research reserved its funds.
+func _ai_fortify(records):
+	if ai_build_submitted or not _ai_can_budget("wall"):return false
+	var skipped={}
+	for attempt in 4:
+		var plan=AIFortify.plan(records,ai_claimed_workers,commands,ai_budget.get("wood",0),ai_fortify_attempts,tick_count,skipped)
+		if plan.is_empty():return false
+		skipped[plan.tower]=int(skipped.get(plan.tower,0))|(1<<plan.side)
+		var position=_snap_build_position("wall",plan.position)
+		if not _placement_reason("wall",position,1,plan.builder).is_empty() or not _ai_fortify_lane(plan,records):continue
+		_submit("build",{"kind":"wall","position":position,"builder":plan.builder},1)
+		ai_fortify_attempts[plan.tower]=int(ai_fortify_attempts.get(plan.tower,0))|(1<<plan.side)
+		ai_claimed_workers[plan.builder]="build";ai_build_submitted=true;_ai_reserve_budget("wall")
+		ai_status.build="tower_flank_palisade"
+		return true
+	return false
+
+func _ai_fortify_lane(plan,records):
+	var tower=faction_views[1].get_record(plan.tower)
+	var keep=_ai_owned(records,"town_center")
+	if tower.is_empty() or keep.is_empty():return false
+	var toward=(Vector3.ZERO-keep.pos).normalized()
+	var front=Vector3.FORWARD if absf(toward.z)>=absf(toward.x) else Vector3.LEFT
+	if front.dot(toward)<0:front=-front
+	var across=Vector3.RIGHT if absf(front.z)>0 else Vector3.BACK
+	# Screen is three metres ahead of tower. Six-metre approach strip remains
+	# clear ahead of tower; ordinary large-unit navigation owns global routing.
+	for depth in range(2,8):
+		for width in range(-3,3):
+			var point=tower.pos+front*depth+across*(width+0.5)
+			var cell=_cell(point)
+			if not work_memory[1].grid.region.has_point(cell) or work_memory[1].grid.is_point_solid(cell):return false
+	return true
