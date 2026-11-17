@@ -1,4 +1,4 @@
-name: Capture v85 controlled paid AI tower-flank fortifications
+name: Capture v86 full AI archer spacing duel
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [wall_rows]
+        scenario: [archer_spacing]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,22 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14316053258/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='59e3e087c8cd43005e782ffc8a4edd65f3e2e648d4dae81af432f72ee4b4b361'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14318298267/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='b7619fb08acb13c6e0c561d3b1983041e17267600294f1f22c74fea44d7b3f47'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='a158cdf3af91ad1a267d1f31c181e60d2ebb5e54791aac6d2dd1c7efe3effb8a'
+          assert hashlib.sha256(pck).hexdigest()=='9c43ea8b66558c78b468c2c63d89f3927cb5b28554e66934577b82ae29a885ee'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-ai-fortify-controlled.gd /tmp/capture/capture.gd
+          cp ci/capture-archer-spacing.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v85-ai-fortify-${{ matrix.scenario }}
+          name: genuine-v86-archer-spacing-${{ matrix.scenario }}
           path: |
-            /tmp/ai-fortify-capture/*.png
-            /tmp/ai-fortify-capture/ai-fortify-proof.json
+            /tmp/archer-spacing-capture/*.png
+            /tmp/archer-spacing-capture/archer-spacing-proof.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
