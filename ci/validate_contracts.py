@@ -109,7 +109,7 @@ def validate_menu(report, lock, contract):
     need(report['scope']==MENU_SCOPE, 'Wrong menu scope')
     need(type(report['failure_count']) is int and report['failure_count']==0, 'Menu report failure count')
     checks=report['checks']
-    need(type(checks) is list and len(checks)==670, 'Missing menu checks')
+    need(type(checks) is list and len(checks)==698, 'Missing menu checks')
     need(all(type(c) is dict and set(c)=={'name','passed'} and type(c['name']) is str and c['passed'] is True for c in checks), 'Failed/malformed menu check')
     need([c['name'] for c in checks]==contract['main_menu_flow_contract_names'], 'Menu check order/name mismatch')
     expected={'scripts/game.gd':GAME_SHA,'scripts/main_menu.gd':MENU_SHA}
