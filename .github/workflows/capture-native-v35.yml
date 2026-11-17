@@ -1,4 +1,4 @@
-name: Capture v87 minimap evidence without intermediate render frames
+name: Capture v88 difficulty selection and normal-start native UI
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [minimap_navigation]
+        scenario: [difficulty_selection]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,22 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14321573288/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='cdfa224b189df334242da175d90762d711b2cda5c509159c7625e574e5e828ed'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14324472225/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='8b6670bc244fc3af3278bddd98175974a5e3436b93470003f759fabac56aabf2'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='709e07c0304778609628ceab49cda86ebcd464f96fcd2f5693ce652d97cd8ec0'
+          assert hashlib.sha256(pck).hexdigest()=='a98e8b482495301e841338816e5c04f57842925855f0891f33c58c8fb4a5affd'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-minimap-navigation.gd /tmp/capture/capture.gd
+          cp ci/capture-difficulty.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v87-minimap-${{ matrix.scenario }}
+          name: genuine-v88-difficulty-${{ matrix.scenario }}
           path: |
-            /tmp/v87-minimap-capture/*.png
-            /tmp/v87-minimap-capture/report.json
+            /tmp/v88-difficulty-capture/*.png
+            /tmp/v88-difficulty-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
