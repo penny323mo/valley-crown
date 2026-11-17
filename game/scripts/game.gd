@@ -3793,6 +3793,7 @@ func _update_vision(refresh_render=true):
 		_refresh_fog()
 
 func _refresh_fog():
+	if is_instance_valid(minimap):minimap.refresh_fog()
 	if is_instance_valid(fog):
 		for i in Rules.MAP_SIZE*Rules.MAP_SIZE:
 			var state=2 if visible_cells[0][i] else (1 if explored_cells[0][i] else 0)
@@ -4290,6 +4291,7 @@ func _on_viewport_size_changed():
 	_layout_ui()
 
 func _cancel_pointer_streams():
+	if is_instance_valid(minimap):minimap.cancel_pointer()
 	box_cancel_press.clear(); box_cancel_repeat.clear()
 	for index in all_touch_ids: canceled_touch_ids[index]=true
 	for button_index in pressed_mouse_buttons: canceled_mouse_buttons[button_index]=true
@@ -5142,6 +5144,8 @@ func _checkpoint_restored_feedback():
 	if skirmish_mode=="expedition":
 		text+=" · "+FrontierExpedition.TITLES[frontier_expedition.stage]
 	_message(text,3)
+	# Refresh presentation from restored masks without advancing/revealing vision.
+	_refresh_fog()
 	_update_hud()
 
 func _toggle_pause():
@@ -5511,6 +5515,7 @@ func _track_pointer_input(event,viewport):
 		if event.button_index==MOUSE_BUTTON_LEFT: call_deferred("_cleanup_mouse_release")
 		if event.button_index==MOUSE_BUTTON_MIDDLE: middle_drag=false
 
+	if is_instance_valid(minimap):minimap.track_pointer(event,viewport)
 	_track_action_scroll(event,viewport)
 
 func _track_action_scroll(event,viewport):

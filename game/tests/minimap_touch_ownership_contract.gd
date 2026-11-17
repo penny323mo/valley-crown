@@ -1,5 +1,5 @@
 extends SceneTree
-# ENGINE_UNRUN. Synthetic tracker/world/minimap calls, not native GUI dispatch,
+# Headless engine-tested synthetic tracker/world/minimap calls, not GUI dispatch,
 # rendered layout, browser, physical phone or natural combat proof.
 class GameFixture:
 	extends "res://scripts/game.gd"
@@ -35,7 +35,8 @@ func release(f,id,point,world=false):
 	track(f,touch(id,point,false),world)
 	# Force the ordinary deferred cleanup boundary explicitly in this fixture.
 	f.game._cleanup_touch_release(id,epoch); f.game._cleanup_button_touch(id,epoch)
-func _initialize():
+func _initialize():call_deferred("run")
+func run():
 	for world_first in [true,false]:
 		var f=setup(); var g=f.game
 		var first=touch(4,Vector2(100,100)); track(f,first,world_first)

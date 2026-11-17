@@ -1,5 +1,5 @@
 {
-  "build": "vc-b3da316185b2",
+  "build": "vc-7c67b6283db7",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -179,7 +179,7 @@
     "scripts/field_manual.gd": "23cb2f091e598170bf88a2bac2ea7819dca770f88f8500cb5be77670fd64b71e",
     "scripts/frontier_escort.gd": "0fca8cf472dd270a78714efd1b371c5cfc2469678451500f9edfa1a30d432bbb",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "75ca8f32c7e2a7226b82688949893c20ae8b7503846821e0ccb32cc9bd66c1df",
+    "scripts/game.gd": "d41a494de99e85ea847cc81c4d0f0d006ce2ed99713352309228ff24098c19a4",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/garrison_checkpoint.gd": "85b9c4696b7b632600e2fe81c083015edb482f07bf100a4c08be43fba0f88427",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
@@ -193,7 +193,7 @@
     "scripts/match_report.gd": "0f330994f0b736e0662c3e7b35797bfb4379085c0d84d269473a3f9e19fe17cb",
     "scripts/mature_world_visuals.gd": "12097d9ef1d316834da3a687b70621d371db111979fc0add6641a5ab86f052c5",
     "scripts/mature_world_visuals.gd.uid": "4129f1ef603ef8a0925ed5388bcc4d6cade6fe489ac15454abcabcd40108201a",
-    "scripts/minimap.gd": "1aae8d34717bc7c6106910a42e7c6f620d3c49d621a820d03a0661b6634efcda",
+    "scripts/minimap.gd": "04178729965b40dff5064207bc35bc521aa2e81430a39abe17098c64d1ada4cd",
     "scripts/minimap.gd.uid": "f6346a0cf32cd8e5aad3f0538b5b25ffffa16e73be57d921980ad6be42242838",
     "scripts/model_catalogue.gd": "764321187af827dc1deef59d4d3467d0b62a1a27e6cfba01e9107bede1781a63",
     "scripts/model_catalogue.gd.uid": "51f9540c25d80207ad63970792edc855318f5ea46020b61f6c0a7fe272ec04a9",
@@ -212,7 +212,7 @@
     "scripts/rest_recovery.gd": "d7c5e3037c5e8bbd143be07b2c7214ad1b7546e4bf1642ef36ec68a3d3ec28e9",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "2333f85d8a02413342c33ca570038b28a7d23f4f9d65f6cc3bcc22f05d5562ba",
+    "scripts/rules.gd": "8b370bc0876491d6422e9c662fd7f64d884b2ae621b0ba93bf3831710e4f37d0",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",
