@@ -347,4 +347,35 @@ class BuildingAttentionWaitingSchemaTests(unittest.TestCase):
                     with self.subTest(name=name,kind=kind):
                         with self.assertRaises(ValueError):read(bad)
 
+class UnitYawReportSchemaTests(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'controlled circular path is statically free', 'passed': True}, {'name': 'ordinary movement phase completes all circular steps', 'passed': True}, {'name': 'legacy unwrapped angle exceeds checkpoint limit', 'passed': True}, {'name': 'all new rotations remain finite canonical radians', 'passed': True}, {'name': 'every step preserves legacy facing direction', 'passed': True}, {'name': 'turning does not alter economy', 'passed': True}, {'name': 'turning does not alter health', 'passed': True}, {'name': 'turning does not emit commands', 'passed': True}, {'name': 'long-turn state passes unchanged strict checkpoint validation', 'passed': True}, {'name': 'long-turn checkpoint exact transport roundtrip', 'passed': True}, {'name': 'NaN rotation remains rejected', 'passed': True}, {'name': 'infinite rotation remains rejected', 'passed': True}, {'name': 'out-of-world position remains rejected', 'passed': True}, {'name': 'strict long-turn checkpoint restores', 'passed': True}, {'name': 'immediate restored full capture is exact', 'passed': True}, {'name': 'full 100-tick continuation is exact after restore', 'passed': True}, {'name': 'restored economy audit passes', 'passed': True}], 'failed': 0, 'scope': 'controlled movement-phase long-turn orientation and strict checkpoint continuation; not natural full-match or physical-phone acceptance', 'suite': 'unit_yaw_checkpoint_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
 if __name__=='__main__':unittest.main(verbosity=2)
