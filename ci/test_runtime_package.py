@@ -259,4 +259,35 @@ class SiegeServiceReportSchemaTests(unittest.TestCase):
                     with self.subTest(suite=suite,mutation=i):
                         with self.assertRaises(ValueError):read(raw)
 
+class BattleNavigationReportSchemaTests(unittest.TestCase):
+    """Frozen official 14-row report; negative fixtures never count as gameplay proof."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        reports = [{'checks': [{'name': 'first ordinary settled hit creates own-location alert', 'passed': True}, {'name': 'two separated ordinary own hits expose two frozen alert positions', 'passed': True}, {'name': 'direct battle action reachable (320, 568)', 'passed': True}, {'name': 'HUD retains world gap (320, 568)', 'passed': True}, {'name': 'direct battle action reachable (844, 390)', 'passed': True}, {'name': 'HUD retains world gap (844, 390)', 'passed': True}, {'name': 'direct battle action reachable (390, 844)', 'passed': True}, {'name': 'HUD retains world gap (390, 844)', 'passed': True}, {'name': 'one routed tap focuses first alert without opening menu', 'passed': True}, {'name': 'navigation leaves selected orders and visibility unchanged', 'passed': True}, {'name': 'expired held tap does not jump to stale alert', 'passed': True}, {'name': 'pause disables jump and preserves simulation expiry', 'passed': True}, {'name': 'acknowledged alert absent from minimap presentation snapshot', 'passed': True}, {'name': 'continuing acknowledged combat does not spam again', 'passed': True}], 'failed': 0, 'scope': 'Controlled combat setup with real damage settlement and viewport-routed touch, three simulated sizes; not physical phone or natural whole match.', 'suite': 'battle_navigation_contract'}]
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            for report in reports:
+                suite=report['suite']
+                def read(raw):
+                    (stage/'godot.log').write_text(raw+'\n')
+                    return validator.read_report(stage,suite)
+                self.assertEqual(read(json.dumps(report)),report)
+                mutants=[]
+                for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                    bad=copy.deepcopy(report);bad[key]=value;mutants.append(json.dumps(bad))
+                for i in range(len(report['checks'])):
+                    for value in (False,1):
+                        bad=copy.deepcopy(report);bad['checks'][i]['passed']=value;mutants.append(json.dumps(bad))
+                    bad=copy.deepcopy(report);bad['checks'].pop(i);mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['checks'].reverse();mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['checks'].append(bad['checks'][0]);mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['extra']=True;mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);del bad['scope'];mutants.append(json.dumps(bad))
+                raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+                for i,raw in enumerate(mutants):
+                    with self.subTest(suite=suite,mutation=i):
+                        with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
