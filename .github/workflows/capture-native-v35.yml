@@ -1,4 +1,4 @@
-name: Capture v97 ordinary siege breach journey
+name: Capture v97 ordinary siege breach with full visual clocks
 on:
   push:
     branches: [main]

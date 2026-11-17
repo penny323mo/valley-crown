@@ -12,7 +12,7 @@ func shot(g,name,focus):
  var alive=[]
  for e in g.entities:
   if e.team==0 and e.category=="unit" and e.alive:alive.append({"id":e.id,"kind":e.kind,"hp":e.hp,"position":str(e.pos)})
- var row={"name":name,"tick":g.tick_count,"stage":g.breach_mission.stage,"outcome":g.outcome,"game_over":g.game_over,"army":alive,"camera":str(g.camera_focus),"metadata_only":metadata_only}
+ var row={"name":name,"tick":g.tick_count,"stage":g.breach_mission.stage,"outcome":g.outcome,"game_over":g.game_over,"army":alive,"camera":str(g.camera_focus),"metadata_only":metadata_only,"attack_effects":g.attack_effects.map(func(c):return {"age":c.age,"siege":c.get("siege",false)}),"pending_deaths":g.pending_visual_deaths.size()}
  if not metadata_only:
   await RenderingServer.frame_post_draw
   var p=out+"/"+name+".png";check(name+" png",root.get_texture().get_image().save_png(p)==OK);row.file=p;row.sha256=FileAccess.get_sha256(p)
@@ -83,6 +83,7 @@ func run():
      g._submit("order",{"ids":[id],"target":chosen,"position":records[chosen].pos});assigned[id]=chosen;lasttarget=chosen
      if chosen not in targets:targets.append(chosen)
   g._tick(Rules.TICK)
+  g._update_visuals(Rules.TICK)
   if phase>=2:
    for id in ids:
     var e=g._get_entity(id)
@@ -96,6 +97,7 @@ func run():
   if phase>=3 and not captured_tower:
    captured_tower=true;await shot(g,"03-front-tower-destroyed",Vector3(0,0,-13))
   if i%500==0:print("BREACH_TICK ",g.tick_count," phase=",phase," live=",ids.filter(func(id):return g._get_entity(id).alive).size()," target=",lasttarget," hp=",g._get_entity(lasttarget).get("hp",-1))
+ check("no expired attack effects retained",g.attack_effects.all(func(c):return c.age<(g.SiegeEffect.LIFETIME if c.get("siege",false) else g.ATTACK_EFFECT_SECONDS)))
  check("normal commands destroyed front wall",wall_id>=0 and secondwall>=0 and thirdwall>=0 and not g._get_entity(wall_id).alive and not g._get_entity(secondwall).alive and not g._get_entity(thirdwall).alive)
  check("normal movement crosses broken wall",wall_crossed)
  check("ordinary damage equals shared rules",normal_damage and checked_attack>1)
