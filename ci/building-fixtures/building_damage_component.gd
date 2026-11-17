@@ -2,7 +2,7 @@ extends SceneTree
 # PREPARED ONLY: requires native execution; no engine run is claimed.
 const Presenter = preload("res://scripts/building_damage_presenter.gd")
 const Rules = preload("res://scripts/rules.gd")
-const EXPECTED_BUILD = "vc-d12f55727772"
+const EXPECTED_BUILD = "vc-b3da316185b2"
 var failures := 0
 var check_rows: Array = []
 func check(label: String, ok: bool) -> void:
