@@ -38,8 +38,8 @@ func move_to(destination:Vector3,key:String):
  var start=scout.pos;var start_tick=g.tick_count
  g._submit("order",{"ids":[scout.id],"target":-1,"position":destination,"command_id":key},0)
  for i in 1000:
-  g._tick(Rules.TICK);g._update_visuals(Rules.TICK)
-  if i%8==0:await process_frame
+  g._tick(Rules.TICK)
+  # Simulation remains unchanged; render only the recorded evidence states.
   if g.game_over or not scout.alive:break
   if scout.pos.distance_to(destination)<1.4:break
  var success=scout.pos.distance_to(destination)<1.4 and scout.pos.distance_to(start)>2.
