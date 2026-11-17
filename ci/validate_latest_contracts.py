@@ -181,7 +181,15 @@ def read_report(stage,suite):
  if suite in ARMY_CONTRACTS:
   spec=ARMY_CONTRACTS[suite];rows=[l for l in log.splitlines() if l.startswith('{')]
   require(len(rows)==1,'Missing/duplicate army report')
-  d=parse_json(rows[0]);expected_keys={'suite','checks','failed'} | set(spec.get('identity',{})) | ({'scope'} if suite=='army_formation_integration' or 'scope' in spec else set());require(set(d)==expected_keys and d['suite']==spec['suite'] and d['failed']==0,'Wrong army report identity')
+  d=parse_json(rows[0]);expected_keys={'suite','checks','failed'} | set(spec.get('identity',{})) | ({'scope'} if suite=='army_formation_integration' or 'scope' in spec else set()) | ({'geometry'} if suite=='wall_line_contract' else set());require(set(d)==expected_keys and d['suite']==spec['suite'] and d['failed']==0,'Wrong army report identity')
+  if suite=='wall_line_contract':
+   geometry=d['geometry'];require(type(geometry) is list and len(geometry)==4,'Wrong wall geometry count')
+   require([g.get('size') for g in geometry]==['(390, 844)','(320, 568)','(568, 320)','(1280, 800)'],'Wrong wall viewport identities')
+   for g in geometry:
+    require(set(g)=={'size','top','bottom','scroll','buttons','queue','summary'},'Wrong wall geometry fields')
+    require(all(type(g[k]) is str and g[k] for k in ['size','top','bottom','scroll','queue','summary']),'Malformed wall geometry strings')
+    require(type(g['buttons']) is list and len(g['buttons'])==6,'Wrong wall button count')
+    require(all(type(b) is dict and set(b)=={'text','rect'} and all(type(v) is str and v for v in b.values()) for b in g['buttons']),'Malformed wall button geometry')
   if suite=='army_formation_integration':require(d['scope']=='Controlled actual game handlers; not natural battle or rendered acceptance','Wrong formation scope')
   if 'scope' in spec:require(d['scope']==spec['scope'],'Wrong defense scope')
   for key,value in spec.get('identity',{}).items():require(d[key]==value,'Wrong report source identity')
