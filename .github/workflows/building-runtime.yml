@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-4d3a847269b9-717f7643
+  group: building-runtime-vc-6d18e3dd5d49-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 03393eeed4367ed2de5a3b1e39cad94601ff9af1
+      BUILDING_RUNTIME_SOURCE_COMMIT: 9ef8ef567fc4711ad7b2db953070a606adf7f870
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'e8b9b54726880acc2c02a0be965d9a65d23c1731fdb4bcd8ccf0fc18f1bc730b  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'eaa27bae3d4cb209cc54c63cb1596ed7c1b8605ea49cc5580ed689ea39239c8f  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -301,6 +301,9 @@ jobs:
             ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication/faction-publication-report.json
             ${{ env.RTS_WORK }}/product/latest-contracts/ui_glyph_coverage_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/ui_glyph_coverage_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/escort_policy_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/escort_policy_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/escort_integration_contract/receipt.json
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -310,9 +313,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/escort_policy_contract/receipt.json
-            ${{ env.RTS_WORK }}/product/latest-contracts/escort_policy_contract/godot.log
-            ${{ env.RTS_WORK }}/product/latest-contracts/escort_integration_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/escort_integration_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/gather_assignment_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/gather_assignment_contract/godot.log
@@ -496,6 +496,12 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/command_icons_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/friendly_pick_routed_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/friendly_pick_routed_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/batch_siege_repair_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/batch_siege_repair_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_service_journey/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_service_journey/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/repair_contact_route_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/repair_contact_route_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14

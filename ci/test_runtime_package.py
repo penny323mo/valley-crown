@@ -229,4 +229,34 @@ class FriendlyPickReportSchemaTests(unittest.TestCase):
                 with self.subTest(mutation=index):
                     with self.assertRaises(ValueError):read_raw(raw)
 
+class SiegeServiceReportSchemaTests(unittest.TestCase):
+    """Frozen official 23/6/9 reports; negative fixtures never count as gameplay proof."""
+    def test_three_exact_reports_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        reports = [{'checks': [{'name': 'controlled siege positions are statically legal', 'passed': True}, {'name': 'two damaged stationary siege get distinct workers', 'passed': True}, {'name': 'policy leaves observed data intact', 'passed': True}, {'name': 'menu names siege maintenance', 'passed': True}, {'name': 'pending orders prevent duplicate dispatch', 'passed': True}, {'name': 'moving and pending siege excluded', 'passed': True}, {'name': 'recently hit and enemy siege excluded', 'passed': True}, {'name': 'remembered and living troop targets excluded', 'passed': True}, {'name': 'existing gather workers are not commandeered', 'passed': True}, {'name': 'observed enemy prevents dangerous fleet dispatch', 'passed': True}, {'name': 'batch only queues ordinary guarded commands', 'passed': True}, {'name': 'click gives no instant health or payment', 'passed': True}, {'name': 'both siege fully repaired by ordinary game ticks', 'passed': True}, {'name': 'exact four wood pays twenty health', 'passed': True}, {'name': 'workers physically travelled to targets', 'passed': True}, {'name': 'completed workers stop without repeat charge', 'passed': True}, {'name': 'healthy fleet causes no continuing expense', 'passed': True}, {'name': 'siege moving before execution preserves worker epoch', 'passed': True}, {'name': 'stationary target accepts fresh batch', 'passed': True}, {'name': 'target movement cancels active repair without extra heal', 'passed': True}, {'name': 'controlled zero wood setup debits ledger', 'passed': True}, {'name': 'no wood disables batch and cannot heal for free', 'passed': True}, {'name': 'repair ledger conserves resources', 'passed': True}], 'failed': 0, 'scope': 'Controlled two-siege fixture; existing menu callback, normal travel and paid tick repair, no physical-phone claim.', 'suite': 'batch_siege_repair_contract'}, {'checks': [{'name': 'controlled full-health mechanical force starts legal', 'passed': True}, {'name': 'ordinary enemy attacks damage both siege', 'passed': True}, {'name': 'active visible enemy blocks batch service', 'passed': True}, {'name': 'after enemy departure fleet offers two repairs', 'passed': True}, {'name': 'battle damaged fleet restored through ordinary paid work', 'passed': True}, {'name': 'repair expenses reconcile without resource grants', 'passed': True}], 'failed': 0, 'scope': 'Controlled unit-spawn encounter with economic AI disabled; all HP damage, retreat, travel and repairs use ordinary commands/ticks, no HP/resource grants or forced deaths.', 'suite': 'siege_service_journey'}, {'checks': [{'name': 'original fortress two siege and enemy archer', 'passed': True}, {'name': 'ordinary attacks damage both central siege', 'passed': True}, {'name': 'existing economy action dispatches two repair workers', 'passed': True}, {'name': 'both central workers retain their accepted contact slot', 'passed': True}, {'name': 'central repairs finish without exhausted route retries', 'passed': True}, {'name': 'central full repair debits exact ordinary wood', 'passed': True}, {'name': 'enemy alive and ledger conservation retained', 'passed': True}, {'name': 'non-perimeter request cannot anchor repair', 'passed': True}, {'name': 'stale work epoch uses ordinary legal slot selection', 'passed': True}], 'failed': 0, 'scope': 'Controlled original fortress units and ordinary orders, attacks, traffic and paid repair. AI scheduling disabled; no spawns, teleports, HP/resource/fog edits. Copied-record stale-request checks. Not natural full-match or physical-phone validation.', 'suite': 'repair_contact_route_contract'}]
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            for report in reports:
+                suite=report['suite']
+                def read(raw):
+                    (stage/'godot.log').write_text(raw+'\n')
+                    return validator.read_report(stage,suite)
+                self.assertEqual(read(json.dumps(report)),report)
+                mutants=[]
+                for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                    bad=copy.deepcopy(report);bad[key]=value;mutants.append(json.dumps(bad))
+                for i in range(len(report['checks'])):
+                    for value in (False,1):
+                        bad=copy.deepcopy(report);bad['checks'][i]['passed']=value;mutants.append(json.dumps(bad))
+                    bad=copy.deepcopy(report);bad['checks'].pop(i);mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['checks'].reverse();mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['checks'].append(bad['checks'][0]);mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['extra']=True;mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);del bad['scope'];mutants.append(json.dumps(bad))
+                raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+                for i,raw in enumerate(mutants):
+                    with self.subTest(suite=suite,mutation=i):
+                        with self.assertRaises(ValueError):read(raw)
+
 if __name__=='__main__':unittest.main(verbosity=2)
