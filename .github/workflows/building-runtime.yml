@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 42c339412faa155dde1db50efa4bc822159144ca
+      BUILDING_RUNTIME_SOURCE_COMMIT: c34730399f35640b1869ad6234997e9dfe37c06f
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '4f7edab847ae970069aa82f3b365d11de17f27241dd24cfaa2234a148da32bf0  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '8628255e6c24d30c9e0c7d532c258be4da5e8c1ba0f8deb36b5dcd9e324e1e4c  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -243,15 +243,6 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_menu_contract/receipt.json
-          if-no-files-found: warn
-          include-hidden-files: false
-          retention-days: 14
-      - name: Always retain remaining explicit actual bounded evidence
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
-          path: |
             ${{ env.RTS_WORK }}/product/latest-contracts/control_point_menu_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/worker_safety_contract/godot.log
@@ -305,6 +296,15 @@ jobs:
             ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication-receipt.json
             ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication/receipt.json
             ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication/godot.log
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
+      - name: Always retain remaining explicit actual bounded evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
+          path: |
             ${{ env.RTS_WORK }}/product/building-contracts/construction_visual/construction-report.json
             ${{ env.RTS_WORK }}/product/construction-contracts/stance_target_cancel_phone/stance-target-cancel-phone.json
             ${{ env.RTS_WORK }}/product/faction-contracts/faction-publication/faction-publication-report.json
@@ -394,6 +394,98 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/breach_menu_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/breach_mission_journey/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/breach_mission_journey/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/fortress_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/fortress_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_repair_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_repair_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/cavalry_grip_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/cavalry_grip_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/horse_visual_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/horse_visual_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/rider_armour_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/rider_armour_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_tactics_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_tactics_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_roster_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_roster_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/pinned_menu_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/pinned_menu_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/combat_veterancy_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/combat_veterancy_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/battle_speed_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/battle_speed_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/arrow_effect_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/arrow_effect_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/target_priority_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/target_priority_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/tower_focus_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/tower_focus_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_challenge_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_challenge_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_codec_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_codec_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_continuation_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_continuation_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_menu_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_menu_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_challenge_engagement_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_challenge_engagement_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_recruitment_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_recruitment_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_recruitment_menu_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/army_recruitment_menu_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_resource_outpost_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_resource_outpost_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_army_recovery_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_army_recovery_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_infrastructure_repair_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_infrastructure_repair_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/batch_repair_dispatch_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/batch_repair_dispatch_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/batch_construction_dispatch_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/batch_construction_dispatch_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/player_scout_dispatch_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/player_scout_dispatch_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_gather_load_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_gather_load_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/resource_lifecycle_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/resource_lifecycle_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_preservation_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_preservation_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_restore_feedback_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_restore_feedback_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_backups_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_backups_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/battle_selection_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/battle_selection_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/frontier_escort_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/frontier_escort_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/escort_menu_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/escort_menu_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/escort_storage_boundary_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/escort_storage_boundary_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_economic_raid_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_economic_raid_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_allocation_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_allocation_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_allocation_integration/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_allocation_integration/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/raid_reinforcement_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/raid_reinforcement_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/battlefield_layout_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/battlefield_layout_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/battlefield_menu_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/battlefield_menu_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_layout_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/checkpoint_layout_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/compact_battle_hud_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/compact_battle_hud_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/tactical_route_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/tactical_route_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/tactical_route_input_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/tactical_route_input_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
