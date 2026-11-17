@@ -1,4 +1,4 @@
-name: Verify v83 post-breach advance and real keep attack
+name: Capture v84 paid wall-row preview construction and completion
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [wall_continuation]
+        scenario: [wall_rows]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,36 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14260210257/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='53bf7537085b14e0731c40c163bda30ef42ce64b16fa098c163fa5fcec4b4b28'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14312874531/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='7dcdde8978e9838611a1e16f1d7cb89fa957d456c76615747ced524ba33e9a33'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='1f848ae1167bf2b2a49e63897a8f787b7800664d718a71c5fcdb44b8c1730f36'
+          assert hashlib.sha256(pck).hexdigest()=='46a51be52078312c825b9d37519669a8655e4f00544b3134df91accc9bb21ccd'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-wall-natural-continuation.gd /tmp/capture/capture.gd
-      - name: Verify controlled real-tick wall continuation and recovery
-        shell: bash
-        run: |
-          set -euo pipefail
-          ulimit -v 2097152 -t 60
-          export HOME=/tmp/capture XDG_DATA_HOME=/tmp/capture/contract-data XDG_CONFIG_HOME=/tmp/capture/contract-config XDG_CACHE_HOME=/tmp/capture/contract-cache
-          timeout --signal=TERM --kill-after=5s 70s /tmp/Godot_v4.6.3-stable_linux.x86_64 --headless --main-pack /tmp/capture/index.pck --script ci/wall_continuation_contract.gd > /tmp/capture/wall-continuation-stdout.txt 2> /tmp/capture/wall-continuation-stderr.txt
-          python3 - <<'PY'
-          import json,pathlib
-          lines=pathlib.Path('/tmp/capture/wall-continuation-stdout.txt').read_text().splitlines()
-          report=next(json.loads(line) for line in reversed(lines) if line.startswith('{'))
-          assert report['suite']=='wall_continuation_contract' and report['failed']==0 and len(report['checks'])==10
-          assert all(row['passed'] for row in report['checks'])
-          print('All ten controlled continuation checks passed')
-          PY
+          cp ci/capture-wall-batch-natural.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v83-wall-continuation-${{ matrix.scenario }}
+          name: genuine-v84-wall-rows-${{ matrix.scenario }}
           path: |
-            /tmp/capture/*.png
+            /tmp/wall-batch-capture/*.png
+            /tmp/wall-batch-capture/wall-batch-proof.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
