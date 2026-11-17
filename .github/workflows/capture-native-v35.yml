@@ -1,4 +1,4 @@
-name: Capture v93 ordinary siege breach priority
+name: Capture v94 selected escort teams
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
   capture:
     strategy:
       matrix:
-        scenario: [siege]
+        scenario: [escort]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,22 +32,22 @@ jobs:
           import sys,io,zipfile,hashlib,pathlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub
-          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14333727020/zip',binary=True)
-          assert hashlib.sha256(data).hexdigest()=='b72bc9b7452cf504605d870b076b173dd3faa68bf552ef561d3b02bb6b77a327'
+          data=GitHub(os.environ['GITHUB_REPOSITORY']).request('/actions/artifacts/14336341226/zip',binary=True)
+          assert hashlib.sha256(data).hexdigest()=='aba2c3b971a6ce5acd617cfff05312dbf4d54ea78474516e28079a54a8aa8508'
           pck=zipfile.ZipFile(io.BytesIO(data)).read('artifacts/clean-a/index.pck')
-          assert hashlib.sha256(pck).hexdigest()=='6247bd785906b494bd88884ce366d7449defde878354ea465555fc626fb35b64'
+          assert hashlib.sha256(pck).hexdigest()=='8021ae40479192a098af3a77037fe774a013bc2ea2463cf61a79ee0c7b519184'
           pathlib.Path('/tmp/capture/index.pck').write_bytes(pck)
           PYCODE
-          cp ci/capture-siege.gd /tmp/capture/capture.gd
+          cp ci/capture-escort.gd /tmp/capture/capture.gd
       - name: Resource guarded genuine native rendering with low-memory softpipe at bounded resolution
         run: python3 ci/capture-expedition-journey-guard.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: genuine-v93-siege-${{ matrix.scenario }}
+          name: genuine-v94-escort-${{ matrix.scenario }}
           path: |
-            /tmp/v93-siege-capture/*.png
-            /tmp/v93-siege-capture/report.json
+            /tmp/v94-escort-capture/*.png
+            /tmp/v94-escort-capture/report.json
             /tmp/capture/*receipt.json
             /tmp/capture/wall-natural-proof.json
             /tmp/capture/wall-natural-contract.json
