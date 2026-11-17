@@ -290,4 +290,35 @@ class BattleNavigationReportSchemaTests(unittest.TestCase):
                         with self.assertRaises(ValueError):read(raw)
 
 
+class ProductionWaitReportSchemaTests(unittest.TestCase):
+    """Frozen official 37-row report; negative fixtures never count as gameplay proof."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        reports = [{'checks': [{'name': 'completed unit front is waiting not busy', 'passed': True}, {'name': 'waiting excludes { "owned": false }', 'passed': True}, {'name': 'waiting excludes { "alive": false }', 'passed': True}, {'name': 'waiting excludes { "remembered": true }', 'passed': True}, {'name': 'waiting excludes { "team": 1 }', 'passed': True}, {'name': 'waiting excludes { "built": false }', 'passed': True}, {'name': 'non-ready unit order excluded { "kind": "age2", "remaining_ticks": 0, "research": true }', 'passed': True}, {'name': 'non-ready unit order excluded { "kind": "spearman", "remaining_ticks": 1 }', 'passed': True}, {'name': 'non-ready unit order excluded { "kind": "spearman", "remaining_ticks": 0, "trade": true }', 'passed': True}, {'name': 'paid training accepted with available capacity', 'passed': True}, {'name': 'actual training finishes but occupied exit blocks birth', 'passed': True}, {'name': 'global overview separates ready from producing', 'passed': True}, {'name': 'locator binds actual stalled producer', 'passed': True}, {'name': 'waiting locator reachable (320, 568)', 'passed': True}, {'name': 'waiting locator reachable (844, 390)', 'passed': True}, {'name': 'waiting locator reachable (390, 844)', 'passed': True}, {'name': 'routed locator selects stalled producer and closes menu', 'passed': True}, {'name': 'locator preserves paid queue and shows actual exit cause', 'passed': True}, {'name': 'population-full boundary actually reached', 'passed': True}, {'name': 'full population explains wait and disables exit clearing', 'passed': True}, {'name': 'population wait remains discoverable without spending', 'passed': True}, {'name': 'small-unit exit geometry unchanged', 'passed': True}, {'name': 'large-unit exit geometry and order unchanged', 'passed': True}, {'name': 'ready producer offers clearing', 'passed': True}, {'name': 'bounded ordinary move plan', 'passed': True}, {'name': 'enemy occupying exit never receives move order', 'passed': True}, {'name': 'paused clear does not issue orders', 'passed': True}, {'name': 'pending unit order protected', 'passed': True}, {'name': 'only ordinary movement submitted', 'passed': True}, {'name': 'queue and payment unchanged by clearing request', 'passed': True}, {'name': 'repeated clear cannot duplicate pending units', 'passed': True}, {'name': 'native movement enables normal birth', 'passed': True}, {'name': 'no second payment or duplicate unit', 'passed': True}, {'name': 'clear action removed when queue completed', 'passed': True}, {'name': 'completed birth retires locator', 'passed': True}, {'name': 'retired queue cannot move former blocker', 'passed': True}, {'name': 'economy conserved', 'passed': True}], 'failed': 0, 'scope': 'Controlled housing/blockers; full paid train, viewport-routed waiting locator, ordinary exit movement and single birth. Pure observation exclusions. Not natural full match or physical phone acceptance', 'suite': 'production_wait_navigation_contract'}]
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            for report in reports:
+                suite=report['suite']
+                def read(raw):
+                    (stage/'godot.log').write_text(raw+'\n')
+                    return validator.read_report(stage,suite)
+                self.assertEqual(read(json.dumps(report)),report)
+                mutants=[]
+                for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                    bad=copy.deepcopy(report);bad[key]=value;mutants.append(json.dumps(bad))
+                for i in range(len(report['checks'])):
+                    for value in (False,1):
+                        bad=copy.deepcopy(report);bad['checks'][i]['passed']=value;mutants.append(json.dumps(bad))
+                    bad=copy.deepcopy(report);bad['checks'].pop(i);mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['checks'].reverse();mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['checks'].append(bad['checks'][0]);mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);bad['extra']=True;mutants.append(json.dumps(bad))
+                bad=copy.deepcopy(report);del bad['scope'];mutants.append(json.dumps(bad))
+                raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+                for i,raw in enumerate(mutants):
+                    with self.subTest(suite=suite,mutation=i):
+                        with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
