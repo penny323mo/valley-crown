@@ -74,7 +74,7 @@ jobs:
       - name: Verify read-only collector then diagnose original guard
         run: |
           set -euo pipefail
-          echo '0da8bc9815983306123222e4148d388246510e7a3e37894420d216ac49b5a365  .github/diagnostics/export_telemetry.py' | sha256sum --strict --check
+          echo '2d265b0762595ecf84dadc65feb726707897a40deaa9204773d24239ec3def8e  .github/diagnostics/export_telemetry.py' | sha256sum --strict --check
           python3 -B .github/diagnostics/export_telemetry.py --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/product/template/web_nothreads_release.zip" --lock "$RTS_WORK/product/export-lock.json" --import-marker "$RTS_WORK/product/private/import/import-complete.json" --output "$RTS_WORK/product/exports" --private "$RTS_WORK/product/private/export" --diagnostic-output "$RTS_WORK/diagnostic"
       - name: Retain only explicit diagnostic evidence, no product or checkpoints
         if: always()
@@ -84,9 +84,12 @@ jobs:
           path: |
             ${{ env.RTS_WORK }}/diagnostic/telemetry.json
             ${{ env.RTS_WORK }}/diagnostic/summary.json
-            ${{ env.RTS_WORK }}/product/exports/web-export-receipt.json
-            ${{ env.RTS_WORK }}/product/exports/export-1/receipt.json
-            ${{ env.RTS_WORK }}/product/exports/export-1/godot.log
+            ${{ env.RTS_WORK }}/product/exports-1/web-export-receipt.json
+            ${{ env.RTS_WORK }}/product/exports-1/export-1/receipt.json
+            ${{ env.RTS_WORK }}/product/exports-1/export-1/godot.log
+            ${{ env.RTS_WORK }}/product/exports-2/web-export-receipt.json
+            ${{ env.RTS_WORK }}/product/exports-2/export-1/receipt.json
+            ${{ env.RTS_WORK }}/product/exports-2/export-1/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
