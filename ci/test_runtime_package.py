@@ -724,4 +724,36 @@ class ShelterDeliveryReportSchemaTests1(unittest.TestCase):
                     with self.assertRaises(ValueError):read(raw)
 
 
+class TutorialFoldReportSchemaTests0(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'fresh tutorial retains expanded onboarding', 'passed': True}, {'name': 'pre fold strict capture is valid and nonempty', 'passed': True}, {'name': 'real collapse removes full width tutorial row', 'passed': True}, {'name': 'collapse is not skip or a simulation command', 'passed': True}, {'name': 'collapse is absent from strict saved authority', 'passed': True}, {'name': 'progress entry fits (640, 360)', 'passed': True}, {'name': 'essential top controls fit (640, 360)', 'passed': True}, {'name': 'rotation relayout preserves collapsed preference (640, 360)', 'passed': True}, {'name': 'progress entry fits (568, 320)', 'passed': True}, {'name': 'essential top controls fit (568, 320)', 'passed': True}, {'name': 'rotation relayout preserves collapsed preference (568, 320)', 'passed': True}, {'name': 'progress entry fits (320, 568)', 'passed': True}, {'name': 'essential top controls fit (320, 568)', 'passed': True}, {'name': 'rotation relayout preserves collapsed preference (320, 568)', 'passed': True}, {'name': 'progress entry fits (390, 844)', 'passed': True}, {'name': 'essential top controls fit (390, 844)', 'passed': True}, {'name': 'rotation relayout preserves collapsed preference (390, 844)', 'passed': True}, {'name': 'real selection still records while folded', 'passed': True}, {'name': 'ordinary gather target is current observed', 'passed': True}, {'name': 'normal gather and paid in cargo progress survives folding', 'passed': True}, {'name': 'canceled entry touch leaves fold unchanged', 'passed': True}, {'name': 'second finger cancels tutorial entry', 'passed': True}, {'name': 'fresh entry expands current earned progress', 'passed': True}, {'name': 'folded feedback remains visible', 'passed': True}, {'name': 'full feedback still reachable', 'passed': True}, {'name': 'toast expiry returns folded without empty panel', 'passed': True}, {'name': 'fold controls preserve unpaid build preview and bank', 'passed': True}, {'name': 'ordinary settled damage creates active alert fixture', 'passed': True}, {'name': 'narrow alert keeps battle pause and menu visible', 'passed': True}, {'name': 'menu fallback progress entry reachable without new row', 'passed': True}, {'name': 'fallback opens lesson without orders selection or payment', 'passed': True}, {'name': 'focus loss cancels held fold entry', 'passed': True}, {'name': 'explicit skip remains distinct and hides progress entry', 'passed': True}, {'name': 'resume restores accessible entry without losing facts', 'passed': True}, {'name': 'pause control pauses before folding', 'passed': True}, {'name': 'paused fold remains paused and preserves simulation', 'passed': True}, {'name': 'resume control preserves chosen folded preference', 'passed': True}, {'name': 'return to main menu pauses folded match', 'passed': True}, {'name': 'new match still requires discard confirmation', 'passed': True}, {'name': 'cancel new match and resume retain folded preference', 'passed': True}, {'name': 'confirmed fresh match restores expanded onboarding', 'passed': True}], 'failed': 0, 'scope': 'Native routed fold and unchanged tutorial facts, ordinary gather/deposit, four viewports and feedback; no physical phone performance claim.', 'suite': 'tutorial_fold_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
