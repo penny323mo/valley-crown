@@ -54,6 +54,7 @@ var worker_evacuations={}
 var worker_manual_until={}
 var worker_safety_hits={}
 var large_route_cache=[{},{}]
+const AIWorkerRouteRisk=preload("res://scripts/ai_worker_route_risk.gd")
 const BoundedPath = preload("res://scripts/bounded_grid_pathfinder.gd")
 const WorkPath = preload("res://scripts/bounded_work_routes.gd")
 const FactionView = preload("res://scripts/faction_view.gd")
@@ -295,6 +296,7 @@ var visible_cells=[PackedByteArray(),PackedByteArray()]
 var explored_cells=[PackedByteArray(),PackedByteArray()]
 var fog: MultiMeshInstance3D
 var fog_render_state=PackedByteArray()
+var fog_inward_edge
 var touch_points={}
 var touch_world_epochs={} # World-owned press lifetime, distinct from GUI reuse.
 var touch_camera_pair=[] # Two (index, epoch) identities; positions stay in touch_points.
@@ -1904,6 +1906,9 @@ func _process_path_requests():
 		path_budget_tick=tick_count; last_path_queries=0; last_path_expansions=0
 	var batch=path_requests.duplicate(); path_requests.clear()
 	var deferred=[]; var retries=[]
+	# Synchronous drain only: observations cannot change within this batch.
+	# No cache survives another drain/tick/restore or enters saved state.
+	var risk_batch_indexes={}
 	for id in batch:
 		var ent=_get_entity(id)
 		if ent.is_empty() or not ent.alive or not ent.get("path_pending",false) or _garrisoned(ent): continue
@@ -1944,15 +1949,33 @@ func _process_path_requests():
 			ent.path_retry_ticks.append(tick_count); ent.path_retry_searches+=1
 		else: ent.path_initial_searches+=1
 		ent.path_has_attempt=true; ent.path_searches+=1; last_path_queries+=1
+		var risk_records={}
+		if ai_enabled and skirmish_mode not in ["survival","expedition","escort","breach"] and ent.team==1 and ent.kind=="villager" and (ent.state=="deliver" or (ent.state=="move" and ent.get("ai_evacuation",{}).get("epoch",-1)==ent.work_epoch)):
+			risk_records=faction_views[1].records()
 		var reanchor=ent.traffic_route and ent.pos.distance_to(_point(start))>=0.001 and _unit_step_is_free(ent,_point(start))
+		if reanchor and not risk_records.is_empty() and not AIWorkerRouteRisk.segment_allowed(risk_records,1,ent.radius,ent.pos,_point(start)):reanchor=false
 		# A scheduled retry may outlive the blocker cooldown; it retains its original search budget.
 		if work and ent.team==1 and ent.state=="deliver" and ent.traffic_route:
 			var yield_waypoint=_ai_idle_yield_waypoint(ent)
 			if yield_waypoint!=Vector3.INF:_ai_request_idle_yield(ent,yield_waypoint)
 		var traffic_edges=_local_traffic_edges(ent,start,_point(start) if reanchor else ent.pos) if ent.traffic_route else {}
+		# Only the already-accounted AI work/shelter search gains known-risk edges.
+		# No extra search, changed endpoint, reset counter, or hidden enemy lookup.
+		var risk_index
+		if not risk_records.is_empty():
+			var risk_key=ent.radius # only team 1 is eligible above
+			if not risk_batch_indexes.has(risk_key):risk_batch_indexes[risk_key]=AIWorkerRouteRisk.indexed(risk_records,ent.team,ent.radius,start,_point(start) if reanchor else ent.pos)
+			risk_index=risk_batch_indexes[risk_key].for_origin(start,_point(start) if reanchor else ent.pos)
+		else:risk_index=AIWorkerRouteRisk.indexed({},ent.team,ent.radius,start,ent.pos)
+		var risk_predicate=Callable(risk_index,"allows") if risk_index.threat_count>0 else Callable()
 		# Exact resolved endpoint for this request identity, not a later re-snap.
 		ent.path_resolved_goal=Vector3.INF if work else goal
-		var result=WorkPath.search(route_grid,start,candidates,path_expansion_budget,traffic_edges) if work else BoundedPath.search(route_grid,start,_cell(goal),path_expansion_budget,traffic_edges,_known_opposing_flow_costs(ent,goal))
+		var result=WorkPath.search(route_grid,start,candidates,path_expansion_budget,traffic_edges,risk_predicate) if work else BoundedPath.search(route_grid,start,_cell(goal),path_expansion_budget,traffic_edges,_known_opposing_flow_costs(ent,goal),risk_predicate)
+		if risk_index.threat_count>0 and result.status==BoundedPath.NO_PATH:result.reason="known_threat_route_unavailable"
+		if not risk_records.is_empty() and result.status==BoundedPath.FOUND:
+			var first=_point(start) if reanchor else (_point(result.path[1]) if result.path.size()>1 else (_point(result.goal) if work else goal))
+			if not AIWorkerRouteRisk.segment_allowed(risk_records,1,ent.radius,ent.pos,first):
+				result.status=BoundedPath.LIMIT_REACHED;result.reason="known_threat_first_segment"
 		if ent.traffic_route and result.status==BoundedPath.FOUND and result.path.size()>ent.traffic_path_length+12:
 			# A local yield must not silently become a map-wide traffic detour.
 			# This is a bounded congestion refusal, never a claim of NO_PATH.
@@ -3971,6 +3994,8 @@ func _create_fog():
 	for i in Rules.MAP_SIZE*Rules.MAP_SIZE:
 		mm.set_instance_transform(i,Transform3D(Basis.IDENTITY,Vector3((i%Rules.MAP_SIZE)-Rules.MAP_HALF+0.5,0.11,floor(i/float(Rules.MAP_SIZE))-Rules.MAP_HALF+0.5)))
 	fog.multimesh=mm; add_child(fog)
+	fog_inward_edge=preload("res://scripts/fog_inward_edge.gd").new()
+	fog_inward_edge.initialize(Rules.MAP_SIZE); add_child(fog_inward_edge)
 
 func _update_vision(refresh_render=true):
 	if visible_cells[0].is_empty(): return
@@ -3998,6 +4023,8 @@ func _refresh_fog():
 			if fog_render_state[i]==state: continue
 			fog_render_state[i]=state
 			fog.multimesh.set_instance_color(i,Color(0.055,0.12,0.12,0.0 if state==2 else (0.65 if state==1 else 0.94)))
+
+	if is_instance_valid(fog_inward_edge): fog_inward_edge.refresh(fog_render_state)
 
 func _visible_to(ent,team):
 	if _garrisoned(ent):return false

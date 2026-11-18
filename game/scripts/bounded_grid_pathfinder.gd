@@ -26,7 +26,7 @@ const DIRECTIONS: Array[Vector2i] = [
 
 static func search(
 	grid: AStarGrid2D, start: Vector2i, goal: Vector2i,
-	max_expansions: int = MAX_EXPANSIONS, blocked_edges: Dictionary = {}, cell_penalties: Dictionary = {}
+	max_expansions: int = MAX_EXPANSIONS, blocked_edges: Dictionary = {}, cell_penalties: Dictionary = {}, edge_allowed: Callable = Callable()
 ) -> Dictionary:
 	# The hard ceiling also applies if a caller accidentally supplies more.
 	var budget := clampi(max_expansions, 0, MAX_EXPANSIONS)
@@ -67,6 +67,7 @@ static func search(
 			if not _is_free(grid, neighbor) or closed.has(neighbor):
 				continue
 			if blocked_edges.has(Vector4i(cell.x,cell.y,neighbor.x,neighbor.y)): continue
+			if edge_allowed.is_valid() and not edge_allowed.call(cell,neighbor):continue
 			var diagonal := direction.x != 0 and direction.y != 0
 			if diagonal and (
 				not _is_free(grid, cell + Vector2i(direction.x, 0))
