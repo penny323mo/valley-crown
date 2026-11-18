@@ -16,6 +16,16 @@ MILITARY=('military_progression_contract','military_runtime_edges')
 need=prep.need
 sha=prep.sha
 
+RESOURCE_NOTICE='art/resource_donors/License_Standard.txt'
+
+def notices_for_side(side):
+    need(side in ('product','diagnostic'),'Unknown notice side')
+    return NOTICES + ([RESOURCE_NOTICE] if side=='product' else [])
+
+def validate_notice_files(project,project_files,notices):
+    for name in notices:
+        need(sha(p.regular(project/name))==project_files.get(name),'Exact authorized notice missing/changed')
+
 def read(path):
     p.regular(path);need(0<path.stat().st_size<=16*1024*1024,'Empty/oversize evidence')
     return b.parse_json(path.read_text())
@@ -96,14 +106,13 @@ def package(work,side):
         stage=work/'exports'/('export-'+str(i));monitor(stage,result,300)
         need(result.get('export_completed') is True,'Export did not complete')
         need(p.tree(stage/'web')==result['output_sha256'],'Export files drift')
-    for name in NOTICES:
-        path=work/'project'/name
-        need(sha(p.regular(path))==lock['project_files'].get(name),'Exact authorized notice missing/changed')
+    notices=notices_for_side(side)
+    validate_notice_files(work/'project',lock['project_files'],notices)
     candidate=work/'candidate';need(not candidate.exists(),'Candidate already exists')
     candidate.mkdir()
     for i,label in [(1,'clean-a'),(2,'clean-b')]:
         shutil.copytree(work/'exports'/('export-'+str(i))/'web',candidate/'artifacts'/label)
-    for name in NOTICES:
+    for name in notices:
         dest=candidate/'notices'/name;dest.parent.mkdir(parents=True,exist_ok=True)
         shutil.copyfile(work/'project'/name,dest)
     scope=('Controlled component building-art review only. Not match, observation, gameplay or performance evidence.' if side=='diagnostic' else 'Six building, eight release, two military and one faction suite passed; two byte-identical Web exports. Browser and visual acceptance remain untested.')
