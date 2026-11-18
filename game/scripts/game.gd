@@ -4729,7 +4729,7 @@ func _update_hud():
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		selection_detail.text=help_label.text
 		if build_mode=="tower":selection_detail.text+=" · 射程參考 %.1f（至目標邊緣，須可見）" % Rules.RANGE.tower
-		queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else Rules.cost_label(build_mode))+(" · "+_shortfall_for(build_mode,0) if not _shortfall_for(build_mode,0).is_empty() else ""); queue_label.show()
+		queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else Rules.cost_label(build_mode))+(" · "+("資源不足：" if not _can_pay({"wood":30*wall_line_count} if build_mode=="wall" else COSTS[build_mode],0) else "")+_shortfall_for(build_mode,0) if not _shortfall_for(build_mode,0).is_empty() else ""); queue_label.show()
 	if rally_building>=0:
 		selection_detail.text="警戒集合點：點可見空地；新軍隊射程內迎擊，敵軍離開後繼續前進，不追擊。" if rally_mode=="advance" else "點可見空地設定集合點；主堡亦可點資源，讓新村民自動採集。"
 		help_label.text=selection_detail.text
