@@ -2005,7 +2005,7 @@ func _traffic_stop(ent,reason):
 	_path_stop(ent,BoundedPath.LIMIT_REACHED,reason)
 	path_requests.erase(ent.id)
 	ent.work_approach=Vector3.INF; ent.work_target_id=-1; ent.work_route_revision=-1
-	ent.state="idle"; ent.mode="STOP"; ent.target=-1
+	ent.state="idle"; ent.mode="MOVE" if ent.team==1 and ent.has("ai_evacuation") else "STOP"; ent.target=-1
 
 func _segment_distance_squared(point,from,to):
 	var delta=to-from

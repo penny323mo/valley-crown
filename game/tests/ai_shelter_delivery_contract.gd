@@ -88,6 +88,7 @@ func run():
  c("new explicit stop owns worker and cancels memo",not w.has("ai_evacuation") and w.mode=="STOP")
  c("normal economy audit remains valid",g.economy.audit().ok)
  g.free()
+ await traffic_mode()
  await blocked_delivery()
  var failed=checks.filter(func(x):return not x.passed).size()
  print(JSON.stringify({"suite":"ai_shelter_delivery_contract","checks":checks,"failed":failed,"scope":"Controlled actors; earned cargo and real hit; normal travel/deposit and safety updates; no hidden-origin return or natural full-match claim."}))
@@ -121,4 +122,21 @@ func blocked_delivery():
  var history=[w.work_epoch,w.path_searches,w.path_failures,w.path_retry_ticks.duplicate(),w.traffic_replans]
  step(g,200)
  c("persistent blockage cannot reset budgets or loop jobs",w.has("ai_evacuation") and history==[w.work_epoch,w.path_searches,w.path_failures,w.path_retry_ticks.duplicate(),w.traffic_replans])
+ g.free()
+
+func traffic_mode():
+ var g=fresh();await process_frame
+ var w=g._spawn("villager",1,Vector3(0,0,-10));var origin=g._spawn("berry",-1,Vector3(0,0,-11))
+ g._navigation_rebuild();g._update_vision();g._order(w,"gather",origin.id);step(g,60)
+ var foe=g._spawn("spearman",0,w.pos+Vector3(.8,0,0));g._update_vision();var hit=g._release_attack(foe,w);step(g)
+ for i in 400:
+  step(g)
+  if w.state=="idle":break
+ var valid=hit.applied and w.state=="idle" and w.has("ai_evacuation") and g._cargo_amount(w)>0
+ var cargo=g._cargo_amount(w);var bank=g.economy.bank_milli(1).duplicate(true)
+ var searches=w.path_searches;var retry=w.path_retry_ticks.duplicate();var replans=w.traffic_replans
+ g._traffic_stop(w,"local_traffic_retry_limit")
+ c("traffic stop after real evacuation retains cargo danger and MOVE mode",valid and w.state=="idle" and w.mode=="MOVE" and w.has("ai_evacuation") and w.ai_evacuation.resource==origin.id and g._cargo_amount(w)==cargo and g.economy.bank_milli(1)==bank)
+ c("traffic stop does not reset search retry or congestion budget",w.path_status=="LIMIT_REACHED" and w.path_searches==searches and w.path_retry_ticks==retry and w.traffic_replans==replans)
+ c("ordinary traffic stop strict capture restore remains valid",roundtrip(g))
  g.free()
