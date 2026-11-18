@@ -3984,7 +3984,7 @@ func _create_fog():
 	fog_render_state.resize(Rules.MAP_SIZE*Rules.MAP_SIZE); fog_render_state.fill(255)
 	fog=MultiMeshInstance3D.new()
 	var mm=MultiMesh.new(); mm.transform_format=MultiMesh.TRANSFORM_3D; mm.use_colors=true
-	var plane=PlaneMesh.new(); plane.size=Vector2(1.01,1.01)
+	var plane=PlaneMesh.new(); plane.size=Vector2(1.0,1.0)
 	mm.mesh=plane; mm.instance_count=Rules.MAP_SIZE*Rules.MAP_SIZE
 	var material=StandardMaterial3D.new()
 	material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED

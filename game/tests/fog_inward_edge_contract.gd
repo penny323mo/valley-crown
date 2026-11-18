@@ -59,7 +59,7 @@ func run():
  c('all team visibility unchanged',g.visible_cells==original_visible)
  c('all team explored unchanged',g.explored_cells==original_explored)
  c('render states unchanged',g.fog_render_state==original_states)
- c('existing fog plane footprint unchanged',g.fog.multimesh.mesh.size==Vector2(1.01,1.01))
+ c('unit fog plane footprint exact',g.fog.multimesh.mesh.size==Vector2(1.0,1.0))
  c('existing fog instance count unchanged',g.fog.multimesh.instance_count==g.Rules.MAP_SIZE*g.Rules.MAP_SIZE)
  c('helper follows existing current states',g.fog_inward_edge.last_states==g.fog_render_state)
  c('repeat refresh is presentation cache hit',not g.fog_inward_edge.refresh(g.fog_render_state))
