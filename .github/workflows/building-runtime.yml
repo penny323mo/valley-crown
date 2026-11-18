@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-933510ecfa19-717f7643
+  group: building-runtime-vc-488c39beca52-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: eaa83c20dff3e9e8843353ab24ebb39df31d3bfc
+      BUILDING_RUNTIME_SOURCE_COMMIT: 5c745a33610a73af3ac66d4820c4710e760e23ec
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'ec64eadc4b4c3a579b9efbe8041892caacf988bc22d30cd34b514169e09fe6a0  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'a0d7d80b196222835b9ed435d0ef5071126d63391628943daee1e218f0dcd742  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -307,6 +307,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/escort_integration_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/gather_assignment_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/gather_assignment_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/workforce_reassign_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/workforce_reassign_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -316,8 +318,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/workforce_reassign_contract/receipt.json
-            ${{ env.RTS_WORK }}/product/latest-contracts/workforce_reassign_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_journey/receipt.json
@@ -508,6 +508,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/production_wait_navigation_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/unit_yaw_checkpoint_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/unit_yaw_checkpoint_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/production_shortfall_rules_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/production_shortfall_rules_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/production_shortfall_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/production_shortfall_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14

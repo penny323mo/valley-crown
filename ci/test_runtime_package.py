@@ -378,4 +378,67 @@ class UnitYawReportSchemaTests(unittest.TestCase):
                 with self.subTest(raw=raw):
                     with self.assertRaises(ValueError):read(raw)
 
+class PreciseShortfallReportSchemaTests0(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'fractional milli shortage rounds up one', 'passed': True}, {'name': 'workshop exact missing stone only', 'passed': True}, {'name': 'all deficits stable resource order', 'passed': True}, {'name': 'housing differs from hard limit', 'passed': True}, {'name': 'hard population limit explicit', 'passed': True}, {'name': 'building not blocked by population', 'passed': True}, {'name': 'queue technology and deficits all retained', 'passed': True}, {'name': 'exact payment boundary', 'passed': True}, {'name': 'bank remains unchanged', 'passed': True}], 'failed': 0, 'scope': 'Pure presentation rules, milli precision, population, queue, technology. No authority actions.', 'suite': 'production_shortfall_rules_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+class PreciseShortfallReportSchemaTests1(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'build preview has explicit economy navigation', 'passed': True}, {'name': 'second finger cancels held economy navigation', 'passed': True}, {'name': 'canceled touch does not navigate', 'passed': True}, {'name': 'navigation opens existing economy page', 'passed': True}, {'name': 'navigation cancels armed preview explicitly', 'passed': True}, {'name': 'navigation preserves selection orders and bank', 'passed': True}, {'name': 'shortfall text reachable (320, 568)', 'passed': True}, {'name': 'shortfall text reachable (844, 390)', 'passed': True}, {'name': 'shortfall text reachable (390, 844)', 'passed': True}, {'name': 'recruit exact food shortage visible', 'passed': True}, {'name': 'stale selection cannot navigate', 'passed': True}, {'name': 'focus loss blocks navigation', 'passed': True}, {'name': 'empty automatic queue diagnoses exact next cost', 'passed': True}, {'name': 'changed repeat recipe invalidates held navigation', 'passed': True}, {'name': 'paid ready order keeps birth cause not shortage', 'passed': True}, {'name': 'unseen resource positions not exposed', 'passed': True}, {'name': 'inspection never pays or submits', 'passed': True}, {'name': 'economy audit conserved', 'passed': True}], 'failed': 0, 'scope': 'Controlled stock fixture; contextual shortage and navigation with cancellation and phone-size layout. Not physical phone or natural economy match.', 'suite': 'production_shortfall_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
