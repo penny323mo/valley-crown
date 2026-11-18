@@ -95,7 +95,12 @@ func observe(record: Dictionary, delta: float, running: bool) -> void:
 	if reset:
 		if attack_tick < now: last_attack_tick = maxi(last_attack_tick, attack_tick)
 		if hit_tick < now: last_hit_tick = maxi(last_hit_tick, hit_tick)
-	if hit_tick > last_hit_tick:
+	# Simultaneous observed damage does not erase this actor's legal release pose.
+	# Consume both cues now: never defer/replay a hit or call back into authority.
+	if attack_tick > last_attack_tick and hit_tick > last_hit_tick and attack_tick == hit_tick:
+		last_attack_tick = attack_tick; last_hit_tick = hit_tick
+		_start("attack", player.get_animation("attack").length * IMPACT_FRACTION[kind], true, false)
+	elif hit_tick > last_hit_tick:
 		last_hit_tick = hit_tick
 		last_attack_tick = maxi(last_attack_tick, attack_tick) # Do not replay an interrupted release.
 		_start("hit", 0.0, true, false)

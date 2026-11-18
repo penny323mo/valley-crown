@@ -1945,6 +1945,10 @@ func _process_path_requests():
 		else: ent.path_initial_searches+=1
 		ent.path_has_attempt=true; ent.path_searches+=1; last_path_queries+=1
 		var reanchor=ent.traffic_route and ent.pos.distance_to(_point(start))>=0.001 and _unit_step_is_free(ent,_point(start))
+		# A scheduled retry may outlive the blocker cooldown; it retains its original search budget.
+		if work and ent.team==1 and ent.state=="deliver" and ent.traffic_route:
+			var yield_waypoint=_ai_idle_yield_waypoint(ent)
+			if yield_waypoint!=Vector3.INF:_ai_request_idle_yield(ent,yield_waypoint)
 		var traffic_edges=_local_traffic_edges(ent,start,_point(start) if reanchor else ent.pos) if ent.traffic_route else {}
 		# Exact resolved endpoint for this request identity, not a later re-snap.
 		ent.path_resolved_goal=Vector3.INF if work else goal
@@ -8565,8 +8569,9 @@ func _ai_idle_yield_plan(worker):
 	for record in records.values():
 		if not record.get("owned",false) or record.get("kind","")!="villager" or record.id==worker.id:continue
 		var carrier=_get_entity(record.id)
-		if carrier.is_empty() or not carrier.get("alive",false) or carrier.get("team",-1)!=1 or carrier.state!="deliver" or _cargo_amount(carrier)<=0 or carrier.path.is_empty() or carrier.pos.distance_squared_to(worker.pos)>6.25:continue
-		var waypoint=carrier.path[0]
+		if carrier.is_empty() or not carrier.get("alive",false) or carrier.get("team",-1)!=1 or carrier.state!="deliver" or _cargo_amount(carrier)<=0 or carrier.pos.distance_squared_to(worker.pos)>6.25:continue
+		var waypoint=_ai_idle_yield_waypoint(carrier)
+		if waypoint==Vector3.INF:continue
 		if carrier.pos.distance_to(waypoint)>1.5:continue
 		var clearance=worker.radius+carrier.radius
 		if _segment_distance_squared(worker.pos,carrier.pos,waypoint)>=clearance*clearance-.000001:continue
@@ -8592,3 +8597,10 @@ func _ai_request_idle_yield(carrier,waypoint):
 		_submit("order",{"ids":[worker.id],"target":-1,"position":plan.goal,"ai_idle_yield":true,"source_work_epoch":worker.work_epoch,"yield_carrier":plan.carrier,"yield_epoch":plan.epoch,"yield_waypoint":plan.waypoint},1)
 		ai_claimed_workers[worker.id]="idle_yield";return true
 	return false
+
+func _ai_idle_yield_waypoint(carrier):
+	if not carrier.path.is_empty():return carrier.path[0]
+	if not carrier.get("traffic_route",false) or not carrier.get("path_pending",false) or carrier.get("path_status","")!="QUEUED" or carrier.get("path_request_kind","")!="work" or carrier.get("path_request_state","")!="deliver" or carrier.get("path_request_epoch",-2)!=carrier.work_epoch or carrier.get("path_request_target",-2)!=carrier.target:return Vector3.INF
+	var point=carrier.get("traffic_goal",Vector3.INF)
+	if point==Vector3.INF or carrier.pos.distance_to(point)>1.5:return Vector3.INF
+	return point

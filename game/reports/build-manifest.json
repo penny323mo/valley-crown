@@ -1,5 +1,5 @@
 {
-  "build": "vc-24762485afc3",
+  "build": "vc-be3f3bd3e80a",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -176,7 +176,7 @@
     "main.tscn": "502a45b8d70e44bf4017a7674dcc9c18c0b0ca199fef2daec0b3a437a2fdf54b",
     "main_menu.tscn": "35a9351e616ae8c6915c30602450e8ef556a18b2af6f20fade76f86993011486",
     "project.godot": "b952a4e5fa246659b7ca31b15a4cd3a4b1f18db4c53816a1f5a0eb2742d56231",
-    "scripts/action_character.gd": "aded948d60b14234516c39190e7dbb49cc54cee7ea02fb9f8233e10d8c2ef5ef",
+    "scripts/action_character.gd": "6f66043c645a078a951c2b97e6563dc3b39532cd8d74bf604cb77575fe351eaa",
     "scripts/action_character.gd.uid": "6550c646c8c0b14f79ba03ef9e2f19cd0c6d43cf99618efe637c319589baf796",
     "scripts/advanced_building_visuals.gd": "f589e29b356459915b8a3f8cf29ee9567a0abc80d46d0dbcf6fe0c906397c481",
     "scripts/advanced_building_visuals.gd.uid": "97fe0328e5413215b9440f2e3d61b90da349447b9d5e868cea320b5763d3d66d",
@@ -253,7 +253,7 @@
     "scripts/field_manual.gd": "23cb2f091e598170bf88a2bac2ea7819dca770f88f8500cb5be77670fd64b71e",
     "scripts/frontier_escort.gd": "0fca8cf472dd270a78714efd1b371c5cfc2469678451500f9edfa1a30d432bbb",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "97d9234f3173ecb013d4d5a7e8cde8dc9f93c99db3561cadcb8652dfff9b9ef4",
+    "scripts/game.gd": "0c72043bac034dacec6a6c8489c223c4b37542ccb1cc86bd2c048e92e878ca0d",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/garrison_checkpoint.gd": "85b9c4696b7b632600e2fe81c083015edb482f07bf100a4c08be43fba0f88427",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
@@ -292,7 +292,7 @@
     "scripts/rest_recovery.gd": "d7c5e3037c5e8bbd143be07b2c7214ad1b7546e4bf1642ef36ec68a3d3ec28e9",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "39735a91cf7706212a2b29bcf48f1c79ee46a78f9fe1517c3c34b55e5cd368bd",
+    "scripts/rules.gd": "38bc7186bc58302453ac939be8c94e9206f795511b6474060c33cfba3cd7cb07",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",
