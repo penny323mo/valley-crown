@@ -127,8 +127,24 @@ def supervise(argv, env, directory, before):
         if child is not None and child.poll() is None:
             try:
                 row = p.process_metrics(child)
-            except (FileNotFoundError, KeyError, ProcessLookupError):
-                child.wait(timeout=0.05)
+            except (FileNotFoundError, KeyError, ProcessLookupError) as exc:
+                event = {'initial_error': type(exc).__name__, 'wait_timeout_seconds': 0.05}
+                receipt.setdefault('telemetry_races', []).append(event)
+                try:
+                    child.wait(timeout=0.05)
+                    event['outcome'] = 'confirmed_exit'
+                except subprocess.TimeoutExpired:
+                    # No longer wait and never accept an unobserved live process.
+                    if child.poll() is not None:
+                        event['outcome'] = 'confirmed_exit'
+                    else:
+                        event['outcome'] = 'live_reread_required'
+                        row = p.process_metrics(child)  # One complete read or fail closed.
+                        event['outcome'] = 'recovered_live_complete_telemetry'
+                # The bounded wait must not hide stop, deadline, reserve or OOM changes.
+                p.require(not stopped, 'Termination requested')
+                p.require(time.monotonic() - start <= 300, 'Export timeout')
+                system = p.metrics()
             if row and row['child_pids']:
                 receipt['unexpected_descendants'].append({'status': 'unexpected_child_detected',
                     'parent_pid': child.pid, 'pids': row['child_pids'][:16], 'truncated': len(row['child_pids']) > 16})

@@ -1404,4 +1404,67 @@ class V122MeasuredDiagnosticsTests(unittest.TestCase):
                 d=copy.deepcopy(report);d[key][0]['extra']=True;reject(d)
 
 
+"""Pure injected process races only, never engine evidence or actual process launches."""
+import importlib.util
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+from contextlib import ExitStack
+import subprocess
+import signal
+
+class ExportExitRaceTests(unittest.TestCase):
+    def exercise(self, module_name, case):
+        spec=importlib.util.spec_from_file_location('isolated_'+module_name,Path(__file__).with_name(module_name+'.py'))
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        state={'done':False,'reads':0,'clock':0.0,'waits':0,'signals':{}}
+        normal={'available_kib':8388608,'oom_kill':0}
+        class Child:
+            pid=12345
+            def poll(self):return (7 if case=='nonzero' else 0) if state['done'] else None
+            def wait(self,timeout):
+                if state['done']:return self.poll()
+                self.assert_wait(timeout)
+                state['waits']+=1
+                if case=='deadline':state['clock']=300.001
+                if case=='stop':state['signals'][signal.SIGTERM](signal.SIGTERM,None)
+                if case in ('exit_after_timeout','nonzero'):state['done']=True
+                if case=='exit_during_wait':state['done']=True;return 0
+                raise subprocess.TimeoutExpired(['owned'],timeout)
+            def assert_wait(self,timeout):assert timeout==0.05
+        child=Child()
+        def process(c):
+            assert c is child
+            state['reads']+=1
+            if case=='unknown_permission':raise PermissionError('unavailable')
+            if state['reads']==1:raise KeyError('VmRSS')
+            if case in ('repeat_missing','still_unknown'):raise FileNotFoundError('gone')
+            state['done']=True
+            return {'VmRSS':2621441 if case=='rss' else 100,'VmHWM':2621441 if case=='hwm' else 100,'Threads':1,'child_pids':['54321'] if case=='descendant' else []}
+        def metrics():
+            return {'available_kib':100 if case=='reserve' and state['waits'] else 8388608,'oom_kill':1 if case=='oom' and state['waits'] else 0}
+        def sig(sig,handler):old=state['signals'].get(sig);state['signals'][sig]=handler;return old
+        with tempfile.TemporaryDirectory() as td,ExitStack() as stack:
+            for obj,name,value in [(m.subprocess,'Popen',lambda *a,**k:child),(m.p,'metrics',metrics),(m.p,'process_metrics',process),(m.p,'reap_owned',lambda c:{'complete':True,'errors':[],'signals':[]}),(m.p,'observe_descendants',lambda *a:[]),(m.time,'monotonic',lambda:state['clock']),(m.time,'sleep',lambda t:None),(m.signal,'signal',sig)]:stack.enter_context(patch.object(obj,name,value))
+            result=m.supervise(['owned'],{},Path(td),normal)
+        self.assertEqual(result['cleanup_complete'],case!='descendant');self.assertTrue(result['test_dependencies'])
+        self.assertEqual(result['limits'],{'timeout_seconds':300,'admission_kib':4194304,'reserve_kib':1048576,'godot_rss_hwm_kib':2621440,'combined_rss_kib':3145728})
+        return result,state
+
+    def test_confirmed_exit_and_complete_live_reread(self):
+        for module in ('run_export','run_export_diagnostic'):
+            for case in ('exit_after_timeout','exit_during_wait','live_complete'):
+                with self.subTest(module=module,case=case):
+                    r,s=self.exercise(module,case);self.assertTrue(r['passed']);self.assertTrue(r['export_completed']);self.assertEqual(r['exit'],0)
+                    self.assertEqual(r['telemetry_races'][0]['outcome'],'recovered_live_complete_telemetry' if case=='live_complete' else 'confirmed_exit')
+                    self.assertEqual(s['reads'],2 if case=='live_complete' else 1)
+    def test_unknown_unsafe_or_nonzero_never_pass(self):
+        for module in ('run_export','run_export_diagnostic'):
+            for case in ('repeat_missing','still_unknown','unknown_permission','rss','hwm','descendant','nonzero','deadline','stop','reserve','oom'):
+                with self.subTest(module=module,case=case):
+                    r,s=self.exercise(module,case);self.assertFalse(r['passed']);self.assertIn('error',r)
+                    self.assertLessEqual(s['reads'],2)
+                    if case=='unknown_permission':self.assertEqual(s['waits'],0)
+
 if __name__=='__main__':unittest.main(verbosity=2)

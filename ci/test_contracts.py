@@ -351,7 +351,7 @@ class ConsolidatedTests(unittest.TestCase):
             with path.open('wb') as out:out.truncate(16*1024*1024+1)
             with self.assertRaises(ValueError):v.read_log(path,'contextual_touch_phone',LOCK,C)
 
-    def test_monitors_only_exact_identity_rebound(self):
+    def test_monitors_exact_identity_and_reviewed_exit_race(self):
         expected={'owned_process.py':'e25db8799c62725ee6af547484c7414a6f2685dcbd5ad97d78ea9b059657f320',
                   'run_logic.py':'2800e75273335ce8ffefccb1db6128b54f09850b50dc243cf73e7065ff107607',
                   'run_export.py':'f16e36308ee76c6dc7759cf9540bc2a00b13d635b398c6881d0eb5f5fca34819'}
@@ -363,7 +363,11 @@ class ConsolidatedTests(unittest.TestCase):
                 self.assertEqual(data.count(delta),1)
                 data=data.replace(delta,b'')
             if name=='run_export.py':
-                # Exact reviewed source identity changes only; all monitor bytes remain equal.
+                # Reverse only the independently reviewed exit-race hunk, then retain full original guard hash.
+                reviewed_delta=b"            except (FileNotFoundError, KeyError, ProcessLookupError) as exc:\n                event = {'initial_error': type(exc).__name__, 'wait_timeout_seconds': 0.05}\n                receipt.setdefault('telemetry_races', []).append(event)\n                try:\n                    child.wait(timeout=0.05)\n                    event['outcome'] = 'confirmed_exit'\n                except subprocess.TimeoutExpired:\n                    # No longer wait and never accept an unobserved live process.\n                    if child.poll() is not None:\n                        event['outcome'] = 'confirmed_exit'\n                    else:\n                        event['outcome'] = 'live_reread_required'\n                        row = p.process_metrics(child)  # One complete read or fail closed.\n                        event['outcome'] = 'recovered_live_complete_telemetry'\n                # The bounded wait must not hide stop, deadline, reserve or OOM changes.\n                p.require(not stopped, 'Termination requested')\n                p.require(time.monotonic() - start <= 300, 'Export timeout')\n                system = p.metrics()\n"
+                original_delta=b'            except (FileNotFoundError, KeyError, ProcessLookupError):\n                child.wait(timeout=0.05)\n'
+                self.assertEqual(data.count(reviewed_delta),1)
+                data=data.replace(reviewed_delta,original_delta)
                 for current,baseline in [('981a4d2572b3e8860c3f957ab2ce207c99585c9b','677096aaaa5131089971c2ec85b598ad20bd91da'),('d0023cbf20d1863d5998d80329a6e775ae616e52','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-cab13d69728e','vc-cf764648c52f')]:
                     self.assertEqual(data.count(current.encode()),1)
                     data=data.replace(current.encode(),baseline.encode())
