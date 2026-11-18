@@ -1,5 +1,5 @@
 {
-  "build": "vc-d0e584be116c",
+  "build": "vc-78edfcdd5a39",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -271,7 +271,7 @@
     "scripts/idle_worker_selection.gd": "aa7c8b804c7449409ec852bf290c7240321d3f2174b8d65bc6d75f1d7133c619",
     "scripts/licensed_rock_data.gd": "e5ffba22365fab902b67b27cb54700174c1c58a023c3c08159ebf9221c3f3913",
     "scripts/licensed_rock_visual.gd": "d0871a649f033b14e423a8adbc87a67ea76511c12bcbba1845eae8bfbb16d5a0",
-    "scripts/main_menu.gd": "d31f40d04cff53fc9d4438fd79ee5fc178b25923a7a3743aa1868bc7dacc74e3",
+    "scripts/main_menu.gd": "cf52ad9d55e2166c771e0d2aad68eb2e6d4f4ea8719bac58aa563c22bf91572a",
     "scripts/map_routes.gd": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
     "scripts/map_routes.gd.uid": "f4e1cdbff702603f0496ccad8079b45832556bce365f5d59c6b8668058499f3c",
     "scripts/match_report.gd": "0f330994f0b736e0662c3e7b35797bfb4379085c0d84d269473a3f9e19fe17cb",
@@ -300,7 +300,7 @@
     "scripts/rest_recovery.gd": "d7c5e3037c5e8bbd143be07b2c7214ad1b7546e4bf1642ef36ec68a3d3ec28e9",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "9f80a5ffcb3343d72aec4f31affc03b5e8d8c729eb1e66ddbf3231c6cf01ec08",
+    "scripts/rules.gd": "002e63cf70cf9260155186d6002b7a6008ac65d4c64c4c4681999a153ad912d0",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",

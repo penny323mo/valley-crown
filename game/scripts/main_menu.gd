@@ -554,11 +554,21 @@ func _replace_match():
 	match_node.setup_requested.connect(_reconfigure_finished_match)
 	_connect_auto_checkpoint(match_node)
 	add_child(match_node)
+	_configure_new_match_camera(match_node)
 	_release_menu_focus()
 	manual_preview.clear_model()
 	menu_layer.hide()
 	touch_presses.clear()
 	transition_busy = false
+
+func _configure_new_match_camera(game):
+	# New matches in short viewports only; portrait keeps its wider field.
+	# _ready has synchronized the web viewport already.
+	# Never run from layout/resize, resume, or checkpoint restoration.
+	var size=game.get_viewport().get_visible_rect().size
+	if size.is_finite() and size.x>0 and size.y>0 and size.y<560 and is_equal_approx(game.camera_zoom,30.0):
+		game.camera_zoom=22.0
+		game._camera_update()
 
 func _open_menu():
 	if not is_instance_valid(match_node) or transition_busy: return
