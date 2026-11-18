@@ -3377,6 +3377,20 @@ func _ai_can_budget(kind):
 func _ai_reserve_budget(kind):
 	for resource in COSTS[kind]: ai_budget[resource]-=COSTS[kind][resource]*Economy.SCALE
 
+func _ai_gather_contact_safe(worker,resource,observations):
+	# Advisory only: ordinary work still chooses and validates its own slot.
+	# Keep remembered-resource exploration unchanged; no hidden terrain/enemies.
+	if resource.get("remembered",false):return true
+	var contact=Vector3.INF
+	var grid=_route_grid(worker)
+	for cell in _perimeter_cells(resource):
+		if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or grid.is_point_solid(cell):continue
+		var point=_point(cell)
+		if worker.pos.distance_to(point)<0.1 and _known_destination_clear(worker,point):
+			contact=point;break
+	if contact==Vector3.INF:contact=_free_adjacent(resource,worker.pos,false,worker.team,worker)
+	return contact!=Vector3.INF and WorkerSafety.threats(observations,worker.team,contact).is_empty()
+
 func _assign_worker(ent,desired=""):
 	if ent.get("team",-1)==1 and (_get_entity(ent.get("id",-1)).has("ai_evacuation") or ai_claimed_workers.get(ent.get("id",-1),"") in ["evacuation","safety_resume"]):return false
 	if desired.is_empty(): desired="food"
@@ -3389,6 +3403,7 @@ func _assign_worker(ent,desired=""):
 		if ent.team==1 and (not WorkerSafety.threats(observations,1,known.pos).is_empty() or _ai_worker_resource_blocked(known.pos)):continue
 		if known.category!="resource" and not (known.owned and known.built and known.kind=="farm"): continue
 		if known.kind=="farm" and economy.farm_view(known.id).get("worker_id",-1) not in [-1,ent.id]: continue
+		if ent.team==1 and not _ai_gather_contact_safe(ent,known,observations):continue
 		var d=AIGatherLoad.score(ent.pos,known,loads)
 		if d<distance or (d==distance and (resource.is_empty() or known.id<resource.id)): resource=known; distance=d
 	if resource.is_empty():
