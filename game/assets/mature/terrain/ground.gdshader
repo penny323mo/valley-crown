@@ -32,11 +32,11 @@ void fragment() {
 
     // Large, irregular green and straw islands survive the phone camera scale;
     // a second smaller scale gives close views grass/soil texture without noise shimmer.
-    vec3 grass = mix(vec3(0.16, 0.245, 0.095), vec3(0.37, 0.425, 0.17),
+    vec3 grass = mix(vec3(0.175, 0.235, 0.125), vec3(0.325, 0.375, 0.205),
                      smoothstep(0.12, 0.86, broad));
-    grass = mix(grass, vec3(0.43, 0.405, 0.235),
-                smoothstep(0.57, 0.87, patches) * 0.48);
-    grass *= 0.90 + grain * 0.70;
+    grass = mix(grass, vec3(0.37, 0.355, 0.245),
+                smoothstep(0.57, 0.87, patches) * 0.34);
+    grass *= 0.96 + grain * 0.40;
 
     // Linear reconstruction joins the old diagonal public route cells into a
     // continuous worn trail. It is decorative, not a placement or movement rule.
@@ -45,7 +45,7 @@ void fragment() {
     float trail = smoothstep(0.10 + patches * 0.09, 0.48, corridor);
     float trail_core = smoothstep(0.40, 0.84, corridor);
     float rut = smoothstep(0.37, 0.48, corridor) * (1.0 - smoothstep(0.61, 0.74, corridor));
-    vec3 soil = mix(vec3(0.405, 0.275, 0.135), vec3(0.57, 0.425, 0.245), clamp(earth_grain * 1.8, 0.0, 1.0));
+    vec3 soil = mix(vec3(0.365, 0.285, 0.195), vec3(0.50, 0.405, 0.285), clamp(earth_grain * 1.8, 0.0, 1.0));
     soil *= 1.0 - rut * 0.17;
     vec3 terrain = mix(grass, soil, trail * 0.94);
     terrain = mix(terrain, soil * 1.08, trail_core * 0.35);

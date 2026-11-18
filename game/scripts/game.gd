@@ -495,13 +495,13 @@ func _create_world():
 	e.background_mode=Environment.BG_COLOR
 	e.background_color=Color("727967")
 	e.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color=Color("b6bec5")
-	e.ambient_light_energy=0.36
+	e.ambient_light_color=Color("cad3df")
+	e.ambient_light_energy=0.46
 	e.tonemap_mode=Environment.TONE_MAPPER_LINEAR
 	env.environment=e; add_child(env)
 	var sun=DirectionalLight3D.new()
 	sun.rotation_degrees=Vector3(-48,-32,0)
-	sun.light_color=Color("ffedce"); sun.light_energy=0.95
+	sun.light_color=Color("fff1dd"); sun.light_energy=0.88
 	sun.shadow_enabled=true
 	sun.directional_shadow_max_distance=80
 	add_child(sun)
@@ -1758,6 +1758,7 @@ func _update_work(ent):
 	if ent.state=="gather":
 		if known.is_empty() or not known.alive:
 			if _cargo_amount(ent)>0: _route_to_dropoff(ent)
+			elif ent.team==1 and ent.has("ai_evacuation"):_ai_evacuation_wait(ent)
 			else: _resume_gather(ent)
 			return
 		if ent.gather_type.is_empty(): ent.gather_type=_resource_type(known)
@@ -1767,7 +1768,8 @@ func _update_work(ent):
 		if known.is_empty() or not known.built or known.kind not in ["town_center","storehouse"]:
 			_route_to_dropoff(ent); return
 	if ent.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:
-		if ent.state=="deliver": _cargo_idle(ent)
+		if ent.team==1 and ent.has("ai_evacuation"):_ai_evacuation_wait(ent)
+		elif ent.state=="deliver": _cargo_idle(ent)
 		else: _release_farm(ent); _path_cancel_pending(ent); ent.state="idle"
 		return
 	if not _at_work_approach(ent,known,true): return
@@ -1786,7 +1788,8 @@ func _update_work(ent):
 	else:
 		if not _valid_dropoff(ent,target): _route_to_dropoff(ent); return
 		if _cargo_amount(ent)>0 and not _deposit_cargo(ent,target).applied: return
-		_resume_gather(ent)
+		if ent.team==1 and ent.has("ai_evacuation"):_ai_evacuation_wait(ent)
+		else:_resume_gather(ent)
 
 func _path_state(ent):
 	if ent.has("path_status"): return
@@ -1840,7 +1843,9 @@ func _path_navigation_changed(ent,changed_cells):
 	else: ent.path_version=work_memory[ent.team].revision
 
 func _path_stop(ent,status,reason):
-	ent.erase("ai_evacuation")
+	# Internal route failure does not grant permission to forget an unsafe origin.
+	# Explicit orders still cancel the memo through _order/_path_new_command.
+	if ent.get("team",-1)!=1:ent.erase("ai_evacuation")
 	ent.erase("garrison_pending")
 	ent.erase("construction_return")
 	if ent.has("tactical_points"):
@@ -1850,6 +1855,7 @@ func _path_stop(ent,status,reason):
 	if _is_work_path(ent):
 		ent.work_route_revision=work_memory[ent.team].revision
 		ent.work_approach=Vector3.INF; ent.work_target_id=-1
+	if ent.team==1 and ent.has("ai_evacuation"):_ai_evacuation_wait(ent)
 	if ent.team==0: _message("路線受阻，請重新落指令。",2)
 
 func _plan_path(ent,destination):
@@ -2800,11 +2806,19 @@ func _cargo_idle(ent):
 	if ent.team==0 and _cargo_amount(ent)>0: _message("沒有可交付路線，已保留負重。請建立交付點或重新落指令。",3)
 
 func _route_to_dropoff(ent):
-	var drop=_dropoff(ent)
-	if drop.is_empty(): _cargo_idle(ent); return false
+	var sheltered=ent.team==1 and ent.has("ai_evacuation")
+	var drop=_ai_shelter_dropoff(ent) if sheltered else _dropoff(ent)
+	if drop.is_empty():
+		if sheltered:_ai_evacuation_wait(ent)
+		else:_cargo_idle(ent)
+		return false
 	# Automatic continuations never reset initial/retry history or a terminal limit.
 	if ent.get("path_status","")==BoundedPath.NO_PATH and ent.state!="deliver": ent.path_status="IDLE"; ent.path_reason=""
+	var shelter=ent.get("ai_evacuation",{}).duplicate(true) if ent.team==1 else {}
 	_order(ent,"deliver",drop.id); ent.work_any_target=true
+	if not shelter.is_empty():
+		shelter.epoch=ent.work_epoch;shelter.safe_since_tick=-1;shelter.shelter_since_tick=-1;ent.ai_evacuation=shelter
+		ent.work_any_target=false # Never redirect this safety job to an unchecked depot.
 	return true
 
 func _deposit_cargo(ent,target,transaction_id="",expected_revision=-1):
@@ -8118,6 +8132,35 @@ func _ai_worker_pending_intent(id):
 		if command.get("team",-1)==1 and (id in command.get("ids",[]) or command.get("builder",-1)==id):return true
 	return false
 
+func _ai_evacuation_wait(worker):
+	var saved=worker.ai_evacuation.duplicate(true)
+	var traffic={}
+	for key in worker:
+		if str(key).begins_with("traffic_"):traffic[key]=worker[key]
+	_cargo_idle(worker)
+	for key in traffic:worker[key]=traffic[key]
+	worker.mode="MOVE";worker.resource_target=saved.resource
+	saved.epoch=worker.work_epoch;saved.safe_since_tick=-1;saved.shelter_since_tick=-1
+	worker.ai_evacuation=saved
+
+func _ai_shelter_dropoff(worker):
+	var records=faction_views[1].records();var best={};var distance=INF
+	for depot in records.values():
+		if not depot.get("owned",false) or depot.get("remembered",true) or not depot.get("alive",false) or not depot.get("built",false) or depot.get("kind","") not in ["town_center","storehouse"]:continue
+		if not WorkerSafety.threats(records,1,depot.pos).is_empty():continue
+		var d=worker.pos.distance_squared_to(depot.pos)
+		if d<distance or (d==distance and (best.is_empty() or depot.id<best.id)):best=depot;distance=d
+	return best
+
+func _ai_shelter_resource(worker,records):
+	var best={};var distance=INF
+	for resource in records.values():
+		if resource.get("remembered",true) or not resource.get("alive",false) or resource.get("category","")!="resource" or _resource_type(resource)!=worker.gather_type:continue
+		if _ai_worker_resource_blocked(resource.pos) or not WorkerSafety.threats(records,1,resource.pos).is_empty():continue
+		var d=worker.pos.distance_squared_to(resource.pos)
+		if d<distance or (d==distance and (best.is_empty() or resource.id<best.id)):best=resource;distance=d
+	return best
+
 func _update_ai_worker_safety():
 	if paused or game_over or skirmish_mode in ["survival","expedition","escort","breach"]:return false
 	# Resume claims last this simulation tick only, including an AI policy turn.
@@ -8127,29 +8170,52 @@ func _update_ai_worker_safety():
 	for record in records.values():
 		if not record.get("owned",false) or not record.get("alive",false) or record.get("kind","")!="villager":continue
 		var worker=_get_entity(record.id) # Current OWN authority only after ownership gate.
+		var prior_danger={}
 		if worker.has("ai_evacuation"):
 			var saved=worker.ai_evacuation
-			if worker.work_epoch!=saved.epoch or worker.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"] or worker.state not in ["move","idle"]:
+			if worker.work_epoch!=saved.epoch or worker.state not in ["move","idle","gather","deliver"]:
 				worker.erase("ai_evacuation");changed=true;continue
 			if _ai_worker_pending_intent(worker.id):continue
-			# A hidden original work area is unknown, never evidence the threat left.
-			if worker.state!="idle" or worker.last_damage_tick==tick_count or visible_cells[1][_cell_index(saved.origin)]==0 or not WorkerSafety.threats(records,1,worker.pos).is_empty() or not WorkerSafety.threats(records,1,saved.origin).is_empty():
-				saved.safe_since_tick=-1;continue
-			if saved.safe_since_tick<0:saved.safe_since_tick=tick_count;continue
-			if tick_count-saved.safe_since_tick<WorkerSafety.SAFE_TICKS:continue
-			var original=records.get(saved.resource,{})
-			# No hidden-authority resource lookup; disappearance is not free food.
-			if not original.is_empty() and original.get("alive",false) and not original.get("remembered",true) and original.get("category","")=="resource":
-				worker.erase("ai_evacuation");_order(worker,"gather",original.id)
-			elif _cargo_amount(worker)>0:
-				var depot=_dropoff(worker)
-				if depot.is_empty() or not WorkerSafety.threats(records,1,depot.pos).is_empty():saved.safe_since_tick=-1;continue
-				worker.erase("ai_evacuation");_route_to_dropoff(worker)
+			# A terminal journey is not a new command or permission to forget danger.
+			if worker.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:continue
+			if worker.state in ["gather","deliver"]:
+				# The current safe job owns ordinary travel/payment. New damage may
+				# start a fresh evacuation below, never a hidden-origin return.
+				if tick_count-worker.last_damage_tick>20 or WorkerSafety.threats(records,1,worker.pos).is_empty():continue
+				prior_danger=saved.duplicate(true)
 			else:
-				worker.erase("ai_evacuation")
-				ai_claimed_workers.erase(worker.id)
-				_assign_worker(record,worker.get("gather_type","food"))
-			ai_claimed_workers[worker.id]="safety_resume";changed=true;continue
+				if worker.state!="idle" or worker.last_damage_tick==tick_count or not WorkerSafety.threats(records,1,worker.pos).is_empty():
+					saved.safe_since_tick=-1;saved.shelter_since_tick=-1;continue
+				if saved.get("shelter_since_tick",-1)<0:saved.shelter_since_tick=tick_count
+				var original=records.get(saved.resource,{})
+				var original_safe=visible_cells[1][_cell_index(saved.origin)]!=0 and WorkerSafety.threats(records,1,saved.origin).is_empty()
+				if original_safe:
+					if saved.safe_since_tick<0:saved.safe_since_tick=tick_count;continue
+					if tick_count-saved.safe_since_tick<WorkerSafety.SAFE_TICKS:continue
+					if not original.is_empty() and original.get("alive",false) and not original.get("remembered",true) and original.get("category","")=="resource":
+						worker.erase("ai_evacuation");_order(worker,"gather",original.id)
+					elif _cargo_amount(worker)>0:
+						var depot=_dropoff(worker)
+						if depot.is_empty() or not WorkerSafety.threats(records,1,depot.pos).is_empty():saved.safe_since_tick=-1;continue
+						worker.erase("ai_evacuation");_route_to_dropoff(worker)
+					else:
+						worker.erase("ai_evacuation");ai_claimed_workers.erase(worker.id);_assign_worker(record,worker.get("gather_type","food"))
+				else:
+					saved.safe_since_tick=-1
+					if tick_count-saved.shelter_since_tick<WorkerSafety.SAFE_TICKS:continue
+					# Unknown original work area remains dangerous. Safe delivery is
+					# independent; do not let the normal deposit resume that old job.
+					if _cargo_amount(worker)>0:
+						var depot=_ai_shelter_dropoff(worker)
+						if depot.is_empty() or not records.has(depot.id) or records[depot.id].get("remembered",true) or not WorkerSafety.threats(records,1,depot.pos).is_empty():continue
+						_route_to_dropoff(worker)
+					else:
+						var alternative=_ai_shelter_resource(worker,records)
+						if alternative.is_empty():continue
+						var memory=saved.duplicate(true)
+						_order(worker,"gather",alternative.id)
+						memory.epoch=worker.work_epoch;memory.safe_since_tick=-1;memory.shelter_since_tick=-1;worker.ai_evacuation=memory
+				ai_claimed_workers[worker.id]="safety_resume";changed=true;continue
 		if _ai_worker_pending_intent(worker.id) or worker.state not in ["gather","deliver"] or worker.get("gather_type","") not in ["food","wood","stone","iron"]:continue
 		if tick_count-worker.last_damage_tick>20 or worker.last_damage_tick<0:continue
 		if worker.path_status in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:continue
@@ -8163,6 +8229,9 @@ func _update_ai_worker_safety():
 			_order_move(worker,destination) # Never _path_new_command or retry-budget reset.
 			if worker.state!="move":continue
 			worker.ai_evacuation={"epoch":worker.work_epoch,"resource":resource,"origin":known[resource].pos,"safe_since_tick":-1,"hit_tick":worker.last_damage_tick}
+			if not prior_danger.is_empty():
+				prior_danger.epoch=worker.work_epoch;prior_danger.hit_tick=worker.last_damage_tick;prior_danger.safe_since_tick=-1;prior_danger.shelter_since_tick=-1
+				worker.ai_evacuation=prior_danger;worker.resource_target=prior_danger.resource
 			changed=true;break
 	return changed
 

@@ -55,7 +55,10 @@ func run():
  g.commands.clear()
  # Hidden is not safe, even when authority threat is removed.
  g._kill(foe);g._update_vision();step(g,110)
- check("fog alone does not permit unsafe early return",worker.has("ai_evacuation") and worker.state=="idle")
+ check("fog does not permit original return during safe delivery",worker.has("ai_evacuation") and not (worker.state=="gather" and worker.target==node.id))
+ for t in 500:
+  step(g)
+  if worker.state=="idle" and g._cargo_amount(worker)==0:break
  var idle=g._spawn("villager",1,Vector3(-12,0,-12));g._update_vision()
  var assigned_in_fog=g._assign_worker(g.faction_views[1].get_record(idle.id),"food")
  check("active danger memory blocks another worker during fog",not assigned_in_fog or (g.commands.back().target!=node.id and g.commands.back().position.distance_to(node.pos)>6))
@@ -95,8 +98,8 @@ func run():
  x._order(xw,"gather",bad.id);x._release_attack(threat,xw);step(x)
  check("second worker starts independent shelter",xw.has("ai_evacuation"))
  x._path_stop(xw,x.BoundedPath.LIMIT_REACHED,"test_terminal")
- check("terminal route cancels shelter without resetting budget",not xw.has("ai_evacuation") and xw.path_status==x.BoundedPath.LIMIT_REACHED)
- x._update_ai_worker_safety();check("same hit cannot restart terminal route",not xw.has("ai_evacuation") and xw.path_status==x.BoundedPath.LIMIT_REACHED)
+ check("terminal route preserves danger without restarting journey",xw.has("ai_evacuation") and xw.state=="idle" and xw.path_status==x.BoundedPath.LIMIT_REACHED)
+ x._update_ai_worker_safety();check("same hit cannot restart terminal route",xw.has("ai_evacuation") and xw.state=="idle" and xw.path_status==x.BoundedPath.LIMIT_REACHED)
  # Original resource may be destroyed while sheltered; retain cargo and require observed safety before depositing.
  var d=fresh();await process_frame
  check("depletion branch restores real retreat",Restore.apply(d,retreat_snapshot))
