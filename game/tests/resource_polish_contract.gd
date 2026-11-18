@@ -21,7 +21,8 @@ func _initialize():
 		var same=Visuals.build(root,kind)
 		assert(same.mesh==visual.mesh and same.material_override==null);checks+=1
 		assert(root.get_child_count()==2 and visual.get_child_count()==0);checks+=1
-		assert(visual.mesh.get_aabb().size.y>0.65 and visual.mesh.get_aabb().size.y<1.0);checks+=1
+		var expected_height={"stone":0.610226,"iron":0.669126,"berry":0.779066}[kind]
+		assert(absf(visual.mesh.get_aabb().size.y-expected_height)<=0.00001 and visual.mesh.get_aabb().size.y<1.0);checks+=1
 		print("POLISH_METRIC ",kind," triangles=",vertices.size()/3," bounds=",visual.mesh.get_aabb())
 		root.free()
 	print("RESOURCE_POLISH_PASS ",checks)
