@@ -8,7 +8,7 @@ func _initialize():
 		var first:=Visuals.build(root,kind)
 		var second:=Visuals.build(root,kind)
 		assert(first.mesh==second.mesh);checks+=1
-		assert(first.mesh.get_surface_count()==1);checks+=1
+		assert(first.mesh.get_surface_count()==(2 if kind=="berry" else 1));checks+=1
 		var count: int = first.mesh.surface_get_array_len(0)
 		assert(count<6000);checks+=1
 		var aabb: AABB = first.mesh.get_aabb()
@@ -17,11 +17,11 @@ func _initialize():
 		var original=first.mesh.surface_get_material(0)
 		Fog.apply(first,true)
 		assert(first.get_surface_override_material(0)!=original);checks+=1
-		assert(first.get_surface_override_material(0).vertex_color_use_as_albedo);checks+=1
+		assert(first.get_surface_override_material(0).transparency==BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR and first.get_surface_override_material(0).albedo_texture==original.albedo_texture if kind=="berry" else first.get_surface_override_material(0).vertex_color_use_as_albedo);checks+=1
 		assert(second.get_surface_override_material(0)==null);checks+=1
 		Fog.apply(first,false)
 		assert(first.get_surface_override_material(0)==null);checks+=1
-		print("RESOURCE_METRIC ",kind," vertices=",count," surfaces=1 bounds=",aabb)
+		print("RESOURCE_METRIC ",kind," vertices=",count," surfaces=",first.mesh.get_surface_count()," bounds=",aabb)
 		root.free()
 	print("RESOURCE_CONTRACT_PASS ",checks)
 	quit(0)

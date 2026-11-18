@@ -11,17 +11,23 @@ func run():
   var holder=Node3D.new();root.add_child(holder);var visual=Visuals.build(holder,kind);var meshes=[];var heights=[];var counts=[]
   for level in 4:
    var record={"kind":kind,"category":"resource","hp":[100,75,50,25][level],"max_hp":100,"remembered":false}
-   Visuals.present(holder,record);meshes.append(visual.mesh);heights.append(visual.mesh.get_aabb().size.y);counts.append(visual.mesh.surface_get_array_len(0))
-   check(kind+" stage "+str(level)+" finite one surface",visual.mesh.get_surface_count()==1 and visual.mesh.get_aabb().is_finite() and counts[-1]<6000)
+   Visuals.present(holder,record);meshes.append(visual.mesh);heights.append(visual.mesh.get_aabb().size.y);var total=0
+   for surface in visual.mesh.get_surface_count():total+=visual.mesh.surface_get_array_len(surface)
+   counts.append(total)
+   check(kind+" stage "+str(level)+" finite one surface",visual.mesh.get_surface_count()==(2 if kind=="berry" else 1) and visual.mesh.get_aabb().is_finite() and counts[-1]<6000)
    check(kind+" footprint preserved "+str(level),visual.mesh.get_aabb().size.x<1.2 and visual.mesh.get_aabb().size.z<1.2)
-   var arrays=visual.mesh.surface_get_arrays(0);var verts=arrays[Mesh.ARRAY_VERTEX];var clean=true
-   for i in range(0,verts.size(),3):
-    if (verts[i+1]-verts[i]).cross(verts[i+2]-verts[i]).length_squared()<=0.000000000001:clean=false
+   var clean=true
+   for surface in visual.mesh.get_surface_count():
+    var arrays=visual.mesh.surface_get_arrays(surface);var verts=arrays[Mesh.ARRAY_VERTEX];var inds=arrays[Mesh.ARRAY_INDEX]
+    var n=inds.size() if inds!=null and inds.size()>0 else verts.size()
+    for i in range(0,n,3):
+     var a=verts[inds[i] if inds!=null and inds.size()>0 else i];var b=verts[inds[i+1] if inds!=null and inds.size()>0 else i+1];var c=verts[inds[i+2] if inds!=null and inds.size()>0 else i+2]
+     if (b-a).cross(c-a).length_squared()<=0.000000000001:clean=false
    check(kind+" stage geometry remains nondegenerate "+str(level),clean)
    var same=visual.mesh;Visuals.present(holder,record);check(kind+" repeated frame reuses mesh "+str(level),same==visual.mesh)
   check(kind+" four distinct stage meshes",meshes[0]!=meshes[1] and meshes[1]!=meshes[2] and meshes[2]!=meshes[3])
   check(kind+" visible depletion geometry",counts[3]<counts[0] if kind=="berry" else heights[3]<heights[0]*0.6)
-  var source=meshes[0].surface_get_material(0);var original_color=source.albedo_color;var expected_color=Color.WHITE;Fog.apply(holder,true)
+  var source=meshes[0].surface_get_material(0);var original_color=source.albedo_color;var expected_color=Color("6b873e") if kind=="berry" else Color.WHITE;Fog.apply(holder,true)
   Visuals.present(holder,{"kind":kind,"category":"resource","hp":50,"max_hp":100,"remembered":true})
   check(kind+" stage change keeps memory dimming",visual.get_surface_override_material(0)!=null and source.albedo_color==original_color and original_color==expected_color)
   Fog.apply(holder,false);check(kind+" visibility restores material",visual.get_surface_override_material(0)==null)

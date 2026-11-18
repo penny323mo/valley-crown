@@ -27,7 +27,7 @@ def main():
         h.update(p.relative_to(root).as_posix().encode()); h.update(b'\0'); h.update(data)
     build = 'vc-' + h.hexdigest()[:12]
     stamped = re.sub(r'const BUILD_ID = "[^"]*"', f'const BUILD_ID = "{build}"', content).encode()
-    manifest = {'build': build, 'engine': '4.6.3.stable.official.7d41c59c4', 'scope': 'Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.', 'source_sha256': {p.relative_to(root).as_posix(): hashlib.sha256(stamped if p == rules else p.read_bytes()).hexdigest() for p in paths}}
+    manifest = {'build': build, 'engine': '4.6.3.stable.official.7d41c59c4', 'scope': 'Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.', 'source_sha256': {p.relative_to(root).as_posix(): hashlib.sha256(stamped if p == rules else p.read_bytes()).hexdigest() for p in paths}}
     if args.dry_run:
         print(json.dumps({'dry_run': True, 'writes': 0, 'manifest': manifest}, indent=2))
     else:

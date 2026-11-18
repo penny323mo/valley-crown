@@ -87,6 +87,7 @@ static func _canopy(st:SurfaceTool,center:Vector3,size:Vector3,color:Color) -> v
 			if band<3:_triangle(st,p2,p1,p3,tint)
 
 static func _make_mesh(kind: String, depletion: int=0, variant: int=0) -> ArrayMesh:
+	if kind=="berry":return preload("res://scripts/bush_donor_diagnostic.gd").resource_mesh(depletion) # CC0 foliage plus original attached fruit clusters
 	if kind in ["stone","iron"]:return preload("res://scripts/licensed_rock_visual.gd").make_mesh(kind,depletion,variant)
 	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	if kind in ["stone","iron"]:
@@ -142,8 +143,8 @@ static func present(parent:Node3D,record:Dictionary) -> void:
 	if not cache.has(key):cache[key]=_make_mesh(kind,level,variant)
 	# Replacement affects only this observed proxy. Clear its old dim overrides,
 	# then reapply remembered styling from this same immutable observation.
+	for surface in visual.mesh.get_surface_count():visual.set_surface_override_material(surface,null)
 	visual.mesh=cache[key]
-	visual.set_surface_override_material(0,null)
 	visual.remove_meta("observed_material_override")
 	visual.remove_meta("observed_surface_overrides")
 	visual.set_meta("depletion_stage",level)

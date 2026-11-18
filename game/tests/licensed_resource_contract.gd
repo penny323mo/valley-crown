@@ -14,12 +14,29 @@ func run():
    for stage in 4:
     var record={"id":variant,"kind":kind,"category":"resource","hp":[100,75,50,25][stage],"max_hp":100,"remembered":false};var unchanged=record.duplicate(true)
     V.present(holder,record);var mesh=visual.mesh;var verts=mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX];var normals=mesh.surface_get_arrays(0)[Mesh.ARRAY_NORMAL];var box=mesh.get_aabb();heights.append(box.size.y)
-    var clean=verts.size()==normals.size()
-    for i in verts.size():clean=clean and verts[i].is_finite() and normals[i].is_finite()
-    for i in range(0,verts.size(),3):clean=clean and (verts[i+1]-verts[i]).cross(verts[i+2]-verts[i]).length_squared()>1e-12
+    # Validate asset-specific surface layouts, indexed geometry and material modes.
+    var clean=true;var total_vertices=0
+    for surface in mesh.get_surface_count():
+     var arrays=mesh.surface_get_arrays(surface);var sv=arrays[Mesh.ARRAY_VERTEX];var sn=arrays[Mesh.ARRAY_NORMAL];var si=arrays[Mesh.ARRAY_INDEX]
+     total_vertices+=sv.size();clean=clean and sv.size()==sn.size() and sv.size()>0
+     for i in sv.size():clean=clean and sv[i].is_finite() and sn[i].is_finite()
+     var n=si.size() if si!=null and si.size()>0 else sv.size()
+     var valid_indices=n%3==0
+     if si!=null:
+      for index in si:valid_indices=valid_indices and index>=0 and index<sv.size()
+     clean=clean and valid_indices
+     if valid_indices:
+      for i in range(0,n,3):
+       var a=sv[si[i] if si!=null and si.size()>0 else i];var b=sv[si[i+1] if si!=null and si.size()>0 else i+1];var d=sv[si[i+2] if si!=null and si.size()>0 else i+2]
+       clean=clean and (b-a).cross(d-a).length_squared()>1e-12
+     var material=mesh.surface_get_material(surface);var leaf=kind=="berry" and surface==0
+     clean=clean and material is BaseMaterial3D
+     if material is BaseMaterial3D:
+      clean=clean and material.transparency==(BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR if leaf else BaseMaterial3D.TRANSPARENCY_DISABLED)
+      if leaf:clean=clean and material.albedo_texture!=null and is_equal_approx(material.alpha_scissor_threshold,.2) and material.cull_mode==BaseMaterial3D.CULL_DISABLED
     var label=kind+" variant "+str(variant)+" stage "+str(stage)
-    c(label+" finite nondegenerate opaque geometry",clean)
-    c(label+" single surface bounded vertices footprint",mesh.get_surface_count()==1 and verts.size()<=4000 and box.size.x<1.2 and box.size.z<1.2 and box.size.y<1.0 and holder.get_child_count()==1)
+    c(label+" finite nondegenerate material-appropriate geometry",clean)
+    c(label+" asset-specific surface count bounded vertices footprint",mesh.get_surface_count()==(2 if kind=="berry" else 1) and total_vertices<=(4356 if kind=="berry" else 4000) and box.size.x<1.2 and box.size.z<1.2 and box.size.y<1.0 and holder.get_child_count()==1)
     V.present(holder,record);c(label+" cached immutable observation",visual.mesh==mesh and record==unchanged and visual.material_override==null)
     if stage==0:full.append(verts.duplicate())
    c(kind+" variant "+str(variant)+" four coherent depletion heights",(kind=="berry" or (heights[0]>.3 and heights[0]>heights[1] and heights[1]>heights[2] and heights[2]>heights[3])))
@@ -90,7 +107,7 @@ func run():
  c("normal game economic ledger remains conserved",g.economy.audit().ok)
  g.free()
  var failed=checks.filter(func(x):return not x.passed).size()
- print(JSON.stringify({"suite":"licensed_resource_contract","checks":checks,"failed":failed,"scope":"Original cached mineral mesh variants across observed depletion stages; strict normal-game authority and RNG invariance. No visual quality or physical phone performance claim."}))
+ print(JSON.stringify({"suite":"licensed_resource_contract","checks":checks,"failed":failed,"scope":"Cached mineral variants and multi-surface berries across observed depletion stages; strict normal-game authority and RNG invariance. No visual quality or physical phone performance claim."}))
  quit(1 if failed else 0)
 
 func _vector(a):return Vector3(a[0],a[1],a[2])
