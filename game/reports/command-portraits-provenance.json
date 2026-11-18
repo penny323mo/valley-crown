@@ -1,0 +1,151 @@
+{
+  "build": "vc-2f4258ee3cd5",
+  "captures": [
+    {
+      "bounds": "[P: (-0.899793, -0.003679, -0.185648), S: (1.799586, 2.014179, 0.353382)]",
+      "camera_size": 2.6403820514679,
+      "file": "res://assets/mature/ui/portraits/villager.png",
+      "kind": "villager",
+      "meshes": 2,
+      "sha256": "447228a53d5ff4f3973cddb4a4c6c35bad6903b0e855ce7c59f4901a80785d7a",
+      "source": "res://assets/mature/models/villager_action.scn"
+    },
+    {
+      "bounds": "[P: (-0.898468, -0.00584, -0.206559), S: (1.796935, 2.09634, 0.378373)]",
+      "camera_size": 2.68644452095032,
+      "file": "res://assets/mature/ui/portraits/scout.png",
+      "kind": "scout",
+      "meshes": 2,
+      "sha256": "704cffd924bb7e573d1bb0a3c16f5898b0a1c5ff1984fe093cbb8c5b24403ba6",
+      "source": "res://assets/mature/models/scout_action.scn"
+    },
+    {
+      "bounds": "[P: (-0.899793, -0.003679, -0.185648), S: (1.799586, 3.054179, 0.353382)]",
+      "camera_size": 3.68806982040405,
+      "file": "res://assets/mature/ui/portraits/spearman.png",
+      "kind": "spearman",
+      "meshes": 2,
+      "sha256": "ec435d1372f02a20aacab72c1c75407fc298875e8a0587c2472486fc8fafa9c1",
+      "source": "res://assets/mature/models/spearman_action.scn"
+    },
+    {
+      "bounds": "[P: (-0.898468, -0.00584, -0.206559), S: (1.796935, 1.900714, 0.378373)]",
+      "camera_size": 2.48338842391968,
+      "file": "res://assets/mature/ui/portraits/archer.png",
+      "kind": "archer",
+      "meshes": 2,
+      "sha256": "5cbe8352a027b95ebb54cff2ffa3b3590f39f904ea52a61d5a1068667238bfc5",
+      "source": "res://assets/mature/models/archer_action.scn"
+    },
+    {
+      "bounds": "[P: (-0.333, 0.0125, -1.49), S: (0.659683, 1.7475, 2.092124)]",
+      "camera_size": 2.66888785362244,
+      "file": "res://assets/mature/ui/portraits/cavalry.png",
+      "kind": "cavalry",
+      "meshes": 61,
+      "sha256": "7c73a6d7809757ccfb86c3e6eece49488aa914a5577bb7d69a493228b48869e0",
+      "source": "progression_visuals.build existing procedural"
+    },
+    {
+      "bounds": "[P: (-0.525, 0.04, -0.67), S: (1.05, 1.385, 1.25)]",
+      "camera_size": 2.11591076850891,
+      "file": "res://assets/mature/ui/portraits/siege.png",
+      "kind": "siege",
+      "meshes": 44,
+      "sha256": "ba669706f40c778eff5d306b3bab27884cd03a03bb1f24f6263a13b040aff740",
+      "source": "progression_visuals.build existing procedural"
+    },
+    {
+      "bounds": "[P: (-0.94, 0.0, -0.94), S: (1.88, 1.4, 1.88)]",
+      "camera_size": 2.90200972557068,
+      "file": "res://assets/mature/ui/portraits/wall.png",
+      "kind": "wall",
+      "meshes": 1,
+      "sha256": "eeaaee8224d8b003050f4ab4ba0cab6177fe4998cc1e769b42c74832c25b01f7",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-1.37, 0.0, -1.37), S: (2.74, 0.7265, 2.74)]",
+      "camera_size": 4.22952508926392,
+      "file": "res://assets/mature/ui/portraits/farm.png",
+      "kind": "farm",
+      "meshes": 1,
+      "sha256": "dd2c4e18062c3a51e023e774b790031108989325c38461f443851b2f75567cb6",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-0.950769, 0.0, -0.96), S: (1.901538, 2.916602, 1.92)]",
+      "camera_size": 4.00436878204346,
+      "file": "res://assets/mature/ui/portraits/house.png",
+      "kind": "house",
+      "meshes": 6,
+      "sha256": "1f5278777fae56057a5dffd3df533c4eadb5707907d5c86fe1db26276062fc1e",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-0.96, 0.0, -0.946351), S: (1.92, 2.666602, 1.892701)]",
+      "camera_size": 3.74115490913391,
+      "file": "res://assets/mature/ui/portraits/storehouse.png",
+      "kind": "storehouse",
+      "meshes": 6,
+      "sha256": "0c5ad28ad2490c15d2ecca1f3a990bb16a3e307485e7dee20109e6ba1f71681d",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-1.46, 0.0, -1.358197), S: (2.92, 3.316602, 2.716395)]",
+      "camera_size": 4.87616729736328,
+      "file": "res://assets/mature/ui/portraits/barracks.png",
+      "kind": "barracks",
+      "meshes": 6,
+      "sha256": "856f6c0f5cfecd6c4289364804cb15277c1d6a9035d9dec3dd03715c77a7bbe1",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-1.46, 0.0, -1.20369), S: (2.92, 2.826602, 2.407381)]",
+      "camera_size": 4.27873516082764,
+      "file": "res://assets/mature/ui/portraits/range.png",
+      "kind": "range",
+      "meshes": 6,
+      "sha256": "6ccc863adaba59485c1196b32fdca4326292d0193141d4972cc96a715cfe531c",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-1.385, 0.0, -1.35), S: (2.77, 2.375, 2.498)]",
+      "camera_size": 4.0921425819397,
+      "file": "res://assets/mature/ui/portraits/stable.png",
+      "kind": "stable",
+      "meshes": 1,
+      "sha256": "c9776bbf9e9550e02b1f08d7a9cc8ec517bb0362b7b08cd7a5b4c6688cdd455b",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-0.883412, 0.0, -0.883412), S: (1.766823, 3.91, 1.813412)]",
+      "camera_size": 4.97473764419556,
+      "file": "res://assets/mature/ui/portraits/tower.png",
+      "kind": "tower",
+      "meshes": 1,
+      "sha256": "c525bb78ac1973a4fded4baca41759cb8b41f81d8ae28dfc7d8856c888ea222b",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-1.325, 0.0, -1.43), S: (2.753637, 3.02, 2.4)]",
+      "camera_size": 4.44016313552856,
+      "file": "res://assets/mature/ui/portraits/workshop.png",
+      "kind": "workshop",
+      "meshes": 1,
+      "sha256": "d7023f8945c2d63977b86fa4e704cdf36a00040e79c14cf9d7219891f39fd112",
+      "source": "game._building_visual"
+    },
+    {
+      "bounds": "[P: (-1.9, 0.0, -1.715), S: (3.8, 4.836603, 3.43)]",
+      "camera_size": 6.85574817657471,
+      "file": "res://assets/mature/ui/portraits/town_center.png",
+      "kind": "town_center",
+      "meshes": 6,
+      "sha256": "eaf8d8a647c9f02ae5004b83b459b02c9b66a77f2b3fc2042a9dcb33961b0113",
+      "source": "game._building_visual"
+    }
+  ],
+  "scope": "Actual existing product model portraits, isolated studio camera, not gameplay screenshots; no new artwork",
+  "note": "Native renders of existing product visual assets, not new generated artwork or gameplay screenshots. Existing source asset notices/licenses remain applicable. Names and prices retained at display size 40px/32px."
+}

@@ -11,7 +11,7 @@ func touch(p,down,id=31):
 func run():
  root.size=Vector2i(390,844)
  for kind in Content.UNITS.keys()+Content.BUILDINGS.keys():
-  check("icon texture present "+kind,Icons.ICONS.has(kind) and Icons.ICONS[kind].get_width()==32 and Icons.ICONS[kind].get_height()==32)
+  check("icon texture present "+kind,Icons.ICONS.has(kind) and Icons.ICONS[kind].get_width()==256 and Icons.ICONS[kind].get_height()==256)
  var plain=Button.new();plain.text="unchanged";Icons.apply(plain,"unknown");check("unknown keeps original text and no icon",plain.text=="unchanged" and plain.icon==null);plain.free()
  var g=load("res://main.tscn").instantiate();root.add_child(g);g.set_process(false);g.test_mode=true;g._test_reset();await settle()
  for size in [Vector2i(320,568),Vector2i(390,844),Vector2i(640,360)]:
@@ -39,4 +39,4 @@ func run():
   check("build text cost icon target retained "+str(size),build!=null and build.icon==Icons.ICONS.house and build.text.begins_with(g.Rules.NAMES.house+"\n"+g.Rules.cost_label("house")) and build.size.y>=44 and g.action_scroll.get_global_rect().encloses(build.get_global_rect()))
   await touch(build.get_global_rect().position+Vector2(18,build.size.y/2),true,33);await touch(build.get_global_rect().position+Vector2(18,build.size.y/2),false,33)
   check("icon touch starts ordinary house placement "+str(size),g.build_mode=="house" and g.commands.is_empty());g._cancel_mode();await settle()
- var failed=checks.filter(func(c):return not c.passed).size();print(JSON.stringify({"suite":"command_icons_contract","checks":checks,"failed":failed,"scope":"Native synthetic touch, real button rectangles and ordinary queued commands; functional pictograms, not final art or physical phone."}));g.free();quit(1 if failed else 0)
+ var failed=checks.filter(func(c):return not c.passed).size();print(JSON.stringify({"suite":"command_icons_contract","checks":checks,"failed":failed,"scope":"Native synthetic touch, real button rectangles and ordinary queued commands; actual-model portraits, not new artwork or physical phone."}));g.free();quit(1 if failed else 0)

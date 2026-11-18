@@ -4865,7 +4865,7 @@ func _rebuild_actions(selection):
 		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
 			var button=_button(Rules.NAMES[kind]+"\n"+Rules.cost_label(kind)+( "\n建成後自動耕作" if kind=="farm" else "")+( "\n需城防時代" if not _kind_unlocked(kind,0) else ""),func(): _start_build(choice),100)
-			CommandIcons.apply(button,kind)
+			CommandIcons.apply(button,kind,true)
 			button.disabled=not _kind_unlocked(kind,0); actions.add_child(button)
 			# Preserve the first build target in the small-phone viewport; shelter remains next in the scroll strip.
 			if kind==Rules.BUILDABLE_KINDS[0]:actions.add_child(shelter_button)
@@ -4886,12 +4886,13 @@ func _rebuild_actions(selection):
 			for kind in Rules.products_for(ent.kind):
 				var choice=kind
 				var train_button=_button("訓練"+Rules.NAMES[kind]+"\n"+Rules.cost_label(kind),func(): _submit("train",{"building":ent.id,"kind":choice}),120)
-				CommandIcons.apply(train_button,kind);actions.add_child(train_button)
+				CommandIcons.apply(train_button,kind,true);actions.add_child(train_button)
 			if "villager" not in Rules.products_for(ent.kind):
 				var repeat_product=Rules.PRODUCES[ent.kind]
 				var repeat_generation=ent.get("repeat_generation",0)
 				var repeat_next=repeat_product if ent.get("repeat_kind","").is_empty() else ""
 				repeat_train_button=_button(("自動訓練"+Rules.NAMES[repeat_product]+"\n每次 "+Rules.cost_label(repeat_product)) if repeat_next!="" else "關閉自動訓練\n保留已付款隊列",func(): _repeat_train_request(ent.id,repeat_generation,repeat_next),160)
+				CommandIcons.apply(repeat_train_button,repeat_product,true)
 				repeat_train_button.name="RepeatTraining"; repeat_train_button.set_meta("building",ent.id); repeat_train_button.set_meta("generation",repeat_generation)
 				actions.add_child(repeat_train_button)
 			if ent.kind=="town_center":
