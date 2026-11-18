@@ -14,7 +14,7 @@ func execute_pending():
 	batch.sort_custom(func(a,b): return a.sequence<b.sequence)
 	for command in batch: game._execute(command)
 func rows():
-	return [{"id":1,"kind":"town_center","category":"building","team":1,"owned":true,"alive":true,"built":true,"queue":[],"remembered":false}]
+	return [{"id":1,"kind":"town_center","category":"building","team":1,"owned":true,"alive":true,"built":true,"queue":[],"remembered":false,"pos":Vector3(25,0,-24)}]
 func run():
 	game=load("res://main.tscn").instantiate(); root.add_child(game)
 	game.set_process(false); game.test_mode=true; game.ai_enabled=false

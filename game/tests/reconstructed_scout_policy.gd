@@ -25,8 +25,8 @@ func budget(unit):
 func policy_records():
 	var rows=[]
 	for kind in ["town_center","barracks","range","spearman","spearman","archer","archer"]:
-		rows.append({"id":rows.size(),"kind":kind,"category":"unit" if kind in Rules.UNIT_KINDS else "building","team":1,"owned":true,"built":true,"alive":true,"queue":[],"remembered":false})
-	for i in 4: rows.append({"id":100+i,"kind":"berry","category":"resource","team":-1,"owned":false,"built":true,"alive":true,"queue":[],"remembered":false})
+		rows.append({"id":rows.size(),"kind":kind,"category":"unit" if kind in Rules.UNIT_KINDS else "building","team":1,"owned":true,"built":true,"alive":true,"queue":[],"remembered":false,"pos":Vector3(-20,0,-20)})
+	for i in 4: rows.append({"id":100+i,"kind":"berry","category":"resource","team":-1,"owned":false,"built":true,"alive":true,"queue":[],"remembered":false,"pos":Vector3(-20,0,-20)})
 	return rows
 func prepare_terminal():
 	game._test_reset(); game.set_process(false)
@@ -47,13 +47,13 @@ func progression():
 	await process_frame
 	var rows=policy_records()
 	check("lost scout precedes expensive age research",game._ai_progression_goal(rows,8,30,12)=="scout")
-	var known=rows.duplicate(true); known.append({"id":500,"kind":"town_center","category":"building","team":0,"owned":false,"built":true,"alive":true,"queue":[],"remembered":false})
+	var known=rows.duplicate(true); known.append({"id":500,"kind":"town_center","category":"building","team":0,"owned":false,"built":true,"alive":true,"queue":[],"remembered":false,"pos":Vector3(-20,0,-20)})
 	check("observed keep removes early scout priority",game._ai_progression_goal(known,8,30,12)=="age2")
 	known.back().remembered=true
 	check("remembered keep also removes early scout priority",game._ai_progression_goal(known,8,30,12)=="age2")
 	var queued=rows.duplicate(true); queued[0].queue=[{"kind":"scout"}]
 	check("queued scout prevents duplicate priority",game._ai_progression_goal(queued,8,30,12)=="age2")
-	var living=rows.duplicate(true); living.append({"id":501,"kind":"scout","category":"unit","team":1,"owned":true,"built":true,"alive":true,"queue":[],"remembered":false})
+	var living=rows.duplicate(true); living.append({"id":501,"kind":"scout","category":"unit","team":1,"owned":true,"built":true,"alive":true,"queue":[],"remembered":false,"pos":Vector3(-20,0,-20)})
 	check("living scout prevents duplicate priority",game._ai_progression_goal(living,8,30,12)=="age2")
 	check("worker floor remains before scout",game._ai_progression_goal(rows,7,30,12)=="villager")
 	check("population house remains before scout",game._ai_progression_goal(rows,8,14,12)=="house")

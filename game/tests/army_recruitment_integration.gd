@@ -11,7 +11,7 @@ func check(label,ok):
  if not ok: push_error(label)
 func entity(kind,category,team=1):
  id+=1
- return {"id":id,"kind":kind,"category":category,"team":team,"owned":team==1,"alive":true,"remembered":false,"built":true,"queue":[]}
+ return {"id":id,"kind":kind,"category":category,"team":team,"owned":team==1,"alive":true,"remembered":false,"built":true,"queue":[],"pos":Vector3(20,0,20) if team==0 else Vector3(-20,0,-20)}
 func records():
  var result=[]
  for kind in ["town_center","barracks","range"]: result.append(entity(kind,"building"))
