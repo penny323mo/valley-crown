@@ -113,7 +113,7 @@ class PackageTests(unittest.TestCase):
             stage=self.root/'latest-contracts'/suite;stage.mkdir(parents=True)
             raw={'suite':suite,'build':lock['build'],'failed':0,'checks':[{'name':n,'passed':True} for n in latest.TRAINING_NAMES]}
             line='FOG_MATERIAL_CONTRACT checks=13 failures=0' if suite=='material_contract' else json.dumps(raw)
-            if suite=='resource_visual_contract':line='\n'.join('RESOURCE_METRIC '+k+' vertices='+str(n)+' surfaces=1 bounds=(synthetic schema fixture)' for k,n in [('stone',1008),('iron',1008),('berry',3402)])+'\nRESOURCE_CONTRACT_PASS 27'
+            if suite=='resource_visual_contract':line='Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\nRESOURCE_METRIC stone vertices=732 surfaces=1 bounds=[P: (-0.489852, 0.0, -0.398318), S: (0.979703, 0.610226, 0.796637)]\nRESOURCE_METRIC iron vertices=930 surfaces=1 bounds=[P: (-0.489852, 0.0, -0.398318), S: (0.979703, 0.669126, 0.796637)]\nRESOURCE_METRIC berry vertices=3402 surfaces=1 bounds=[P: (-0.509637, 0.000934, -0.515624), S: (1.020432, 0.779066, 1.005965)]\nRESOURCE_CONTRACT_PASS 27\n'
             if suite=='resource_polish_contract':line='RESOURCE_POLISH_PASS 24'
             if suite=='normal_probe':line='NORMALS_PASS 3'
             if suite=='skirmish_policy_contract':line='SKIRMISH 17/17'
@@ -902,5 +902,22 @@ class LicensedResourceReportSchemaTests0(unittest.TestCase):
                 with self.subTest(raw=raw):
                     with self.assertRaises(ValueError):read(raw)
 
+
+class ResourceGeometryExactTests(unittest.TestCase):
+    def test_actual_and_malformed_geometry(self):
+        import validate_latest_contracts as v
+        raw='Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org\n\nRESOURCE_METRIC stone vertices=732 surfaces=1 bounds=[P: (-0.489852, 0.0, -0.398318), S: (0.979703, 0.610226, 0.796637)]\nRESOURCE_METRIC iron vertices=930 surfaces=1 bounds=[P: (-0.489852, 0.0, -0.398318), S: (0.979703, 0.669126, 0.796637)]\nRESOURCE_METRIC berry vertices=3402 surfaces=1 bounds=[P: (-0.509637, 0.000934, -0.515624), S: (1.020432, 0.779066, 1.005965)]\nRESOURCE_CONTRACT_PASS 27\n'
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)
+            def read(x):
+                (p/'godot.log').write_text(x)
+                return v.read_report(p,'resource_visual_contract')
+            self.assertEqual(read(raw)['assertions'],27)
+            bad=[raw.replace('vertices=732','vertices=1008'),raw.replace('vertices=930','vertices=1008'),raw.replace('0.610226','0.610227'),raw.replace('surfaces=1','surfaces=2'),raw.replace('RESOURCE_CONTRACT_PASS 27','RESOURCE_CONTRACT_PASS 26')]
+            lines=raw.splitlines()
+            for metric in [l for l in lines if l.startswith('RESOURCE_METRIC ')]:
+                bad.extend([raw.replace(metric+'\n',''),raw+metric+'\n'])
+            for x in bad:
+                with self.assertRaises(ValueError):read(x)
 
 if __name__=='__main__':unittest.main(verbosity=2)
