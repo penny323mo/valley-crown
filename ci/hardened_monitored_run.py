@@ -54,6 +54,69 @@ def validate_metrics(data, required):
             raise ValueError('Invalid/missing nonnegative integer telemetry: ' + key)
     return data
 
+def exit_read(path):
+    with path.open() as stream:
+        value = stream.read(65537)
+    if len(value) > 65536:
+        raise RuntimeError('Oversized exit-phase field')
+    return value
+
+class ExitPhaseDescendants(RuntimeError):
+    def __init__(self, pids):
+        super().__init__('Exit-phase unexpected descendants')
+        self.pids = pids
+
+def exit_identity(pid, root=Path('/proc')):
+    raw = exit_read(root / str(pid) / 'stat')
+    opened, closed = raw.find('('), raw.rfind(')')
+    if opened <= 0 or closed <= opened:
+        raise RuntimeError('Malformed exit-phase identity')
+    tail = raw[closed + 2:].split()
+    if len(tail) < 50 or int(raw[:opened].strip()) != pid:
+        raise RuntimeError('Incomplete exit-phase identity')
+    return {'pid': pid, 'ppid': int(tail[1]), 'starttime_ticks': int(tail[19]),
+            'flags': int(tail[6]), 'state': tail[0]}
+
+def exit_snapshot(pid, expected, root=Path('/proc')):
+    """All reads must succeed; identity and single-task proof bracket status/mm."""
+    path = root / str(pid)
+    before = exit_identity(pid, root)
+    for key in ('pid', 'ppid', 'starttime_ticks'):
+        if before[key] != expected[key]:
+            raise RuntimeError('Exit-phase lifetime changed')
+    if before['flags'] & 4 == 0:
+        raise RuntimeError('Exit-phase PF_EXITING absent')
+    tasks = sorted(x.name for x in (path / 'task').iterdir())
+    if tasks != [str(pid)]:
+        raise RuntimeError('Exit-phase task set not sole owned leader')
+    task_identity = exit_identity(pid, path / 'task')
+    if any(task_identity[k] != before[k] for k in ('pid','ppid','starttime_ticks')) or task_identity['flags'] & 4 == 0:
+        raise RuntimeError('Exit-phase task identity/flag mismatch')
+    for current in (path, path / 'task' / str(pid)):
+        status = dict(line.split(':', 1) for line in exit_read(current / 'status').splitlines() if ':' in line)
+        if any(int(status[k]) != v for k, v in (('Pid',pid),('Tgid',pid),('Threads',1))):
+            raise RuntimeError('Exit-phase status identity mismatch')
+        if 'VmRSS' in status or 'VmHWM' in status:
+            raise RuntimeError('Exit-phase memory still present')
+        mm = exit_read(current / 'statm').split()
+        if mm != ['0'] * 7:
+            raise RuntimeError('Exit-phase mm not detached')
+    children = exit_read(path / 'task' / str(pid) / 'children').split()
+    if children:
+        if len(children) > 128 or any(not x.isdigit() or int(x) <= 0 for x in children):
+            raise RuntimeError('Invalid exit-phase descendants')
+        raise ExitPhaseDescendants(children)
+    after = exit_identity(pid, root)
+    if any(after[k] != before[k] for k in ('pid','ppid','starttime_ticks')) or after['flags'] & 4 == 0:
+        raise RuntimeError('Exit-phase identity/flag changed')
+    if sorted(x.name for x in (path / 'task').iterdir()) != [str(pid)]:
+        raise RuntimeError('Exit-phase task set changed')
+    return {'pid':pid,'starttime_ticks':before['starttime_ticks'],'flags':after['flags'],
+            'single_task':True,'mm_detached':True,'children_empty':True}
+
+
+REAL_EXIT = (exit_read, exit_identity, exit_snapshot)
+
 def callback_binding(callback):
     obj = callback if inspect.isfunction(callback) or inspect.isclass(callback) else type(callback)
     path = inspect.getsourcefile(obj)
@@ -94,7 +157,7 @@ def run(out, argv, env=None, limits=Limits(), artifacts=None, expected_artifact_
                   'requested_argv': list(argv), 'limits': asdict(limits),
                   'helper': {'path': str(SELF), 'load_sha256': LOADED_HELPER_SHA256},
                   'test_dependencies': any(a is not b for a, b in
-                      [(_system, system_metrics), (_process, process_metrics), (_popen, subprocess.Popen), (_sleep, time.sleep)]),
+                      [(_system, system_metrics), (_process, process_metrics), (_popen, subprocess.Popen), (_sleep, time.sleep), *zip((exit_read, exit_identity, exit_snapshot), REAL_EXIT)]),
                   'dependencies': {}, 'artifacts': {}, 'no_process_group_signals': True}
     bound_paths = {}
     invocation_written = False
@@ -148,13 +211,74 @@ def run(out, argv, env=None, limits=Limits(), artifacts=None, expected_artifact_
             result['cleanup_errors'].append('final_wait: ' + repr(exc))
             result['cleanup_complete'] = False
 
+    def terminal_system_check():
+        if time.monotonic() - child_started > limits.timeout_s:
+            raise RuntimeError('Owned process timeout during terminal observation')
+        current = validate_metrics(_system(), ('MemAvailable_kB', 'oom_kill'))
+        if current['oom_kill'] > result['system_before']['oom_kill']:
+            raise RuntimeError('Global OOM increment during terminal observation')
+        if current['MemAvailable_kB'] < limits.runtime_min_available_kib:
+            raise RuntimeError('Low available memory during terminal observation')
+        return current
+
+    def observe_exit(event):
+        if not complete_sample_seen:
+            raise RuntimeError('No prior complete owned sample')
+        terminal_system_check()
+        if child.poll() is not None:
+            event.update(outcome='confirmed_exit',exit=child.poll(),system=terminal_system_check())
+            return
+        identity = exit_identity(child.pid)
+        if identity['pid'] != child.pid or identity['ppid'] != os.getpid():
+            raise RuntimeError('Owned import parent mismatch')
+        if child.poll() is not None:
+            terminal_system_check()
+            event['outcome'] = 'confirmed_exit'
+            return
+        phase_start = time.monotonic()
+        observations = []
+        attempt = {'elapsed_s':phase_start-child_started,'observations':observations,'pending_pair':[]}
+        result.setdefault('exit_phase_attempts', []).append(attempt)
+        def check():
+            current = terminal_system_check()
+            if time.monotonic() - phase_start > 1.0:
+                raise RuntimeError('Exit-phase observation timeout')
+            return current
+        while True:
+            check()
+            if child.poll() is not None:
+                break
+            try:
+                pair = []
+                attempt['pending_pair'] = pair
+                pair.append(exit_snapshot(child.pid,identity))
+                pair.append(exit_snapshot(child.pid,identity))
+            except ExitPhaseDescendants as exc:
+                result.setdefault('unexpected_exit_phase_children', []).append(exc.pids)
+                raise
+            except (FileNotFoundError, ProcessLookupError):
+                if child.poll() is None:
+                    raise
+                break
+            observations.append({'elapsed_s':time.monotonic()-child_started,'proof':pair})
+            attempt['pending_pair'] = []
+            if len(observations)>101:
+                raise RuntimeError('Exit-phase observation count exceeded')
+            check()
+            _sleep(0.01)
+        event['system'] = check()
+        event['outcome'] = 'verified_exit_phase_then_owned_exit' if observations else 'confirmed_exit'
+        event['exit'] = child.poll()
+        if observations:
+            result.setdefault('verified_exit_phase', []).append({'observations':observations,'owned_exit':event['exit']})
+
     try:
         helper_now = sha(SELF)
         invocation['helper']['invocation_sha256'] = helper_now
         if helper_now != LOADED_HELPER_SHA256:
             raise RuntimeError('Helper changed since module load')
         bound_paths['helper'] = (SELF, helper_now)
-        for name, callback in [('system', _system), ('process', _process), ('popen', _popen), ('sleep', _sleep)]:
+        for name, callback in [('system', _system), ('process', _process), ('popen', _popen), ('sleep', _sleep), ('exit_read', exit_read), ('exit_identity', exit_identity), ('exit_snapshot', exit_snapshot)]:
             if callback is time.sleep:
                 invocation['dependencies'][name] = {'name': 'time.sleep', 'builtin': True}
             else:
@@ -192,6 +316,7 @@ def run(out, argv, env=None, limits=Limits(), artifacts=None, expected_artifact_
         result['child_started'] = True
         result['pid'] = child.pid
         child_started = time.monotonic()
+        complete_sample_seen = False
         while child.poll() is None:
             now = time.monotonic()
             if now - child_started > limits.timeout_s:
@@ -208,8 +333,22 @@ def run(out, argv, env=None, limits=Limits(), artifacts=None, expected_artifact_
                     try:
                         exit_code = child.wait(timeout=grace)
                     except subprocess.TimeoutExpired:
-                        pass  # Still live: normal validation below must fail.
+                        event = {'elapsed_s':time.monotonic()-child_started,'wait_bound_s':grace}
+                        result['terminal_telemetry_gaps'].append(event)
+                        system = terminal_system_check()
+                        if child.poll() is not None:
+                            event.update(outcome='confirmed_exit',exit=child.poll(),system=terminal_system_check())
+                            break
+                        process = _process(child.pid)
+                        system = terminal_system_check()
+                        if isinstance(process,dict) and 'VmRSS' not in process and 'VmHWM' not in process:
+                            observe_exit(event)
+                            break
+                        process = validate_metrics(process, ('VmRSS','VmHWM','VmSize','Threads'))
+                        event['outcome'] = 'recovered_live_complete_telemetry'
+                        now = time.monotonic()
                     else:
+                        system = terminal_system_check()
                         result['terminal_telemetry_gaps'].append({
                             'elapsed_s': round(time.monotonic() - child_started, 6),
                             'reason': 'VmRSS absent; owned child exit confirmed',
@@ -234,6 +373,8 @@ def run(out, argv, env=None, limits=Limits(), artifacts=None, expected_artifact_
                 result['stop_reason'] = 'LOW_AVAILABLE_MEMORY_STOP_OWNED_PROCESS'
             if result['stop_reason']:
                 break
+            if all(type(process.get(k)) is int and process[k]>=0 for k in ('VmRSS','VmHWM','VmSize','Threads')):
+                complete_sample_seen = True
             _sleep(limits.sample_target_s)
     except BaseException as exc:
         result['exception'] = {'type': type(exc).__name__, 'message': str(exc)}

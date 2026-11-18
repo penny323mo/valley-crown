@@ -16,7 +16,7 @@ import sys
 import zipfile
 
 HERE = Path(__file__).resolve().parent
-MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
+MONITOR_SHA = 'f0daa328970f63704c8419f332d42a5abefbc6d03fbd256127697a40c349a6bd'
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 ENGINE_VERSION = '4.6.3.stable.official.7d41c59c4'
 
