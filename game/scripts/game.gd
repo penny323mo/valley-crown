@@ -2570,7 +2570,8 @@ func _patrol_next_leg(ent):
 
 func _advance_target(ent):
 	if ent.mode not in ["ADVANCE","PATROL"] or ent.state!="move" or ent.kind=="villager" or ent.kind not in Rules.UNIT_KINDS: return {}
-	if ent.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]: return {}
+	# A failed travel route must not disable ordinary visible in-range fire.
+	# Movement/search remains terminal; only the existing combat gate continues.
 	var best={}; var distance=INF
 	# Detached faction observations only. Fire revalidates live visibility/range.
 	for record in faction_views[ent.team].records().values():
@@ -4028,6 +4029,8 @@ func _publish_faction_views():
 				if ent.has("construction_return"):record.construction_return_type=ent.construction_return.type
 				for key in ["state","queue","carry","carry_type","path","target","resource_target","dest","gather_type","mode"]: record[key]=ent[key].duplicate(true) if ent[key] is Array or ent[key] is Dictionary else ent[key]
 				if ent.category=="unit":
+					# Current own pose fact only; never publish a hidden enemy target.
+					record.combat_engaged=unit_action_cues[team].get(ent.id,{}).get("ready_tick",-1)==tick_count and (ent.state=="attack" or (ent.mode in ["ADVANCE","PATROL"] and ent.get("advance_engaged",false)))
 					for key in ["path_status","path_reason","path_pending","path_request_kind","path_request_state","path_request_target","path_request_epoch","work_epoch","traffic_route"]:
 						var fallback=false if key in ["path_pending","traffic_route"] else (-1 if key in ["path_request_target","work_epoch"] else (-2 if key=="path_request_epoch" else ""))
 						record[key]=ent.get(key,fallback)
@@ -4638,6 +4641,7 @@ func _update_hud():
 		if not route_failure.is_empty(): status=route_failure
 		var military_failure=MilitaryRouteStatus.failure(ent,own_command_pending)
 		if not military_failure.is_empty():status=military_failure
+		elif ent.owned and ent.get("combat_engaged",false) and not own_command_pending:status="攻擊"
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
 		if ent.kind in CombatVeterancy.KINDS:selection_detail.text+=" · "+CombatVeterancy.label(ent)
 		if ent.owned and _military_attack_bonus(ent.kind,0)>0: selection_detail.text+=" · 軍備攻擊 +%d" % _military_attack_bonus(ent.kind,0)

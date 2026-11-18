@@ -5,6 +5,7 @@ const KINDS=["scout","spearman","archer","cavalry","siege"]
 static func failure(record: Dictionary,pending=false) -> String:
  if pending or not record.get("owned",false) or not record.get("alive",false) or record.get("remembered",false) or record.get("team",-1)!=0:return ""
  if record.get("category","")!="unit" or record.get("kind","") not in KINDS:return ""
+ if record.get("combat_engaged",false):return ""
  if record.get("path_pending",false) or not record.get("path",[]).is_empty():return ""
  if record.get("path_status","") not in ["NO_PATH","LIMIT_REACHED"]:return ""
  if record.get("path_reason","") in ["local_traffic_blocked","local_traffic_timeout","local_traffic_retry_limit","local_traffic_detour_limit"]:return "通道受阻，已停止"
