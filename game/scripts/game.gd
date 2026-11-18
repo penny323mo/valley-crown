@@ -149,6 +149,11 @@ var workforce_reassign_buttons={}
 var shortcut_category="all"
 var shortcut_category_buttons={}
 var shortcut_sections={"economy":[],"army":[],"production":[],"settings":[]}
+const ProductionShortfall=preload("res://scripts/production_shortfall.gd")
+var shortfall_label: Label
+var shortfall_inspected_build=""
+var shortfall_inspected_wall_count=1
+
 const WorkforceOverview=preload("res://scripts/workforce_overview.gd")
 var workforce_buttons={}
 var workforce_label: Label
@@ -4260,6 +4265,7 @@ func _create_ui():
 	idle_worker_button.tooltip_text="選取一位閒置村民，不改動任何指令。"
 	idle_army_button=_button("待命軍隊 0 · 全選",_select_idle_army,160); idle_army_button.name="IdleArmySelect"; menu_box.add_child(idle_army_button)
 	idle_army_button.tooltip_text="選取沒有行動或待處理指令的軍隊，不改變原有防守姿態。"
+	shortfall_label=_label("",13);shortfall_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(shortfall_label)
 	workforce_label=_label("",13); workforce_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(workforce_label)
 	var workforce_row=HFlowContainer.new(); workforce_row.add_theme_constant_override("h_separation",6); workforce_row.add_theme_constant_override("v_separation",6); menu_box.add_child(workforce_row)
 	for resource in WorkforceOverview.RESOURCES:
@@ -4291,7 +4297,7 @@ func _create_ui():
 		var button=_button("",func():_reassign_selected_workforce(kind),140)
 		button.name="WorkforceReassign_"+resource;button.tooltip_text="只改派所選正採集或運送其他資源的村民。保留負重，不同資源先送回再換工作；不搶建造、維修或新指令。目的地須可見且沒有已知威脅，路線仍可能受阻。"
 		reassign_row.add_child(button);workforce_reassign_buttons[resource]=button
-	shortcut_sections.economy=[idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row,batch_construction_button,batch_repair_button,reassign_help,reassign_row]
+	shortcut_sections.economy=[shortfall_label,idle_worker_button,workforce_label,workforce_row,blocked_workers_button,vacant_farm_button,dispatch_help,dispatch_row,batch_construction_button,batch_repair_button,reassign_help,reassign_row]
 	scout_dispatch_button=_button("派斥候探索",_dispatch_player_scout,160);scout_dispatch_button.name="PlayerScoutDispatch";menu_box.add_child(scout_dispatch_button)
 	scout_dispatch_button.tooltip_text="派一名空閒斥候前往附近未知地圖，沿路開啟視野。每次只下一個目的地，不搶現有指令，不自動重試；避開已知敵人，但路線仍可能受阻。"
 	shortcut_sections.army=[idle_army_button,scout_dispatch_button]
@@ -4631,7 +4637,7 @@ func _update_hud():
 		if ent.kind=="villager" and ent.cargo_milli>0: selection_detail.text+="   負重 %d / %d" % [floori(ent.cargo_milli/1000.0),economy.cargo_capacity(0,tick_count)/1000]
 		if ent.built and Rules.PRODUCES.has(ent.kind):
 			selection_detail.text+=_rally_detail(ent)
-			if not ent.get("repeat_kind","").is_empty(): selection_detail.text+=" · 自動訓練每次 "+Rules.cost_label(ent.repeat_kind)+"；資源或人口不足會等待。關閉保留隊列，取消訓練會關閉。"
+			if not ent.get("repeat_kind","").is_empty(): selection_detail.text+=" · 自動訓練每次 "+Rules.cost_label(ent.repeat_kind)+"；關閉保留隊列，取消訓練會關閉。"
 		if not ent.built: selection_detail.text=ConstructionStatus.detail(ent,faction_views[0].records(),own_command_pending,paused)
 		if not ent.queue.is_empty():
 			queue_label.text="%s %ds · 隊列 %d" % [Rules.NAMES[ent.queue[0].kind],ceili(ent.queue[0].remaining_ticks/20.0),ent.queue.size()]
@@ -4668,6 +4674,8 @@ func _update_hud():
 	_refresh_return_cargo_button()
 	_refresh_queue_actions()
 	_refresh_repeat_train_button()
+	_refresh_shortfall_text()
+	if build_mode.is_empty() and not _shortfall_lines().is_empty():selection_detail.text+="\n"+_shortfall_lines()
 	_refresh_repair_dispatch_button()
 	_refresh_construction_dispatch_button()
 	_refresh_farm_dispatch()
@@ -4721,7 +4729,7 @@ func _update_hud():
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		selection_detail.text=help_label.text
 		if build_mode=="tower":selection_detail.text+=" · 射程參考 %.1f（至目標邊緣，須可見）" % Rules.RANGE.tower
-		queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else Rules.cost_label(build_mode))+(" · 資源不足" if not _can_pay({"wood":30*wall_line_count} if build_mode=="wall" else COSTS[build_mode],0) else ""); queue_label.show()
+		queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else Rules.cost_label(build_mode))+(" · "+_shortfall_for(build_mode,0) if not _shortfall_for(build_mode,0).is_empty() else ""); queue_label.show()
 	if rally_building>=0:
 		selection_detail.text="警戒集合點：點可見空地；新軍隊射程內迎擊，敵軍離開後繼續前進，不追擊。" if rally_mode=="advance" else "點可見空地設定集合點；主堡亦可點資源，讓新村民自動採集。"
 		help_label.text=selection_detail.text
@@ -4749,6 +4757,18 @@ func _update_hud():
 		var reason=_build_preview_reason()
 		selection_summary.text=("位置已選，按確認" if build_preview_held else "點空地選位置") if reason.is_empty() else "不可建造，見詳情"
 		queue_label.text="%d段 · 木%d" % [wall_line_count,wall_line_count*30]
+	# Surface actionable shortages on phones without replacing paid queue / exit status.
+	if not build_mode.is_empty():
+		var shortfall=_shortfall_for(build_mode)
+		if not shortfall.is_empty():selection_summary.text=shortfall
+	elif not touch_command and rally_building<0 and not box_select_mode and selection.size()==1:
+		var producer=selection[0]
+		if producer.owned and producer.built and Rules.PRODUCES.has(producer.kind) and producer.queue.is_empty():
+			for kind in Rules.products_for(producer.kind):
+				var shortfall=_shortfall_for(kind)
+				if not shortfall.is_empty():
+					selection_summary.text=("自動待產 " if producer.get("repeat_kind","")==kind else "加訓 ")+Rules.NAMES[kind]+"："+shortfall
+					break
 	call_deferred("_layout_ui")
 
 func _rebuild_actions(selection):
@@ -4804,7 +4824,7 @@ func _rebuild_actions(selection):
 		clear_site_button=_button("移開己方單位",_clear_build_site,170)
 		clear_site_button.name="ClearBuildSite"
 		clear_site_button.tooltip_text="只移開預覽地點內沒有待處理指令的己方單位，會中止牠們原本工作。保留建造預覽；必須等移開後自行確認建造。不保證路線暢通。"
-		actions.add_child(clear_site_button); return
+		actions.add_child(clear_site_button); _add_shortfall_navigation(); return
 	if selection.is_empty():
 		actions.add_child(_button("選取村民",func(): _select_group("villagers"),120))
 		actions.add_child(_button("探索霧谷",func(): _select_group("scout"),120))
@@ -4969,6 +4989,8 @@ func _rebuild_actions(selection):
 		withdraw_button.name="ArmyWithdraw"
 		withdraw_button.tooltip_text="點撤離地點；只移動所選軍隊，遠程在前、近戰在後。沿途不迎擊但仍會受傷；地形會調整落點，不保證保持陣形。"
 		actions.add_child(withdraw_button)
+
+	if selection.size()==1 and selection[0].owned and selection[0].built and Rules.PRODUCES.has(selection[0].kind):_add_shortfall_navigation()
 
 func _place_context_detail_action():
 	if not is_instance_valid(actions) or not is_instance_valid(context_detail_button):return
@@ -8248,3 +8270,57 @@ func _update_breach_mission():
 	var post=_get_entity(breach_mission.post_id)
 	if breach_mission.advance(tick_count,not post.is_empty() and post.alive,not _first(1,"town_center").is_empty()):
 		progress_serial+=1;_message(BreachMission.TITLES[breach_mission.stage],4)
+
+# All shortage diagnostics are current-own presentation, not enqueue permission.
+func _shortfall_for(kind: String,queued: int=0) -> String:
+	if not COSTS.has(kind):return ""
+	var cost={"wood":30*wall_line_count} if kind=="wall" and build_mode=="wall" else COSTS[kind]
+	return ProductionShortfall.describe(cost,economy.bank_milli(0),_population(0),_capacity(0),kind in Rules.UNIT_KINDS,_kind_unlocked(kind,0),queued)
+
+func _shortfall_context() -> String:
+	if not build_mode.is_empty():return "build:"+build_mode+":"+str(selected)+":"+str(wall_line_count)
+	if selected.size()!=1:return ""
+	var record=faction_views[0].get_record(selected[0])
+	if not record.get("owned",false) or record.get("remembered",false) or record.get("team",-1)!=0 or not record.get("alive",false) or not record.get("built",false) or not Rules.PRODUCES.has(record.get("kind","")):return ""
+	return str(selected)+":"+str(record.get("repeat_kind",""))+":"+str(record.get("repeat_generation",0))
+
+func _shortfall_lines() -> String:
+	if not build_mode.is_empty():
+		var reason=_shortfall_for(build_mode)
+		return Rules.NAMES[build_mode]+"："+(reason if not reason.is_empty() else "資源可支付；仍須確認建造位置")
+	if _shortfall_context().is_empty():return ""
+	var record=faction_views[0].get_record(selected[0])
+	var lines: Array[String]=[]
+	for kind in Rules.products_for(record.kind):
+		var reason=_shortfall_for(kind,record.queue.size())
+		var prefix="加訓"+Rules.NAMES[kind]
+		if record.get("repeat_kind","")==kind and record.queue.is_empty():prefix="自動待產 "+Rules.NAMES[kind]
+		lines.append(prefix+"："+(reason if not reason.is_empty() else "資源及人口可用"))
+	return "\n".join(lines)
+
+func _refresh_shortfall_text():
+	if not compact_menu.visible:shortfall_inspected_build=""
+	var detail=_shortfall_lines()
+	if not shortfall_inspected_build.is_empty():
+		var cost={"wood":30*shortfall_inspected_wall_count} if shortfall_inspected_build=="wall" else COSTS[shortfall_inspected_build]
+		var reason=ProductionShortfall.describe(cost,economy.bank_milli(0),0,0,false,_kind_unlocked(shortfall_inspected_build,0))
+		detail=Rules.NAMES[shortfall_inspected_build]+"（預覽已取消）："+(reason if not reason.is_empty() else "資源可支付")
+	if is_instance_valid(shortfall_label):shortfall_label.text=detail
+
+func _add_shortfall_navigation():
+	var identity=_shortfall_context()
+	var button=_button("工人分配"+("\n退出建造預覽" if not build_mode.is_empty() else ""),func():_open_shortfall_workforce(identity),150)
+	button.name="ShortfallWorkforce"
+	button.tooltip_text="查看現有工人分配；不會自動派工或扣款。建造預覽會取消，需重新選擇建造。"
+	actions.add_child(button)
+
+func _open_shortfall_workforce(identity: String):
+	if identity.is_empty() or identity!=_shortfall_context() or game_over or not application_focused or application_suspended:return
+	var previous_build=build_mode
+	var previous_wall_count=wall_line_count
+	_cancel_mode()
+	if not compact_menu.visible:_toggle_compact_menu()
+	shortfall_inspected_build=previous_build
+	shortfall_inspected_wall_count=previous_wall_count
+	_set_shortcut_category("economy")
+	_refresh_shortfall_text()
