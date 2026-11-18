@@ -138,6 +138,7 @@ const ArmyRecruitment=preload("res://scripts/army_recruitment.gd")
 var army_roster_buttons={}
 var shortcut_scroll: ScrollContainer
 var shortcut_header: VBoxContainer
+const MilitaryRouteStatus=preload("res://scripts/military_route_status.gd")
 const CommandIcons=preload("res://scripts/command_icons.gd")
 const ProductionOverview=preload("res://scripts/production_overview.gd")
 var production_buttons={}
@@ -1361,7 +1362,7 @@ func _enqueue_train(id,kind,team):
 	if not _kind_unlocked(kind,team): return _reject_command(team,"需要先在主堡研究城防時代。")
 	if building.queue.size()>=5: return _reject_command(team,"生產隊列已滿。")
 	if _population(team)>=_capacity(team):
-		if team==0: _message("人口已滿，先建民居。每方最多 50 人。")
+		if team==0: _message("已達 50 人上限（含隊列），建民居不會增加上限。" if _population(team)>=Rules.POP_LIMIT else "住房已滿，先建民居；已付款隊列亦佔人口。")
 		return false
 	var payment=_pay(COSTS[kind],team)
 	if not payment.applied:
@@ -4635,6 +4636,8 @@ func _update_hud():
 		if ent.owned and ent.get("construction_return_type","")!="":status+=" · 完工回採"+{"wood":"木材","food":"食物","stone":"石材","iron":"鐵礦"}.get(ent.construction_return_type,"")
 		var route_failure=WorkerIdleStatus.route_failure(ent,own_command_pending)
 		if not route_failure.is_empty(): status=route_failure
+		var military_failure=MilitaryRouteStatus.failure(ent,own_command_pending)
+		if not military_failure.is_empty():status=military_failure
 		selection_detail.text="生命 %d / %d   ·   %s" % [ceili(ent.hp),int(ent.max_hp),status]
 		if ent.kind in CombatVeterancy.KINDS:selection_detail.text+=" · "+CombatVeterancy.label(ent)
 		if ent.owned and _military_attack_bonus(ent.kind,0)>0: selection_detail.text+=" · 軍備攻擊 +%d" % _military_attack_bonus(ent.kind,0)
@@ -4667,6 +4670,9 @@ func _update_hud():
 		selection_detail.text=("%d 村民無已知採集點" % missing_workers) if missing_workers>0 else "向資源、空地或可見敵軍落指令。"
 		if route_failed_workers>0:
 			selection_detail.text=(selection_detail.text+" · " if missing_workers>0 else "")+("%d 村民工作路線停止" % route_failed_workers)
+	var blocked_military=MilitaryRouteStatus.blocked(faction_views[0].records(),selected,own_command_pending)
+	if selection.size()>1 and not blocked_military.is_empty():
+		selection_detail.text=(selection_detail.text+" · " if missing_workers>0 or route_failed_workers>0 else "")+"軍隊路線停止 %d · 只選受阻單位後，再點新目的地" % blocked_military.size()
 	selection_summary.text="點選單位" if selection.is_empty() else selection_detail.text
 	if selection.size()==1:
 		var summary_ent=selection[0]
@@ -4684,6 +4690,7 @@ func _update_hud():
 	if selection.size()==1 and selection[0].kind=="town_center" and selection[0].owned:selection_summary.text+=" · 避難 %d/5（途中 %d）" % [selection[0].get("garrison_count",0),selection[0].get("garrison_pending_count",0)]
 	var key=str(_garrison_ui_key())+str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].hp<selection[0].max_hp)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
+	key+=":"+str(_military_failure_identity())
 	key+=":"+str(WoundedRetreat.injured(faction_views[0].records(),selected))
 	if selection.size()==1 and not selection[0].get("queue",[]).is_empty():key+=":"+str(selection[0].queue[0].remaining_ticks<=0)
 	if key!=action_key: action_key=key; _rebuild_actions(selection)
@@ -5007,6 +5014,13 @@ func _rebuild_actions(selection):
 		withdraw_button.tooltip_text="點撤離地點；只移動所選軍隊，遠程在前、近戰在後。沿途不迎擊但仍會受傷；地形會調整落點，不保證保持陣形。"
 		actions.add_child(withdraw_button)
 
+	var failure_identity=_military_failure_identity()
+	if not failure_identity.is_empty():
+		var source_selection=selected.duplicate()
+		var blocked_button=_button("只選受阻單位",func():_select_blocked_military(source_selection,failure_identity),150)
+		blocked_button.name="SelectBlockedMilitary"
+		blocked_button.tooltip_text="只保留所選軍隊中尋路已停止的單位；不自動重試。再點新目的地，其他單位維持原指令。"
+		actions.add_child(blocked_button)
 	if selection.size()==1 and selection[0].owned and selection[0].built and Rules.PRODUCES.has(selection[0].kind):_add_shortfall_navigation()
 
 func _place_context_detail_action():
@@ -5649,8 +5663,8 @@ func _send_world_order(screen,contextual=false):
 		if tapped.get("team",-1)==1 and tapped.get("alive",false) and not tapped.get("remembered",false):_submit("tower_focus",{"ids":towers,"target":target_id})
 		ids=ids.filter(func(id):return faction_views[0].get_record(id).get("category","")=="unit")
 		if ids.is_empty():return
-	if contextual and (tapped.get("category","")=="resource" or (tapped.get("kind","")=="farm" and tapped.get("owned",false))):
-		# Resource taps task capable workers only; escorts keep their orders.
+	if contextual and (tapped.get("category","")=="resource" or (tapped.get("kind","")=="farm" and tapped.get("owned",false)) or (tapped.get("category","")=="building" and tapped.get("owned",false) and not tapped.get("built",true))):
+		# Resource, farm and unfinished-site taps task workers only; escorts keep their orders.
 		ids=ids.filter(func(id):
 			var record=faction_views[0].get_record(id)
 			return record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and record.get("kind","")=="villager" and not record.get("remembered",false))
@@ -5680,6 +5694,8 @@ func _tap(screen,is_touch):
 		_send_world_order(screen,true); _update_hud(); return
 	if contextual_pointer and not paused and tapped.get("owned",false) and tapped.get("kind","")=="siege" and tapped.get("hp",0)<tapped.get("max_hp",0) and _selected_builder()>=0:
 		_send_world_order(screen,true); _update_hud(); return
+	if contextual_pointer and not paused and tapped.get("owned",false) and tapped.get("alive",false) and not tapped.get("remembered",true) and tapped.get("category","")=="building" and not tapped.get("built",true) and _selected_builder()>=0:
+		_send_world_order(screen,true);_update_hud();return
 	if id>=0 and faction_views[0].get_record(id).team==0:
 		if Input.is_physical_key_pressed(KEY_SHIFT) and not is_touch:
 			var ids=selected.duplicate()
@@ -8376,3 +8392,20 @@ func _ai_recover_local_traffic(records):
 		_submit("order",{"ids":[worker.id],"target":-1,"position":point,"ai_traffic_escape":true,"source_work_epoch":worker.work_epoch},1)
 		ai_claimed_workers[worker.id]="traffic_escape";ai_status.worker_recovery="local_traffic_escape"
 		return
+
+func _military_failure_identity():
+	for command in commands:
+		if command.get("team",-1)==0:return []
+	var records=faction_views[0].records();var result=[]
+	for id in MilitaryRouteStatus.blocked(records,selected):
+		var record=records[id]
+		result.append([id,record.get("work_epoch",-1),record.get("path_status",""),record.get("path_reason","")])
+	return result
+
+func _select_blocked_military(source_selection,identity):
+	if paused or game_over or not application_focused or application_suspended or touch_command or not build_mode.is_empty():return
+	if selected!=source_selection or identity.is_empty() or identity!=_military_failure_identity():return
+	var ids=[]
+	for entry in identity:ids.append(entry[0])
+	_select(ids)
+	_message("已選受阻軍隊；點新目的地重新落指令，不保證路線暢通。",5)

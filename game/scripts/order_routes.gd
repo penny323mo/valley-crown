@@ -1,5 +1,6 @@
 extends RefCounted
 ## Straight intent guides, NOT pathfinding previews. Own movement/rally only.
+const MilitaryRouteStatus=preload("res://scripts/military_route_status.gd")
 const MAX_ROUTES=12
 const DASHES=24
 var node: MultiMeshInstance3D
@@ -10,6 +11,7 @@ static func routes(records: Dictionary,selected: Array) -> Array:
 		seen[id]=true
 		var record=records.get(id,{})
 		if not record.get("owned",false) or not record.get("alive",false) or record.get("remembered",false):continue
+		if not MilitaryRouteStatus.failure(record).is_empty():continue
 		var destination=Vector3.INF;var rally=false
 		if record.get("category","")=="unit" and record.get("state","")=="move" and record.get("target",-1)==-1:
 			destination=record.get("dest",Vector3.INF)
