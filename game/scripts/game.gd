@@ -6959,9 +6959,14 @@ func _ai_progression_goal(records: Array,workers: int,capacity: int,committed: i
 	# otherwise preserve the farm route that may be needed to restore food.
 	if workers<3 and committed<capacity and _ai_can_budget("villager"): return "villager"
 	var counts={}; var known_food=0; var known_enemy_keep=false
+	var observations={}
+	for record in records: observations[record.id]=record
 	for record in records:
 		if record.team==0 and record.category=="building" and record.kind=="town_center": known_enemy_keep=true
-		if record.category=="resource" and record.kind=="berry": known_food+=1
+		# Match ordinary gathering feasibility without discarding safe remembered
+		# exploration. Forbidden food must not suppress the existing paid farm plan.
+		if record.category=="resource" and record.kind=="berry" and record.get("alive",false):
+			if WorkerSafety.threats(observations,1,record.pos).is_empty() and not _ai_worker_resource_blocked(record.pos): known_food+=1
 		if not record.owned: continue
 		counts[record.kind]=counts.get(record.kind,0)+1
 		for item in record.get("queue",[]): counts[item.kind]=counts.get(item.kind,0)+1
