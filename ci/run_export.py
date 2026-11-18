@@ -13,9 +13,9 @@ import time
 import owned_process as p
 
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
-SOURCE = 'f2f9c4597019dbd65c7a3b6017254f606035bfd0'
-GAME_TREE = 'ed29c06f9f1e0ac855ba84dfde6920b80b522bc5'
-BUILD = 'vc-c9230efb6397'
+SOURCE = '198b929b008b8760a9cbe4a52f9d6ff5271c420b'
+GAME_TREE = 'b39fec79e93b21be66a7fadaa2a721cbbbc81598'
+BUILD = 'vc-86c40a458e7c'
 TEMPLATE_SHA = '1446f79dc12f60ce5d244c39fb6628ec298337ca5c4f91a16491feea72aa1bc9'
 MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
 ALLOWED_OUTPUTS = {'index.html', 'index.js', 'index.wasm', 'index.pck', 'index.png',
