@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-24762485afc3-717f7643
+  group: building-runtime-vc-be3f3bd3e80a-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 05608845db6523815a8f38253d586b782e9f359e
+      BUILDING_RUNTIME_SOURCE_COMMIT: 4153578e70bfac33f2dd9ac690001c39da1c05f3
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '7a12b268c802a7728c40709ae0e6249692b7da39696b5043d28fb731a5c4cdfa  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'a81fb995f4dfbfe9231a9fa916b37b5a234bbfa48d93dcd906e524c0081e2ece  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -252,6 +252,7 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/military_technology_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_worker_recovery_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_worker_recovery_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_lifecycle_contract/receipt.json
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -261,7 +262,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_lifecycle_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_lifecycle_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_contract/godot.log
@@ -398,6 +398,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/fortress_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_repair_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_repair_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/cavalry_grip_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/cavalry_grip_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -407,8 +409,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra-2
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/cavalry_grip_contract/receipt.json
-            ${{ env.RTS_WORK }}/product/latest-contracts/cavalry_grip_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/horse_visual_contract/receipt.json
@@ -543,6 +543,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/ai_shelter_staffing_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/licensed_resource_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/licensed_resource_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_queued_yield_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_queued_yield_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/simultaneous_attack_display_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/simultaneous_attack_display_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
