@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-d0e584be116c-717f7643
+  group: building-runtime-vc-78edfcdd5a39-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 896d157e9194b357ee164281702c1151d9612921
+      BUILDING_RUNTIME_SOURCE_COMMIT: 8792df36a1ec44e62c29f91c1d2bb84e66631dc0
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'df8f9a09eb3767bf1c8c6aa2daa76b5c55dbb9e98e57aa2f8a7c8231d73e0304  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '5d74f8f01843cfa3ac3a408a95529e50a5827910981de622ea93e41fa32e49a8  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -255,6 +255,7 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_lifecycle_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_lifecycle_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -264,7 +265,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_integration/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_integration/godot.log
             ${{ env.RTS_WORK }}/product/building-contracts/building-contracts-receipt.json
@@ -404,6 +404,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/horse_visual_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/horse_visual_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/rider_armour_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/rider_armour_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -413,8 +415,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra-2
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/rider_armour_contract/receipt.json
-            ${{ env.RTS_WORK }}/product/latest-contracts/rider_armour_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_tactics_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_tactics_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/army_roster_contract/receipt.json
@@ -551,6 +551,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/ai_building_spacing_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/bush_fruit_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/bush_fruit_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/compact_initial_camera_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/compact_initial_camera_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/compact_camera_routes_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/compact_camera_routes_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
