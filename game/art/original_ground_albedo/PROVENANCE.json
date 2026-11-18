@@ -1,0 +1,18 @@
+{
+  "source": "OpenAI built-in image generation, original project material artwork, not screenshot or CC0 donor",
+  "prompts": {
+    "grass": "Use case: stylized-concept. Asset type: ORIGINAL GAME MATERIAL ALBEDO TEXTURE, not a game screenshot or scene. Generate one square seamless tileable sparse meadow ground color texture, top-down orthographic flat surface, approximately 2 metres square. Muted olive green short irregular interwoven grass with small softly exposed tan earth gaps, coherent natural variation, broad leaf/blade groupings that remain readable at 512px. Understated painterly naturalism compatible with low polygon medieval RTS art, not photoreal macro photography. Completely uniform diffuse illumination, NO baked shadows, NO directional highlights, NO perspective or height shading, no sun gradients. All four edges must wrap continuously and match opposite edges. Edge-to-edge opaque material, no border. Low contrast, matte, avoid bright blades, large stones, flowers, twigs, roads, footpaths, circles, dot grids, visible regular clumps, clouds, text, UI, characters, buildings, watermark. Natural irregular local leaf contours rather than blurry cloud noise. Output only the single albedo texture.",
+    "earth": "Use case: stylized-concept. Asset type: ORIGINAL GAME MATERIAL ALBEDO TEXTURE, NOT gameplay screenshot. Generate one square seamless tileable compacted earth color texture, flat top-down orthographic approximately 2 metres square. Muted warm grey-brown ochre dirt, subtle irregular fine grit and small shallow crumbling patches, dry matte natural soil. Low-contrast painterly naturalism for a low-polygon medieval RTS terrain; no dramatic cracks or giant pebbles, no repetitive dots or rows, not cloud noise. Entire image is only ground base color under perfectly uniform neutral diffuse illumination, no directional light, no shadows/highlights, no perspective, no vignette or border, no relief shading. Opposite edges must seamlessly continue both horizontally and vertically. Preserve natural irregular compacted-soil character at512px. No grass/flowers/twigs, no roads/paths/wheel tracks/footprints, no characters/objects/text/UI/watermarks. Output only one opaque albedo texture."
+  },
+  "assets": {
+    "grass_original_albedo.png": "c4b3f5bc205a9e51faf1226e653943350009a63f31537ba41b7f5d31ba86ee7c",
+    "earth_original_albedo.png": "3b3533b517636669321869b6936ae9b6225dc0cfb47fe3994b267fe7bdd75157"
+  },
+  "raw_pixels_unchanged": true,
+  "shader_tint": [
+    0.6,
+    0.78,
+    0.65
+  ],
+  "license_note": "No new public license granted."
+}

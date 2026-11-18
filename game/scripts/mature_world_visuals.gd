@@ -15,8 +15,8 @@ static func create_ground(parent:Node3D,corridors:Dictionary) -> MeshInstance3D:
 	var home_a:=Routes.home(0); var home_b:=Routes.home(1)
 	mat.set_shader_parameter("public_home_a",Vector2(home_a.x,home_a.z))
 	mat.set_shader_parameter("public_home_b",Vector2(home_b.x,home_b.z))
-	mat.set_shader_parameter("grass_map",load("res://assets/mature/terrain/grass.png"))
-	mat.set_shader_parameter("earth_map",load("res://assets/mature/terrain/earth.png"))
+	mat.set_shader_parameter("grass_map",load("res://assets/mature/terrain/grass_original_albedo.png"))
+	mat.set_shader_parameter("earth_map",load("res://assets/mature/terrain/earth_original_albedo.png"))
 	mat.set_shader_parameter("public_corridor_mask",ImageTexture.create_from_image(image))
 	var plane:=PlaneMesh.new();plane.size=Vector2(Rules.MAP_SIZE+8,Rules.MAP_SIZE+8)
 	var mesh:=MeshInstance3D.new();mesh.name="MaturePublicGround";mesh.mesh=plane;mesh.material_override=mat
