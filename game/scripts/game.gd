@@ -24,6 +24,7 @@ const AIResourceOutpost=preload("res://scripts/ai_resource_outpost.gd")
 const ScoutFrontier=preload("res://scripts/scout_frontier.gd")
 const HomeDefenseAllocation = preload("res://scripts/home_defense_allocation.gd")
 const HomeDefense = preload("res://scripts/home_defense.gd")
+const AIMusterFallback=preload("res://scripts/ai_muster_fallback.gd")
 const ArmyComposition = preload("res://scripts/army_composition.gd")
 const ConstructionStatus = preload("res://scripts/construction_status.gd")
 const MAP_LIMIT = Rules.MAP_WORLD_LIMIT
@@ -3947,6 +3948,7 @@ func _ai_update():
 	var shelter_staffing=goal=="farm" and _ai_farm_shelter_staffing(goal,workers,queued_workers,capacity,living+reserved,castle)
 	if Rules.BUILD_TIME.has(goal):
 		if not ai_build_submitted and not shelter_staffing: _ai_build(goal)
+		if not ai_build_submitted and not shelter_staffing:_ai_optional_farm_muster(goal,records,capacity,living+reserved)
 	elif goal=="age2":
 		if not _research_pending(1) and castle.queue.size()<5 and _ai_can_budget(goal):
 			_submit("research",{"building":castle.id},1); _ai_reserve_budget(goal)
@@ -8661,3 +8663,25 @@ func _ai_idle_yield_waypoint(carrier):
 	var point=carrier.get("traffic_goal",Vector3.INF)
 	if point==Vector3.INF or carrier.pos.distance_to(point)>1.5:return Vector3.INF
 	return point
+
+# Optional farm cannot monopolize otherwise payable finite military muster.
+func _ai_optional_farm_muster(goal,records,capacity,committed):
+	if goal!="farm" or not ai_enabled or paused or game_over or skirmish_mode not in ["standard","pressure","battle","fortress"] or victory_mode!="conquest":return false
+	if _ai_can_budget("farm") or not ai_raid_members.is_empty() or ai_raid_retreating:return false
+	for command in commands:
+		if command.get("team",-1)==1 and command.get("type","") in ["train","build","research","military_research","trade"]:return false
+	var farms=0;var food_workers=0;var known_keep=false
+	for record in records:
+		if record.get("team",-1)==0 and record.get("alive",false) and record.get("category","")=="building" and record.get("kind","")=="town_center":known_keep=true
+		if not record.get("owned",false) or not record.get("alive",false) or record.get("team",-1)!=1:continue
+		if record.get("kind","")=="farm" and record.get("built",false):farms+=1
+		if record.get("kind","")!="villager":continue
+		var worker=_get_entity(record.id)
+		if worker.is_empty() or not worker.alive or worker.has("ai_evacuation") or worker.state not in ["gather","deliver"] or worker.get("gather_type","")!="food" or worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"] or _ai_worker_pending_intent(worker.id):continue
+		var farm=economy.farm_view(worker.get("farm_id",-1))
+		if farm.get("worker_id",-1)==worker.id:food_workers+=1
+	if farms<2 or food_workers<2 or not known_keep:return false
+	var plan=AIMusterFallback.plan(records,ai_budget,_age2(1),capacity,committed,SkirmishPolicy.muster(skirmish_mode))
+	if plan.is_empty():return false
+	_submit("train",{"building":plan.building,"kind":plan.kind},1);_ai_reserve_budget(plan.kind)
+	ai_status.muster_fallback={"kind":plan.kind,"full_gap":plan.gap,"reserve_food":plan.reserve_food};return true
