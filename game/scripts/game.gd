@@ -911,6 +911,12 @@ func _execute(command):
 				if gather_worker.is_empty() or gather_worker.team!=0 or not gather_worker.alive or gather_worker.kind!="villager" or gather_worker.state!="idle" or not gather_worker.path.is_empty() or gather_worker.get("path_pending",false) or _cargo_amount(gather_worker)>0:return
 				if target.is_empty() or target.category!="resource" or IdleGatherDispatch.TYPES.get(target.kind,"")!=command.idle_gather or economy.node_view(target.id).remaining_milli<=0:return
 				if IdleGatherDispatch.threatened(target.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(gather_worker.pos,faction_views[0].records()):return
+			if command.has("ai_idle_yield"):
+				if typeof(command.ai_idle_yield)!=TYPE_BOOL or command.ai_idle_yield!=true or team!=1 or target_id!=-1 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT or typeof(command.get("source_work_epoch",null))!=TYPE_INT or typeof(command.get("yield_carrier",null))!=TYPE_INT or typeof(command.get("yield_epoch",null))!=TYPE_INT:return
+				var yield_worker=_get_entity(command.ids[0])
+				if yield_worker.is_empty() or yield_worker.work_epoch!=command.get("source_work_epoch",-2):return
+				var yield_plan=_ai_idle_yield_plan(yield_worker)
+				if yield_plan.is_empty() or yield_plan.carrier!=command.get("yield_carrier",-1) or yield_plan.epoch!=command.get("yield_epoch",-2) or yield_plan.waypoint!=command.get("yield_waypoint",Vector3.INF) or yield_plan.goal!=command.get("position",Vector3.INF):return
 			if command.has("ai_traffic_escape"):
 				if typeof(command.ai_traffic_escape)!=TYPE_BOOL or not command.ai_traffic_escape or team!=1 or target_id!=-1 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT or typeof(command.get("source_work_epoch",null))!=TYPE_INT:return
 				var escape_worker=_get_entity(command.ids[0])
@@ -1022,7 +1028,9 @@ func _execute(command):
 				if command.get("ai_traffic_escape",false):
 					ent.path_status="IDLE";ent.path_reason=""
 					ent.traffic_last_replan=tick_count
-				var escape_replans=ent.traffic_replans if command.get("ai_traffic_escape",false) else -1
+				var yielding=command.get("ai_idle_yield",false)
+				var yield_memory=ent.get("ai_evacuation",{}).duplicate(true) if yielding else {}
+				var escape_replans=ent.traffic_replans if command.get("ai_traffic_escape",false) or yielding else -1
 				var escape_length=ent.traffic_path_length if escape_replans>=0 else 0
 				if intent!="move": _order(ent,intent,target.id)
 				elif not target.is_empty(): _order_move(ent,command.position)
@@ -1032,6 +1040,8 @@ func _execute(command):
 				if escape_replans>=0:
 					ent.traffic_replans=escape_replans;ent.traffic_last_replan=tick_count
 					ent.traffic_route=true;ent.traffic_path_length=escape_length
+				if yielding and not yield_memory.is_empty() and ent.state=="move":
+					yield_memory.epoch=ent.work_epoch;yield_memory.safe_since_tick=-1;yield_memory.shelter_since_tick=-1;ent.ai_evacuation=yield_memory
 				if team==1 and ent.kind=="scout":
 					ai_scout_moves.erase(ent.id)
 					if tracked_scout and ent.state=="move" and (not recover_scout or ent.dest!=scout_move.get("goal",Vector3.INF)):
@@ -2114,6 +2124,7 @@ func _anticipate_local_traffic(ent,waypoint):
 	# two streams into a touching wall. It spends the same bounded query gate.
 	if tick_count-ent.traffic_last_replan<TRAFFIC_REPLAN_TICKS: return false
 	if ent.pos.distance_to(waypoint)<0.001 or _unit_step_is_free(ent,waypoint): return false
+	if ent.team==1 and ent.state=="deliver" and _ai_request_idle_yield(ent,waypoint):return true
 	_queue_traffic_route(ent); return true
 
 func _apply_unit_step(ent,next_pos,dt):
@@ -3888,8 +3899,9 @@ func _ai_update():
 	_ai_resource_outpost(records)
 	var goal=_ai_progression_goal(records,workers.size()+queued_workers,capacity,living+reserved)
 	ai_status.progression_goal=goal; ai_status.age=2 if _age2(1) else 1
+	var shelter_staffing=goal=="farm" and _ai_farm_shelter_staffing(goal,workers,queued_workers,capacity,living+reserved,castle)
 	if Rules.BUILD_TIME.has(goal):
-		if not ai_build_submitted: _ai_build(goal)
+		if not ai_build_submitted and not shelter_staffing: _ai_build(goal)
 	elif goal=="age2":
 		if not _research_pending(1) and castle.queue.size()<5 and _ai_can_budget(goal):
 			_submit("research",{"building":castle.id},1); _ai_reserve_budget(goal)
@@ -8524,3 +8536,59 @@ func _select_blocked_military(source_selection,identity):
 	for entry in identity:ids.append(entry[0])
 	_select(ids)
 	_message("已選受阻軍隊；點新目的地重新落指令，不保證路線暢通。",5)
+
+# One ordinary replacement worker for a fully sheltered economy, not a death
+# count, refund, free birth, or permission to send old workers into danger.
+func _ai_farm_shelter_staffing(goal,workers,queued_workers,capacity,committed,castle):
+	if goal!="farm":return false
+	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach"]:return false
+	if workers.is_empty() or workers.size()>=8 or queued_workers>0 or committed>=capacity or not _ai_can_budget("villager"):return false
+	if castle.is_empty() or not castle.get("owned",false) or not castle.get("alive",false) or not castle.get("built",false) or castle.get("team",-1)!=1 or castle.get("kind","")!="town_center" or castle.get("queue",[]).size()>=2:return false
+	for command in commands:
+		if command.get("team",-1)==1 and command.get("type","")=="train" and command.get("kind","")=="villager":return false
+	for record in workers:
+		if not record.get("owned",false) or not record.get("alive",false) or record.get("team",-1)!=1 or record.get("kind","")!="villager":return false
+		var worker=_get_entity(record.id)
+		if worker.is_empty() or not worker.get("alive",false) or worker.get("team",-1)!=1 or not worker.has("ai_evacuation") or worker.ai_evacuation.get("epoch",-2)!=worker.get("work_epoch",-1):return false
+	_submit("train",{"building":castle.id,"kind":"villager"},1);_ai_reserve_budget("villager")
+	ai_status.shelter_staffing="one_paid_worker_pending";return true
+
+# A new local AI task for an unloaded parked worker, never a retry for the carrier.
+func _ai_idle_yield_plan(worker):
+	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach"]:return {}
+	if worker.is_empty() or worker.get("team",-1)!=1 or not worker.get("alive",false) or worker.get("kind","")!="villager" or worker.state!="idle" or worker.mode=="STOP" or _garrisoned(worker) or _cargo_amount(worker)>0:return {}
+	if not worker.get("path",[]).is_empty() or worker.get("path_pending",false) or worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:return {}
+	if tick_count<worker_manual_until.get(worker.id,-1) or tick_count-worker.get("traffic_last_replan",tick_count)<AI_TRAFFIC_ESCAPE_COOLDOWN or tick_count-worker.get("last_damage_tick",tick_count)<=WorkerSafety.SAFE_TICKS or _ai_worker_pending_intent(worker.id):return {}
+	if worker.has("ai_evacuation") and worker.ai_evacuation.epoch!=worker.work_epoch:return {}
+	var records=faction_views[1].records()
+	if not WorkerSafety.threats(records,1,worker.pos).is_empty():return {}
+	for record in records.values():
+		if not record.get("owned",false) or record.get("kind","")!="villager" or record.id==worker.id:continue
+		var carrier=_get_entity(record.id)
+		if carrier.is_empty() or not carrier.get("alive",false) or carrier.get("team",-1)!=1 or carrier.state!="deliver" or _cargo_amount(carrier)<=0 or carrier.path.is_empty() or carrier.pos.distance_squared_to(worker.pos)>6.25:continue
+		var waypoint=carrier.path[0]
+		if carrier.pos.distance_to(waypoint)>1.5:continue
+		var clearance=worker.radius+carrier.radius
+		if _segment_distance_squared(worker.pos,carrier.pos,waypoint)>=clearance*clearance-.000001:continue
+		var grid=work_memory[1].grid
+		for offset in [Vector2i(1,0),Vector2i(0,1),Vector2i(-1,0),Vector2i(0,-1)]:
+			var cell=_cell(worker.pos)+offset
+			if not grid.region.has_point(cell) or grid.is_point_solid(cell):continue
+			var point=_point(cell)
+			if point.distance_to(worker.pos)>1.8 or point.distance_to(worker.pos)<.5 or not visible_cells[1][_cell_index(point)] or not _known_destination_clear(worker,point):continue
+			if _segment_distance_squared(point,carrier.pos,waypoint)<clearance*clearance or _ai_worker_resource_blocked(point) or not WorkerSafety.threats(records,1,point).is_empty():continue
+			if _nearest_free(point,8,1,worker)!=point:continue
+			return {"carrier":carrier.id,"epoch":carrier.work_epoch,"waypoint":waypoint,"goal":point}
+	return {}
+
+func _ai_request_idle_yield(carrier,waypoint):
+	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach"] or carrier.is_empty() or not carrier.get("alive",false) or carrier.get("team",-1)!=1 or carrier.state!="deliver" or _cargo_amount(carrier)<=0:return false
+	for record in faction_views[1].records().values():
+		if not record.get("owned",false) or record.get("kind","")!="villager" or record.id==carrier.id or ai_claimed_workers.get(record.id,"") not in ["","evacuation"]:continue
+		var worker=_get_entity(record.id)
+		if worker.is_empty() or not worker.get("alive",false) or worker.get("team",-1)!=1 or worker.pos.distance_squared_to(carrier.pos)>6.25:continue
+		var plan=_ai_idle_yield_plan(worker)
+		if plan.is_empty() or plan.carrier!=carrier.id or plan.waypoint!=waypoint:continue
+		_submit("order",{"ids":[worker.id],"target":-1,"position":plan.goal,"ai_idle_yield":true,"source_work_epoch":worker.work_epoch,"yield_carrier":plan.carrier,"yield_epoch":plan.epoch,"yield_waypoint":plan.waypoint},1)
+		ai_claimed_workers[worker.id]="idle_yield";return true
+	return false
