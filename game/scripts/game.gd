@@ -906,13 +906,13 @@ func _execute(command):
 				if typeof(command.get("source_work_epoch",null))!=TYPE_INT or typeof(command.get("source_resource",null))!=TYPE_STRING or typeof(command.work_reassign)!=TYPE_STRING or command.work_reassign not in ["food","wood","stone","iron"] or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
 				var worker=_get_entity(command.ids[0])
 				if worker.is_empty() or worker.team!=0 or not worker.alive or worker.kind!="villager" or worker.state not in ["gather","deliver"] or worker.get("work_epoch",-1)!=command.get("source_work_epoch",-2) or worker.gather_type!=command.get("source_resource","") or worker.gather_type==command.work_reassign:return
-				if target.is_empty() or target.category!="resource" or IdleGatherDispatch.TYPES.get(target.kind,"")!=command.work_reassign or economy.node_view(target.id).remaining_milli<=0:return
+				if not _food_shortcut_target_allowed(target,command,command.work_reassign):return
 				if IdleGatherDispatch.threatened(target.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(worker.pos,faction_views[0].records()):return
 			if command.has("idle_gather"):
 				if typeof(command.idle_gather)!=TYPE_STRING or command.idle_gather not in ["food","wood","stone","iron"] or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT:return
 				var gather_worker=_get_entity(command.ids[0])
 				if gather_worker.is_empty() or gather_worker.team!=0 or not gather_worker.alive or gather_worker.kind!="villager" or gather_worker.state!="idle" or not gather_worker.path.is_empty() or gather_worker.get("path_pending",false) or _cargo_amount(gather_worker)>0:return
-				if target.is_empty() or target.category!="resource" or IdleGatherDispatch.TYPES.get(target.kind,"")!=command.idle_gather or economy.node_view(target.id).remaining_milli<=0:return
+				if not _food_shortcut_target_allowed(target,command,command.idle_gather):return
 				if IdleGatherDispatch.threatened(target.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(gather_worker.pos,faction_views[0].records()):return
 			if command.has("ai_idle_yield"):
 				if typeof(command.ai_idle_yield)!=TYPE_BOOL or command.ai_idle_yield!=true or team!=1 or target_id!=-1 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT or typeof(command.get("source_work_epoch",null))!=TYPE_INT or typeof(command.get("yield_carrier",null))!=TYPE_INT or typeof(command.get("yield_epoch",null))!=TYPE_INT:return
@@ -7688,19 +7688,40 @@ func _refresh_idle_dispatch_buttons():
 		batch_repair_button.text="派 %d 人維修建築／攻城車" % repairs.size()
 	for resource in idle_dispatch_buttons:
 		var button=idle_dispatch_buttons[resource]
-		var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource)
+		var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource,_food_dispatch_farm_workers())
 		_bind_squad_button(button,orders,not _squad_actions_available())
 		button.text="派 %d 人採%s" % [orders.size(),Rules.RESOURCE_NAMES[resource]]
 	for resource in workforce_reassign_buttons:
 		var button=workforce_reassign_buttons[resource]
-		var orders=WorkforceReassign.orders(faction_views[0].records(),selected,commands,resource)
+		var orders=WorkforceReassign.orders(faction_views[0].records(),selected,commands,resource,_food_dispatch_farm_workers())
 		_bind_squad_button(button,orders,not _squad_actions_available())
 		button.set_meta("selection_source",selected.duplicate())
 		button.text="改派 %d 人採%s" % [orders.size(),Rules.RESOURCE_NAMES[resource]]
+func _food_dispatch_farm_workers():
+	var result={}
+	for record in faction_views[0].records().values():
+		if record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("kind","")=="farm" and record.get("built",false) and not record.get("remembered",true):
+			var farm=economy.farm_view(record.id)
+			if farm.get("alive",false):result[record.id]=farm.get("worker_id",-2)
+	return result
+
+func _food_shortcut_target_allowed(target,command,resource):
+	if target.is_empty():return false
+	if target.category=="resource":return IdleGatherDispatch.TYPES.get(target.kind,"")==resource and economy.node_view(target.id).remaining_milli>0
+	if resource!="food" or command.get("farm_gather",false)!=true:return false
+	var records=faction_views[0].records()
+	# Current publication plus authoritative life/occupancy; no hidden resource search.
+	if not target.alive or target.team!=0 or target.kind!="farm" or not target.built or not _visible_to(target,0):return false
+	for record in records.values():
+		if not record.get("owned",false) or record.get("team",-1)!=0 or record.get("kind","")!="villager":continue
+		var worker=_get_entity(record.id)
+		if not worker.is_empty() and worker.alive and worker.team==0 and worker.state in ["gather","deliver"] and worker.resource_target==target.id:return false
+	return IdleGatherDispatch.vacant_farm(records.get(target.id,{}),records,[],_food_dispatch_farm_workers()) and economy.farm_view(target.id).get("worker_id",-2)==-1
+
 func _dispatch_idle_gather(resource):
 	if not _squad_actions_available() or not compact_menu.visible or not idle_dispatch_buttons.has(resource):return
 	var button=idle_dispatch_buttons[resource]
-	var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource)
+	var orders=IdleGatherDispatch.orders(faction_views[0].records(),commands,resource,_food_dispatch_farm_workers())
 	if button.disabled or orders.is_empty() or orders!=button.get_meta("squad_ids",[]):
 		_refresh_idle_dispatch_buttons();return
 	_cancel_pointer_streams()
@@ -8026,7 +8047,7 @@ func _submit_escort_target(target_id):
 func _reassign_selected_workforce(resource):
 	if not _squad_actions_available() or not compact_menu.visible or not workforce_reassign_buttons.has(resource):return
 	var button=workforce_reassign_buttons[resource]
-	var plan=WorkforceReassign.orders(faction_views[0].records(),selected,commands,resource)
+	var plan=WorkforceReassign.orders(faction_views[0].records(),selected,commands,resource,_food_dispatch_farm_workers())
 	if button.disabled or plan.is_empty() or selected!=button.get_meta("selection_source",[]) or plan!=button.get_meta("squad_ids",[]):
 		_refresh_idle_dispatch_buttons();return
 	_cancel_mode()

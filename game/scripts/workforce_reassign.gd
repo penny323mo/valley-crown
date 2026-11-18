@@ -2,7 +2,7 @@ extends RefCounted
 ## Explicit selected-worker reassignment; no economic or world authority here.
 const Dispatch=preload("res://scripts/idle_gather_dispatch.gd")
 const Rules=preload("res://scripts/rules.gd")
-static func orders(records:Dictionary,selected:Array,commands:Array,resource:String)->Array:
+static func orders(records:Dictionary,selected:Array,commands:Array,resource:String,farm_workers:Dictionary={})->Array:
  if resource not in ["food","wood","stone","iron"] or selected.size()>Rules.POP_LIMIT:return []
  var pending={}
  for c in commands:
@@ -17,8 +17,7 @@ static func orders(records:Dictionary,selected:Array,commands:Array,resource:Str
   if w.get("id",-1)!=id or not w.get("owned",false) or not w.get("alive",false) or w.get("remembered",false) or w.get("team",-1)!=0 or w.get("kind","")!="villager" or w.get("state","") not in ["gather","deliver"]:continue
   if w.get("gather_type","") not in ["food","wood","stone","iron"] or w.gather_type==resource or typeof(w.get("work_epoch",null))!=TYPE_INT or Dispatch.threatened(w.pos,records):continue
   workers.append(w)
- for n in records.values():
-  if n.get("category","")=="resource" and n.get("alive",false) and not n.get("remembered",true) and n.get("hp",0)>0 and Dispatch.TYPES.get(n.get("kind",""),"")==resource and not Dispatch.threatened(n.pos,records):nodes.append(n)
+ nodes=Dispatch.candidate_nodes(records,commands,resource,farm_workers)
  var result=[];var load={}
  for index in mini(3,workers.size()):
   var best={};var target={};var score=INF
@@ -28,5 +27,7 @@ static func orders(records:Dictionary,selected:Array,commands:Array,resource:Str
     if cost<score or (cost==score and (best.is_empty() or w.id<best.id or (w.id==best.id and n.id<target.id))):score=cost;best=w;target=n
   if best.is_empty():break
   result.append({"ids":[best.id],"target":target.id,"position":target.pos,"work_reassign":resource,"source_work_epoch":best.work_epoch,"source_resource":best.gather_type})
+  if target.get("kind","")=="farm":
+   result[-1].farm_gather=true;nodes.erase(target)
   workers.erase(best);load[target.id]=load.get(target.id,0)+1
  return result

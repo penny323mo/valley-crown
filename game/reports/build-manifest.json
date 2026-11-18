@@ -1,5 +1,5 @@
 {
-  "build": "vc-e346f0122992",
+  "build": "vc-3a05feaf79f1",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -264,13 +264,13 @@
     "scripts/fog_inward_edge.gd": "fc079aa8a18183e5be6e73c24ee3519410b227b9a752de41bb1066c13553650d",
     "scripts/frontier_escort.gd": "0fca8cf472dd270a78714efd1b371c5cfc2469678451500f9edfa1a30d432bbb",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "ece730ed4fdc7c5e8034eec6570378312711c8a44279cd66873b3d8b8bb223c2",
+    "scripts/game.gd": "9e23bc6bb42c0c14e054d77f677ce65c23dddce52e4236d96fb75a11ce94d74f",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/garrison_checkpoint.gd": "85b9c4696b7b632600e2fe81c083015edb482f07bf100a4c08be43fba0f88427",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
     "scripts/home_defense_allocation.gd": "134cf17610998d4d314f8b819e11004ccefc1afdd5c0135a3141e33d440abde8",
     "scripts/idle_army_selection.gd": "1e65f91c328ef25ec2a6f6a4a06bad4aff2b2c78594dd81bfb9f073d477fe802",
-    "scripts/idle_gather_dispatch.gd": "536afd3ec172231fa1b56ff033e96b132018b5d0e727ef65afe387f8992b04d6",
+    "scripts/idle_gather_dispatch.gd": "27c0d8de67acf793695ac082d442f11cd10951a6ad6d000357d2cae8976aebe0",
     "scripts/idle_worker_selection.gd": "aa7c8b804c7449409ec852bf290c7240321d3f2174b8d65bc6d75f1d7133c619",
     "scripts/licensed_rock_data.gd": "e5ffba22365fab902b67b27cb54700174c1c58a023c3c08159ebf9221c3f3913",
     "scripts/licensed_rock_visual.gd": "d0871a649f033b14e423a8adbc87a67ea76511c12bcbba1845eae8bfbb16d5a0",
@@ -303,7 +303,7 @@
     "scripts/rest_recovery.gd": "d7c5e3037c5e8bbd143be07b2c7214ad1b7546e4bf1642ef36ec68a3d3ec28e9",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "9738a1d0e286f2e300e7e11f07f8b01bb4ade36ea9630b7aa5b42e6065f299cb",
+    "scripts/rules.gd": "3cf7ee3531642e4d91f8ab0d17be3354a6403fc609683a19509e0b8448b7bc14",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",
@@ -326,7 +326,7 @@
     "scripts/worker_idle_status.gd": "d99bf87d3d86c48df14813a47f0ad9d1cc2baf473d0fbf36c53d5b0554b4d236",
     "scripts/worker_safety.gd": "1e51db91f214bbae10aef1b995f774f81b60dfee8156a22ec7ca3e298ac3dc78",
     "scripts/workforce_overview.gd": "83e38e66499a1913c4a855476fedbf55bc50de5dc4a6bdb451d4217c567a305e",
-    "scripts/workforce_reassign.gd": "5e10cc9117a99007c698e72c8a29c95a06a9455a57a5f03abc7ca592af26f8c5",
+    "scripts/workforce_reassign.gd": "4996c80081db5564679b8435ca45d41ba5dafc48cdd687e0868f3600dee0ceaa",
     "scripts/wounded_retreat.gd": "2f4be92a1fe1c69c2835a3c965996a289f0f3d8bcea2fef0ad97704d8ce8ec9a"
   }
 }
