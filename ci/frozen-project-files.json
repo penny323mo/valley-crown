@@ -374,7 +374,7 @@
   "tests/ai_attack_handoff_contract.gd": "62b82987c62169e05f21fa389b1156194cd9f85306cc27f4e0cf6f10cf9db3a7",
   "tests/ai_difficulty_contract.gd": "8ed5ff10140922ca369d54f164cb12d1e20b0b178c5878964a4311b5c31fa198",
   "tests/ai_economic_raid_contract.gd": "a78ee957a1698d65b757e7b2b8290be995571c45abf5f325d67587035a9efbaf",
-  "tests/ai_evacuation_natural_journey.gd": "571062bc0addfaef38a8f3925f84a68e487ce9851fc0fe835f7f2c69ff5983fc",
+  "tests/ai_evacuation_natural_journey.gd": "55afddbed1969c79cc8c9e5b0ae72336c93863fb9a107f351410ead88a8772d7",
   "tests/ai_fortify_contract.gd": "d00ad3ff9cdca6773d829ed736aea4777cbe2671ce74c19de82192f4a81f3eae",
   "tests/ai_gather_load_contract.gd": "e79a4160b7431d07d9e7e6eb55d989fadd887cde2170383024b730de6b8b34f1",
   "tests/ai_infrastructure_repair_contract.gd": "638dcd2265a4acd7e0ce5e3b9f8b5f9bf46cee9a975f2eee0f4caa76479d9871",
