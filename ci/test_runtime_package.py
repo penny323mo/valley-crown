@@ -503,4 +503,67 @@ class AITrafficEscapeReportSchemaTests0(unittest.TestCase):
                     with self.assertRaises(ValueError):read(raw)
 
 
+class CommandPortraitReportSchemaTests0(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'actual model portrait path villager', 'passed': True}, {'name': 'actual model portrait path scout', 'passed': True}, {'name': 'actual model portrait path spearman', 'passed': True}, {'name': 'actual model portrait path archer', 'passed': True}, {'name': 'actual model portrait path cavalry', 'passed': True}, {'name': 'actual model portrait path siege', 'passed': True}, {'name': 'actual model portrait path wall', 'passed': True}, {'name': 'actual model portrait path farm', 'passed': True}, {'name': 'actual model portrait path house', 'passed': True}, {'name': 'actual model portrait path storehouse', 'passed': True}, {'name': 'actual model portrait path barracks', 'passed': True}, {'name': 'actual model portrait path range', 'passed': True}, {'name': 'actual model portrait path stable', 'passed': True}, {'name': 'actual model portrait path tower', 'passed': True}, {'name': 'actual model portrait path workshop', 'passed': True}, {'name': 'actual model portrait path town_center', 'passed': True}, {'name': 'sixteen distinct kind portraits', 'passed': True}, {'name': 'all nine build labels reserve full 40px portrait (320, 568)', 'passed': True}, {'name': 'build portrait 40px and name price retained (320, 568)', 'passed': True}, {'name': 'locked building portrait visibly disabled (320, 568)', 'passed': True}, {'name': 'two finger portrait press never builds (320, 568)', 'passed': True}, {'name': '40px recruit portrait fully reachable (320, 568)', 'passed': True}, {'name': 'single portrait press submits exactly one train (320, 568)', 'passed': True}, {'name': 'portrait recruits once with ordinary price (320, 568)', 'passed': True}, {'name': 'all nine build labels reserve full 40px portrait (390, 844)', 'passed': True}, {'name': 'build portrait 40px and name price retained (390, 844)', 'passed': True}, {'name': 'locked building portrait visibly disabled (390, 844)', 'passed': True}, {'name': 'two finger portrait press never builds (390, 844)', 'passed': True}, {'name': '40px recruit portrait fully reachable (390, 844)', 'passed': True}, {'name': 'single portrait press submits exactly one train (390, 844)', 'passed': True}, {'name': 'portrait recruits once with ordinary price (390, 844)', 'passed': True}, {'name': 'all nine build labels reserve full 40px portrait (640, 360)', 'passed': True}, {'name': 'build portrait 40px and name price retained (640, 360)', 'passed': True}, {'name': 'locked building portrait visibly disabled (640, 360)', 'passed': True}, {'name': 'two finger portrait press never builds (640, 360)', 'passed': True}, {'name': '40px recruit portrait fully reachable (640, 360)', 'passed': True}, {'name': 'single portrait press submits exactly one train (640, 360)', 'passed': True}, {'name': 'portrait recruits once with ordinary price (640, 360)', 'passed': True}, {'name': 'repeat training uses actual configured troop portrait', 'passed': True}, {'name': 'every troop price reserves full portrait villager', 'passed': True}, {'name': 'every troop price reserves full portrait scout', 'passed': True}, {'name': 'every troop price reserves full portrait spearman', 'passed': True}, {'name': 'every troop price reserves full portrait archer', 'passed': True}, {'name': 'every troop price reserves full portrait cavalry', 'passed': True}, {'name': 'every troop price reserves full portrait siege', 'passed': True}, {'name': 'dynamic dense list reserves full 32px portrait', 'passed': True}, {'name': 'economy audit remains conserved', 'passed': True}], 'failed': 0, 'scope': 'Actual-model portrait mapping, native synthetic touch at three mobile viewports, ordinary paid recruitment; not physical phone validation.', 'suite': 'command_portraits_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+class CommandPortraitReportSchemaTests1(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'icon texture present villager', 'passed': True}, {'name': 'icon texture present scout', 'passed': True}, {'name': 'icon texture present spearman', 'passed': True}, {'name': 'icon texture present archer', 'passed': True}, {'name': 'icon texture present cavalry', 'passed': True}, {'name': 'icon texture present siege', 'passed': True}, {'name': 'icon texture present wall', 'passed': True}, {'name': 'icon texture present town_center', 'passed': True}, {'name': 'icon texture present house', 'passed': True}, {'name': 'icon texture present storehouse', 'passed': True}, {'name': 'icon texture present barracks', 'passed': True}, {'name': 'icon texture present range', 'passed': True}, {'name': 'icon texture present farm', 'passed': True}, {'name': 'icon texture present stable', 'passed': True}, {'name': 'icon texture present tower', 'passed': True}, {'name': 'icon texture present workshop', 'passed': True}, {'name': 'unknown keeps original text and no icon', 'passed': True}, {'name': 'train text cost icon retained (320, 568)', 'passed': True}, {'name': 'train reachable 44px target (320, 568)', 'passed': True}, {'name': 'icon touch queues one normal train (320, 568)', 'passed': True}, {'name': 'disabled icon cannot queue train (320, 568)', 'passed': True}, {'name': 'icon strip drag cancels command (320, 568)', 'passed': True}, {'name': 'build text cost icon target retained (320, 568)', 'passed': True}, {'name': 'icon touch starts ordinary house placement (320, 568)', 'passed': True}, {'name': 'train text cost icon retained (390, 844)', 'passed': True}, {'name': 'train reachable 44px target (390, 844)', 'passed': True}, {'name': 'icon touch queues one normal train (390, 844)', 'passed': True}, {'name': 'disabled icon cannot queue train (390, 844)', 'passed': True}, {'name': 'icon strip drag cancels command (390, 844)', 'passed': True}, {'name': 'build text cost icon target retained (390, 844)', 'passed': True}, {'name': 'icon touch starts ordinary house placement (390, 844)', 'passed': True}, {'name': 'train text cost icon retained (640, 360)', 'passed': True}, {'name': 'train reachable 44px target (640, 360)', 'passed': True}, {'name': 'icon touch queues one normal train (640, 360)', 'passed': True}, {'name': 'disabled icon cannot queue train (640, 360)', 'passed': True}, {'name': 'icon strip drag cancels command (640, 360)', 'passed': True}, {'name': 'build text cost icon target retained (640, 360)', 'passed': True}, {'name': 'icon touch starts ordinary house placement (640, 360)', 'passed': True}], 'failed': 0, 'scope': 'Native synthetic touch, real button rectangles and ordinary queued commands; actual-model portraits, not new artwork or physical phone.', 'suite': 'command_icons_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
