@@ -1,5 +1,5 @@
 {
-  "build": "vc-be3f3bd3e80a",
+  "build": "vc-7f0eca698f56",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes and mature native scenes/textures/import metadata. Editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -56,7 +56,7 @@
     "assets/mature/models/villager.scn": "b16e75a81d92973af38bd7fb920327689a0f8dacba5a9e0680841d4ba49f4ad2",
     "assets/mature/models/villager_action.scn": "3cedca716645a7500a011a4b5633a49aaf596698480a678f4ddbf4b22863dfb4",
     "assets/mature/resources/quaternius/Rocks_Diffuse.png": "b813696df6081f469a127092eb0ce45cc39d56f3ccc0699152bfcd3804810b48",
-    "assets/mature/resources/quaternius/Rocks_Diffuse.png.import": "a629aebbbc156b660613d6afa7bdc4607efa863bd984b9942d8d768bd35a560b",
+    "assets/mature/resources/quaternius/Rocks_Diffuse.png.import": "e9783629e9086d48159dfc4f7bd9163a89fee678fa2b03d0405e672973350ddb",
     "assets/mature/shaders/building_damage_soot.gdshader": "8a42ef41b736aecd80e8cab2c8ee1e394e307d89bf3f18adf28af02265cad0a1",
     "assets/mature/shaders/observed_occlusion.gdshader": "23d8f2999549031194e91de6db31eba7808e8dcae5347ae7de0ceb9c68585925",
     "assets/mature/shaders/observed_occlusion.gdshader.uid": "051026e38c76fb76a9fe0bbbe2bef682232696994d607b466db38811fe07f3fd",
@@ -292,7 +292,7 @@
     "scripts/rest_recovery.gd": "d7c5e3037c5e8bbd143be07b2c7214ad1b7546e4bf1642ef36ec68a3d3ec28e9",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "38bc7186bc58302453ac939be8c94e9206f795511b6474060c33cfba3cd7cb07",
+    "scripts/rules.gd": "ba7e20fce5c717a1d01dacaab117bc7a628081c589e9a12db5a360821bb12549",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",

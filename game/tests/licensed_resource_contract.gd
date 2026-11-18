@@ -29,7 +29,12 @@ func run():
    c(kind+" variant "+str(variant)+" visible stage restores shared material",visual.get_surface_override_material(0)==null)
    holder.free()
   c(kind+" variant rules",(full[0]==full[1] and full[1]==full[2]) if kind=="berry" else (full[0]!=full[1] and full[1]!=full[2] and full[0]!=full[2]))
- c("rock shared texture actual dimensions",preload("res://scripts/licensed_rock_visual.gd").ROCK_TEXTURE.get_size()==Vector2(2048,2048))
+ var original_png=Image.new()
+ var source_png_error=original_png.load_png_from_buffer(FileAccess.get_file_as_bytes("res://assets/mature/resources/quaternius/Rocks_Diffuse.png"))
+ c("rock shared texture actual dimensions",preload("res://scripts/licensed_rock_visual.gd").ROCK_TEXTURE.get_size()==Vector2(1024,1024) and source_png_error==OK and original_png.get_size()==Vector2i(2048,2048))
+ var texture=preload("res://scripts/licensed_rock_visual.gd").ROCK_TEXTURE
+ var decoded=texture.get_image()
+ print("ROCK_IMPORTED_IMAGE "+JSON.stringify({"width":decoded.get_width(),"height":decoded.get_height(),"format":decoded.get_format(),"mipmaps":decoded.has_mipmaps(),"data_bytes":decoded.get_data().size()}))
  print("TEXTURE_STORAGE_NOTE actual imported texture bytes must be read from renderer/import cache; image dimensions alone not GPU allocation.")
  for kind in ["stone","iron","berry"]:
   var a=Node3D.new();var b=Node3D.new();var va=V.build(a,kind);var vb=V.build(b,kind)
