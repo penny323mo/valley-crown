@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-3a05feaf79f1-717f7643
+  group: building-runtime-vc-1d2e4bfb7e7b-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 790932b57beebde160bafbbc5956d66ef5985564
+      BUILDING_RUNTIME_SOURCE_COMMIT: 1e8df0f8f22e5a1bade176a3436f5f6e53ea917a
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '61ac38f8286dd55364af01d07b4453b2b87ebd64066e3d29954881373d368361  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '80c6722964201c98eeea237858dbbc296834febb55337fcd67e1828f5422a6da  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -575,6 +575,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/attack_readability_combined_fog/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/food_farm_shortcut_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/food_farm_shortcut_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/original_ground_albedo_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/original_ground_albedo_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
