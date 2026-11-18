@@ -1,6 +1,6 @@
 {
-  "build": "vc-5fb4511b7acd",
-  "game_sha256": "12e53157574a763d5b167a3c87c74f9aba1a0071a49114e50b0e199dcb628104",
+  "build": "vc-4f2fa15d6bc5",
+  "game_sha256": "7d5f506d3759c28494f529b88ea3a5644cc15185f7cc3483475369d180634996",
   "fixtures": {
     "military_progression_contract": [
       "tests/military_progression_contract.gd",
