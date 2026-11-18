@@ -2,7 +2,7 @@ extends SceneTree
 # PREPARED ONLY. Exercise real game projection/lifecycle, not hidden authority damage.
 const Game = preload("res://scripts/game.gd")
 const Rules = preload("res://scripts/rules.gd")
-const EXPECTED_BUILD = "vc-c7aeb8921f74"
+const EXPECTED_BUILD = "vc-0ded25b34b5f"
 var failures := 0
 var check_rows: Array = []
 func check(label: String, ok: bool) -> void:

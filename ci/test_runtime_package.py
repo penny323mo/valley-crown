@@ -566,4 +566,67 @@ class CommandPortraitReportSchemaTests1(unittest.TestCase):
                     with self.assertRaises(ValueError):read(raw)
 
 
+class CommandRecoveryReportSchemaTests0(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'visible legal ordinary house plot', 'passed': True}, {'name': 'ordinary command pays once and assigns real site', 'passed': True}, {'name': 'actual HUD instructs direct tap recovery', 'passed': True}, {'name': 'target is visible site in world', 'passed': True}, {'name': 'advertised direct tap actually queues build order', 'passed': True}, {'name': 'direct tap restarts ordinary construction route without repaying', 'passed': True}, {'name': 'normal travel and work actually finish paid house', 'passed': True}, {'name': 'completed friendly house still selects normally', 'passed': True}, {'name': 'mixed selection continuation only submits selected villagers', 'passed': True}, {'name': 'mixed escort original job survives continuation', 'passed': True}, {'name': 'military only tap selects unfinished site', 'passed': True}, {'name': 'paused tap selects site without construction order', 'passed': True}, {'name': 'hard cap rejection never suggests building more houses', 'passed': True}, {'name': 'ordinary building economy audit conserved', 'passed': True}], 'failed': 0, 'scope': 'Ordinary paid build; controlled route terminal; real routed screen touch; no natural blockage claim.', 'suite': 'contextual_construction_resume_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+class CommandRecoveryReportSchemaTests1(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'controlled start is legal', 'passed': True}, {'name': 'ordinary move genuinely exhausts route', 'passed': True}, {'name': 'terminal move HUD no longer claims movement', 'passed': True}, {'name': 'failed intent guide is hidden', 'passed': True}, {'name': 'noncurrent military excluded owned', 'passed': True}, {'name': 'noncurrent military excluded alive', 'passed': True}, {'name': 'inapplicable route excluded remembered', 'passed': True}, {'name': 'inapplicable route excluded path_pending', 'passed': True}, {'name': 'enemy route never inspected', 'passed': True}, {'name': 'pending player intent suppresses stale failure', 'passed': True}, {'name': 'group names stopped military count', 'passed': True}, {'name': 'recovery touch target reachable (320, 568)', 'passed': True}, {'name': 'real recovery touch only selects failed member (320, 568)', 'passed': True}, {'name': 'recovery touch target reachable (390, 844)', 'passed': True}, {'name': 'real recovery touch only selects failed member (390, 844)', 'passed': True}, {'name': 'recovery touch target reachable (640, 360)', 'passed': True}, {'name': 'real recovery touch only selects failed member (640, 360)', 'passed': True}, {'name': 'recovery selects only failed members', 'passed': True}, {'name': 'recovery selection changes no orders budgets hp or payment', 'passed': True}, {'name': 'new pending command retires displayed old failure', 'passed': True}, {'name': 'new explicit reachable move actually succeeds', 'passed': True}, {'name': 'stale recovery identity cannot mutate newer job', 'passed': True}], 'failed': 0, 'scope': 'Controlled legal enclosure, normal MOVE and true bounded search; sanitized own status and selection-only recovery, not natural full-match blockage.', 'suite': 'military_route_feedback_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
