@@ -905,6 +905,11 @@ func _execute(command):
 				if gather_worker.is_empty() or gather_worker.team!=0 or not gather_worker.alive or gather_worker.kind!="villager" or gather_worker.state!="idle" or not gather_worker.path.is_empty() or gather_worker.get("path_pending",false) or _cargo_amount(gather_worker)>0:return
 				if target.is_empty() or target.category!="resource" or IdleGatherDispatch.TYPES.get(target.kind,"")!=command.idle_gather or economy.node_view(target.id).remaining_milli<=0:return
 				if IdleGatherDispatch.threatened(target.pos,faction_views[0].records()) or IdleGatherDispatch.threatened(gather_worker.pos,faction_views[0].records()):return
+			if command.has("ai_traffic_escape"):
+				if typeof(command.ai_traffic_escape)!=TYPE_BOOL or not command.ai_traffic_escape or team!=1 or target_id!=-1 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT or typeof(command.get("source_work_epoch",null))!=TYPE_INT:return
+				var escape_worker=_get_entity(command.ids[0])
+				if escape_worker.is_empty() or escape_worker.get("work_epoch",-1)!=command.get("source_work_epoch",-2) or not _ai_traffic_escape_eligible(escape_worker):return
+				if _ai_traffic_escape_goal(escape_worker)!=command.get("position",Vector3.INF):return
 			# A deliberate work retry must not steal a new job or degrade to MOVE.
 			if command.has("retry_gather"):
 				if typeof(command.retry_gather)!=TYPE_BOOL or not command.retry_gather or team!=0 or typeof(command.get("ids",null))!=TYPE_ARRAY or command.ids.size()!=1 or typeof(command.ids[0])!=TYPE_INT: return
@@ -1006,11 +1011,21 @@ func _execute(command):
 						continue
 				if team==0: _path_new_command(ent)
 				elif intent=="attack": _retire_ai_attack_failure(ent,target)
+				# Retire only after every command preflight succeeded; rejected
+				# mixed markers must not mutate the old terminal route.
+				if command.get("ai_traffic_escape",false):
+					ent.path_status="IDLE";ent.path_reason=""
+					ent.traffic_last_replan=tick_count
+				var escape_replans=ent.traffic_replans if command.get("ai_traffic_escape",false) else -1
+				var escape_length=ent.traffic_path_length if escape_replans>=0 else 0
 				if intent!="move": _order(ent,intent,target.id)
 				elif not target.is_empty(): _order_move(ent,command.position)
 				else:
 					_order_move(ent,command.position,reserved_destinations,order_ids)
 					reserved_destinations[_cell(ent.dest)]=true
+				if escape_replans>=0:
+					ent.traffic_replans=escape_replans;ent.traffic_last_replan=tick_count
+					ent.traffic_route=true;ent.traffic_path_length=escape_length
 				if team==1 and ent.kind=="scout":
 					ai_scout_moves.erase(ent.id)
 					if tracked_scout and ent.state=="move" and (not recover_scout or ent.dest!=scout_move.get("goal",Vector3.INF)):
@@ -3823,6 +3838,7 @@ func _ai_update():
 	if not ai_opening_assigned:
 		for i in workers.size(): _assign_worker(workers[i],"food" if i<3 else "wood")
 		ai_opening_assigned=true
+	_ai_recover_local_traffic(records)
 	var keep_repairing=_ai_keep_repair(records,castle)
 	_ai_infrastructure_repair(records,keep_repairing)
 	# Preserve at least two food workers before borrowing workers for recovery.
@@ -8324,3 +8340,38 @@ func _open_shortfall_workforce(identity: String):
 	shortfall_inspected_wall_count=previous_wall_count
 	_set_shortcut_category("economy")
 	_refresh_shortfall_text()
+
+# Autonomous recovery is not a new player-command budget. No generic NO_PATH
+# reset, no hidden-resource lookup, and at most one submitted escape per think.
+const AI_TRAFFIC_ESCAPE_COOLDOWN=600
+func _ai_traffic_escape_eligible(worker) -> bool:
+	if worker.is_empty() or worker.get("team",-1)!=1 or not worker.get("alive",false) or worker.get("kind","")!="villager" or worker.state!="idle" or _garrisoned(worker) or worker.has("ai_evacuation"):return false
+	if worker.get("path_status","")!=BoundedPath.LIMIT_REACHED or not worker.get("traffic_route",false) or worker.get("path_reason","") not in ["local_traffic_detour_limit","local_traffic_retry_limit","local_traffic_blocked"]:return false
+	if not worker.path.is_empty() or worker.get("path_pending",false) or tick_count-worker.get("traffic_last_replan",tick_count)<AI_TRAFFIC_ESCAPE_COOLDOWN:return false
+	if not WorkerSafety.threats(faction_views[1].records(),1,worker.pos).is_empty():return false
+	for command in commands:
+		if command.get("team",-1)==1 and (worker.id in command.get("ids",[]) or command.get("builder",-1)==worker.id):return false
+	return true
+
+func _ai_traffic_escape_goal(worker) -> Vector3:
+	var grid=work_memory[1].grid;var origin=_cell(worker.pos)
+	for offset in [Vector2i(1,0),Vector2i(0,1),Vector2i(-1,0),Vector2i(0,-1)]:
+		var cell=origin+offset
+		if not grid.region.has_point(cell) or grid.is_point_solid(cell):continue
+		var point=_point(cell)
+		if point.distance_to(worker.pos)>1.8 or point.distance_to(worker.pos)<0.5 or point.distance_to(worker.get("path_request_goal",worker.pos))<0.5:continue
+		if not visible_cells[1][_cell_index(point)] or not _known_destination_clear(worker,point):continue
+		if not WorkerSafety.threats(faction_views[1].records(),1,point).is_empty():continue
+		return point
+	return Vector3.INF
+
+func _ai_recover_local_traffic(records):
+	for record in records:
+		if not record.get("owned",false) or record.get("kind","")!="villager" or ai_claimed_workers.has(record.id):continue
+		var worker=_get_entity(record.id)
+		if not _ai_traffic_escape_eligible(worker):continue
+		var point=_ai_traffic_escape_goal(worker)
+		if point==Vector3.INF:continue
+		_submit("order",{"ids":[worker.id],"target":-1,"position":point,"ai_traffic_escape":true,"source_work_epoch":worker.work_epoch},1)
+		ai_claimed_workers[worker.id]="traffic_escape";ai_status.worker_recovery="local_traffic_escape"
+		return
