@@ -1,7 +1,7 @@
 """Read-only white-list telemetry around original export guard exceptions.
 Diagnostic receipts always use injected dependencies, never publishable artifacts.
 """
-import argparse,json,sys,time
+import argparse,json,sys,time,os
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'ci'))
 import run_export as m
@@ -17,19 +17,29 @@ def fields(path):
   return {k:f.get(k,'MISSING').strip() for k in KEYS}
  except (FileNotFoundError,ProcessLookupError,PermissionError) as e:return {'read_error':type(e).__name__}
 
-def identity(pid):
+def task_identity(path):
  try:
-  raw=bounded(Path(f'/proc/{pid}/stat'));tail=raw[raw.rfind(')')+2:].split()
-  return {'pid':pid,'state':tail[0],'ppid':tail[1],'starttime_ticks':tail[19]}
+  raw=bounded(path);pid=int(raw.split(' ',1)[0]);tail=raw[raw.rfind(')')+2:].split()
+  return {'pid':pid,'state':tail[0],'ppid':tail[1],'starttime_ticks':tail[19],'flags':int(tail[6]),'exit_signal':int(tail[35]),'exit_code':int(tail[49])}
+ except (FileNotFoundError,ProcessLookupError,PermissionError) as e:return {'read_error':type(e).__name__}
+
+def identity(pid):
+ return task_identity(Path(f'/proc/{pid}/stat'))
+
+def statm(path):
+ try:
+  values=bounded(path).split()
+  if len(values)!=7 or not all(x.isdigit() for x in values):raise ValueError('Malformed statm observation')
+  return [int(x) for x in values]
  except (FileNotFoundError,ProcessLookupError,PermissionError) as e:return {'read_error':type(e).__name__}
 
 def snapshot(child):
- root=Path(f'/proc/{child.pid}');x={'monotonic':time.monotonic(),'poll_before':child.poll(),'identity_before':identity(child.pid),'leader':fields(root/'status'),'tasks':[]}
+ root=Path(f'/proc/{child.pid}');x={'monotonic':time.monotonic(),'poll_before':child.poll(),'identity_before':identity(child.pid),'leader':fields(root/'status'),'statm':statm(root/'statm'),'tasks':[]}
  try:
   tasks=sorted((root/'task').iterdir());x['task_count']=len(tasks)
   if len(tasks)>128:raise ValueError('Proc task observation bound exceeded')
   for p in tasks:
-   d=fields(p/'status')
+   d=fields(p/'status');d['stat']=task_identity(p/'stat');d['statm']=statm(p/'statm')
    try:
     raw=bounded(p/'children');d['children']=raw.split()
     if len(d['children'])>128:raise ValueError('Proc child observation bound exceeded')
@@ -48,7 +58,7 @@ def main():
   try:return original(child)
   except (FileNotFoundError,KeyError,ProcessLookupError,PermissionError) as e:
    if len(events)>=4:raise RuntimeError('Diagnostic event bound exceeded') from e
-   events.append({'initial_exception':type(e).__name__,**snapshot(child)})
+   events.append({'initial_exception':type(e).__name__,'kernel_release':os.uname().release,'adjacent_snapshots':[snapshot(child),snapshot(child)]})
    (out/'telemetry.json').write_text(json.dumps(events,indent=2)+'\n')
    raise
  m.p.process_metrics=observed
