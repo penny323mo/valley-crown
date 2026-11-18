@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-7f0eca698f56-717f7643
+  group: building-runtime-vc-f68b41add58c-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: b3642c7cf79f089b4392e5ab03e8ed3f2a083329
+      BUILDING_RUNTIME_SOURCE_COMMIT: 2ae8d1f0d51755cb6c03934c20cb52bf3c1fdc0d
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '6c2bc69644d8840bf0f9ea22c75e6bb1bd81634ddf47bbd635cbd0120c0babfd  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '6f13b0f8278a750dde2876c31a7957b942737175c9246dd6bbdac4cc1e653445  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -253,6 +253,7 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_worker_recovery_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_worker_recovery_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_lifecycle_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_lifecycle_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -262,7 +263,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/military_tech_lifecycle_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/home_defense_integration/receipt.json
@@ -400,6 +400,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_repair_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/cavalry_grip_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/cavalry_grip_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -409,8 +411,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra-2
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/receipt.json
-            ${{ env.RTS_WORK }}/product/latest-contracts/siege_visual_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/horse_visual_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/horse_visual_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/rider_armour_contract/receipt.json
@@ -547,6 +547,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/ai_queued_yield_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/simultaneous_attack_display_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/simultaneous_attack_display_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_building_spacing_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/ai_building_spacing_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
