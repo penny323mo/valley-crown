@@ -357,6 +357,11 @@ class ConsolidatedTests(unittest.TestCase):
                   'run_export.py':'f16e36308ee76c6dc7759cf9540bc2a00b13d635b398c6881d0eb5f5fca34819'}
         for name,sha in expected.items():
             data=(HERE/name).read_bytes()
+            if name in ('run_logic.py','run_export.py'):
+                current=b"MONITOR_SHA = 'f0daa328970f63704c8419f332d42a5abefbc6d03fbd256127697a40c349a6bd'"
+                prior=b"MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'"
+                self.assertEqual(data.count(current),1)
+                data=data.replace(current,prior,1)
             if name=='owned_process.py':
                 # Remove only the reviewed exact shader-UID derivation line before baseline comparison.
                 delta=b"    if 'assets/mature/menu/menu_backdrop.gdshader' in original and 'assets/mature/menu/menu_backdrop.gdshader.uid' not in original: expected = sorted(expected + ['assets/mature/menu/menu_backdrop.gdshader.uid'])\n"
@@ -377,5 +382,37 @@ class ConsolidatedTests(unittest.TestCase):
                     self.assertEqual(data.count(current.encode()),1)
                     data=data.replace(current.encode(),baseline.encode())
             self.assertEqual(hashlib.sha256(data).hexdigest(),sha)
+
+class ImportMonitorConsumerPins(unittest.TestCase):
+    def test_every_consumer_matches_actual_monitor(self):
+        import guarded_manifest_ci,run_logic,run_export,run_export_diagnostic
+        digest=hashlib.sha256((HERE/'hardened_monitored_run.py').read_bytes()).hexdigest()
+        import run_contracts,run_military,run_faction,run_building_contracts,run_latest_contracts
+        logic_digest=hashlib.sha256((HERE/'run_logic.py').read_bytes()).hexdigest()
+        for consumer in (run_contracts,run_military,run_faction,run_building_contracts,run_latest_contracts):
+            self.assertEqual(consumer.LOGIC_SHA,logic_digest)
+        for module in (guarded_manifest_ci,run_logic,run_export,run_export_diagnostic):
+            with self.subTest(module=module.__name__):self.assertEqual(module.MONITOR_SHA,digest)
+    def test_complete_import_receipt_new_old_mixed_pins(self):
+        import run_logic,run_export,run_export_diagnostic
+        new=hashlib.sha256((HERE/'hardened_monitored_run.py').read_bytes()).hexdigest()
+        old='4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
+        for module in (run_logic,run_export,run_export_diagnostic):
+            for load,invoke,accepted in ((new,new,True),(old,old,False),(old,new,False),(new,old,False)):
+                with self.subTest(module=module.__name__,load=load,invoke=invoke),tempfile.TemporaryDirectory() as td:
+                    root=Path(td);project=root/'project';project.mkdir()
+                    request={'test_dependencies':False,'helper':{'load_sha256':load,'invocation_sha256':invoke}}
+                    invocation=root/'import.invocation.json';invocation.write_text(json.dumps(request))
+                    log=root/'import.log';log.write_text('SYNTHETIC complete import receipt; no engine executed')
+                    receipt=root/'import.json'
+                    result={'passed':True,'cleanup_complete':True,'child_started':True,'exit':0,'log_sha256':module.p.digest(log),'invocation_sha256':module.p.digest(invocation),'exception':None,'stop_reason':None,'cleanup_errors':[],'output_errors':[],'post_run_binding_matches':{'synthetic':True}}
+                    receipt.write_text(json.dumps(result))
+                    lock={'source_archive_sha256':'a'*64,'import_manifest_sha256':'b'*64,'import_adapter_sha256':'c'*64}
+                    cert={'build':module.BUILD,'project':str(project),'archive_sha256':lock['source_archive_sha256'],'engine_sha256':module.ENGINE_SHA,'manifest_sha256':lock['import_manifest_sha256'],'adapter_sha256':lock['import_adapter_sha256'],'cache_sha256':{},'generated_uid_sha256':{},'receipt':str(receipt),'receipt_sha256':module.p.digest(receipt),'invocation':str(invocation),'invocation_sha256':module.p.digest(invocation)}
+                    marker=root/'import-complete.json';marker.write_text(json.dumps(cert))
+                    if accepted:self.assertEqual(module.validate_import(project,lock,marker,{},{}),[receipt,invocation,log])
+                    else:
+                        with self.assertRaisesRegex(RuntimeError,'Wrong import monitor'):module.validate_import(project,lock,marker,{},{})
+
 
 if __name__=='__main__':unittest.main()

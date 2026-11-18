@@ -17,7 +17,7 @@ SOURCE = '6013b19e2da7a70469a402735b3cf5373b94a517'
 GAME_TREE = '5d478c5414ba732f41b109515e90d45495406a1b'
 BUILD = 'vc-09c394aef6d8'
 TEMPLATE_SHA = '1446f79dc12f60ce5d244c39fb6628ec298337ca5c4f91a16491feea72aa1bc9'
-MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
+MONITOR_SHA = 'f0daa328970f63704c8419f332d42a5abefbc6d03fbd256127697a40c349a6bd'
 ALLOWED_OUTPUTS = {'index.html', 'index.js', 'index.wasm', 'index.pck', 'index.png',
                    'index.icon.png', 'index.apple-touch-icon.png', 'index.audio.worklet.js', 'index.audio.position.worklet.js'}
 REQUIRED_OUTPUTS = {'index.html', 'index.js', 'index.wasm', 'index.pck'}

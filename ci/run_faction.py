@@ -8,7 +8,7 @@ import run_export as r
 import run_logic as logic
 import validate_faction as v
 p=r.p
-LOGIC_SHA='2800e75273335ce8ffefccb1db6128b54f09850b50dc243cf73e7065ff107607'
+LOGIC_SHA='3c0ef6c51174cf28c9d11fc5b6f2d5d5639a713a3002ac728c41770f33b532fe'
 HARNESS_SHA='0d83d9f9fe1f1878ab43c9cca1984c7bb194e6bf95629c97fbde0a57959f4f0c'
 VALIDATOR_SHA='f7604feb2bcff0adca86d07831f37db8a0e5bbd6513afa981e320afb65f6dfdb'
 REPORT='faction-publication-report.json'

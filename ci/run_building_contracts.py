@@ -8,7 +8,7 @@ import run_export as r
 import run_logic as logic
 import validate_building_contracts as v
 p=r.p
-LOGIC_SHA="2800e75273335ce8ffefccb1db6128b54f09850b50dc243cf73e7065ff107607"
+LOGIC_SHA="3c0ef6c51174cf28c9d11fc5b6f2d5d5639a713a3002ac728c41770f33b532fe"
 OWNED_SHA="7fd227386d083f35bf55390a26a96c70472ba4a0def0f781f9a28aeeaa59cb2e"
 
 def harness_paths(project):

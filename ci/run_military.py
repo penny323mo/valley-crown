@@ -13,7 +13,7 @@ import run_logic as logic
 import validate_military as v
 p=r.p
 SUITES=('military_progression_contract','military_runtime_edges')
-LOGIC_SHA='2800e75273335ce8ffefccb1db6128b54f09850b50dc243cf73e7065ff107607'
+LOGIC_SHA='3c0ef6c51174cf28c9d11fc5b6f2d5d5639a713a3002ac728c41770f33b532fe'
 
 def argv(godot, project, suite, stage=None):
     p.require(suite in SUITES, 'Unsupported suite')

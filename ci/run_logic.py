@@ -18,7 +18,7 @@ ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 SOURCE = 'c5b78df4dab1e1f58f83bc2d8678512ddc628045'
 GAME_TREE = 'c133ed816d338bfabab2ae617bee917f4080799b'
 BUILD = 'vc-dd795d96905c'
-MONITOR_SHA = '4c7802bcfb53a2f73f501635cdf483e1459d3d86eb881a7450dccd3bbd705d50'
+MONITOR_SHA = 'f0daa328970f63704c8419f332d42a5abefbc6d03fbd256127697a40c349a6bd'
 REAL = (subprocess.Popen, p.metrics, p.process_metrics, p.observe_descendants,
         p.cleanup_observed_descendant, p.reap_owned, time.monotonic, time.sleep,
         signal.signal, p.process_identity, os.pidfd_open, signal.pidfd_send_signal,
