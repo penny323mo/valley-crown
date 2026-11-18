@@ -98,6 +98,69 @@ def check_sample(system, before, row):
         p.require(row['VmRSS'] <= 3145728, 'Combined RSS guard')
 
 
+def exit_read(path):
+    with path.open() as stream:
+        value = stream.read(65537)
+    if len(value) > 65536:
+        raise RuntimeError('Oversized exit-phase field')
+    return value
+
+class ExitPhaseDescendants(RuntimeError):
+    def __init__(self, pids):
+        super().__init__('Exit-phase unexpected descendants')
+        self.pids = pids
+
+def exit_identity(pid, root=Path('/proc')):
+    raw = exit_read(root / str(pid) / 'stat')
+    opened, closed = raw.find('('), raw.rfind(')')
+    if opened <= 0 or closed <= opened:
+        raise RuntimeError('Malformed exit-phase identity')
+    tail = raw[closed + 2:].split()
+    if len(tail) < 50 or int(raw[:opened].strip()) != pid:
+        raise RuntimeError('Incomplete exit-phase identity')
+    return {'pid': pid, 'ppid': int(tail[1]), 'starttime_ticks': int(tail[19]),
+            'flags': int(tail[6]), 'state': tail[0]}
+
+def exit_snapshot(pid, expected, root=Path('/proc')):
+    """All reads must succeed; identity and single-task proof bracket status/mm."""
+    path = root / str(pid)
+    before = exit_identity(pid, root)
+    for key in ('pid', 'ppid', 'starttime_ticks'):
+        if before[key] != expected[key]:
+            raise RuntimeError('Exit-phase lifetime changed')
+    if before['flags'] & 4 == 0:
+        raise RuntimeError('Exit-phase PF_EXITING absent')
+    tasks = sorted(x.name for x in (path / 'task').iterdir())
+    if tasks != [str(pid)]:
+        raise RuntimeError('Exit-phase task set not sole owned leader')
+    task_identity = exit_identity(pid, path / 'task')
+    if any(task_identity[k] != before[k] for k in ('pid','ppid','starttime_ticks')) or task_identity['flags'] & 4 == 0:
+        raise RuntimeError('Exit-phase task identity/flag mismatch')
+    for current in (path, path / 'task' / str(pid)):
+        status = dict(line.split(':', 1) for line in exit_read(current / 'status').splitlines() if ':' in line)
+        if any(int(status[k]) != v for k, v in (('Pid',pid),('Tgid',pid),('Threads',1))):
+            raise RuntimeError('Exit-phase status identity mismatch')
+        if 'VmRSS' in status or 'VmHWM' in status:
+            raise RuntimeError('Exit-phase memory still present')
+        mm = exit_read(current / 'statm').split()
+        if mm != ['0'] * 7:
+            raise RuntimeError('Exit-phase mm not detached')
+    children = exit_read(path / 'task' / str(pid) / 'children').split()
+    if children:
+        if len(children) > 128 or any(not x.isdigit() or int(x) <= 0 for x in children):
+            raise RuntimeError('Invalid exit-phase descendants')
+        raise ExitPhaseDescendants(children)
+    after = exit_identity(pid, root)
+    if any(after[k] != before[k] for k in ('pid','ppid','starttime_ticks')) or after['flags'] & 4 == 0:
+        raise RuntimeError('Exit-phase identity/flag changed')
+    if sorted(x.name for x in (path / 'task').iterdir()) != [str(pid)]:
+        raise RuntimeError('Exit-phase task set changed')
+    return {'pid':pid,'starttime_ticks':before['starttime_ticks'],'flags':after['flags'],
+            'single_task':True,'mm_detached':True,'children_empty':True}
+
+
+REAL += (exit_read, exit_identity, exit_snapshot)
+
 def supervise(argv, env, directory, before):
     """One owned child, no shells or process groups; all descendants fatal."""
     receipt = {'passed': False, 'cleanup_complete': False, 'unexpected_descendants': [],
@@ -109,15 +172,69 @@ def supervise(argv, env, directory, before):
                    (subprocess.Popen, p.metrics, p.process_metrics, p.observe_descendants,
                     p.cleanup_observed_descendant, p.reap_owned, time.monotonic, time.sleep,
                     signal.signal, p.process_identity, os.pidfd_open, signal.pidfd_send_signal,
-                    p.select.select, os.close), REAL))}
+                    p.select.select, os.close, exit_read, exit_identity, exit_snapshot), REAL))}
     child = None; tracked = []; handlers = {}; stopped = False
+    complete_sample_seen = False
     start = time.monotonic()
     def save():
         (directory / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
     def stop(sig, frame):
         nonlocal stopped
         stopped = True
+    def verified_exit_phase(event):
+        p.require(complete_sample_seen, 'No prior complete owned sample')
+        if child.poll() is not None:
+            event['outcome'] = 'confirmed_exit'
+            return
+        expected_identity = exit_identity(child.pid)
+        p.require(expected_identity['pid'] == child.pid and expected_identity['ppid'] == os.getpid(), 'Owned export parent mismatch')
+        if child.poll() is not None:
+            event['outcome'] = 'confirmed_exit'
+            return
+        phase_start = time.monotonic()
+        observations = []
+        receipt.setdefault('exit_phase_attempts', []).append({'start_seconds': phase_start-start, 'observations': observations})
+        def phase_check():
+            p.require(not stopped, 'Termination requested')
+            p.require(time.monotonic() - start <= 300, 'Export timeout')
+            p.require(time.monotonic() - phase_start <= 1.0, 'Exit-phase timeout')
+            logpath = directory / 'godot.log'
+            if logpath.exists():
+                p.require(logpath.stat().st_size <= 16*1024*1024, 'Export log oversized')
+            check_sample(p.metrics(), before, None)
+        while True:
+            phase_check()
+            if child.poll() is not None:
+                break
+            try:
+                pair = [exit_snapshot(child.pid, expected_identity), exit_snapshot(child.pid, expected_identity)]
+            except ExitPhaseDescendants as exc:
+                receipt['unexpected_descendants'].append({'status': 'unexpected_child_detected',
+                    'parent_pid': child.pid, 'pids': exc.pids[:16], 'truncated': len(exc.pids) > 16})
+                save()
+                try:
+                    receipt['unexpected_descendants'].extend(p.observe_descendants('godot', child, exc.pids, tracked))
+                except Exception as observed_error:
+                    receipt['unexpected_descendants'].append({'status': 'observation_failed', 'type': type(observed_error).__name__})
+                raise RuntimeError('Unexpected descendant; no retry')
+            except (FileNotFoundError, ProcessLookupError):
+                if child.poll() is None:
+                    raise
+                break
+            observations.append({'seconds': round(time.monotonic()-start, 6), 'proof': pair})
+            p.require(len(observations) <= 101, 'Exit-phase observation bound')
+            phase_check()
+            time.sleep(0.01)
+        phase_check()
+        if not observations:
+            event['outcome'] = 'confirmed_exit'
+            return
+        event['outcome'] = 'verified_exit_phase_then_owned_exit'
+        receipt.setdefault('verified_exit_phase', []).append({'elapsed': time.monotonic()-phase_start,
+            'observations': observations, 'owned_exit': child.poll()})
+
     def sample():
+        nonlocal complete_sample_seen
         p.require(not stopped, 'Termination requested')
         p.require(time.monotonic() - start <= 300, 'Export timeout')
         system = p.metrics(); row = None
@@ -139,8 +256,12 @@ def supervise(argv, env, directory, before):
                         event['outcome'] = 'confirmed_exit'
                     else:
                         event['outcome'] = 'live_reread_required'
-                        row = p.process_metrics(child)  # One complete read or fail closed.
-                        event['outcome'] = 'recovered_live_complete_telemetry'
+                        try:
+                            row = p.process_metrics(child)  # One complete read or narrow proven exit phase.
+                        except KeyError:
+                            verified_exit_phase(event)
+                        else:
+                            event['outcome'] = 'recovered_live_complete_telemetry'
                 # The bounded wait must not hide stop, deadline, reserve or OOM changes.
                 p.require(not stopped, 'Termination requested')
                 p.require(time.monotonic() - start <= 300, 'Export timeout')
@@ -155,6 +276,8 @@ def supervise(argv, env, directory, before):
                     receipt['unexpected_descendants'].append({'status': 'observation_failed', 'type': type(exc).__name__})
                 raise RuntimeError('Unexpected descendant; no retry')
         check_sample(system, before, row)
+        if row is not None:
+            complete_sample_seen = True
         receipt['samples'].append({'seconds': round(time.monotonic()-start, 3), **system, 'process': row})
         return system
     try:

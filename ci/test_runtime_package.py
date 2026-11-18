@@ -1468,3 +1468,113 @@ class ExportExitRaceTests(unittest.TestCase):
                     if case=='unknown_permission':self.assertEqual(s['waits'],0)
 
 if __name__=='__main__':unittest.main(verbosity=2)
+
+
+import unittest,tempfile
+from pathlib import Path
+from unittest.mock import patch
+import run_export as e
+class ExportExitPhaseReaderTests(unittest.TestCase):
+ def setUp(self):
+  self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name);self.p=self.root/'123';self.t=self.p/'task/123';self.t.mkdir(parents=True)
+  tail=['0']*50;tail[0]='R';tail[1]='122';tail[6]='4194316';tail[19]='42'
+  for d in (self.p,self.t):
+   (d/'stat').write_text('123 (name (parens)) '+' '.join(tail))
+   (d/'status').write_text('Pid: 123\nTgid: 123\nThreads: 1\n')
+   (d/'statm').write_text('0 0 0 0 0 0 0\n')
+  (self.t/'children').write_text('')
+  self.expected=e.exit_identity(123,self.root)
+ def run_snapshot(self):return e.exit_snapshot(123,self.expected,self.root)
+ def test_valid(self):self.assertTrue(self.run_snapshot()['mm_detached'])
+ def test_bad_evidence(self):
+  cases=[('status','Pid: 124\nTgid: 123\nThreads: 1\n'),('status','Pid: 123\nTgid: 124\nThreads: 1\n'),('status','Pid: 123\nTgid: 123\nThreads: 2\n'),('status','Pid: 123\nTgid: 123\nThreads: 1\nVmRSS: 0 kB\n'),('status','Pid: 123\nTgid: 123\nThreads: 1\nVmHWM: 2 kB\n'),('statm','0 0 0 0 0 0'),('statm','0 0 0 0 0 0 0 0'),('statm','1 0 0 0 0 0 0'),('statm','-1 0 0 0 0 0 0'),('statm','x 0 0 0 0 0 0')]
+  for d in (self.p,self.t):
+   for name,value in cases:
+    with self.subTest(path=str(d),value=value):
+     f=d/name;original=f.read_text();f.write_text(value)
+     try:
+      with self.assertRaises((RuntimeError,ValueError,KeyError)):self.run_snapshot()
+     finally:f.write_text(original)
+ def test_children(self):
+  (self.t/'children').write_text('456')
+  with self.assertRaises(RuntimeError):self.run_snapshot()
+ def test_siblings(self):
+  (self.p/'task/124').mkdir()
+  with self.assertRaises(RuntimeError):self.run_snapshot()
+ def test_flag_lifetime(self):
+  for d in (self.p,self.t):
+   f=d/'stat';original=f.read_text()
+   for old,new in [('4194316','4194312'),('122','125'),('42','43')]:
+    with self.subTest(path=str(d),change=old):
+     f.write_text(original.replace(old,new))
+     try:
+      with self.assertRaises(RuntimeError):self.run_snapshot()
+     finally:f.write_text(original)
+ def test_unknown(self):
+  for exc in (PermissionError,FileNotFoundError,ProcessLookupError):
+   with patch.object(e,'exit_read',side_effect=exc):
+    with self.assertRaises(exc):self.run_snapshot()
+ def test_oversized(self):
+  (self.t/'children').write_text(' '*65537)
+  with self.assertRaises(RuntimeError):self.run_snapshot()
+
+
+import unittest,importlib.util,sys,tempfile,signal,subprocess,os
+from pathlib import Path
+from unittest.mock import patch
+from contextlib import ExitStack
+class ExportExitPhaseRunnerTests(unittest.TestCase):
+ def run_case(self,name,case):
+  spec=importlib.util.spec_from_file_location('isolated_'+name,Path(__file__).with_name(name+'.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+  s={'done':False,'reads':0,'proof':0,'clock':0.,'signals':{},'phase':False}
+  normal={'available_kib':8388608,'oom_kill':0}
+  class Child:
+   pid=12345
+   def poll(self):return (7 if case=='nonzero' else 0) if s['done'] else None
+   def wait(self,timeout):
+    if s['done']:return self.poll()
+    raise subprocess.TimeoutExpired(['owned'],timeout)
+  child=Child()
+  def process(c):
+   s['reads']+=1
+   if s['reads']==1 and case!='no_sample':return {'VmRSS':100,'VmHWM':100,'Threads':1,'child_pids':[]}
+   raise KeyError('VmRSS')
+  def ident(pid):return {'pid':pid,'ppid':os.getpid()+int(case=='wrong_parent'),'starttime_ticks':42}
+  def proof(pid,expected):
+   s['proof']+=1;s['phase']=True
+   if case=='descendant':raise m.ExitPhaseDescendants(['54321'])
+   if case=='unknown':raise PermissionError()
+   if case=='mismatch':raise RuntimeError('Bad proof')
+   if case=='missing_alive':raise FileNotFoundError()
+   if case=='missing_exited':s['done']=True;raise FileNotFoundError()
+   return {'pid':pid,'mm_detached':True}
+  def sleep(t):
+   s['clock']+=t
+   if s['phase']:
+    if case=='stop':s['signals'][signal.SIGTERM](signal.SIGTERM,None)
+    elif case=='deadline':s['clock']=300.001
+    elif case not in ('stuck','reserve','oom','oversize'):s['done']=True
+  def metrics():return {'available_kib':100 if case=='reserve' and s['phase'] else 8388608,'oom_kill':int(case=='oom' and s['phase'])}
+  def sig(k,h):old=s['signals'].get(k);s['signals'][k]=h;return old
+  with tempfile.TemporaryDirectory() as td,ExitStack() as st:
+   def proof_with_log(pid,expected):
+    value=proof(pid,expected)
+    if case=='oversize':
+     with (Path(td)/'godot.log').open('ab') as f:f.truncate(16*1024*1024+1)
+    return value
+   for obj,k,v in [(m.subprocess,'Popen',lambda *a,**kw:child),(m.p,'metrics',metrics),(m.p,'process_metrics',process),(m.p,'observe_descendants',lambda *a: s.update(observed=True) or []),(m.p,'reap_owned',lambda c:{'complete':True,'errors':[],'signals':[]}),(m.time,'monotonic',lambda:s['clock']),(m.time,'sleep',sleep),(m.signal,'signal',sig),(m,'exit_identity',ident),(m,'exit_snapshot',proof_with_log)]:st.enter_context(patch.object(obj,k,v))
+   result=m.supervise(['owned'],{},Path(td),normal)
+  self.assertTrue(result['test_dependencies']);self.assertEqual(result['cleanup_complete'],case!='descendant');
+  if case=='descendant':self.assertTrue(s.get('observed'));
+  self.assertEqual(result['limits']['timeout_seconds'],300)
+  return result,s
+ def test_cases(self):
+  for name in ('run_export','run_export_diagnostic'):
+   for case in ('valid','missing_exited','nonzero','no_sample','wrong_parent','descendant','unknown','mismatch','missing_alive','stuck','stop','deadline','reserve','oom','oversize'):
+    with self.subTest(name=name,case=case):
+     r,s=self.run_case(name,case);self.assertEqual(r['passed'],case in ('valid','missing_exited'))
+     if r['passed']:
+      self.assertEqual(r['exit'],0)
+      if case=='valid':self.assertTrue(r['verified_exit_phase'])
+      else:self.assertNotIn('verified_exit_phase',r);self.assertEqual(r['telemetry_races'][0]['outcome'],'confirmed_exit')
+     else:self.assertIn('error',r)
