@@ -1,0 +1,69 @@
+# Isolated same-entry import diagnosis. No export, package, release or Pages.
+name: Diagnose v125 original import telemetry
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/diagnose-v125-import.yml", ".github/diagnostics/import_telemetry.py"]
+permissions:
+  contents: read
+concurrency:
+  group: diagnose-v125-import-1d2e
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      BUILDING_RUNTIME_SOURCE_COMMIT: 1e8df0f8f22e5a1bade176a3436f5f6e53ea917a
+      BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Verify exact original support and collector before Python
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git rev-parse HEAD^)" = 3b1faab36bd8e2e1f2bf1873ea4c2e6a483128c3
+          echo '80c6722964201c98eeea237858dbbc296834febb55337fcd67e1828f5422a6da  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          sha256sum --strict --check ci/SUPPORT_SHA256SUMS
+          echo '5c4543e52ad4a8babdcceb95dbfd7453cd0711d81e724cdf14091be2b711fa19  .github/diagnostics/import_telemetry.py' | sha256sum --strict --check
+          git fetch --no-tags --depth=1 origin "$BUILDING_RUNTIME_SOURCE_COMMIT"
+          echo "RTS_WORK=$RUNNER_TEMP/import-diagnostic-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - name: Prepare pinned original source and official engine without launch
+        run: |
+          set -euo pipefail
+          test ! -e "$RTS_WORK"
+          mkdir -m 700 "$RTS_WORK"
+          python3 -B ci/prepare_web_release.py prepare --side product --work "$RTS_WORK/engine-source"
+          python3 -B ci/prepare_web_release.py engine --side product --work "$RTS_WORK/engine-source"
+      - name: At most two fresh original guarded imports with read-only observation
+        run: |
+          set -euo pipefail
+          python3 -B .github/diagnostics/import_telemetry.py --work "$RTS_WORK" --godot "$RTS_WORK/engine-source/engine/Godot_v4.6.3-stable_linux.x86_64" --diagnostic-output "$RTS_WORK/diagnostic"
+      - name: Preserve explicit diagnostic evidence only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v125-import-telemetry-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/diagnostic/telemetry.json
+            ${{ env.RTS_WORK }}/diagnostic/summary.json
+            ${{ env.RTS_WORK }}/attempt-1/import-evidence/import.json
+            ${{ env.RTS_WORK }}/attempt-1/import-evidence/import.invocation.json
+            ${{ env.RTS_WORK }}/attempt-1/import-evidence/import.log
+            ${{ env.RTS_WORK }}/attempt-1/import-evidence/phase-summary.json
+            ${{ env.RTS_WORK }}/attempt-2/import-evidence/import.json
+            ${{ env.RTS_WORK }}/attempt-2/import-evidence/import.invocation.json
+            ${{ env.RTS_WORK }}/attempt-2/import-evidence/import.log
+            ${{ env.RTS_WORK }}/attempt-2/import-evidence/phase-summary.json
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
