@@ -920,4 +920,22 @@ class ResourceGeometryExactTests(unittest.TestCase):
             for x in bad:
                 with self.assertRaises(ValueError):read(x)
 
+class ResourceHeightSpecificationTests(unittest.TestCase):
+    def test_exact_authored_height_spec_and_negative_boundaries(self):
+        # Pure specification/fixture test, not native rendering evidence.
+        import re, ast
+        source=(Path(__file__).resolve().parents[1]/'game/tests/resource_polish_contract.gd').read_text()
+        matches=re.findall(r'var expected_height=(\{[^\n]+\})\[kind\]',source)
+        self.assertEqual(len(matches),1)
+        heights=ast.literal_eval(matches[0])
+        self.assertEqual(heights,{'stone':0.610226,'iron':0.669126,'berry':0.779066})
+        self.assertEqual(source.count('assert(absf(visual.mesh.get_aabb().size.y-expected_height)<=0.00001 and visual.mesh.get_aabb().size.y<1.0);checks+=1'),1)
+        for expected in heights.values():
+            accepts=lambda actual: abs(actual-expected)<=0.00001 and actual<1.0
+            self.assertTrue(accepts(expected))
+            self.assertTrue(accepts(expected+0.000009))
+            self.assertTrue(accepts(expected-0.000009))
+            for wrong in [expected+0.000011,expected-0.000011,0.65,1.0,float('nan'),float('inf')]+[v for v in heights.values() if v!=expected]:
+                self.assertFalse(accepts(wrong))
+
 if __name__=='__main__':unittest.main(verbosity=2)

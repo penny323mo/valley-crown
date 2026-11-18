@@ -608,7 +608,7 @@
   "tests/repair_layout_contract.gd": "fe0319b8390cf3bb855f7063147f0392d0f645e6e06f3dd137fb538b65643888",
   "tests/resolved_attack_goal_contract.gd": "7bcd3fb2a01540eb81b22707341ba5b9a9dcc1ee2b8ecbeb59a585640add600c",
   "tests/resource_lifecycle_contract.gd": "b893cb0835bb64865a67c00b85cb394a03f9af5d9160fbcd3287b4a25e6cd051",
-  "tests/resource_polish_contract.gd": "9ccae075d0a9ab3529b5c08e3cd7dad7cd0058df3405bd78721781c7be84c29f",
+  "tests/resource_polish_contract.gd": "d53d412341d0a9a96abd0b4dc8a8c0d75bca72bd2fc66c691412096bcada8b7d",
   "tests/resource_rally_bounds_contract.gd": "1d682f461f099fb6ad9cc6da779ee3b67b599d1423b29036b602b4cd166df562",
   "tests/resource_rally_continuation_contract.gd": "79c712a98c224cca8b8f482290944ad043aa0877fab9c9def3d81b78d6386ed3",
   "tests/resource_rally_contract.gd": "4c4ab83eaa81b65ec9a2c43adc4b715fd1541a851a87bca104d15091c88d68e8",
