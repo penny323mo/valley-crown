@@ -319,6 +319,8 @@ var middle_drag=false
 var hud_bottom: PanelContainer
 var hud_top: PanelContainer
 var action_scroll: ScrollContainer
+var action_selection_ids=[] # Presentation-only membership; queue/status refresh keeps scrolling.
+var action_reveal_ids=[]
 var action_key=""
 var return_cargo_button: Button
 var stop_button: Button
@@ -4721,6 +4723,17 @@ func _update_hud():
 	for id in selected:
 		var ent=faction_views[0].get_record(id)
 		if not ent.is_empty() and ent.alive: selection.append(ent)
+	var selection_ids=selection.map(func(record):return record.id);selection_ids.sort()
+	if selection_ids!=action_selection_ids:
+		action_selection_ids=selection_ids
+		# Different context must not inherit a builder's hidden tail. A held
+		# old strip drag cannot move the replacement context after this reset.
+		action_touch_scroll.clear()
+		if is_instance_valid(action_scroll):action_scroll.scroll_horizontal=0
+		action_reveal_ids=[]
+		if selection.size()==1 and selection[0].get("built",false) and Rules.PRODUCES.has(selection[0].kind):
+			action_reveal_ids=selection_ids.duplicate()
+			call_deferred("_reveal_context_primary",selection_ids.duplicate())
 	# Preserve the reviewed conservative warning suppression for own queued intent.
 	var own_command_pending=false
 	for command in commands:
@@ -4903,6 +4916,18 @@ func _update_hud():
 					break
 	call_deferred("_layout_ui")
 
+func _reveal_context_primary(identity):
+	# Let the replacement row settle. Never move it beneath an active gesture,
+	# or after a later context or explicit scroll superseded this one-shot.
+	await get_tree().process_frame
+	if identity!=action_selection_ids or identity!=action_reveal_ids:return
+	action_reveal_ids=[]
+	if not all_touch_ids.is_empty() or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or action_scroll.scroll_horizontal!=0:return
+	for button in actions.get_children():
+		if button is Button and button.get_meta("primary_train",false):
+			action_scroll.ensure_control_visible(button)
+			break
+
 func _rebuild_actions(selection):
 	# This 44px control lives in the action strip, not a taller summary header.
 	if is_instance_valid(context_detail_button) and context_detail_button.get_parent():
@@ -5002,6 +5027,7 @@ func _rebuild_actions(selection):
 			for kind in Rules.products_for(ent.kind):
 				var choice=kind
 				var train_button=_button("訓練"+Rules.NAMES[kind]+"\n"+Rules.cost_label(kind),func(): _submit("train",{"building":ent.id,"kind":choice}),120)
+				train_button.set_meta("primary_train",true)
 				CommandIcons.apply(train_button,kind,true);actions.add_child(train_button)
 			if "villager" not in Rules.products_for(ent.kind):
 				var repeat_product=Rules.PRODUCES[ent.kind]
@@ -5894,6 +5920,7 @@ func _track_action_scroll(event,viewport):
 	# button handling. A swipe must never also activate its starting button.
 	if event is InputEventScreenTouch:
 		if event.pressed:
+			action_reveal_ids.clear()
 			if all_touch_ids.size()!=1:
 				action_touch_scroll.clear(); return
 			var report_scroll=game_over and end_panel.visible
