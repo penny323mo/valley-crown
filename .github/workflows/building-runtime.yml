@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: building-runtime-vc-0ded25b34b5f-717f7643
+  group: building-runtime-vc-8dfa634ee0e7-717f7643
   cancel-in-progress: false
 jobs:
   validate:
@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 68ecfa279ca3b342be37835d78dc41d076505d48
+      BUILDING_RUNTIME_SOURCE_COMMIT: 966fc1352fb35030cff81a6374352845ac9e3376
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '9b2767abcbec4127bd2bce18f0ded75fb935f114a9b47bf377d25e616ac6f356  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'ef4d0daa04e3c47de985eef3fcd9c2301e45a3101a007a03117b3ce6061eac51  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -313,6 +313,7 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_journey/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/construction_return_journey/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/frontline_supply_contract/receipt.json
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -322,7 +323,6 @@ jobs:
         with:
           name: building-runtime-evidence-${{ github.sha }}-${{ github.run_attempt }}-extra
           path: |
-            ${{ env.RTS_WORK }}/product/latest-contracts/frontline_supply_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/frontline_supply_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/frontline_supply_journey/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/frontline_supply_journey/godot.log
@@ -520,6 +520,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/contextual_construction_resume_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/military_route_feedback_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/military_route_feedback_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/blocked_combat_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/blocked_combat_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14

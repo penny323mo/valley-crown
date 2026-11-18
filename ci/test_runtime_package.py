@@ -629,4 +629,36 @@ class CommandRecoveryReportSchemaTests1(unittest.TestCase):
                     with self.assertRaises(ValueError):read(raw)
 
 
+class BlockedCombatReportSchemaTests0(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'advance legal controlled starts', 'passed': True}, {'name': 'advance actual terminal before combat', 'passed': True}, {'name': 'advance outside range no shot', 'passed': True}, {'name': 'advance ordinary in-range fire damages', 'passed': True}, {'name': 'advance HUD reports current attack', 'passed': True}, {'name': 'advance rate remains authoritative', 'passed': True}, {'name': 'advance terminal and budget preserved', 'passed': True}, {'name': 'advance departure restores terminal warning', 'passed': True}, {'name': 'advance does not chase after departure', 'passed': True}, {'name': 'advance economy audit stays valid', 'passed': True}, {'name': 'patrol legal controlled starts', 'passed': True}, {'name': 'patrol actual terminal before combat', 'passed': True}, {'name': 'patrol outside range no shot', 'passed': True}, {'name': 'patrol ordinary in-range fire damages', 'passed': True}, {'name': 'patrol HUD reports current attack', 'passed': True}, {'name': 'patrol rate remains authoritative', 'passed': True}, {'name': 'patrol terminal and budget preserved', 'passed': True}, {'name': 'patrol departure restores terminal warning', 'passed': True}, {'name': 'patrol does not chase after departure', 'passed': True}, {'name': 'patrol economy audit stays valid', 'passed': True}, {'name': 'attack legal controlled starts', 'passed': True}, {'name': 'attack actual terminal before combat', 'passed': True}, {'name': 'attack outside range no shot', 'passed': True}, {'name': 'attack ordinary in-range fire damages', 'passed': True}, {'name': 'attack HUD reports current attack', 'passed': True}, {'name': 'attack rate remains authoritative', 'passed': True}, {'name': 'attack terminal and budget preserved', 'passed': True}, {'name': 'attack departure restores terminal warning', 'passed': True}, {'name': 'attack departing target retains ordinary bounded pursuit', 'passed': True}, {'name': 'attack economy audit stays valid', 'passed': True}], 'failed': 0, 'scope': 'Controlled legal enclosure; ordinary orders and true search/combat ticks; no natural full-match claim.', 'suite': 'blocked_combat_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
