@@ -31,6 +31,29 @@ var material_instances: Array[Material] = []
 var prior_bone_poses: Array[Transform3D] = []
 var transition_time := 1.0
 var asset_path := ""
+# Presentation-only combined policy. No runtime option or authority serialization.
+const readable_preparation := true
+const readable_followthrough := true
+var readability_target := -1
+var readability_epoch := -1
+var preparation_started_tick := -1
+var protected_release_tick := -1
+
+func _clear_readability(cancel_shot: bool = false) -> void:
+	if cancel_shot and (protected_release_tick >= 0 or preparation_started_tick >= 0) and clip == "attack": one_shot = false
+	readability_target = -1
+	readability_epoch = -1
+	preparation_started_tick = -1
+	protected_release_tick = -1
+
+func _readable_combat_record(record: Dictionary) -> bool:
+	# Own records expose cancellation/target state; do not guess hidden enemy orders.
+	if not record.get("owned", false) or not record.get("alive", true): return false
+	if record.get("visual_moving", false) or record.get("garrison_pending", -1) >= 0: return false
+	if record.get("state", "idle") != "attack": return false
+	if record.get("mode", "STOP") != "ATTACK": return false
+	return record.get("target", -1) >= 0
+
 
 func bind(target_body: Node3D, unit_kind: String, team_color: Color) -> bool:
 	assert(unit_kind in KINDS)
@@ -83,6 +106,7 @@ func observe(record: Dictionary, delta: float, running: bool) -> void:
 		return
 	var reset := not running_last_frame or previous_tick < 0 or now < previous_tick or now - previous_tick > 5
 	if reset:
+		_clear_readability(true)
 		previous_position = position; previous_tick = now; walk_rate = 0.0; update_budget = 0.0
 	elif now > previous_tick:
 		var displacement := Vector2(position.x - previous_position.x, position.z - previous_position.z).length()
@@ -95,6 +119,20 @@ func observe(record: Dictionary, delta: float, running: bool) -> void:
 	if reset:
 		if attack_tick < now: last_attack_tick = maxi(last_attack_tick, attack_tick)
 		if hit_tick < now: last_hit_tick = maxi(last_hit_tick, hit_tick)
+	var eligible: bool = (readable_preparation or readable_followthrough) and _readable_combat_record(record) and not reset
+	var identity_changed: bool = readability_target >= 0 and (readability_target != record.get("target", -1) or readability_epoch != record.get("work_epoch", -1))
+	if not eligible or identity_changed: _clear_readability(true)
+	if eligible:
+		readability_target = record.get("target", -1)
+		readability_epoch = record.get("work_epoch", -1)
+	var new_current_release: bool = attack_tick > last_attack_tick and attack_tick == now
+	var ready: bool = eligible and record.get("visual_attack_ready", false)
+	if ready:
+		if preparation_started_tick < 0: preparation_started_tick = now
+	else: preparation_started_tick = -1
+	# Tick age caps are observation-only; same-tick repeated frames cannot extend them.
+	var recover_preparation: bool = readable_preparation and ready and (now - preparation_started_tick >= 2 or (hit_tick >= 0 and now - hit_tick >= 2))
+	var protect_release: bool = readable_followthrough and eligible and protected_release_tick >= 0 and now - protected_release_tick >= 0 and now - protected_release_tick < 3 and attack_tick == protected_release_tick and clip == "attack"
 	# Simultaneous observed damage does not erase this actor's legal release pose.
 	# Consume both cues now: never defer/replay a hit or call back into authority.
 	if attack_tick > last_attack_tick and hit_tick > last_hit_tick and attack_tick == hit_tick:
@@ -103,12 +141,16 @@ func observe(record: Dictionary, delta: float, running: bool) -> void:
 	elif hit_tick > last_hit_tick:
 		last_hit_tick = hit_tick
 		last_attack_tick = maxi(last_attack_tick, attack_tick) # Do not replay an interrupted release.
-		_start("hit", 0.0, true, false)
+		if not protect_release and not recover_preparation: _start("hit", 0.0, true, false)
 	elif attack_tick > last_attack_tick:
 		last_attack_tick = attack_tick
 		# Authority damage already settled at release. Contact pose occurs immediately,
 		# never a second hit, deferred damage, or animation callback into the ledger.
 		_start("attack", player.get_animation("attack").length * IMPACT_FRACTION[kind], true, false)
+	# Only a genuinely current release may establish protection; never historical replay.
+	if readable_followthrough and eligible and new_current_release and clip == "attack":
+		protected_release_tick = now
+	if recover_preparation and clip == "hit": one_shot = false
 	var action: String = record.get("visual_action", "idle")
 	rig.rotation.y = angle_difference(body.rotation.y, record.get("visual_action_yaw", body.rotation.y)) if clip not in ["idle", "walk", "carry_walk"] else 0.0
 	if not one_shot:
@@ -145,6 +187,7 @@ func observe(record: Dictionary, delta: float, running: bool) -> void:
 		var pose_delta := update_budget; update_budget = 0.0; _apply_pose(pose_delta)
 
 func start_death() -> void:
+	_clear_readability()
 	dead = true; _start("death", 0.0, true, false)
 	rig.set_meta("occlusion_authorized", false)
 	occlusion.set_authorized(false)
@@ -177,6 +220,7 @@ func visual_evidence_snapshot() -> Dictionary:
 		"occlusion":occlusion.stats(), "attack_release_tick":last_attack_tick, "hit_tick":last_hit_tick, "dead_visual_only":dead}
 
 func release() -> void:
+	_clear_readability()
 	occlusion.release()
 	if is_instance_valid(rig):
 		rig.set_meta("occlusion_authorized", false)
