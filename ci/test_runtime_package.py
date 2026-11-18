@@ -471,4 +471,36 @@ class WallWorkforceGeometrySchemaTests(unittest.TestCase):
                 with self.subTest(geometry=d['geometry']):
                     with self.assertRaises(ValueError):read(d)
 
+class AITrafficEscapeReportSchemaTests0(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'controlled worker earns real gathered cargo', 'passed': True}, {'name': 'fixture has nearby observed safe escape', 'passed': True}, {'name': 'persistent traffic worker eligible', 'passed': True}, {'name': 'cooldown refuses early restart', 'passed': True}, {'name': 'static no path never reset', 'passed': True}, {'name': 'general search limit never reset', 'passed': True}, {'name': 'player worker never eligible', 'passed': True}, {'name': 'persistent occupied endpoints never submit or search', 'passed': True}, {'name': 'ordinary blocker movement opens recovery endpoint', 'passed': True}, {'name': 'queued builder-only command blocks recovery before epoch changes', 'passed': True}, {'name': 'one recovery command submitted', 'passed': True}, {'name': 'duplicate think cannot queue another worker command', 'passed': True}, {'name': 'mixed marker fixture passes escape preflight', 'passed': True}, {'name': 'rejected mixed marker keeps worker terminal and budget', 'passed': True}, {'name': 'pending recovery captures with existing schema', 'passed': True}, {'name': 'pending recovery strict encode decode', 'passed': True}, {'name': 'execution preserves cargo bank and retry history', 'passed': True}, {'name': 'execution uses new ordinary move epoch', 'passed': True}, {'name': 'executed recovery captures', 'passed': True}, {'name': 'restore pending recovery succeeds', 'passed': True}, {'name': 'restored pending recovery executes same authority', 'passed': True}, {'name': 'real ticks move worker to escape endpoint', 'passed': True}, {'name': 'real travel deposits preserved earned cargo', 'passed': True}, {'name': 'stale epoch leaves newer command untouched', 'passed': True}, {'name': 'full AI think reserves recovery worker without overwriting', 'passed': True}, {'name': 'full AI submitted recovery executes ordinary move', 'passed': True}, {'name': 'all ordinary economy audit conserved', 'passed': True}], 'failed': 0, 'scope': 'Controlled exhausted traffic fixture, ordinary gathered cargo, native move/deposit and same-build pending checkpoint; not old-match cross-version recovery or natural victory.', 'suite': 'ai_traffic_escape_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
