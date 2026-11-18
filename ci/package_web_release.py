@@ -17,10 +17,11 @@ need=prep.need
 sha=prep.sha
 
 RESOURCE_NOTICE='art/resource_donors/License_Standard.txt'
+BERRY_NOTICE='assets/diagnostic/bush_common/License_Standard.txt'
 
 def notices_for_side(side):
     need(side in ('product','diagnostic'),'Unknown notice side')
-    return NOTICES + ([RESOURCE_NOTICE] if side=='product' else [])
+    return NOTICES + ([RESOURCE_NOTICE,BERRY_NOTICE] if side=='product' else [])
 
 def validate_notice_files(project,project_files,notices):
     for name in notices:
