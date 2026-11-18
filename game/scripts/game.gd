@@ -3415,6 +3415,9 @@ func _ai_build(kind):
 	if builder.is_empty(): ai_status.build="no_spare_builder"; return false
 	var reasons=[]
 	for p in _ai_progression_plots(kind):
+		# Only new AI towers reserve two building-free cells from existing buildings.
+		# Placement authority, cost, visibility and worker routing stay unchanged.
+		if not _ai_progression_spacing_clear(kind,p,_ai_records()):continue
 		var reason=_placement_reason(kind,p,1,builder.id)
 		if reason.is_empty():
 			_submit("build",{"kind":kind,"position":p,"builder":builder.id},1)
@@ -6959,6 +6962,18 @@ func _update_tower(ent: Dictionary) -> void:
 		if chosen.is_empty() or rank<best.x or (rank==best.x and (distance<best.y or (is_equal_approx(distance,best.y) and target.id<best.z))):
 			chosen=target; best=Vector3(rank,distance,target.id)
 	if not chosen.is_empty(): _release_attack(ent,chosen)
+
+func _ai_progression_spacing_clear(kind: String,position: Vector3,records: Array) -> bool:
+	return kind!="tower" or _ai_building_lane_clear(kind,position,records)
+
+func _ai_building_lane_clear(kind: String,position: Vector3,records: Array) -> bool:
+	var proposed=_occupied_cells({"kind":kind,"pos":position})
+	var first=proposed[0];var last=proposed.back()
+	for other in records:
+		if not other.get("owned",false) or not other.get("alive",false) or other.get("category","")!="building" or other.get("kind","")=="wall":continue
+		for cell in _occupied_cells(other):
+			if cell.x>=first.x-2 and cell.x<=last.x+2 and cell.y>=first.y-2 and cell.y<=last.y+2:return false
+	return true
 
 func _ai_progression_plots(kind: String) -> Array:
 	var result: Array=MapRoutes.build_plots(1,Rules.FOOTPRINT[kind])
