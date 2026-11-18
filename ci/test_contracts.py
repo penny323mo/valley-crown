@@ -364,7 +364,7 @@ class ConsolidatedTests(unittest.TestCase):
                 data=data.replace(delta,b'')
             if name=='run_export.py':
                 # Exact reviewed source identity changes only; all monitor bytes remain equal.
-                for current,baseline in [('dd57a852f78cae4a8f200a2180d286f9179ddcb3','677096aaaa5131089971c2ec85b598ad20bd91da'),('7d8ae7a338199c3beb56a55165f23cfc1a13eab2','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-77520083f751','vc-cf764648c52f')]:
+                for current,baseline in [('eebba897f1f77e21bb5b3de272a11f228bda8416','677096aaaa5131089971c2ec85b598ad20bd91da'),('9f988c0c639cf609ee371e142cd8676f6925d164','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-32a311853063','vc-cf764648c52f')]:
                     self.assertEqual(data.count(current.encode()),1)
                     data=data.replace(current.encode(),baseline.encode())
             self.assertEqual(hashlib.sha256(data).hexdigest(),sha)

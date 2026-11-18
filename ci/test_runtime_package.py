@@ -788,4 +788,67 @@ class AiFoodFeasibilityReportSchemaTests0(unittest.TestCase):
                     with self.assertRaises(ValueError):read(raw)
 
 
+class AiRecoveryReportSchemaTests0(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'fresh uninitialized idle worker safely declined', 'passed': True}, {'name': 'carrier cargo earned by ordinary gather ticks', 'passed': True}, {'name': 'controlled real collision has safe adjacent yield plan', 'passed': True}, {'name': 'planning leaves full captured authority unchanged', 'passed': True}, {'name': 'disabled AI never plans a yield', 'passed': True}, {'name': 'scripted survival never plans a yield', 'passed': True}, {'name': 'player worker never commandeered', 'passed': True}, {'name': 'explicit stopped worker never commandeered', 'passed': True}, {'name': '599 tick cooldown still blocks', 'passed': True}, {'name': 'manual command grace prevents yield', 'passed': True}, {'name': 'queued construction intent prevents yield', 'passed': True}, {'name': 'active worker job is never stolen', 'passed': True}, {'name': 'actual anticipation queues normal command and leaves carrier unchanged', 'passed': True}, {'name': 'pending yield strict capture accepts unchanged schema', 'passed': True}, {'name': 'pending marker roundtrips exact through codec', 'passed': True}, {'name': 'pending marker strict restore succeeds', 'passed': True}, {'name': 'stale blocker epoch rejects without move', 'passed': True}, {'name': 'stale carrier epoch rejects without move', 'passed': True}, {'name': 'accepted yield is ordinary MOVE with new epoch', 'passed': True}, {'name': 'carrier cargo and path budgets are untouched', 'passed': True}, {'name': 'yield cooldown persists on ordinary actor', 'passed': True}, {'name': 'executed strict continuation captures complete equal authority', 'passed': True}], 'failed': 0, 'scope': 'Controlled collision frontier after ordinary earned cargo; safe AI yield and strict command continuation, not full-match recovery claim.', 'suite': 'ai_idle_yield_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+class AiRecoveryReportSchemaTests1(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'fixture is living sheltered workforce with ordinary funds', 'passed': True}, {'name': 'housing priority never diverts into staffing', 'passed': True}, {'name': 'nonfarm goals keep existing progression', 'passed': True}, {'name': 'queued worker prevents duplicate relief', 'passed': True}, {'name': 'full population prevents relief', 'passed': True}, {'name': 'eight existing workers retain prior workforce ceiling', 'passed': True}, {'name': 'one milli below price cannot enqueue', 'passed': True}, {'name': 'any unsheltered live worker blocks extra recruitment', 'passed': True}, {'name': 'stale shelter epoch is not proof of unavailable labor', 'passed': True}, {'name': 'unfinished keep cannot train relief', 'passed': True}, {'name': 'disabled AI never recruits', 'passed': True}, {'name': 'negative checks preserve bank and queue', 'passed': True}, {'name': 'eligible relief submits ordinary train once', 'passed': True}, {'name': 'submission reserves fifty food but does not mint or debit early', 'passed': True}, {'name': 'pending ordinary train blocks same tick repeat', 'passed': True}, {'name': 'pending relief strict same build codec roundtrip', 'passed': True}, {'name': 'pending relief restores without duplicate', 'passed': True}, {'name': 'hundred normal ticks after restore preserve complete authority', 'passed': True}, {'name': 'normal execution pays exactly fifty food', 'passed': True}, {'name': 'normal production ticks create exactly one new worker', 'passed': True}, {'name': 'new worker without shelter permanently ends this relief episode', 'passed': True}, {'name': 'ordinary economy remains conserved', 'passed': True}], 'failed': 0, 'scope': 'Controlled coherent sheltered workforce with normal initial resources, paid training and strict continuation; no complete economy recovery claim.', 'suite': 'ai_shelter_staffing_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
