@@ -4563,13 +4563,34 @@ func _cancel_pointer_streams():
 func _defer_layout():
 	call_deferred("_layout_ui")
 
+# Presentation only. Preserve both direct alert navigation and menu access.
+func _battle_top_row_fits(view_size:Vector2) -> bool:
+	var margin=6.0 if view_size.y<560 or view_size.x<620 else 8.0
+	var required=top_resources.get_combined_minimum_size().x
+	var count=1
+	for control in [time_label,pause_button,battle_jump_button,compact_menu_button]:
+		if control.visible:
+			required+=control.get_combined_minimum_size().x
+			count+=1
+	# During alerts these are intentionally absent below1000/760 respectively,
+	# matching existing product policy rather than stale parent visibility.
+	if view_size.x>=1000 and not (is_instance_valid(tutorial_entry) and not demo_tutorial.skipped and not game_over):
+		required+=compact_brand.get_combined_minimum_size().x;count+=1
+	if view_size.x>=760 and is_instance_valid(tutorial_entry) and not demo_tutorial.skipped and not game_over:
+		required+=tutorial_entry.get_combined_minimum_size().x;count+=1
+	var panel=hud_top.get_theme_stylebox("panel")
+	required+=panel.get_content_margin(SIDE_LEFT)+panel.get_content_margin(SIDE_RIGHT)
+	required+=compact_top_line.get_theme_constant("separation")*(count-1)
+	return required<=view_size.x-margin*2
+
 func _layout_ui():
 	if not is_inside_tree() or not is_instance_valid(ui): return
 	var size=get_viewport().get_visible_rect().size
 	short_ui=size.y<560; compact_ui=size.x<760 or short_ui
 	var narrow=size.x<620
 	var has_alert=not game_over and not battle_alerts.peek(tick_count).is_empty()
-	var stack_resources=size.x<480 or (has_alert and size.x<760)
+	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
+	var stack_resources=size.x<480 or (has_alert and not _battle_top_row_fits(size))
 	if stack_resources and top_resources.get_parent()!=compact_top_stack:
 		top_resources.reparent(compact_top_stack); compact_top_stack.move_child(top_resources,0)
 	elif not stack_resources and top_resources.get_parent()!=compact_top_line:
@@ -4580,7 +4601,6 @@ func _layout_ui():
 	compact_brand.visible=not tutorial_top and (size.x>=620 or stack_resources) and not (has_alert and size.x<1000)
 	compact_brand.size_flags_horizontal=Control.SIZE_EXPAND_FILL if stack_resources else Control.SIZE_FILL
 	compact_menu_button.text=_shortcut_menu_caption()
-	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
 	var stack_info=size.x<480
 	var info_parent=compact_narrow_info if stack_info else selection_row
 	for label in [selection_summary,queue_label]:

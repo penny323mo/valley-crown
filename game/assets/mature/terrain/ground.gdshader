@@ -46,7 +46,7 @@ void fragment() {
     float trail_core = smoothstep(0.40, 0.84, corridor);
     float rut = smoothstep(0.37, 0.48, corridor) * (1.0 - smoothstep(0.61, 0.74, corridor));
     vec3 soil = mix(vec3(0.365, 0.285, 0.195), vec3(0.50, 0.405, 0.285), clamp(earth_grain * 1.8, 0.0, 1.0));
-    soil *= 1.0 - rut * 0.17;
+    soil *= 1.0 - rut * 0.0;
     vec3 terrain = mix(grass, soil, trail * 0.94);
     terrain = mix(terrain, soil * 1.08, trail_core * 0.35);
 
