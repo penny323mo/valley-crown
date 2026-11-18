@@ -100,6 +100,11 @@ var tutorial_panel: PanelContainer
 var tutorial_label: Label
 var tutorial_skip: Button
 var tutorial_locate: Button
+# Transient presentation only; never skip or mutate recorded tutorial facts.
+var tutorial_collapsed=false
+var tutorial_entry: Button
+var tutorial_menu_entry: Button
+var tutorial_collapse: Button
 
 var entities: Array = []
 var selected: Array = []
@@ -4506,7 +4511,10 @@ func _layout_ui():
 		top_resources.reparent(compact_top_stack); compact_top_stack.move_child(top_resources,0)
 	elif not stack_resources and top_resources.get_parent()!=compact_top_line:
 		top_resources.reparent(compact_top_line); compact_top_line.move_child(top_resources,1)
-	compact_brand.visible=(size.x>=620 or stack_resources) and not (has_alert and size.x<1000)
+	var tutorial_active=is_instance_valid(tutorial_entry) and not demo_tutorial.skipped and not game_over
+	var tutorial_top=tutorial_active and not (has_alert and size.x<760)
+	if is_instance_valid(tutorial_entry):tutorial_entry.visible=tutorial_top
+	compact_brand.visible=not tutorial_top and (size.x>=620 or stack_resources) and not (has_alert and size.x<1000)
 	compact_brand.size_flags_horizontal=Control.SIZE_EXPAND_FILL if stack_resources else Control.SIZE_FILL
 	compact_menu_button.text=_shortcut_menu_caption()
 	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
@@ -6216,6 +6224,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 	if is_instance_valid(aftermath_bar):aftermath_bar.hide()
 	if is_instance_valid(hud_top):hud_top.show();hud_bottom.show()
 	demo_tutorial.reset()
+	tutorial_collapsed=false
 	building_damage_presenter.clear()
 	order_routes.clear()
 	_clear_attack_effects()
@@ -6703,6 +6712,16 @@ func _button_touch_input(button:Button,event:InputEvent):
 
 # Tutorial controls only their own presentation state. Existing input routing is reused.
 func _create_tutorial_ui():
+	tutorial_collapsed=false
+	tutorial_entry=_button("教學 1/10",_toggle_tutorial_fold,82);tutorial_entry.name="TutorialProgressEntry"
+	tutorial_entry.tooltip_text="展開或收起教學；進度仍會記錄。"
+	compact_top_line.add_child(tutorial_entry);compact_top_line.move_child(tutorial_entry,0)
+	# Existing menu header is the fallback when a narrow attack-alert row is full.
+	tutorial_menu_entry=_button("教學 1/10",_toggle_tutorial_fold,82);tutorial_menu_entry.name="TutorialMenuEntry"
+	var menu_title=shortcut_header.get_child(0)
+	menu_title.add_child(tutorial_menu_entry);menu_title.move_child(tutorial_menu_entry,1)
+	var heading=menu_title.get_child(0)
+	heading.clip_text=true;heading.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
 	tutorial_panel=PanelContainer.new(); tutorial_panel.name="DemoTutorial"
 	tutorial_panel.mouse_filter=Control.MOUSE_FILTER_STOP
 	tutorial_panel.mouse_force_pass_scroll_events=false
@@ -6718,6 +6737,8 @@ func _create_tutorial_ui():
 	tutorial_label.mouse_filter=Control.MOUSE_FILTER_IGNORE; row.add_child(tutorial_label)
 	tutorial_skip=_button("跳過",_skip_tutorial,56); tutorial_skip.name="SkipTutorial"
 	row.add_child(tutorial_skip)
+	tutorial_collapse=_button("收起",_toggle_tutorial_fold,56);tutorial_collapse.name="CollapseTutorial"
+	row.add_child(tutorial_collapse)
 	guidance_detail_button=_button("詳情",func():_toggle_context_details("guidance"),54)
 	guidance_detail_button.name="GuidanceDetailsButton";row.add_child(guidance_detail_button)
 	toast_label.reparent(row);row.move_child(toast_label,0)
@@ -6728,6 +6749,15 @@ func _create_tutorial_ui():
 		label.clip_text=true;label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
 	_refresh_tutorial()
 	_layout_tutorial()
+
+func _toggle_tutorial_fold():
+	if game_over or demo_tutorial.skipped:return
+	_cancel_pointer_streams();_clear_box_select()
+	# No simulation commands, selection changes, skip/reset or cost are involved.
+	tutorial_collapsed=not tutorial_collapsed
+	context_detail_kind=""
+	compact_menu.hide();compact_menu_dismiss.hide()
+	_refresh_tutorial();_layout_ui()
 
 func _refresh_tutorial_locator():
 	if not is_instance_valid(tutorial_locate):return
@@ -6755,10 +6785,17 @@ func _skip_tutorial():
 func _refresh_tutorial():
 	if not is_instance_valid(tutorial_panel): return
 	var feedback=toast_time>0 and not toast_label.text.is_empty()
-	tutorial_panel.visible=(feedback or not demo_tutorial.skipped) and not game_over and not compact_menu.visible and context_detail_kind.is_empty()
+	tutorial_panel.visible=(feedback or (not demo_tutorial.skipped and not tutorial_collapsed)) and not game_over and not compact_menu.visible and context_detail_kind.is_empty()
 	tutorial_label.visible=not feedback
 	toast_label.visible=feedback and tutorial_panel.visible
 	tutorial_skip.visible=not feedback
+	tutorial_collapse.visible=not feedback
+	var progress="教學 %d/%d" % [mini(demo_tutorial.step()+1,demo_tutorial.KEYS.size()),demo_tutorial.KEYS.size()]
+	if demo_tutorial.step()==demo_tutorial.KEYS.size():progress="教學完成"
+	tutorial_entry.text=progress;tutorial_menu_entry.text=progress
+	tutorial_menu_entry.visible=not demo_tutorial.skipped and not game_over
+	var has_alert=not game_over and not battle_alerts.peek(tick_count).is_empty()
+	tutorial_entry.visible=not demo_tutorial.skipped and not game_over and not (has_alert and get_viewport().get_visible_rect().size.x<760)
 	tutorial_label.text=demo_tutorial.text(paused)
 	tutorial_skip.text="收起" if demo_tutorial.step()==demo_tutorial.KEYS.size() else "跳過"
 	if is_instance_valid(guidance_detail):
