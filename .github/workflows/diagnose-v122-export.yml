@@ -1,0 +1,92 @@
+# Isolated instrumented export diagnosis only. Never package, publish or update Pages.
+name: Diagnose v122 export process telemetry (not publication)
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/diagnose-v122-export.yml", ".github/diagnostics/export_telemetry.py"]
+permissions:
+  contents: read
+concurrency:
+  group: diagnose-v122-export-cab13
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: ${{ github.run_attempt == 1 }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      BUILDING_RUNTIME_SOURCE_COMMIT: 981a4d2572b3e8860c3f957ab2ce207c99585c9b
+      BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
+    steps:
+      - name: Reject pending or unapproved pins
+        run: |
+          set -euo pipefail
+          test "$BUILDING_RUNTIME_EXECUTION_APPROVED" = true
+          test "$GITHUB_REPOSITORY" = penny323mo/valley-crown
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          [[ "$BUILDING_RUNTIME_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+      - name: Select separate fresh runner workspace
+        run: echo "RTS_WORK=$RUNNER_TEMP/export-diagnostic-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Fetch exact frozen source independently of support history
+        run: git fetch --no-tags --depth=1 origin "$BUILDING_RUNTIME_SOURCE_COMMIT"
+      - name: Shell-only support identity check before importing Python
+        run: |
+          set -euo pipefail
+          echo 'f71efed683b00e9c5963bf2098c175ba9530a7d3ed32ad72d8cab3ac0d536dec  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          sha256sum --strict --check ci/SUPPORT_SHA256SUMS
+          test ! -e "$RTS_WORK"
+          mkdir -m 700 "$RTS_WORK"
+      - name: Freeze both exact sources before any engine use
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_web_release.py prepare --side product --work "$RTS_WORK/product"
+      - name: Pure original and building adapter preflight
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s ci -p test_contracts.py -v 2>&1 | tee "$RTS_WORK/preflight-contracts.log"
+          python3 -B -m unittest discover -s ci -p test_military.py -v 2>&1 | tee "$RTS_WORK/preflight-military.log"
+          python3 -B -m unittest discover -s ci -p test_faction.py -v 2>&1 | tee "$RTS_WORK/preflight-faction.log"
+          python3 -B -m unittest discover -s ci -p test_building_contracts.py -v 2>&1 | tee "$RTS_WORK/preflight-building.log"
+          python3 -B -m unittest discover -s ci -p test_runtime_package.py -v 2>&1 | tee "$RTS_WORK/preflight-package.log"
+      - name: Pure source preparation tests and exact lock preflight
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s ci -p test_prepare_building_stage.py -v 2>&1 | tee "$RTS_WORK/preflight-prepare.log"
+          python3 -B ci/preflight_runtime_lock.py --side product --work "$RTS_WORK/product" 2>&1 | tee "$RTS_WORK/preflight-product-lock.log"
+      - name: Prepare pinned official engine and template without launch
+        run: |
+          set -euo pipefail
+          python3 -B ci/prepare_web_release.py engine --side product --work "$RTS_WORK/product"
+          python3 -B ci/prepare_web_templates.py --work "$RTS_WORK/product"
+      - name: Fresh guarded product import
+        run: |
+          set -euo pipefail
+          source "$RTS_WORK/product/pins.env"
+          python3 -B ci/guarded_manifest_ci.py import --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --archive "$RTS_WORK/product/source.zip" --manifest "$RTS_WORK/product/import-manifest.json" --archive-sha256 "$ARCHIVE_SHA" --manifest-sha256 "$MANIFEST_SHA" --output "$RTS_WORK/product/import-evidence" --xdg "$RTS_WORK/product/private/import" --hosted-execution-approved
+      - name: Verify read-only collector then diagnose original guard
+        run: |
+          set -euo pipefail
+          echo '03c61e5983931c36a6569b9bb05b44388a5f714e7adb63a45e58716cfc75705e  .github/diagnostics/export_telemetry.py' | sha256sum --strict --check
+          python3 -B .github/diagnostics/export_telemetry.py --project "$RTS_WORK/product/project" --godot "$RTS_WORK/product/engine/Godot_v4.6.3-stable_linux.x86_64" --template "$RTS_WORK/product/template/web_nothreads_release.zip" --lock "$RTS_WORK/product/export-lock.json" --import-marker "$RTS_WORK/product/private/import/import-complete.json" --output "$RTS_WORK/product/exports" --private "$RTS_WORK/product/private/export" --diagnostic-output "$RTS_WORK/diagnostic"
+      - name: Retain only explicit diagnostic evidence, no product or checkpoints
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v122-export-telemetry-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.RTS_WORK }}/diagnostic/telemetry.json
+            ${{ env.RTS_WORK }}/diagnostic/summary.json
+            ${{ env.RTS_WORK }}/product/exports/web-export-receipt.json
+            ${{ env.RTS_WORK }}/product/exports/export-1/receipt.json
+            ${{ env.RTS_WORK }}/product/exports/export-1/godot.log
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14
