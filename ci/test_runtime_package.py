@@ -661,4 +661,67 @@ class BlockedCombatReportSchemaTests0(unittest.TestCase):
                     with self.assertRaises(ValueError):read(raw)
 
 
+class ShelterDeliveryReportSchemaTests0(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'cargo earned by normal gathering', 'passed': True}, {'name': 'real hit creates ordinary evacuation', 'passed': True}, {'name': 'ordinary travel reaches shelter', 'passed': True}, {'name': 'original work area remains unobserved', 'passed': True}, {'name': 'shelter needs full safety interval', 'passed': True}, {'name': 'waiting checkpoint strict roundtrip', 'passed': True}, {'name': 'saved ninety nine tick shelter clock resumes identically', 'passed': True}, {'name': 'unknown origin does not prevent safe delivery', 'passed': True}, {'name': 'delivery preserves origin danger and earned cargo', 'passed': True}, {'name': 'delivery does not reroute to unchecked depots', 'passed': True}, {'name': 'delivery checkpoint strict roundtrip', 'passed': True}, {'name': 'delivery ten tick restored continuation is exact', 'passed': True}, {'name': 'ordinary travel deposits exact earned load', 'passed': True}, {'name': 'deposit never blindly resumes hidden original', 'passed': True}, {'name': 'deposit grants no healing', 'passed': True}, {'name': 'post deposit danger survives checkpoint', 'passed': True}, {'name': 'alternative is current visible outside old danger', 'passed': True}, {'name': 'safe alternative starts normally without forgetting danger', 'passed': True}, {'name': 'alternative work checkpoint strict roundtrip', 'passed': True}, {'name': 'alternative ten tick restored continuation is exact', 'passed': True}, {'name': 'alternative completes ordinary gather and next delivery', 'passed': True}, {'name': 'second cycle retains unknown danger', 'passed': True}, {'name': 'new explicit stop owns worker and cancels memo', 'passed': True}, {'name': 'normal economy audit remains valid', 'passed': True}, {'name': 'blocked branch reaches actual alternative gathering', 'passed': True}, {'name': 'controlled depot enclosure leaves worker start legal', 'passed': True}, {'name': 'normal delivery search genuinely reaches terminal', 'passed': True}, {'name': 'terminal delivery keeps cargo and danger', 'passed': True}, {'name': 'terminal danger checkpoint is strictly valid', 'passed': True}, {'name': 'persistent blockage cannot reset budgets or loop jobs', 'passed': True}], 'failed': 0, 'scope': 'Controlled actors; earned cargo and real hit; normal travel/deposit and safety updates; no hidden-origin return or natural full-match claim.', 'suite': 'ai_shelter_delivery_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+class ShelterDeliveryReportSchemaTests1(unittest.TestCase):
+    """Frozen engine report; malformed parser fixtures are not gameplay evidence."""
+    def test_exact_report_and_all_rows_fail_closed(self):
+        import copy
+        import validate_latest_contracts as validator
+        report={'checks': [{'name': 'AI gathers earned cargo before threat', 'passed': True}, {'name': 'proximity without actual hit does not seize worker', 'passed': True}, {'name': 'controlled actual attack issued', 'passed': True}, {'name': 'real hit starts independent opponent evacuation', 'passed': True}, {'name': 'evacuation preserves true hit-tick harvest', 'passed': True}, {'name': 'evacuation gives no bank or healing', 'passed': True}, {'name': 'same hit cannot repeat order or reset path attempts', 'passed': True}, {'name': 'retreat snapshot is valid', 'passed': True}, {'name': 'retreat restores paused candidate', 'passed': True}, {'name': 'normal walking reaches safe refuge', 'passed': True}, {'name': 'retreat restored continuation matches', 'passed': True}, {'name': 'enemy not erased by hiding original work area', 'passed': True}, {'name': 'regular AI policy claims evacuee', 'passed': True}, {'name': 'opening food floor housing and idle policy do not steal evacuee', 'passed': True}, {'name': 'direct gather dispatch cannot steal evacuee', 'passed': True}, {'name': 'builder selector cannot steal evacuee', 'passed': True}, {'name': 'fog does not permit original return during safe delivery', 'passed': True}, {'name': 'active danger memory blocks another worker during fog', 'passed': True}, {'name': 'observed safety requires full five seconds', 'passed': True}, {'name': 'new visible threat resets continuous safety clock', 'passed': True}, {'name': 'ninety nine safe ticks do not resume', 'passed': True}, {'name': 'danger memory still blocks other worker at ninety nine', 'passed': True}, {'name': 'safe wait checkpoint restores', 'passed': True}, {'name': 'hundred safe ticks resume original gather', 'passed': True}, {'name': 'saved safe clock resumes on identical tick', 'passed': True}, {'name': 'same tick AI planning preserves resumed order', 'passed': True}, {'name': 'completed safety window releases resource for other worker', 'passed': True}, {'name': 'returned worker actually deposits normal earned food', 'passed': True}, {'name': 'economic dispatch chooses observed safe resource', 'passed': True}, {'name': 'economic assignment never falls back to threatened node', 'passed': True}, {'name': 'second worker starts independent shelter', 'passed': True}, {'name': 'terminal route preserves danger without restarting journey', 'passed': True}, {'name': 'same hit cannot restart terminal route', 'passed': True}, {'name': 'depletion branch restores real retreat', 'passed': True}, {'name': 'depleted origin safely deposits retained cargo', 'passed': True}, {'name': 'no safe refuge keeps ordinary work and bounded attempts', 'passed': True}, {'name': 'ordinary harvest reaches delivery before attack', 'passed': True}, {'name': 'delivery evacuation retains original resource and full cargo', 'passed': True}, {'name': 'farm worker is not automatically evacuated', 'passed': True}, {'name': 'manual replacement fixture enters evacuation', 'passed': True}, {'name': 'explicit stop retires AI memo', 'passed': True}, {'name': 'new actual hit can start new evacuation', 'passed': True}, {'name': 'player safety toggle never clears AI memo', 'passed': True}, {'name': 'worker death clears AI memo and settles cargo', 'passed': True}, {'name': 'all controlled ledgers conserve', 'passed': True}], 'failed': 0, 'scope': 'Controlled true-hit AI evacuation, current observation safety, ordinary cargo and save continuation; not natural battle or physical phone acceptance', 'suite': 'ai_worker_safety_contract'}
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td)
+            def read(raw):
+                (stage/'godot.log').write_text(raw+'\n')
+                return validator.read_report(stage,report['suite'])
+            self.assertEqual(read(json.dumps(report)),report)
+            mutants=[]
+            for key,value in [('failed',False),('failed',0.0),('failed',1),('scope','wrong'),('suite','wrong')]:
+                d=copy.deepcopy(report);d[key]=value;mutants.append(json.dumps(d))
+            for i in range(len(report['checks'])):
+                for value in (False,1):
+                    d=copy.deepcopy(report);d['checks'][i]['passed']=value;mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);del d['checks'][i];mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['name']+=' wrong';mutants.append(json.dumps(d))
+                d=copy.deepcopy(report);d['checks'][i]['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].reverse();mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['checks'].append(d['checks'][0]);mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);d['extra']=True;mutants.append(json.dumps(d))
+            d=copy.deepcopy(report);del d['scope'];mutants.append(json.dumps(d))
+            raw=json.dumps(report);mutants.extend([raw+'\n'+raw,raw[:-1]+',"failed":0}', 'ERROR: failure\n'+raw])
+            self.assertEqual(len(mutants),5*len(report['checks'])+12)
+            for raw in mutants:
+                with self.subTest(raw=raw):
+                    with self.assertRaises(ValueError):read(raw)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
