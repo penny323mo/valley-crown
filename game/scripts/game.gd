@@ -4919,7 +4919,12 @@ func _update_hud():
 func _reveal_context_primary(identity):
 	# Let the replacement row settle. Never move it beneath an active gesture,
 	# or after a later context or explicit scroll superseded this one-shot.
-	await get_tree().process_frame
+	var receiver = _finish_context_primary_reveal.bind(identity)
+	# Repeated same-context scheduling within this frame shares one owned callback.
+	if not get_tree().process_frame.is_connected(receiver):
+		get_tree().process_frame.connect(receiver, CONNECT_ONE_SHOT)
+
+func _finish_context_primary_reveal(identity):
 	if identity!=action_selection_ids or identity!=action_reveal_ids:return
 	action_reveal_ids=[]
 	if not all_touch_ids.is_empty() or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or action_scroll.scroll_horizontal!=0:return
