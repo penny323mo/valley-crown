@@ -54,3 +54,9 @@ preserved in art/advanced_buildings/upstream/QUATERNIUS-LICENSE.txt.
 Source: https://quaternius.itch.io/medieval-village-megakit
 License: https://creativecommons.org/publicdomain/zero/1.0/
 No new public license is granted for original project code or artwork.
+
+Quaternius Stylized Nature Megakit Standard, CC0 1.0.
+Official https://quaternius.itch.io/stylized-nature-megakit
+Only Rock_Medium_1/2/3 and Rocks_Diffuse.png from free Standard68/116. Original notice path: art/resource_donors/License_Standard.txt. Selected glTF/bin are preserved in the source repository under art/resource_donors; the product release packages the notice at that same relative path. No PRO/SOURCE shaders.
+Archive SHA256 298f6732b872e4cf7b30e6e7abf9641c7f6dc6b326df37ac089533ed7e3d58c9.
+Our derivatives normalize radius/ground alignment, uniformly shrink depleted visual stages, and add three solid irregular flat-topped steel-gray ore chunks (66 triangles) embedded into the original rock surface per iron model. Raw donor untouched; ore chunks are our presentation experiment, not publisher-authored ore.

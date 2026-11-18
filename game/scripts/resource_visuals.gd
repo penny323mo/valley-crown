@@ -86,7 +86,8 @@ static func _canopy(st:SurfaceTool,center:Vector3,size:Vector3,color:Color) -> v
 			if band>0:_triangle(st,p0,p1,p2,tint)
 			if band<3:_triangle(st,p2,p1,p3,tint)
 
-static func _make_mesh(kind: String, depletion: int=0) -> ArrayMesh:
+static func _make_mesh(kind: String, depletion: int=0, variant: int=0) -> ArrayMesh:
+	if kind in ["stone","iron"]:return preload("res://scripts/licensed_rock_visual.gd").make_mesh(kind,depletion,variant)
 	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	if kind in ["stone","iron"]:
 		var color:=Color("c6c1aa") if kind=="stone" else Color("8c9591")
@@ -134,9 +135,11 @@ static func present(parent:Node3D,record:Dictionary) -> void:
 	var visual=parent.get_node_or_null("ResourceVisual_"+kind)
 	if not visual is MeshInstance3D:return
 	var level=stage(record)
-	if visual.get_meta("depletion_stage",0)==level:return
+	var variant: int = posmod(int(record.get("id",0)),3) if kind in ["stone","iron"] else 0
+	if visual.get_meta("depletion_stage",0)==level and visual.get_meta("rock_variant",-1)==variant:return
 	var key=kind+"_"+str(level) if level>0 else kind
-	if not cache.has(key):cache[key]=_make_mesh(kind,level)
+	if variant>0:key+="_v"+str(variant)
+	if not cache.has(key):cache[key]=_make_mesh(kind,level,variant)
 	# Replacement affects only this observed proxy. Clear its old dim overrides,
 	# then reapply remembered styling from this same immutable observation.
 	visual.mesh=cache[key]
@@ -144,4 +147,5 @@ static func present(parent:Node3D,record:Dictionary) -> void:
 	visual.remove_meta("observed_material_override")
 	visual.remove_meta("observed_surface_overrides")
 	visual.set_meta("depletion_stage",level)
+	visual.set_meta("rock_variant",variant)
 	preload("res://scripts/remembered_material.gd").apply(visual,record.get("remembered",false))
