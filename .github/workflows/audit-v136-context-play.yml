@@ -46,7 +46,7 @@ jobs:
           (dest/'input.json').write_text(json.dumps(row))
           PY
       - name: Run real Web export with ordinary direct gather and attack
-        run: python3 -B ci/audit-v136-context-play.py /tmp/v133-browser-proof context vc-ae5db9fcbf8e
+        run: python3 -B ci/audit-v136-context-play.py /tmp/v133-browser-proof baseline vc-ae5db9fcbf8e
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
