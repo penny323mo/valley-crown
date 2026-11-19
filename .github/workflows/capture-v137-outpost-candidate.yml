@@ -1,0 +1,91 @@
+name: Capture exact v137 outpost preview candidate
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-v137-outpost-candidate.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {width: 390, height: 844}
+          - {width: 640, height: 360}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+      - name: Bind official engine, exact artifact bytes and reviewed capture tools
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '5d5a667fe73af67726298e1def9436bdfd874381dcc7ce2aeb541ff4b1f6d907  ci/capture-v137-outpost.gd' | sha256sum --strict -c
+          echo '61cb64f9dfaa1a6aee1ca288435b1eb8b6349e3ae2a2d52b00c9a67962a05355  ci/capture-v137-outpost-guard.py' | sha256sum --strict -c
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v137-engine.zip
+          unzip -q /tmp/v137-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,sys
+          sys.path[:0]=['scripts']
+          from web_release_archive import GitHub,verified_members
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          row,workflow_head,source,tree=({'artifact_id': 14575186995, 'run_id': 44613205661, 'build': 'vc-98a66fc81dbe', 'metadata_sha256': 'ceea5dac9897dcdafc5f6ef06272c64e5300ba3d35b38da2708e321ea74ebd3c', 'zip_sha256': '1eddf11cf1cac5d61be4884ae0ae9e1936eb7f34d09905a9570a1a03539bf64b'}, '6489fd64b1fc7d8fe2818e0afb188173e8b4320c', '420a7c3d3769a33f4a929577122efd4ed2d10db3', 'ba9e44ecf1f97db5c148e2e1934c206ef8023a18')
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']==workflow_head
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          files=verified_members(g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True),row)
+          m=json.loads(files['candidate-metadata.json'])
+          assert m['source_commit']==source and m['game_tree']==tree
+          pck=files['artifacts/clean-a/index.pck']
+          assert pck==files['artifacts/clean-b/index.pck']
+          path=pathlib.Path('/tmp/v137-outpost-capture');path.mkdir()
+          (path/'index.pck').write_bytes(pck)
+          (path/'capture.gd').write_bytes(pathlib.Path('ci/capture-v137-outpost.gd').read_bytes())
+          (path/'input.json').write_text(json.dumps({'source_commit':source,'game_tree':tree,'build':row['build'],'pck_sha256':hashlib.sha256(pck).hexdigest()}))
+          PY
+      - name: Run bounded real engine with ordinary outpost preview and construction
+        run: python3 -B ci/capture-v137-outpost-guard.py /tmp/v137-outpost-capture vc-98a66fc81dbe ${{ matrix.width }} ${{ matrix.height }} candidate
+      - name: Verify original real-game PNGs, actual ordinary spend and exact product identity
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('/tmp/v137-outpost-capture')
+          d=json.loads((p/'images/report.json').read_text())
+          run=json.loads((p/'native-render-receipt.json').read_text())
+          info=json.loads((p/'input.json').read_text())
+          assert d['pass'] and d['visual_checks'] and all(x['passed'] for x in d['visual_checks'])
+          assert d['build']=='vc-98a66fc81dbe'==info['build'] and d['audit'] and d['visual_only'] and d['paid_preview']
+          assert run['returncode']==0 and run['live_process_group_gone'] and run['stop_reason'] is None
+          assert run['inputs']['index.pck']==info['pck_sha256'] and run['after']['oom']==run['baseline']['oom']
+          assert d['stage_ticks']==[359] and d['ticks']==401 and not d['finished']
+          assert set(d['images'])=={'outside-preview'}
+          for name,row in d['images'].items():
+              dimensions=(${{ matrix.width }},${{ matrix.height }})
+              assert (row['width'],row['height'])==dimensions
+              data=(p/'images'/(name+'.png')).read_bytes()
+              assert data.startswith(bytes.fromhex('89504e470d0a1a0a')) and hashlib.sha256(data).hexdigest()==row['sha256']
+              assert data[12:16]==b'IHDR' and (int.from_bytes(data[16:20],'big'),int.from_bytes(data[20:24],'big'))==dimensions
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v137-outpost-candidate-${{ matrix.width }}x${{ matrix.height }}
+          path: |
+            /tmp/v137-outpost-capture/input.json
+            /tmp/v137-outpost-capture/images/*.png
+            /tmp/v137-outpost-capture/images/report.json
+            /tmp/v137-outpost-capture/native-render-*.json
+            /tmp/v137-outpost-capture/native-render-*.txt
+          retention-days: 30
+          if-no-files-found: error

@@ -1,0 +1,61 @@
+name: Audit v137 exact Web Escort outpost placement
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v137-outpost-browser.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  browser:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact real product archive and isolate browser files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo 'af7d0852691a9eead987c0568b3bbc5cdca8572f981299cc6732677ee13ee713  ci/audit-v137-outpost-browser.py' | sha256sum --strict -c
+          google-chrome --version
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,re,sys
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          row={'artifact_id': 14575186995, 'run_id': 44613205661, 'build': 'vc-98a66fc81dbe', 'metadata_sha256': 'ceea5dac9897dcdafc5f6ef06272c64e5300ba3d35b38da2708e321ea74ebd3c', 'zip_sha256': '1eddf11cf1cac5d61be4884ae0ae9e1936eb7f34d09905a9570a1a03539bf64b'}
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']=='6489fd64b1fc7d8fe2818e0afb188173e8b4320c'
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
+          members=verified_members(data,row)
+          identity=json.loads(members['candidate-metadata.json'])
+          assert identity['source_commit']=='420a7c3d3769a33f4a929577122efd4ed2d10db3' and identity['game_tree']=='ba9e44ecf1f97db5c148e2e1934c206ef8023a18'
+          dest=pathlib.Path('/tmp/v133-browser-proof');dest.mkdir()
+          for path,data in members.items():
+              if path.startswith('artifacts/clean-a/'):
+                  name=path.split('/')[-1]
+                  assert name.startswith('index.')
+                  (dest/name).write_bytes(data)
+          (dest/'probe.html').write_text('<!doctype html><title>local disposable browser proof</title>')
+          (dest/'input.json').write_text(json.dumps(row))
+          PY
+      - name: Run exact Web export with ordinary Escort outside placement
+        run: python3 -B ci/audit-v137-outpost-browser.py /tmp/v133-browser-proof candidate vc-98a66fc81dbe
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v137-outpost-browser-proof
+          path: |
+            /tmp/v133-browser-proof/input.json
+            /tmp/v133-browser-proof/browser-proof.json
+            /tmp/v133-browser-proof/chromedriver.log
+            /tmp/v133-browser-proof/browser-console.json
+            /tmp/v133-browser-proof/*-actual-battle.png
+          retention-days: 15
+          if-no-files-found: error
