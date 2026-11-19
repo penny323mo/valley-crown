@@ -1,9 +1,8 @@
 extends RefCounted
-## Presentation-only portraits rendered from the actual in-game models.
+## Presentation-only model portraits and separately classified trade symbols.
+## ICONS contains only the sixteen actual-model renders; trade SVGs are not portraits.
 ## Names, prices, disabled states and all command callbacks remain on the Button.
 const ICONS = {
-	"trade_iron_food":preload("res://assets/mature/ui/icons/trade_iron_food.svg"),
-	"trade_stone_food":preload("res://assets/mature/ui/icons/trade_stone_food.svg"),
 	"villager":preload("res://assets/mature/ui/portraits/villager.png"),
 	"scout":preload("res://assets/mature/ui/portraits/scout.png"),
 	"spearman":preload("res://assets/mature/ui/portraits/spearman.png"),
@@ -21,9 +20,13 @@ const ICONS = {
 	"workshop":preload("res://assets/mature/ui/portraits/workshop.png"),
 	"town_center":preload("res://assets/mature/ui/portraits/town_center.png"),
 }
+const TRADE_ICONS = {
+	"trade_iron_food":preload("res://assets/mature/ui/icons/trade_iron_food.svg"),
+	"trade_stone_food":preload("res://assets/mature/ui/icons/trade_stone_food.svg"),
+}
 static func apply(button: Button, kind: String, prominent: bool=false) -> void:
-	if not ICONS.has(kind): return
-	button.icon=ICONS[kind]
+	if not ICONS.has(kind) and not TRADE_ICONS.has(kind): return
+	button.icon=ICONS[kind] if ICONS.has(kind) else TRADE_ICONS[kind]
 	button.expand_icon=true
 	button.icon_alignment=HORIZONTAL_ALIGNMENT_LEFT
 	button.add_theme_constant_override("icon_max_width",40 if prominent else 32)
