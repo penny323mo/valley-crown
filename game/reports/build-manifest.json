@@ -1,5 +1,5 @@
 {
-  "build": "vc-ea0e9d130c01",
+  "build": "vc-deb79988e5f5",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -254,7 +254,7 @@
     "scripts/context_manual.gd": "706d6685ff53a4a2ff5aac2023cc2607cb9dd71b762d4ceda2bd32099954247c",
     "scripts/control_point.gd": "43d35a6c8eb140e1c569c30dec949fa7f094764a56abfaf2075b68b6ba462e8e",
     "scripts/damage_feedback.gd": "d898f9cc524e59ad2b47060c4ecd18bd6c3c0f6e607bea08d5fb0f165469bd7b",
-    "scripts/demo_tutorial.gd": "8425eaee5ca4097321ecf9e20534a96807faa3b90bc8af0a1bd8086529cea57f",
+    "scripts/demo_tutorial.gd": "b62c0c4821d8f263cd1fd5909992add47162404298fecfbd7cc58d66a019b251",
     "scripts/demo_tutorial.gd.uid": "ac8e9fa28e5abba85361e9af54b9b850274f174446a886662220ede99ab60a51",
     "scripts/economy_ledger.gd": "da9c3a6851b454a1f32c15db7f789b2af27a628061b0a5f7d4810dc82a5bb877",
     "scripts/economy_ledger.gd.uid": "5c00fd1940b699d4be1d6d3af93df3255e86485c24b0980faad7ea7145c61e3d",
@@ -273,7 +273,7 @@
     "scripts/fog_inward_edge.gd": "fc079aa8a18183e5be6e73c24ee3519410b227b9a752de41bb1066c13553650d",
     "scripts/frontier_escort.gd": "0fca8cf472dd270a78714efd1b371c5cfc2469678451500f9edfa1a30d432bbb",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "d79aa5956c77cb83b9f15caab4d49347a7df0b78d0efd99a0b1d79aec7e5b32c",
+    "scripts/game.gd": "7aeb397015862cd3bf4855bf8f962429aa3c4cb46a94050db853f865a71a8eed",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/garrison_checkpoint.gd": "85b9c4696b7b632600e2fe81c083015edb482f07bf100a4c08be43fba0f88427",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
@@ -312,7 +312,7 @@
     "scripts/rest_recovery.gd": "d7c5e3037c5e8bbd143be07b2c7214ad1b7546e4bf1642ef36ec68a3d3ec28e9",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "6aeb056f1d914b0949b2fcd9f4d0777c79b35f783dfc16dd54845beb7a3696d1",
+    "scripts/rules.gd": "bde9bc966de20b1d3bdf12ea92f6b82aac6c51de403e7bcde5058e981fe02a26",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",

@@ -13,6 +13,25 @@ const HINTS = [
 	"選馬廄訓練騎兵，或選工坊訓練攻城車，等待出生。",
 	"選軍隊後點敵方單位或建築，自動攻擊；造成實際傷害。"
 ]
+# Short touch-only prompts for the two-line landscape card. Full instructions
+# (including mouse and objective detail) remain in the existing Details pane.
+const LANDSCAPE_HINTS=[
+	"點選己方村民。",
+	"選取村民後，點漿果或樹木採集。",
+	"等村民送資源回主堡，才算入庫。",
+	"選村民、民居、位置，再確認施工。",
+	"選村民、兵營、位置，再確認施工。",
+	"選兵營，訓練長槍兵並等待出生。",
+	"選主堡，研究城防時代並等待完成。",
+	"城防時代：建馬廄或工坊。",
+	"在馬廄訓練騎兵，或在工坊訓練攻城車。",
+	"選軍隊後點敵人，並造成傷害。"
+]
+func landscape_text(paused:bool)->String:
+	var i=step()
+	if i==KEYS.size():return "教學完成！"
+	return ("已暫停 · " if paused else "")+LANDSCAPE_HINTS[i]
+
 var achieved = {}
 var skipped = false
 func reset():

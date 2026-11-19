@@ -333,6 +333,8 @@ var return_cargo_button: Button
 var stop_button: Button
 var build_confirm: Button
 var compact_ui=false
+var low_landscape_ui=false
+var tutorial_sidecard=false
 var short_ui=false
 var compact_top_stack: VBoxContainer
 var compact_top_line: HBoxContainer
@@ -4608,6 +4610,7 @@ func _layout_ui():
 	if not is_inside_tree() or not is_instance_valid(ui): return
 	var size=get_viewport().get_visible_rect().size
 	short_ui=size.y<560; compact_ui=size.x<760 or short_ui
+	low_landscape_ui=size.y>=320 and size.y<=430 and size.x>=620 and size.x<=960
 	var narrow=size.x<620
 	var has_alert=not game_over and not battle_alerts.peek(tick_count).is_empty()
 	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
@@ -4832,7 +4835,7 @@ func _update_hud():
 	var counter_count=selection.filter(func(record):return record.get("owned",false) and record.get("target_policy","")=="counter").size()
 	if counter_count>0:selection_detail.text+=" · 克制優先 %d" % counter_count
 	if selection.size()==1 and selection[0].kind=="town_center" and selection[0].owned:selection_summary.text+=" · 避難 %d/5（途中 %d）" % [selection[0].get("garrison_count",0),selection[0].get("garrison_pending_count",0)]
-	var key=str(_garrison_ui_key())+str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(box_select_mode)+":"+str(rally_building)
+	var key=str(_garrison_ui_key())+str(worker_safety_enabled)+":"+str(military_tech_completed[0])+":"+str(_age2(0))+":"+str(_research_pending(0))+":"+str(selected)+":"+build_mode+":"+str(compact_ui)+":"+str(short_ui)+":"+str(low_landscape_ui)+":"+str(box_select_mode)+":"+str(rally_building)
 	if selection.size()==1: key+=":"+str(selection[0].built)+":"+str(selection[0].hp<selection[0].max_hp)+":"+_queue_action_identity(selection[0])+":"+str(selection[0].get("rally_point",Vector3.INF))+":"+str(selection[0].get("rally_target",-1))+":"+str(selection[0].get("rally_mode","move"))+":"+str(selection[0].get("repeat_kind",""))+":"+str(selection[0].get("repeat_generation",0))
 	key+=":"+str(_military_failure_identity())
 	key+=":"+str(WoundedRetreat.injured(faction_views[0].records(),selected))
@@ -5058,7 +5061,13 @@ func _rebuild_actions(selection):
 		shelter_button.name="GarrisonSelected";shelter_button.tooltip_text="最多五名村民步行進入最近己方主堡；主堡被毀，堡內村民亦會死亡。"
 		for kind in Rules.BUILDABLE_KINDS:
 			var choice=kind
-			var button=_button(Rules.NAMES[kind]+"\n"+Rules.cost_label(kind)+( "\n建成後自動耕作" if kind=="farm" else "")+( "\n需城防時代" if not _kind_unlocked(kind,0) else ""),func(): _start_build(choice),100)
+			var hint_separator=" · " if low_landscape_ui else "
+"
+			var caption=Rules.NAMES[kind]+"
+"+Rules.cost_label(kind)
+			if kind=="farm":caption+=hint_separator+("自動耕作" if low_landscape_ui else "建成後自動耕作")
+			if not _kind_unlocked(kind,0):caption+=hint_separator+"需城防時代"
+			var button=_button(caption,func(): _start_build(choice),100)
 			CommandIcons.apply(button,kind,true)
 			button.disabled=not _kind_unlocked(kind,0); actions.add_child(button)
 			# Preserve the first build target in the small-phone viewport; shelter remains next in the scroll strip.
@@ -5108,7 +5117,7 @@ func _rebuild_actions(selection):
 					var completed=military_tech_completed[0].has(tech)
 					var pending=_military_research_pending(tech,0)
 					var label=Rules.NAMES[tech]+(" · 已完成" if completed else (" · 研究中" if pending else " · 45 秒"))+"\n"+Rules.TECH_DETAILS[tech]
-					if not completed and not pending: label+="\n"+Rules.cost_label(tech)
+					if not completed and not pending: label+=(" · " if low_landscape_ui else "\n")+Rules.cost_label(tech)
 					var button=_button(label,func(): _submit("military_research",{"building":ent.id,"kind":tech}),200)
 					button.disabled=completed or pending; button.name=tech; actions.add_child(button)
 			if ent.kind=="town_center":
@@ -6978,19 +6987,32 @@ func _refresh_tutorial():
 	tutorial_menu_entry.visible=not demo_tutorial.skipped and not game_over
 	var has_alert=not game_over and not battle_alerts.peek(tick_count).is_empty()
 	tutorial_entry.visible=not demo_tutorial.skipped and not game_over and not (has_alert and get_viewport().get_visible_rect().size.x<760)
-	tutorial_label.text=demo_tutorial.text(paused)
+	tutorial_label.text=demo_tutorial.landscape_text(paused) if low_landscape_ui and not feedback else demo_tutorial.text(paused)
 	tutorial_skip.text="收起" if demo_tutorial.step()==demo_tutorial.KEYS.size() else "跳過"
 	if is_instance_valid(guidance_detail):
 		guidance_detail.text=toast_label.text if feedback else demo_tutorial.checklist(paused)
+	var sidecard=low_landscape_ui and not feedback
+	if sidecard!=tutorial_sidecard:
+		tutorial_sidecard=sidecard
+		_place_tutorial_panel()
 	_refresh_tutorial_locator()
 
 func _layout_tutorial():
 	if not is_instance_valid(tutorial_panel): return
 	_refresh_tutorial()
+	_place_tutorial_panel()
+
+func _place_tutorial_panel():
 	var viewport_size=get_viewport().get_visible_rect().size
 	var width=viewport_size.x-12
-	tutorial_panel.position=Vector2(6,hud_top.position.y+hud_top.size.y+4)
-	tutorial_panel.size=Vector2(width,0)
+	# Keep the complete-width behavior for short-lived, consequential feedback
+	# such as blocked building sites and mission/restore notifications.
+	# Only the persistent lesson moves aside; it still opens by default.
+	var card_width=minf(width,maxf(392.0,width*0.58)) if tutorial_sidecard else width
+	tutorial_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART if tutorial_sidecard else TextServer.AUTOWRAP_OFF
+	tutorial_label.max_lines_visible=2 if tutorial_sidecard else 1
+	tutorial_panel.position=Vector2(viewport_size.x-card_width-6,hud_top.position.y+hud_top.size.y+4)
+	tutorial_panel.size=Vector2(card_width,0)
 
 # Standalone battlefield fixtures retain deliberate startup; the product shell
 # owns navigation when connected. No game save or tutorial skip is implied.
