@@ -22,11 +22,11 @@ func run():
   check('resume preserves manual '+str(size),g.camera_zoom==35)
   var focus=g.camera_focus;g._pan_camera(Vector2(10,0));g._camera_update()
   check('pan changes focus not zoom '+str(size),g.camera_focus!=focus and g.camera_zoom==35)
-  g.touch_pinch_active=true;g.touch_previous_distance=100;g._update_touch_pinch(1000)
+  g.touch_pinch_anchor_zoom=g.camera_zoom;g.touch_pinch_anchor_distance=100;g._update_touch_pinch(1000)
   check('pinch min unchanged '+str(size),g.camera_zoom==15)
-  g.touch_previous_distance=1000;g._update_touch_pinch(1)
+  g._update_touch_pinch(1)
   check('pinch max unchanged '+str(size),g.camera_zoom==46)
-  g.touch_pinch_active=false
+  g.touch_pinch_anchor_distance=0
   for z in [17.0,35.0]:
    g.camera_zoom=z;g._camera_update();var saved=Codec.capture_result(g)
    check('snapshot valid '+str(z),saved.ok)

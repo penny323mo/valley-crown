@@ -38,12 +38,12 @@ func run():
  # Small staggered pan must move the camera without accidental span zoom.
  await drag(p+Vector2(4,0),10,Vector2(4,0))
  await drag(p+Vector2(85,0),11,Vector2(5,0))
- var pan_without_zoom=g.camera_focus!=before and is_equal_approx(g.camera_zoom,zoom) and not g.touch_pinch_active
- # Crossing the intent gate rebases; only subsequent deliberate pinch zooms.
+ var pan_without_zoom=g.camera_focus!=before and is_equal_approx(g.camera_zoom,zoom) and is_equal_approx(g.touch_pinch_anchor_distance,80.0)
+ # Beyond the dead zone only the excess span contributes, without a jump.
  await drag(p+Vector2(110,0),11,Vector2(25,0))
- var activation_without_jump=g.touch_pinch_active and is_equal_approx(g.camera_zoom,zoom)
+ var activation_without_jump=is_equal_approx(g.camera_zoom,zoom*80.0/94.0)
  await drag(p+Vector2(130,0),11,Vector2(20,0))
- var deliberate_zoom=g.camera_zoom<zoom and is_equal_approx(g.camera_zoom,zoom*106.0/126.0)
+ var deliberate_zoom=g.camera_zoom<zoom and is_equal_approx(g.camera_zoom,zoom*80.0/114.0)
  await touch(p+Vector2(4,0),10,false);await touch(p+Vector2(130,0),11,false)
  check("two finger pan and pinch work",pan_without_zoom and activation_without_jump and deliberate_zoom and g.camera_focus!=before and g.commands==commands and g.selected==selected)
  before=g.camera_focus
