@@ -315,9 +315,8 @@ var gui_touch_press={} # GUI-only ownership; world touch_points remain separate.
 var touch_gesture=false
 var touch_origin=Vector2.ZERO
 var touch_previous_center=Vector2.ZERO
-var touch_previous_distance=0.0
 var touch_pinch_anchor_distance=0.0
-var touch_pinch_active=false
+var touch_pinch_anchor_zoom=30.0
 const TOUCH_PINCH_SLOP_PIXELS=12.0
 const TOUCH_PINCH_SLOP_RATIO=0.06
 var middle_drag=false
@@ -3352,7 +3351,7 @@ func _aftermath_input(event):
 			var center=(first+second)*0.5;var distance=first.distance_to(second)
 			_pan_camera(touch_previous_center-center)
 			_update_touch_pinch(distance)
-			touch_previous_center=center;touch_previous_distance=distance
+			touch_previous_center=center
 
 # --- Fair, finite-frequency Demo AI01 ---
 # Defaults are documented in AI_POLICY.md. This layer submits ordinary commands;
@@ -4578,7 +4577,7 @@ func _cancel_pointer_streams():
 				button.disabled=true; button.disabled=false
 	dragging=false; drag_active=false; middle_drag=false
 	touch_points.clear(); touch_world_epochs.clear(); touch_camera_pair.clear()
-	touch_pinch_active=false; touch_pinch_anchor_distance=0.0
+	touch_pinch_anchor_distance=0.0; touch_pinch_anchor_zoom=camera_zoom
 	all_touch_ids.clear(); gui_touch_press.clear(); action_touch_scroll.clear(); touch_gesture=false
 	if is_instance_valid(drag_rect): drag_rect.hide()
 
@@ -6024,25 +6023,26 @@ func _sync_touch_camera_pair():
 		for index in [ids[0],ids[1]]: pair.append([index,touch_world_epochs[index]])
 	if pair!=touch_camera_pair:
 		touch_camera_pair=pair
-		touch_pinch_active=false; touch_pinch_anchor_distance=0.0
+		touch_pinch_anchor_distance=0.0; touch_pinch_anchor_zoom=camera_zoom
 		if pair.size()==2:
 			# Called before the next drag replaces its stored position.
 			var first=touch_points[ids[0]]; var second=touch_points[ids[1]]
 			touch_previous_center=(first+second)*0.5
-			touch_previous_distance=first.distance_to(second)
-			touch_pinch_anchor_distance=touch_previous_distance
+			touch_pinch_anchor_distance=first.distance_to(second)
 	return ids
 
 func _update_touch_pinch(distance):
-	# Pan always follows the centroid. Span jitter is not zoom intent. Compare
-	# cumulative span to this press pair's baseline, not each tiny drag delta.
-	if not touch_pinch_active:
-		var threshold=maxf(TOUCH_PINCH_SLOP_PIXELS,touch_pinch_anchor_distance*TOUCH_PINCH_SLOP_RATIO)
-		if touch_pinch_anchor_distance>0 and absf(distance-touch_pinch_anchor_distance)>threshold:
-			# Rebase at activation: never apply the dead zone as a zoom jump.
-			touch_pinch_active=true
+	# Per-finger drag callbacks can momentarily reduce or enlarge the span
+	# during pure translation. An absolute owned-pair reference makes that
+	# temporary span reversible, rather than accumulating a leftover zoom ratio.
+	var anchor=touch_pinch_anchor_distance
+	if anchor<=0:
+		if distance>0:touch_pinch_anchor_distance=distance
 		return
-	if touch_previous_distance>0: camera_zoom=clampf(camera_zoom*touch_previous_distance/maxf(1,distance),15,46)
+	var deadzone=maxf(TOUCH_PINCH_SLOP_PIXELS,anchor*TOUCH_PINCH_SLOP_RATIO)
+	var delta=distance-anchor
+	var effective_span=anchor+signf(delta)*maxf(0.0,absf(delta)-deadzone)
+	camera_zoom=clampf(touch_pinch_anchor_zoom*anchor/maxf(1.0,effective_span),15,46)
 
 func _cleanup_touch_release(index,press_epoch):
 	if touch_press_epochs.get(index,-1)!=press_epoch: return
@@ -6148,7 +6148,7 @@ func _unhandled_input(event):
 			var center=(first+second)*0.5; var distance=first.distance_to(second)
 			_pan_camera(touch_previous_center-center)
 			_update_touch_pinch(distance)
-			touch_previous_center=center; touch_previous_distance=distance
+			touch_previous_center=center
 		elif (box_select_mode or touch_box_automatic) and touch_box_index==event.index:
 			if event.position.distance_to(touch_box_origin)>=14: touch_box_active=true
 			if touch_box_active:

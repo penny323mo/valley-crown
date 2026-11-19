@@ -42,7 +42,53 @@ func dispose(g):
 	g.drag_rect.free();g.free()
 func trio(g):
 	touch(g,0,Vector2(100,100),true);touch(g,1,Vector2(200,100),true);touch(g,2,Vector2(400,100),true)
+func _zoom_regression():
+	# Exercise order-dependent browser events using the same real routing.
+	for span in [58,116,194]:
+		for angle in [0.0,0.75,1.57]:
+			for reverse in [false,true]:
+				var g=fixture()
+				var a=Vector2(140,220); var b=a+Vector2(span,0).rotated(angle)
+				var drift=Vector2(span*0.44,18).rotated(angle)
+				touch(g,0,a,true);touch(g,1,b,true)
+				if reverse:
+					drag(g,1,b+drift,drift);drag(g,0,a+drift,drift)
+				else:
+					drag(g,0,a+drift,drift);drag(g,1,b+drift,drift)
+				check("parallel touch span/angle/order %d %.2f %s" % [span,angle,str(reverse)],is_equal_approx(g.camera_zoom,30.0) and (g.pans[0]+g.pans[1]).is_equal_approx(-drift) and g.selected==[42] and g.taps.is_empty())
+				touch(g,0,a+drift,false);touch(g,1,b+drift,false);dispose(g)
+	var g=fixture()
+	var a=Vector2(155,220);var b=Vector2(295,220)
+	touch(g,0,a,true);touch(g,1,b,true)
+	drag(g,0,a+Vector2(10,0),Vector2(10,0))
+	check("dead zone ignores tiny jitter",is_equal_approx(g.camera_zoom,30.0))
+	drag(g,0,a+Vector2(12.1,0),Vector2(2.1,0))
+	check("continuous onset beyond the deadzone",g.camera_zoom>30.0 and g.camera_zoom<30.1)
+	drag(g,0,a-Vector2(42,0),Vector2(-54.1,0))
+	drag(g,1,b+Vector2(56,0),Vector2(56,0))
+	check("true spread with shifted centroid zooms in",g.camera_zoom<23 and g.camera_zoom>=15)
+	drag(g,0,a,Vector2(42,0));drag(g,1,b,Vector2(-56,0))
+	check("same span after true pinch returns exact original zoom",is_equal_approx(g.camera_zoom,30.0))
+	drag(g,0,a+Vector2(58,0),Vector2(58,0));drag(g,1,b-Vector2(55,0),Vector2(-55,0))
+	check("true squeeze zooms out and is capped",is_equal_approx(g.camera_zoom,46.0))
+	drag(g,0,a,Vector2(-58,0));drag(g,1,b,Vector2(55,0))
+	check("moves freely back from clamp within the same gesture",is_equal_approx(g.camera_zoom,30.0))
+	drag(g,1,b+Vector2(45,0),Vector2(45,0));var held_zoom=g.camera_zoom
+	touch(g,1,b+Vector2(45,0),false)
+	touch(g,1,b+Vector2(70,0),true)
+	drag(g,1,b+Vector2(75,0),Vector2(5,0))
+	check("replacement finger inherits actual zoom but rebases span",is_equal_approx(g.camera_zoom,held_zoom))
+	g._cancel_pointer_streams()
+	drag(g,1,b+Vector2(110,0),Vector2(35,0))
+	check("canceled pointer streams cannot change zoom",is_equal_approx(g.camera_zoom,held_zoom) and g.touch_camera_pair.is_empty())
+	touch(g,0,a,false);touch(g,1,b,false)
+	touch(g,0,a,true);touch(g,1,a,true)
+	drag(g,1,a+Vector2(40,0),Vector2(40,0))
+	check("coincident touch pair establishes first valid span without zoom",is_equal_approx(g.camera_zoom,held_zoom))
+	dispose(g)
+
 func _initialize():
+	_zoom_regression()
 	var g=fixture()
 	touch(g,0,Vector2(100,100),true)
 	drag(g,0,Vector2(120,100),Vector2(20,0))
