@@ -1,0 +1,84 @@
+name: Trial of genuine 3D quarry and berry mats against exact product
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-resource-site-prototype.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+      - name: Bind official engine, exact artifact bytes and reviewed capture tools
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '7dc822c7263cd9e599d146a9e6217eae4af54cf8059d65031fbdf67c3e51eb9a  ci/capture-resource-site-prototype.gd' | sha256sum --strict -c
+          echo '61cb64f9dfaa1a6aee1ca288435b1eb8b6349e3ae2a2d52b00c9a67962a05355  ci/capture-resource-site-prototype-guard.py' | sha256sum --strict -c
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v137-engine.zip
+          unzip -q /tmp/v137-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,sys
+          sys.path[:0]=['scripts']
+          from web_release_archive import GitHub,verified_members
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          row,workflow_head,source,tree=({'artifact_id': 14572247534, 'run_id': 44605756697, 'build': 'vc-037b3db3b754', 'metadata_sha256': '4fddd4e37b8453f48097e8435b085ba2b95ecba5b92ac803f8b91af898955490', 'zip_sha256': 'e07012756a686b6c04d889866302953c431a6bf74017318a92909d3acc617e5d'}, '1f5c26fa1a067da4bded5a39c57bb13c4943eb93', '10bc1ffef4f4715e294b2ae82a8ae966448c0fab', '317d215e916239bbc25caf73156fc8291b59a6ca')
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']==workflow_head
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          files=verified_members(g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True),row)
+          m=json.loads(files['candidate-metadata.json'])
+          assert m['source_commit']==source and m['game_tree']==tree
+          pck=files['artifacts/clean-a/index.pck']
+          assert pck==files['artifacts/clean-b/index.pck']
+          path=pathlib.Path('/tmp/v138-site-study');path.mkdir()
+          (path/'index.pck').write_bytes(pck)
+          (path/'capture.gd').write_bytes(pathlib.Path('ci/capture-resource-site-prototype.gd').read_bytes())
+          patch=pathlib.Path('ci/resource-site-prototype.gd').read_bytes()
+          assert hashlib.sha256(patch).hexdigest()=='95cacd9267e1e700fd4346748472e476a8941092a9a2432a92143fbd6ac01b6a'
+          (path/'resource_site_dressing.gd').write_bytes(patch)
+          (path/'input.json').write_text(json.dumps({'source_commit':source,'game_tree':tree,'build':row['build'],'pck_sha256':hashlib.sha256(pck).hexdigest()}))
+          PY
+      - name: Captures of same exact game with only a presentation overlay
+        run: python3 -B ci/capture-resource-site-prototype-guard.py /tmp/v138-site-study vc-037b3db3b754 390 844 prototype
+      - name: Validate this is a genuine rendered local prototype, not a release
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('/tmp/v138-site-study')
+          pr=json.loads((p/'images/report.json').read_text())
+          gr=json.loads((p/'native-render-receipt.json').read_text())
+          assert all(t['passed'] for t in pr['checks'])
+          assert gr['returncode']==0 and gr['live_process_group_gone'] and gr['after']['oom']==gr['baseline']['oom']
+          assert pr['build']=='vc-037b3db3b754' and pr['camera']=={'focus':[-25,0,24],'zoom':30}
+          assert pr['site_type_counts']=={'berry':6,'iron':5,'stone':4}
+          assert set(pr['images'])=={'home-before','home-prototype'}
+          for name,info in pr['images'].items():
+              raw=(p/'images'/(name+'.png')).read_bytes()
+              assert (info['width'],info['height'])==(390,844)
+              assert hashlib.sha256(raw).hexdigest()==info['sha256'] and raw[:8]==bytes.fromhex('89504e470d0a1a0a')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v138-site-study-390x844
+          path: |
+            /tmp/v138-site-study/input.json
+            /tmp/v138-site-study/images/*.png
+            /tmp/v138-site-study/images/report.json
+            /tmp/v138-site-study/native-render-*.json
+            /tmp/v138-site-study/native-render-*.txt
+          retention-days: 30
+          if-no-files-found: error
