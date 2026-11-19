@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 757ee66b6656af9fdaf1acea7997fee649fd3da8
+      BUILDING_RUNTIME_SOURCE_COMMIT: 147347a68e52d72bf03f49256646aee3b4289730
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'fda47c0451e7527e900a0b5d66de11a2237e2f963c7f552ddff214180a6bc81a  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '642c2a3d1e553010dd0e98862fad07aa23c3c463d7273ff89ea656b1008fe8ff  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -603,6 +603,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_menu/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_natural_journey/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_natural_journey/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/milestone_retention_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/milestone_retention_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/match_milestone_journey/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/match_milestone_journey/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
