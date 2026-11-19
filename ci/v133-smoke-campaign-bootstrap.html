@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8"><title>Exact exported game proof</title></head><body style="margin:0;background:#000"><canvas id="canvas"></canvas><script src="index.js"></script><script>
+(async function(){
+  try {
+    const config=GODOT_CONFIG_LITERAL;
+    const engine=new Engine(config);
+    const raw=await (await fetch('earned-audit.gd')).arrayBuffer();
+    await engine.preloadFile(raw,'/earned-audit.gd');
+    await engine.startGame({args:['--script','/earned-audit.gd']});
+  } catch (err) {
+    window.vcAuditBootError=String(err);
+    console.error(err);
+  }
+}());
+</script></body></html>
