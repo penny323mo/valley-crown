@@ -1,0 +1,61 @@
+name: Audit v135 candidate short landscape field with exact browser input
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v135-landscape-candidate.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  browser:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact real product archive and isolate browser files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '5015076dd93decdbbe2c1806e73cfe9a120d67c19e0a09da1bc2f4a27218458a  ci/audit-v135-landscape-browser.py' | sha256sum --strict -c
+          google-chrome --version
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,re,sys
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          row={'artifact_id': 14564633743, 'run_id': 44591225739, 'build': 'vc-deb79988e5f5', 'metadata_sha256': 'd84b95001f7b8d4e8845c604c2dde29cf19ed9f8a246be8b8bd68f2fb63f7cb3', 'zip_sha256': '840ce1ecf50fe184a1d37ab68aad9d286a47b8b136f812391983c88b902db5a8'}
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']=='f4514bdf05f2bc9d39055b43efee87ddb4f0e20d'
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
+          members=verified_members(data,row)
+          identity=json.loads(members['candidate-metadata.json'])
+          assert identity['source_commit']=='71822f8192eb311d0df59e0b84b75798d7a97ee7' and identity['game_tree']=='daa991e5f7451c04f201d3f22aa2c24d9d994bfc'
+          dest=pathlib.Path('/tmp/v133-browser-proof');dest.mkdir()
+          for path,data in members.items():
+              if path.startswith('artifacts/clean-a/'):
+                  name=path.split('/')[-1]
+                  assert name.startswith('index.')
+                  (dest/name).write_bytes(data)
+          (dest/'probe.html').write_text('<!doctype html><title>local disposable browser proof</title>')
+          (dest/'input.json').write_text(json.dumps(row))
+          PY
+      - name: Run real Web export with ordinary campaign, compact command, paid build and rotate
+        run: python3 -B ci/audit-v135-landscape-browser.py /tmp/v133-browser-proof candidate vc-deb79988e5f5
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v135-landscape-candidate-proof
+          path: |
+            /tmp/v133-browser-proof/input.json
+            /tmp/v133-browser-proof/browser-proof.json
+            /tmp/v133-browser-proof/chromedriver.log
+            /tmp/v133-browser-proof/browser-console.json
+            /tmp/v133-browser-proof/*-actual-battle.png
+          retention-days: 15
+          if-no-files-found: error
