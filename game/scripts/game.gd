@@ -4363,7 +4363,7 @@ func _create_ui():
 	compact_unit_tools=HBoxContainer.new(); compact_unit_tools.add_theme_constant_override("separation",8); command_row.add_child(compact_unit_tools); command_row.move_child(compact_unit_tools,0)
 	touch_button=_button("指定",_toggle_unit_command,54); compact_unit_tools.add_child(touch_button)
 	compact_cancel_button=_button("取消",func(): _cancel_mode(),54); compact_unit_tools.add_child(compact_cancel_button)
-	objective_button=_button("",_focus_control_point,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort","breach"]; compact_top_stack.add_child(objective_button)
+	objective_button=_button("",_activate_objective_camera,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort","breach"]; compact_top_stack.add_child(objective_button)
 	compact_menu_dismiss=Control.new(); compact_menu_dismiss.name="MenuDismissShield"; compact_menu_dismiss.mouse_filter=Control.MOUSE_FILTER_STOP; compact_menu_dismiss.gui_input.connect(_dismiss_compact_menu_input); ui.add_child(compact_menu_dismiss); compact_menu_dismiss.hide()
 	compact_menu=PanelContainer.new(); compact_menu.name="ShortcutMenu"; ui.add_child(compact_menu); compact_menu.add_theme_stylebox_override("panel",_style(Color("1d241ef5")))
 	var menu_stack=VBoxContainer.new();menu_stack.add_theme_constant_override("separation",6);compact_menu.add_child(menu_stack)
@@ -7402,13 +7402,13 @@ func _refresh_control_point_marker():
 	if is_instance_valid(objective_button): objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort","breach"]
 	if skirmish_mode=="breach":
 		if is_instance_valid(objective_button):
-			objective_button.text="攻城突破 · "+BreachMission.TITLES[breach_mission.stage]+"\n"+breach_mission.caption()
-			objective_button.tooltip_text="點此定位公開任務地點，不揭開迷霧；劇本守軍無經濟AI。"
+			objective_button.text=_objective_camera_prefix()+"攻城突破 · "+BreachMission.TITLES[breach_mission.stage]+"\n"+breach_mission.caption()
+			objective_button.tooltip_text=_authored_camera_tip()+"；劇本守軍無經濟AI。"
 		return
 	if skirmish_mode=="escort":
 		if is_instance_valid(objective_button):
-			objective_button.text="護送拓荒隊 · "+FrontierEscort.TITLES[frontier_escort.stage]+"\n"+frontier_escort.progress_text(tick_count)
-			objective_button.tooltip_text=frontier_escort.caption(tick_count)
+			objective_button.text=_objective_camera_prefix()+"護送拓荒隊 · "+FrontierEscort.TITLES[frontier_escort.stage]+"\n"+frontier_escort.progress_text(tick_count)
+			objective_button.tooltip_text=_authored_camera_tip()+"。"+frontier_escort.caption(tick_count)
 		return
 	if skirmish_mode=="expedition":
 		if is_instance_valid(objective_button):
@@ -7416,8 +7416,8 @@ func _refresh_control_point_marker():
 			for id in frontier_expedition.counter_ids:
 				var member=_get_entity(id)
 				if not member.is_empty() and member.alive:remaining+=1
-			objective_button.text="前線遠征 %d/5 · %s\n%s" % [mini(frontier_expedition.stage+1,5),FrontierExpedition.TITLES[frontier_expedition.stage],frontier_expedition.progress_text(tick_count,remaining)]
-			objective_button.tooltip_text=frontier_expedition.caption(tick_count)
+			objective_button.text=_objective_camera_prefix()+"前線遠征 %d/5 · %s\n%s" % [mini(frontier_expedition.stage+1,5),FrontierExpedition.TITLES[frontier_expedition.stage],frontier_expedition.progress_text(tick_count,remaining)]
+			objective_button.tooltip_text=_authored_camera_tip()+"。"+frontier_expedition.caption(tick_count)
 		return
 	if victory_mode=="supply":
 		if is_instance_valid(objective_button):
@@ -7433,6 +7433,48 @@ func _refresh_control_point_marker():
 	if control_point_flag.get_meta("owner",-2)!=control_point.owner:
 		control_point_flag.material_override=_material(color)
 		control_point_flag.set_meta("owner",control_point.owner)
+
+func _authored_objective_position() -> Vector3:
+	match skirmish_mode:
+		"breach":return breach_mission.target()
+		"escort":return FrontierEscort.TARGET
+		"expedition":return frontier_expedition.target()
+	return Vector3.INF
+
+func _return_selected_at_objective(target:Vector3) -> Vector3:
+	if not target.is_finite() or camera_focus.distance_squared_to(target)>0.5625:return Vector3.INF
+	var candidates=[]
+	var center=Vector3.ZERO
+	for id in selected:
+		var record=faction_views[0].get_record(id)
+		if record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and not record.get("remembered",false) and not _garrisoned(record):
+			candidates.append(record);center+=record.pos
+	if candidates.is_empty():return Vector3.INF
+	center/=candidates.size()
+	# Pick a real selected living member nearest the centroid; avoid empty
+	# camera center between distant subsets. Prefer stable id on ties.
+	var nearest=candidates[0];var distance=nearest.pos.distance_squared_to(center)
+	for member in candidates:
+		var score=member.pos.distance_squared_to(center)
+		if score<distance or (is_equal_approx(score,distance) and member.id<nearest.id):
+			nearest=member;distance=score
+	return nearest.pos if nearest.pos.distance_squared_to(target)>4.0 else Vector3.INF
+
+func _objective_camera_prefix() -> String:
+	return "回到所選 · " if _return_selected_at_objective(_authored_objective_position()).is_finite() else "定位目標 · "
+
+func _authored_camera_tip() -> String:
+	if _return_selected_at_objective(_authored_objective_position()).is_finite():
+		return "點此查看目前所選單位，不會下令或更換選取"
+	return "點此定位公開任務地點，不揭開迷霧"
+
+func _activate_objective_camera():
+	var point=_return_selected_at_objective(_authored_objective_position())
+	if point.is_finite():
+		camera_focus=point;_camera_update()
+	else:_focus_control_point()
+	_refresh_control_point_marker()
+
 
 func _focus_control_point():
 	if skirmish_mode=="breach":camera_focus=breach_mission.target();_camera_update();return
