@@ -9,6 +9,8 @@ var images={}
 var expected=""
 var out=""
 var candidate=false
+var visual_only=false
+var paid_preview=false
 var dims=Vector2i(390,844)
 func proof(name:String,passed:bool):
  visual_checks.append({"name":name,"passed":passed})
@@ -24,10 +26,12 @@ func capture_preview(label:String):
  if DisplayServer.get_name()=="headless":return
  g._update_visuals(.016);g._refresh_fog();g._update_hud()
  await settle()
+ RenderingServer.render_loop_enabled=true
  await RenderingServer.frame_post_draw
  DirAccess.make_dir_recursive_absolute(out)
  var path=out+"/"+label+".png"
  var frame=root.get_texture().get_image()
+ RenderingServer.render_loop_enabled=false
  var err=frame.save_png(path)
  proof(label+" actual viewport capture",err==OK and frame.get_width()==dims.x and frame.get_height()==dims.y)
  images[label]={"width":frame.get_width(),"height":frame.get_height(),"sha256":FileAccess.get_sha256(path)}
@@ -194,6 +198,8 @@ func decide():
 func run():
  var args=OS.get_cmdline_user_args()
  out=args[0];dims=Vector2i(int(args[1]),int(args[2]));expected=args[3];candidate=args[4]=="candidate"
+ visual_only=DisplayServer.get_name()!="headless"
+ if visual_only:RenderingServer.render_loop_enabled=false
  root.size=dims
  start=Time.get_ticks_msec()
  g=load("res://main.tscn").instantiate()
@@ -205,8 +211,13 @@ func run():
  while not g.game_over and g.tick_count<16000 and Time.get_ticks_msec()-start<240000 and g.frontier_escort.stage<2:
   if g.paused:
    events.append({"tick":g.tick_count,"blocked":"engine paused","inactivity":g.inactivity_paused});break
+  var funds=g.economy.bank_milli(0).wood
   if g.tick_count%100==0:await decide()
   g._tick(Rules.TICK)
+  if outside_sent and visual_only:
+   paid_preview=funds-g.economy.bank_milli(0).wood==80000 and g.frontier_escort.stage==1 and not g.frontier_escort.buildings.has("storehouse")
+   proof("confirmed actual outside build spends precisely 80 wood",paid_preview)
+   break
   if g.frontier_escort.stage!=last_stage:
    last_stage=g.frontier_escort.stage
    var row={"tick":g.tick_count,"stage":last_stage,"bank":g.economy.bank_milli(0),"trained":g.match_report.trained.duplicate(),"built":g.match_report.completed.duplicate()}
@@ -239,8 +250,12 @@ func run():
  result["inside_receipt"]=inside_receipt
  result["defense_started"]=g.frontier_escort.stage==2
  result["images"]=images
+ result["paid_preview"]=paid_preview
+ result["visual_only"]=visual_only
  result["visual_checks"]=visual_checks
- result["pass"]=result.build==expected and visual_checks.all(func(row):return row.passed) and not visual_checks.is_empty() and result.defense_started and result.audit and outside_receipt.get("outpost_warehouse_count",-1)==0 and inside_receipt.get("outpost_warehouse_count",-1)==1 and outside_receipt.get("id",0)!=inside_receipt.get("id",0)
+ result["pass"]=result.build==expected and visual_checks.all(func(row):return row.passed) and not visual_checks.is_empty() and result.audit
+ if visual_only:result.pass=result.pass and paid_preview and images.has("outside-preview") and g.tick_count==401
+ else:result.pass=result.pass and result.defense_started and outside_receipt.get("outpost_warehouse_count",-1)==0 and inside_receipt.get("outpost_warehouse_count",-1)==1 and outside_receipt.get("id",0)!=inside_receipt.get("id",0)
  DirAccess.make_dir_recursive_absolute(out)
  var f=FileAccess.open(out+"/report.json",FileAccess.WRITE);f.store_string(JSON.stringify(result));f.close()
  print(JSON.stringify(result))

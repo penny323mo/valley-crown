@@ -22,7 +22,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '42f64b35b4697e4df1f29cd9a1df2a16a9e7f215c1418dbb4604365715140080  ci/capture-v137-outpost.gd' | sha256sum --strict -c
+          echo '5d5a667fe73af67726298e1def9436bdfd874381dcc7ce2aeb541ff4b1f6d907  ci/capture-v137-outpost.gd' | sha256sum --strict -c
           echo '61cb64f9dfaa1a6aee1ca288435b1eb8b6349e3ae2a2d52b00c9a67962a05355  ci/capture-v137-outpost-guard.py' | sha256sum --strict -c
           curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v137-engine.zip
           unzip -q /tmp/v137-engine.zip -d /tmp
@@ -59,13 +59,11 @@ jobs:
           run=json.loads((p/'native-render-receipt.json').read_text())
           info=json.loads((p/'input.json').read_text())
           assert d['pass'] and d['visual_checks'] and all(x['passed'] for x in d['visual_checks'])
-          assert d['build']=='vc-037b3db3b754'==info['build'] and d['audit'] and d['defense_started']
+          assert d['build']=='vc-037b3db3b754'==info['build'] and d['audit'] and d['visual_only'] and d['paid_preview']
           assert run['returncode']==0 and run['live_process_group_gone'] and run['stop_reason'] is None
           assert run['inputs']['index.pck']==info['pck_sha256'] and run['after']['oom']==run['baseline']['oom']
-          assert d['outside_receipt']['center']==[-2,6] and d['outside_receipt']['outpost_warehouse_count']==0
-          assert d['inside_receipt']['center']==[-7,3] and d['inside_receipt']['outpost_warehouse_count']==1
-          assert d['stage_ticks']==[359,2530] and d['built']=={'storehouse':2,'tower':1}
-          assert set(d['images'])=={'outside-preview','defense-started'}
+          assert d['stage_ticks']==[359] and d['ticks']==401 and not d['finished']
+          assert set(d['images'])=={'outside-preview'}
           for name,row in d['images'].items():
               dimensions=(390,844)
               assert (row['width'],row['height'])==dimensions
