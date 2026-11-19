@@ -14,6 +14,12 @@ const OPTIONS=[
  {"id":"survival","group":3,"mode":"survival","victory":"conquest","title":"三波守城挑戰"},
  {"id":"escort","group":3,"mode":"escort","victory":"conquest","title":"護送拓荒隊"},
  {"id":"expedition","group":3,"mode":"expedition","victory":"conquest","title":"前線遠征"}]
+const CAMPAIGN=["breach","survival","escort"]
+const CAMPAIGN_TITLE="霧谷戰役"
+const CAMPAIGN_BLURBS=["突破木柵、攻下敵方主堡。","擊退三波反攻，或攻下敵方主堡。","護送村民建成前哨，擊退最後的反攻。"]
+const CAMPAIGN_WIN_REASONS=[["breach_complete"],["waves_defended","keep_destroyed"],["escort_complete"]]
+static func campaign_completed(index:int,mode:String,outcome:String,reason:String)->bool:
+ return index>=0 and index<CAMPAIGN.size() and mode==CAMPAIGN[index] and outcome=="victory" and reason in CAMPAIGN_WIN_REASONS[index]
 static func option(id:String)->Dictionary:
  for item in OPTIONS:
   if item.id==id:return item

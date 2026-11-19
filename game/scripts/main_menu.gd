@@ -10,6 +10,9 @@ var selected_layout="valley"
 var battlefield_preview
 const BattleSelection=preload("res://scripts/battle_selection.gd")
 var battle_group=0
+var campaign_unlocked=0
+var selected_campaign=-1
+var restart_campaign_on_launch=false
 const Rules=preload("res://scripts/rules.gd")
 var checkpoint_path=CheckpointStore.PATH
 var expedition_checkpoint_path=ExpeditionCheckpointStore.PATH
@@ -348,6 +351,8 @@ func _button_touch(button: Button, event: InputEvent):
 			touch_presses.erase(event.index)
 
 func _show_page(next_page: String):
+	if next_page in ["home","battle_groups","campaign"]:
+		selected_campaign=-1;restart_campaign_on_launch=false
 	if next_page=="manual" and page!="manual":manual_back_page="home" if page=="home" else "help"
 	if is_instance_valid(manual_preview):manual_preview.clear_model();manual_preview.hide()
 	if is_instance_valid(battlefield_preview):battlefield_preview.hide()
@@ -394,11 +399,23 @@ func _show_page(next_page: String):
 		_add_button(FieldManual.SECTIONS[manual_section]+" >", "ManualSectionButton", func(): manual_section=(manual_section+1)%3;manual_index=0;_show_page("manual"))
 		_add_button("下一項 >", "ManualNextButton", func(): manual_index=(manual_index+1)%FieldManual.entries(manual_section).size();_show_page("manual"))
 		_add_button("返回", "ManualBackButton", func(): _show_page(manual_back_page))
+	elif page == "campaign":
+		heading.text=BattleSelection.CAMPAIGN_TITLE
+		description.text="三場連戰 · 已完成 %d / 3\n各場重新開局，資源與軍隊不帶到下一場。只在本次遊戲中保留進度；關閉網頁或重新整理就會重設。\n\n" % campaign_unlocked
+		for i in BattleSelection.CAMPAIGN.size():
+			var chapter=BattleSelection.option(BattleSelection.CAMPAIGN[i])
+			var status="已完成" if i<campaign_unlocked else ("可出征" if i==campaign_unlocked else "先完成上一場")
+			description.text+="第 %d 場 · %s · %s\n%s\n\n" % [i+1,chapter.title,status,BattleSelection.CAMPAIGN_BLURBS[i]]
+		if campaign_unlocked<BattleSelection.CAMPAIGN.size():_add_button("查看第 %d 場" % (campaign_unlocked+1),"CampaignChapterButton",func():_choose_campaign(campaign_unlocked))
+		if campaign_unlocked>0:_add_button("重開第一場","RestartCampaignButton",func():_choose_campaign(0,true))
+		_add_button("返回主選單","CampaignBackButton",func():_show_page("battle_groups"))
 	elif page == "battle_groups":
 		heading.text="選擇戰役"
 		description.text="先選對戰方式，再查看開局、敵軍與取勝條件。只有出征才會開始新戰役。"
 		for index in BattleSelection.GROUPS.size():
 			_add_button(BattleSelection.GROUPS[index],"BattleGroup"+str(index),func(): battle_group=index;_show_page("battle_options"))
+		if not is_instance_valid(match_node) or match_node.game_over:
+			_add_button(BattleSelection.CAMPAIGN_TITLE,"CampaignMenuButton",func():_show_page("campaign"))
 		_add_button("返回主選單","BattleGroupsBackButton",func(): _show_page("home"))
 	elif page == "battle_options":
 		heading.text=BattleSelection.GROUPS[battle_group]
@@ -417,9 +434,12 @@ func _show_page(next_page: String):
 			description.text+="\n\n電腦難度："+AIDifficulty.title(selected_difficulty)
 			_add_button("電腦難度："+AIDifficulty.title(selected_difficulty),"ChooseDifficultyButton",func():_show_page("difficulty"))
 		if BattlefieldLayout.supported(selected_mode,selected_victory_mode):_add_button("選擇戰場", "ChooseLayoutButton", func(): _show_page("battlefield"))
-		_add_button("選擇其他戰役", "ChooseBattleButton", func(): _show_page("battle_groups"))
+		if selected_campaign>=0:
+			heading.text="霧谷戰役 · 第 %d / 3 場" % (selected_campaign+1)
+			description.text=BattleSelection.CAMPAIGN_BLURBS[selected_campaign]+"\n各場獨立開局；此戰役不寫入存檔。\n\n"+description.text
+		else:_add_button("選擇其他戰役", "ChooseBattleButton", func(): _show_page("battle_groups"))
 		_add_button("出征", "LaunchMatchButton", _start_match)
-		_add_button("返回", "BackButton", func(): _show_page("home"))
+		_add_button("返回", "BackButton", func(): _show_page("campaign" if selected_campaign>=0 else "home"))
 	elif page == "difficulty":
 		heading.text="電腦難度"
 		description.text="只適用於標準戰役。\n\n"+AIDifficulty.title("easy")+"\n"+AIDifficulty.details("easy")+"\n\n標準\n"+AIDifficulty.details("standard")
@@ -440,7 +460,9 @@ func _show_page(next_page: String):
 			description.text=SkirmishPolicy.title(match_node.skirmish_mode)+"暫不支援存檔；普通戰役與遠征存檔不變。\n\n"+description.text
 		if is_instance_valid(match_node) and match_node.skirmish_mode=="expedition":
 			description.text="遠征使用分開存檔，普通戰役存檔不變。\n\n"+description.text
-		if is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode not in ["escort","breach"]:
+		if is_instance_valid(match_node) and match_node.campaign_chapter>=0:
+			description.text="霧谷戰役只保留本次遊戲進度，不寫入存檔。\n\n"+description.text
+		elif is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode not in ["escort","breach"]:
 			_add_button("儲存目前戰役", "SaveCheckpointButton", _save_checkpoint)
 		if FileAccess.file_exists(checkpoint_path):
 			_add_button("讀取存檔（取代目前戰役）", "LoadCheckpointButton", _load_checkpoint)
@@ -529,6 +551,7 @@ func _choose_mode(mode: String):
 
 func _restart_match():
 	if is_instance_valid(match_node):
+		selected_campaign=match_node.campaign_chapter
 		selected_mode=match_node.skirmish_mode
 		selected_victory_mode=match_node.victory_mode
 		selected_layout=match_node.layout_id
@@ -546,6 +569,9 @@ func _replace_match():
 		remove_child(match_node)
 		match_node.queue_free()
 	match_node = MATCH_SCENE.instantiate()
+	match_node.campaign_chapter=selected_campaign
+	if restart_campaign_on_launch and selected_campaign==0:campaign_unlocked=0
+	selected_campaign=-1;restart_campaign_on_launch=false
 	match_node.ai_difficulty=AIDifficulty.valid_for(selected_mode,selected_victory_mode,selected_difficulty)
 	match_node.skirmish_mode=selected_mode
 	match_node.layout_id=selected_layout if BattlefieldLayout.supported(selected_mode,selected_victory_mode) else "valley"
@@ -553,6 +579,8 @@ func _replace_match():
 	match_node.main_menu_requested.connect(_open_menu)
 	match_node.restart_requested.connect(_restart_match)
 	match_node.setup_requested.connect(_reconfigure_finished_match)
+	match_node.campaign_next_requested.connect(_campaign_next)
+	match_node.match_finished.connect(_observe_campaign_result.bind(match_node))
 	_connect_auto_checkpoint(match_node)
 	add_child(match_node)
 	_configure_new_match_camera(match_node)
@@ -677,7 +705,7 @@ func _cancel_menu_touches():
 func _help_touch(event: InputEvent) -> bool:
 	# Native ScrollContainer dragging uses mouse events. Keep the game's
 	# mouse-from-touch emulation disabled and own only this reading area.
-	if page not in ["help","setup","manual"]: return false
+	if page not in ["help","setup","manual","campaign"]: return false
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			if event.canceled or touch_blocked or active_touches.size() != 1: return false
@@ -786,7 +814,32 @@ func _inspect_checkpoint_backup(expedition:bool,name:String):
 	backup_info={"ok":result.ok,"reason":result.get("reason",""),"source_build":result.get("source_build","未知")}
 	_show_page("checkpoint_backup_detail")
 
+func _choose_campaign(index:int,restart=false):
+	if transition_busy or index<0 or index>=BattleSelection.CAMPAIGN.size():return
+	if index!=(0 if restart else campaign_unlocked):return
+	if is_instance_valid(match_node) and not match_node.game_over:return
+	var row=BattleSelection.option(BattleSelection.CAMPAIGN[index])
+	selected_campaign=index;restart_campaign_on_launch=restart;selected_mode=row.mode;selected_victory_mode=row.victory
+	selected_layout="valley";selected_difficulty="standard"
+	_show_page("setup")
+
+func _observe_campaign_result(game):
+	if game!=match_node or not game.game_over:return
+	var index=game.campaign_chapter
+	if index<0 or index>=BattleSelection.CAMPAIGN.size() or index!=campaign_unlocked:return
+	if not BattleSelection.campaign_completed(index,game.skirmish_mode,game.outcome,game.end_reason) or game.layout_id!="valley" or game.victory_mode!="conquest":return
+	campaign_unlocked+=1
+
+func _campaign_next():
+	if not is_instance_valid(match_node) or not match_node.game_over or match_node.campaign_chapter<0 or transition_busy:return
+	var chapter=match_node.campaign_chapter
+	var proceed=BattleSelection.campaign_completed(chapter,match_node.skirmish_mode,match_node.outcome,match_node.end_reason) and campaign_unlocked==chapter+1 and campaign_unlocked<BattleSelection.CAMPAIGN.size()
+	_open_menu()
+	if proceed:_choose_campaign(campaign_unlocked)
+	else:_show_page("campaign")
+
 func _choose_battle(id:String):
+	selected_campaign=-1;restart_campaign_on_launch=false
 	var option=BattleSelection.option(id)
 	if option.is_empty():return
 	selected_mode=option.mode;selected_victory_mode=option.victory

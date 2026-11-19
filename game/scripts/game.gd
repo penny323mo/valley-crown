@@ -8,6 +8,10 @@ signal main_menu_requested
 signal restart_requested
 signal setup_requested
 signal paused_checkpoint_requested
+signal campaign_next_requested
+signal match_finished
+var campaign_chapter=-1
+var end_setup_button: Button
 ## Original RTS vertical slice. All game state is deterministic and available to smoke tests.
 const EscortPolicy=preload("res://scripts/escort_policy.gd")
 const AIGatherLoad=preload("res://scripts/ai_gather_load.gd")
@@ -17,6 +21,7 @@ const WorkerIdleStatus = preload("res://scripts/worker_idle_status.gd")
 const IdleWorkerSelection = preload("res://scripts/idle_worker_selection.gd")
 const BattleAlerts = preload("res://scripts/battle_alerts.gd")
 const MatchReport = preload("res://scripts/match_report.gd")
+const CampaignRules = preload("res://scripts/battle_selection.gd")
 const SquadSelection = preload("res://scripts/squad_selection.gd")
 const RaidTactics = preload("res://scripts/raid_tactics.gd")
 const AIFortify=preload("res://scripts/ai_fortify.gd")
@@ -3278,7 +3283,13 @@ func _check_end():
 		elif end_reason=="irrecoverable":
 			end_body.text={"victory":"敵方持續 60 秒沒有單位或任何復原途徑，已自動投降。","defeat":"我方持續 60 秒沒有單位或任何復原途徑，已自動投降。","draw":"雙方持續 60 秒沒有單位或任何復原途徑。和局。"}[outcome]
 		else: end_body.text={"victory":"敵方主堡已倒下，霧谷由你守護。","defeat":"你的主堡已被摧毀。重新部署，再戰一局。","draw":"雙方同時失守，或已達 40 分鐘上限。和局。"}[outcome]
+		if campaign_chapter>=0:
+			end_body.text="霧谷戰役 · 第 %d / 3 場\n" % (campaign_chapter+1)+end_body.text
+			if CampaignRules.campaign_completed(campaign_chapter,skirmish_mode,outcome,end_reason):
+				end_setup_button.text="下一場" if campaign_chapter<2 else "戰役完成"
+			else:end_setup_button.text="戰役流程"
 		_show_match_report_page("overview"); end_panel.show(); _layout_ui()
+	match_finished.emit()
 
 func _show_match_report_page(page: String):
 	if not game_over or last_match_report.is_empty() or page not in ["overview","economy","units","buildings"]: return
@@ -4511,9 +4522,11 @@ func _create_ui():
 	end_actions=GridContainer.new(); end_actions.columns=2; end_actions.add_theme_constant_override("h_separation",8);end_actions.add_theme_constant_override("v_separation",6); end_panel.add_child(end_actions)
 	var inspect=_button("查看戰場",func():_set_aftermath_view(true),80);inspect.name="InspectBattlefieldButton";inspect.size_flags_horizontal=Control.SIZE_EXPAND_FILL;end_actions.add_child(inspect)
 	var restart=_button("同局再戰",_request_restart,80);restart.name="ReplayMatchButton"; restart.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(restart)
-	var setup=_button("重新設定",func():
-		if game_over:setup_requested.emit()
-	,80);setup.name="ReconfigureMatchButton";setup.size_flags_horizontal=Control.SIZE_EXPAND_FILL;end_actions.add_child(setup)
+	end_setup_button=_button("重新設定",func():
+		if game_over:
+			if campaign_chapter>=0:campaign_next_requested.emit()
+			else:setup_requested.emit()
+	,80);end_setup_button.name="ReconfigureMatchButton";end_setup_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL;end_actions.add_child(end_setup_button)
 	var menu=_button("主選單",_request_main_menu,80);menu.name="EndMainMenuButton"; menu.size_flags_horizontal=Control.SIZE_EXPAND_FILL; end_actions.add_child(menu)
 	end_panel.hide()
 	aftermath_bar=PanelContainer.new();aftermath_bar.name="AftermathBar";aftermath_bar.add_theme_stylebox_override("panel",_compact_panel_style());ui.add_child(aftermath_bar)
