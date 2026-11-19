@@ -160,70 +160,83 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
             log_case(tag,{"worker_id":workerid,"guidance_details":guide["rect"],"house":house["rect"],"house_clone":house["text"],"action_scroll":strip,"world_screen_probes":state["hud"]["ground_points"],"camera":state["hud"]["camera"]})
             geometry.append((key,strip))
             png(tag+"-worker-actual-battle")
-            if width>height:
-                hit(guide)
-                state=wait_button("關閉")
-                png(tag+"-details-actual-battle")
-                hit(button(state,"關閉"))
-                state=wait_button(lambda t:t.startswith("民居") and "木 50" in t)
-                select_before=state["selected"]
-                check(tag+" ordinary guidance details open and close without dropping worker",select_before==[workerid])
-                hit(button(state,"指定"));state=match(lambda s:s["touch_mode"],7)
-                cancel=button(state,"取消")
-                check(tag+" compact command exposes real dedicated Cancel",cancel is not None)
-                hit(cancel)
-                state=match(lambda s:not s["touch_mode"],7)
-                check(tag+" explicit command-mode Cancel preserves worker",state["selected"]==select_before)
-                log_case(tag,{"general_command_cancel":True})
-                house=button(state,lambda t:t.startswith("民居") and "木 50" in t)
-                wood=state["bank_milli"]["wood"]
-                hit(house);state=match(lambda s:s["build_mode"]=="house",6)
-                cancel=button(state,"取消建造")
-                check(tag+" construction mode exposes Cancel at touch size",cancel is not None)
-                hit(cancel);state=match(lambda s:not s["build_mode"],6)
-                check(tag+" construction Cancel preserves worker and pays nothing",state["selected"]==select_before and state["bank_milli"]["wood"]==wood)
-                hit(button(state,lambda t:t.startswith("民居") and "木 50" in t));state=match(lambda s:s["build_mode"]=="house",6)
-                attempts=[];found=None
-                # Stable order: documented empty-world probes then central
-                # viewport lane samples; normal rendered game validates each.
-                points=state["hud"]["ground_points"]+[[x,y] for y in range(120,height-120,13) for x in range(width//2-115,width//2+116,20)]
-                for x,y in points[:63]:
-                    prior_state=world()
-                    if any(b["rect"][0]<=x<=b["rect"][0]+b["rect"][2] and b["rect"][1]<=y<=b["rect"][1]+b["rect"][3] for b in prior_state["hud"]["buttons"]):continue
-                    prior=prior_state["tick"]
-                    touch([x,y])
-                    state=match(lambda s:s["tick"]>prior,5)
-                    if state["build_mode"]!="house":
-                        raise RuntimeError(tag+" battlefield tap unexpectedly left construction mode")
-                    b=button(state,"確認建造")
-                    p=state["hud"]["preview"]
-                    attempts.append([x,y,bool(p and p["placement_ok"]),bool(b)])
-                    if b and p and p["placement_ok"] and p["held"]:
-                        found=b;break
-                log_case(tag,{"placement_attempts":attempts})
-                check(tag+" real empty-plot touch opens legal placement preview",found is not None)
-                png(tag+"-placement-actual-battle")
-                before=world()["bank_milli"]["wood"];hit(found)
-                state=match(lambda s:s["bank_milli"]["wood"]<=before-50000,8)
-                check(tag+" normal HUD confirm debits exactly 50 wood once",before-state["bank_milli"]["wood"]==50000)
-                log_case(tag,{"paid_house_wood":[before,state["bank_milli"]["wood"]]})
-                png(tag+"-paid-actual-battle")
-                if width==640:
-                    # Published navigation already provides explicit castle
-                    # selection, so no new QA bridge is needed for production.
-                    menu=button(state,lambda t:t in ("選單","閒置","受襲"))
-                    hit(menu);state=wait_button("主堡")
-                    hit(button(state,"主堡"))
-                    state=wait_button(lambda t:t.startswith("訓練村民"))
-                    train=button(state,lambda t:t.startswith("訓練村民"))
-                    prior_food=state["bank_milli"]["food"]
-                    hit(train)
-                    state=match(lambda s:s["bank_milli"]["food"]<=prior_food-50000,8)
-                    check(tag+" landscape Town Center queue charges 50 food exactly",prior_food-state["bank_milli"]["food"]==50000)
-                    log_case(tag,{"landscape_training_food":[prior_food,state["bank_milli"]["food"]]})
-                    png(tag+"-production-actual-battle")
         state=world()
-        check("landscape round trip leaves game and selection active",not state["game_over"] and not state["paused"] and state["selected"]==[workerid])
+        check("unperturbed landscape round trip retains the original worker selection",not state["game_over"] and not state["paused"] and state["selected"]==[workerid])
+        for width,height in [(844,390),(640,360)]:
+            tag=f"{width}x{height}"
+            state=rotate(width,height,True)
+            rc=next((w for w in state["hud"]["own_targets"] if w["id"]==workerid),None) or visible_worker(state)
+            check(tag+" gameplay offers a currently visible worker",bool(rc))
+            interaction_id=rc["id"]
+            if state["selected"]!=[interaction_id]:touch(rc["screen"])
+            state=match(lambda s:s["selected"]==[interaction_id] and button(s,"跳過") is not None,18)
+            log_case(tag,{"interaction_worker_id":interaction_id})
+            guide=button(state,"詳情")
+            hit(guide)
+            state=wait_button("關閉")
+            png(tag+"-details-actual-battle")
+            hit(button(state,"關閉"))
+            state=wait_button(lambda t:t.startswith("民居") and "木 50" in t)
+            select_before=state["selected"]
+            check(tag+" ordinary guidance details open and close without dropping worker",select_before==[interaction_id])
+            hit(button(state,"指定"));state=match(lambda s:s["touch_mode"],7)
+            cancel=button(state,"取消")
+            check(tag+" compact command exposes real dedicated Cancel",cancel is not None)
+            hit(cancel)
+            state=match(lambda s:not s["touch_mode"],7)
+            check(tag+" explicit command-mode Cancel preserves worker",state["selected"]==select_before)
+            log_case(tag,{"general_command_cancel":True})
+            house=button(state,lambda t:t.startswith("民居") and "木 50" in t)
+            wood=state["bank_milli"]["wood"]
+            hit(house);state=match(lambda s:s["build_mode"]=="house",6)
+            cancel=button(state,"取消建造")
+            check(tag+" construction mode exposes Cancel at touch size",cancel is not None)
+            hit(cancel);state=match(lambda s:not s["build_mode"],6)
+            check(tag+" construction Cancel preserves worker and pays nothing",state["selected"]==select_before and state["bank_milli"]["wood"]==wood)
+            hit(button(state,lambda t:t.startswith("民居") and "木 50" in t));state=match(lambda s:s["build_mode"]=="house",6)
+            attempts=[];found=None
+            # Stable order: documented empty-world probes then central
+            # viewport lane samples; normal rendered game validates each.
+            preferred=[[487,133],[467,133],[507,133],[487,146],[467,146]] if width==844 else [[385,133],[365,133],[405,133]]
+            points=list(dict.fromkeys(tuple(point) for point in preferred+state["hud"]["ground_points"]+[[x,y] for y in range(120,height-105,13) for x in range(width//2-115,width//2+116,20)]))
+            for x,y in points[:63]:
+                prior_state=world()
+                if any(b["rect"][0]<=x<=b["rect"][0]+b["rect"][2] and b["rect"][1]<=y<=b["rect"][1]+b["rect"][3] for b in prior_state["hud"]["buttons"]):continue
+                prior=prior_state["tick"]
+                touch([x,y])
+                state=match(lambda s:s["tick"]>prior,5)
+                if state["build_mode"]!="house":
+                    raise RuntimeError(tag+" battlefield tap unexpectedly left construction mode")
+                b=button(state,"確認建造")
+                p=state["hud"]["preview"]
+                attempts.append([x,y,bool(p and p["placement_ok"]),bool(b)])
+                if b and p and p["placement_ok"] and p["held"]:
+                    found=b;break
+            log_case(tag,{"placement_attempts":attempts})
+            check(tag+" real empty-plot touch opens legal placement preview",found is not None)
+            png(tag+"-placement-actual-battle")
+            before=world()["bank_milli"]["wood"];hit(found)
+            state=match(lambda s:s["bank_milli"]["wood"]<=before-50000,8)
+            check(tag+" normal HUD confirm debits exactly 50 wood once",before-state["bank_milli"]["wood"]==50000)
+            log_case(tag,{"paid_house_wood":[before,state["bank_milli"]["wood"]]})
+            png(tag+"-paid-actual-battle")
+            if width==640:
+                # Published navigation already provides explicit castle
+                # selection, so no new QA bridge is needed for production.
+                menu=button(state,lambda t:t in ("選單","閒置","受襲"))
+                hit(menu);state=wait_button("主堡")
+                hit(button(state,"主堡"))
+                state=wait_button(lambda t:t.startswith("訓練村民"))
+                train=button(state,lambda t:t.startswith("訓練村民"))
+                prior_food=state["bank_milli"]["food"]
+                hit(train)
+                state=match(lambda s:s["bank_milli"]["food"]<=prior_food-50000,8)
+                check(tag+" landscape Town Center queue charges 50 food exactly",prior_food-state["bank_milli"]["food"]==50000)
+                log_case(tag,{"landscape_training_food":[prior_food,state["bank_milli"]["food"]]})
+                png(tag+"-production-actual-battle")
+        production_selection=state["selected"]
+        state=rotate(390,844,False)
+        check("post-production portrait returns with the same current selection",not state["game_over"] and not state["paused"] and state["selected"]==production_selection and bool(production_selection))
         js("""window.v135TouchPairs=[];
           for(const kind of ['touchstart','touchmove'])addEventListener(kind,e=>{
             if(e.touches.length===2&&window.v135TouchPairs.length<300)window.v135TouchPairs.push(Array.from(e.touches,t=>[t.identifier,t.clientX,t.clientY]));
@@ -235,7 +248,7 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         check("browser receives one pair with ordered movement",len(pairs)>=2 and {a[0] for a in pairs[0]}=={a[0] for a in pairs[-1]})
         import math
         spans=[math.dist(rows[0][1:],rows[1][1:]) for rows in (pairs[0],pairs[-1])]
-        check("equal-span stock browser pan keeps scale and worker",abs(spans[0]-spans[1])<=0.5 and abs(state["hud"]["camera"]["zoom"]-z)<0.1 and state["selected"]==[workerid])
+        check("equal-span stock browser pan keeps scale and current selection",abs(spans[0]-spans[1])<=0.5 and abs(state["hud"]["camera"]["zoom"]-z)<0.1 and state["selected"]==production_selection)
         log_case("390x844-return",{"pair_span":spans,"zoom_before_after":[z,state["hud"]["camera"]["zoom"]]})
         state=match(lambda s:s["trained"]>trained,35)
         check("the paid landscape queue actually produced one villager",state["trained"]==trained+1)
