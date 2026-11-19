@@ -1,5 +1,5 @@
 {
-  "build": "vc-e559b7eec2ed",
+  "build": "vc-90bd13ae58b8",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -238,6 +238,7 @@
     "scripts/building_attention.gd": "a72f1d0ef19d53fbffb34a3673be32d4262d49a31711e984b42149b5b1aa2e28",
     "scripts/building_damage_presenter.gd": "efe5e4475a1677bcbb17370e9b505a68dbd8b2b260dcab11caf94a5cf26162ab",
     "scripts/bush_donor_diagnostic.gd": "c52e25ffa0dd57cbf9b35c856b1fa1e0ee6bfb842f90142e2cfe6fe67692f78d",
+    "scripts/campaign_progress.gd": "472d89ce49d03e4f605e8e0935c96217663fd6ccc54ffe9125b7fa1425a28299",
     "scripts/checkpoint_backups.gd": "f95da03c1ca238cecfea87c828112fab0c38c4029ed04a0c9be940ff7fbee590",
     "scripts/checkpoint_codec.gd": "95d26b0bd2ff0107a18f1e5ecfc23cb79bb61554b9f77cfb286dabc7b8072ec2",
     "scripts/checkpoint_preservation.gd": "abba9b86655eb257bae13044fb081214875df48bee1b4c8dcfc9679e48ac9522",
@@ -282,7 +283,7 @@
     "scripts/idle_worker_selection.gd": "aa7c8b804c7449409ec852bf290c7240321d3f2174b8d65bc6d75f1d7133c619",
     "scripts/licensed_rock_data.gd": "e5ffba22365fab902b67b27cb54700174c1c58a023c3c08159ebf9221c3f3913",
     "scripts/licensed_rock_visual.gd": "d0871a649f033b14e423a8adbc87a67ea76511c12bcbba1845eae8bfbb16d5a0",
-    "scripts/main_menu.gd": "5da6533ba5094ee04a66dea6c4961b8152a507f2e2091423c43e7295105fc135",
+    "scripts/main_menu.gd": "fb31a6c54ef1efd356f3b391ff51572ff3fe58c1a34f57abe8acbb4aceddf886",
     "scripts/map_routes.gd": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
     "scripts/map_routes.gd.uid": "f4e1cdbff702603f0496ccad8079b45832556bce365f5d59c6b8668058499f3c",
     "scripts/match_report.gd": "8c6f113bd77f6b360ecae0811ab7a9267e0c9be43e7ae6070ddfbb1bf8c57596",
@@ -311,7 +312,7 @@
     "scripts/rest_recovery.gd": "d7c5e3037c5e8bbd143be07b2c7214ad1b7546e4bf1642ef36ec68a3d3ec28e9",
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
-    "scripts/rules.gd": "fbe7eeca4c06cc56ba7d797d9817ce9a430c466e1490a1d1fafe8ce9d42a6648",
+    "scripts/rules.gd": "835d834f6f83438d231a30347731dfdfb8d674bdc758784ba43f7c22b190eb9b",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",

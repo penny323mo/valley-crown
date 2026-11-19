@@ -31,12 +31,14 @@ func submit_economic_orders(g):
 func run():
  root.size=Vector2i(390,844)
  var menu=load("res://main_menu.tscn").instantiate()
+ var pg=preload("res://scripts/campaign_progress.gd")
+ menu.campaign_progress_path="/tmp/v133-natural-progress-"+str(Time.get_ticks_usec())+".json"
  root.add_child(menu);await frames()
  await tap(menu.buttons.get_node("StartMatchButton"))
  await frames()
  await tap(menu.buttons.get_node("CampaignMenuButton"))
  await frames()
- check("real start menu touch opens optional campaign without starting game",menu.page=="campaign" and not is_instance_valid(menu.match_node) and menu.description.text.contains("關閉網頁或重新整理"))
+ check("real start menu touch opens optional campaign without starting game",menu.page=="campaign" and not is_instance_valid(menu.match_node) and menu.description.text.contains("未完成戰場不會恢復"))
  if menu.page!="campaign":quit(1);return
  menu._choose_campaign(2)
  check("chapter three cannot bypass locked first chapter",menu.page=="campaign" and menu.campaign_unlocked==0 and not is_instance_valid(menu.match_node))
@@ -135,7 +137,8 @@ func run():
  print("MILESTONE_SCREEN ",JSON.stringify({"overview":overview,"facts":facts,"tick":g.tick_count}))
  print("BREACH_MEMBERS ",ids.map(func(id):var e=g._get_entity(id);return {"id":id,"kind":e.kind,"alive":e.alive,"hp":e.hp,"pos":e.pos,"state":e.state,"path":e.path_status,"reason":e.path_reason,"dest":e.dest,"requested":e.path_request_goal,"resolved":e.path_resolved_goal}))
  print("BREACH_JOURNEY ",JSON.stringify({"tick":g.tick_count,"phase":phase,"stage":g.breach_mission.stage,"steps":steps,"targets":targets,"survivors":ids.filter(func(id):return g._get_entity(id).alive),"outcome":g.outcome}))
- check("actual first victory unlocks exactly chapter two",menu.campaign_unlocked==1 and g.end_setup_button.text=="下一場" and not menu.menu_layer.visible)
+ var record=pg.read(menu.campaign_progress_path)
+ check("actual first victory unlocks exactly chapter two",menu.campaign_unlocked==1 and g.end_setup_button.text=="下一場" and not menu.menu_layer.visible and record.ok and record.completed==1 and record.revision==1)
  check("victory button has forty four pixel touch target",g.end_setup_button.size.y>=44)
  var old_id=g.get_instance_id()
  var old_tick=g.tick_count
@@ -152,6 +155,7 @@ func run():
  next.set_process(false);next.test_mode=true
  check("second launch loads authored survival independent from first",next.skirmish_mode=="survival" and next.campaign_chapter==1 and next.tick_count<12 and next.economy.bank_milli(0)!=bank and menu.campaign_unlocked==1)
  print("CAMPAIGN_OBSERVED ",JSON.stringify({"build":Rules.BUILD_ID,"chapter_one_won":old_tick,"unlocked":menu.campaign_unlocked,"active_chapter":next.campaign_chapter,"active_mode":next.skirmish_mode,"active_tick":next.tick_count,"chapter_two_victory":false,"chapter_three_victory":false}))
+ DirAccess.remove_absolute(menu.campaign_progress_path)
  menu.free();await process_frame
  print(JSON.stringify({"suite":"campaign_natural_journey","checks":checks,"failed":checks.filter(func(c):return not c.passed).size(),"scope":"Actual native menu touch dispatch, ordinary authored Breach victory and next Survival launch. No HP/resource/vision/spawn mutation; no full Chapter 2/3 or physical phone claim."}))
  quit(1 if checks.any(func(c):return not c.passed) else 0)

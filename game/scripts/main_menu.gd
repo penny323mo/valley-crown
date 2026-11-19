@@ -10,6 +10,10 @@ var selected_layout="valley"
 var battlefield_preview
 const BattleSelection=preload("res://scripts/battle_selection.gd")
 var battle_group=0
+const CampaignProgress=preload("res://scripts/campaign_progress.gd")
+var campaign_progress_path=CampaignProgress.PATH
+var campaign_storage={}
+var campaign_expected={}
 var campaign_unlocked=0
 var selected_campaign=-1
 var restart_campaign_on_launch=false
@@ -76,6 +80,8 @@ var qa_callback
 var qa_mode = false
 
 func _ready():
+	campaign_storage=CampaignProgress.read(campaign_progress_path)
+	if campaign_storage.ok:campaign_unlocked=campaign_storage.completed
 	if OS.has_feature("web"):
 		get_window().content_scale_factor = maxf(1.0, DisplayServer.screen_get_scale())
 	menu_layer = CanvasLayer.new()
@@ -401,7 +407,7 @@ func _show_page(next_page: String):
 		_add_button("返回", "ManualBackButton", func(): _show_page(manual_back_page))
 	elif page == "campaign":
 		heading.text=BattleSelection.CAMPAIGN_TITLE
-		description.text="三場連戰 · 已完成 %d / 3\n各場重新開局，資源與軍隊不帶到下一場。只在本次遊戲中保留進度；關閉網頁或重新整理就會重設。\n\n" % campaign_unlocked
+		description.text="三場連戰 · 已完成 %d / 3\n各場重新開局，資源與軍隊不帶到下一場。\n%s\n\n" % [campaign_unlocked,_campaign_storage_label()]
 		for i in BattleSelection.CAMPAIGN.size():
 			var chapter=BattleSelection.option(BattleSelection.CAMPAIGN[i])
 			var status="已完成" if i<campaign_unlocked else ("可出征" if i==campaign_unlocked else "先完成上一場")
@@ -572,7 +578,10 @@ func _replace_match():
 		match_node.queue_free()
 	match_node = MATCH_SCENE.instantiate()
 	match_node.campaign_chapter=selected_campaign
-	if restart_campaign_on_launch and selected_campaign==0:campaign_unlocked=0
+	if restart_campaign_on_launch and selected_campaign==0:
+		_write_campaign_progress(campaign_storage,0,true)
+		campaign_unlocked=0
+	campaign_expected=campaign_storage.duplicate(true) if selected_campaign>=0 else {}
 	selected_campaign=-1;restart_campaign_on_launch=false
 	match_node.ai_difficulty=AIDifficulty.valid_for(selected_mode,selected_victory_mode,selected_difficulty)
 	match_node.skirmish_mode=selected_mode
@@ -691,6 +700,9 @@ func _web_menu_snapshot(_args):
 				parent = parent.get_parent()
 			visible_buttons.append({"id": button.name, "text": button.text, "rect": [rect.position.x, rect.position.y, rect.size.x, rect.size.y]})
 	var snapshot = {"visible": menu_layer.visible, "page": page, "match_exists": is_instance_valid(match_node), "buttons": visible_buttons}
+	if menu_layer.visible and page=="campaign":
+		snapshot.campaign_storage_available=campaign_storage.get("ok",false)
+		snapshot.campaign_completed=campaign_unlocked
 	if menu_layer.visible and page == "help":
 		var bar = scroll.get_v_scroll_bar()
 		var tail = help_tail.get_global_rect()
@@ -831,6 +843,17 @@ func _observe_campaign_result(game):
 	if index<0 or index>=BattleSelection.CAMPAIGN.size() or index!=campaign_unlocked:return
 	if not BattleSelection.campaign_completed(index,game.skirmish_mode,game.outcome,game.end_reason) or game.layout_id!="valley" or game.victory_mode!="conquest":return
 	campaign_unlocked+=1
+	if not _write_campaign_progress(campaign_expected,campaign_unlocked):
+		game.end_body.text+="\n"+_campaign_storage_label()
+
+func _campaign_storage_label() -> String:
+	if campaign_storage.get("ok",false):return "已完成場次保留在此瀏覽器或裝置；未完成戰場不會恢復。"
+	return "未能保留進度，只限本次遊戲；重開網頁前請留意。"
+
+func _write_campaign_progress(expected:Dictionary,completed:int,reset=false)->bool:
+	if reset and expected.get("ok",false) and expected.get("completed",-1)==0:return true
+	campaign_storage=CampaignProgress.save(expected,completed,reset,campaign_progress_path)
+	return campaign_storage.ok
 
 func _campaign_next():
 	if not is_instance_valid(match_node) or not match_node.game_over or match_node.campaign_chapter<0 or transition_busy:return

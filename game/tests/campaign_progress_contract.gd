@@ -20,6 +20,7 @@ func run():
  ck("generic surrender and irrecoverable victories do not unlock",not Battle.campaign_completed(1,"survival","victory","irrecoverable") and not Battle.campaign_completed(1,"survival","victory","surrender") and Battle.campaign_completed(1,"survival","victory","keep_destroyed"))
  var menu=load("res://main_menu.tscn").instantiate()
  var isolated="/tmp/v132-campaign-"+str(Time.get_ticks_usec())
+ menu.campaign_progress_path=isolated+"-campaign"
  menu.checkpoint_path=isolated+"-manual"
  menu.expedition_checkpoint_path=isolated+"-expedition"
  menu.auto_checkpoint_path=isolated+"-auto"
@@ -35,7 +36,7 @@ func run():
   ck("campaign selector touch target fits "+str(size),root.get_visible_rect().encloses(entry.get_global_rect()) and entry.size.y>=44)
  root.size=Vector2i(390,844);menu._layout();await frames()
  await press(menu,"CampaignMenuButton")
- ck("clear session only and no army carryover",menu.description.text.contains("關閉網頁或重新整理") and menu.description.text.contains("資源與軍隊不帶到下一場"))
+ ck("clear chapter only storage and no army carryover",menu.description.text.contains("未完成戰場不會恢復") and menu.description.text.contains("資源與軍隊不帶到下一場"))
  await press(menu,"CampaignChapterButton");await press(menu,"LaunchMatchButton")
  var g=running(menu)
  g._submit("surrender");g._tick(Rules.TICK)
@@ -84,9 +85,9 @@ func run():
  ck("standalone scenario still has original result and no unlock",g.outcome=="victory" and g.campaign_chapter==-1 and g.end_setup_button.text=="重新設定" and menu.campaign_unlocked==0)
  ck("ordinary expedition and auto files all remain byte exact",paths.all(func(p):return FileAccess.get_file_as_string(p)=="isolated existing slot"))
  menu.free()
- var fresh=load("res://main_menu.tscn").instantiate();root.add_child(fresh);await frames()
- ck("fresh page session has no silently restored progression",fresh.campaign_unlocked==0 and not is_instance_valid(fresh.match_node))
- for f in paths:DirAccess.remove_absolute(f)
+ var fresh=load("res://main_menu.tscn").instantiate();fresh.campaign_progress_path=isolated+"-campaign";root.add_child(fresh);await frames()
+ ck("confirmed reset does not restore mission or earned chapters",fresh.campaign_unlocked==0 and not is_instance_valid(fresh.match_node))
+ for f in paths+[isolated+"-campaign"]:DirAccess.remove_absolute(f)
  fresh.free();await process_frame
  var fails=checks.filter(func(q):return not q.passed).size()
  print(JSON.stringify({"suite":"campaign_progress_contract","scope":"Controlled authored terminal gates and real menu callbacks, ordinary surrender, retry, endpoint layout and checkpoint isolation. Controlled survival/escort wins are not natural full matches or phone proof.","checks":checks,"failed":fails}))
