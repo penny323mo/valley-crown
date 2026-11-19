@@ -1,0 +1,61 @@
+name: Audit v136 candidate objective focus with exact Web input
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v136-objective-candidate.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  browser:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact real product archive and isolate browser files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '7c0a1ffb5804cd5099e2e0d75f3b3e8f3bfefa603d2420dbb9decffed54d58e0  ci/audit-v136-objective-candidate.py' | sha256sum --strict -c
+          google-chrome --version
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,re,sys
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          row={'artifact_id': 14572247534, 'run_id': 44605756697, 'build': 'vc-037b3db3b754', 'metadata_sha256': '4fddd4e37b8453f48097e8435b085ba2b95ecba5b92ac803f8b91af898955490', 'zip_sha256': 'e07012756a686b6c04d889866302953c431a6bf74017318a92909d3acc617e5d'}
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']=='1f5c26fa1a067da4bded5a39c57bb13c4943eb93'
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
+          members=verified_members(data,row)
+          identity=json.loads(members['candidate-metadata.json'])
+          assert identity['source_commit']=='10bc1ffef4f4715e294b2ae82a8ae966448c0fab' and identity['game_tree']=='317d215e916239bbc25caf73156fc8291b59a6ca'
+          dest=pathlib.Path('/tmp/v133-browser-proof');dest.mkdir()
+          for path,data in members.items():
+              if path.startswith('artifacts/clean-a/'):
+                  name=path.split('/')[-1]
+                  assert name.startswith('index.')
+                  (dest/name).write_bytes(data)
+          (dest/'probe.html').write_text('<!doctype html><title>local disposable browser proof</title>')
+          (dest/'input.json').write_text(json.dumps(row))
+          PY
+      - name: Run real Web export with ordinary objective focus and return
+        run: python3 -B ci/audit-v136-objective-candidate.py /tmp/v133-browser-proof candidate vc-037b3db3b754
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v136-objective-candidate-proof
+          path: |
+            /tmp/v133-browser-proof/input.json
+            /tmp/v133-browser-proof/browser-proof.json
+            /tmp/v133-browser-proof/chromedriver.log
+            /tmp/v133-browser-proof/browser-console.json
+            /tmp/v133-browser-proof/*-actual-battle.png
+          retention-days: 15
+          if-no-files-found: error
