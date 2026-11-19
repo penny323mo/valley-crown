@@ -112,7 +112,7 @@ class LatestTouchNames(unittest.TestCase):
     def test_continuity_exact_schema_and_mutations(self):
         import validate_latest_contracts as latest
         self.assertIn('touch_camera_continuity_contract',latest.SUITES)
-        self.assertEqual(latest.COUNTS['touch_camera_continuity_contract'],18)
+        self.assertEqual(latest.COUNTS['touch_camera_continuity_contract'],47)
         d={'checks':[{'name':n,'passed':True} for n in latest.CONTINUITY_SPEC['names']], 'failure_count':0,'scope':latest.CONTINUITY_SPEC['scope']}
         with tempfile.TemporaryDirectory() as td:
             p=Path(td)/'godot.log';prefix='TOUCH_CAMERA_CONTINUITY '
