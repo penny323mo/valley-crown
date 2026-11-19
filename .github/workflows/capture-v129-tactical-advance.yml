@@ -1,0 +1,89 @@
+name: Capture genuine v129 tactical advance comparison
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-v129-tactical-advance.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+      - name: Bind official engine, exact artifact bytes and reviewed capture tools
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '30960e9670e0066877c1977188cb0bdd9bc9e04555a5da59bfb819a10c4d1b6d  ci/capture-v129-tactical-advance.gd' | sha256sum --strict -c
+          echo '980e5f0186966c2e57b896f8abc72c73014d500c9e4b0e3a016fab94807eda85  ci/capture-v129-tactical-advance-guard.py' | sha256sum --strict -c
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v128-engine.zip
+          unzip -q /tmp/v128-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,sys
+          sys.path[:0]=['scripts']
+          from web_release_archive import GitHub,verified_members
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          pairs=[('before', {'artifact_id': 14529662253, 'run_id': 44520317998, 'build': 'vc-59f3607d0a76', 'metadata_sha256': '38802ebc196296c506f02f06e49d710f03134709880a08478d242f3058e58f26', 'zip_sha256': 'c336d51e33d3abd6a6fe732c1718f7cdef75e55561e44d4aadc0843532580b33'}, 'fad2c405b115ffdd10881e312c12df56bc70ed7b', 'aba7d61362281f4998b0b13a7f1d01f78f60590c', '94e501661c4daf7522bbc6f7e22b8b1e90d455d0'), ('after', {'artifact_id': 14536061544, 'run_id': 44532781622, 'build': 'vc-175001363156', 'metadata_sha256': '7d7b1dd51dbec1c0f0b9c3195c101ec3d32449f32f538001a9120765b270eed3', 'zip_sha256': '5f03d7b6350f219c84793cd65432ef6e5695d0ac1e7778f26ea0fa5fdff59076'}, 'eea4afcfdc4c05423071ecc006616fa4c2001d50', '1acbc8ee2fdbd9171db75723d6797871bbd67052', '56d8376b4b9ee112944a9b4e972653996defa485')]
+          for label,row,workflow_head,source,tree in pairs:
+              run=g.request('/actions/runs/'+str(row['run_id']))
+              assert run['conclusion']=='success' and run['head_sha']==workflow_head
+              a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+              assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+              files=verified_members(g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True),row)
+              metadata=json.loads(files['candidate-metadata.json'])
+              assert metadata['source_commit']==source and metadata['game_tree']==tree
+              pck=files['artifacts/clean-a/index.pck']
+              assert pck==files['artifacts/clean-b/index.pck']
+              path=pathlib.Path('/tmp/v129-capture')/label;path.mkdir(parents=True)
+              (path/'index.pck').write_bytes(pck)
+              (path/'capture.gd').write_bytes(pathlib.Path('ci/capture-v129-tactical-advance.gd').read_bytes())
+              (path/'input.json').write_text(json.dumps({'label':label,'source_commit':source,'game_tree':tree,
+                  'build':row['build'],'pck_sha256':hashlib.sha256(pck).hexdigest()}))
+          PY
+      - name: Run bounded captures serially with original CPU, memory and wall limits
+        run: |
+          set -euo pipefail
+          python3 -B ci/capture-v129-tactical-advance-guard.py /tmp/v129-capture/before vc-59f3607d0a76
+          python3 -B ci/capture-v129-tactical-advance-guard.py /tmp/v129-capture/after vc-175001363156
+      - name: Verify authentic same-stage comparison
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('/tmp/v129-capture')
+          for label,expected in [('before','vc-59f3607d0a76'),('after','vc-175001363156')]:
+              p=root/label
+              d=json.loads((p/'images/report.json').read_text())
+              run=json.loads((p/'native-render-receipt.json').read_text())
+              info=json.loads((p/'input.json').read_text())
+              assert d['complete'] and d['failed']==0 and len(d['checks'])==11
+              assert d['build']==expected==info['build'] and len(d['rows'])==1
+              assert d['rows'][0]['tick']==200 and d['rows'][0]['viewport']=='(390, 844)'
+              assert d['rows'][0]['ids']==[103,105] and d['rows'][0]['at_start']
+              assert run['returncode']==0 and run['process_group_gone'] and run['stop_reason'] is None
+              assert run['inputs']['index.pck']==info['pck_sha256'] and run['after']['oom']==run['baseline']['oom']
+              data=(p/'images/mixed-army.png').read_bytes()
+              assert data.startswith(b'\x89PNG\r\n\x1a\n') and hashlib.sha256(data).hexdigest()==d['rows'][0]['sha256']
+              assert data[12:16]==b'IHDR' and int.from_bytes(data[16:20],'big')==390 and int.from_bytes(data[20:24],'big')==844
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v129-genuine-portrait-ab
+          path: |
+            /tmp/v129-capture/*/input.json
+            /tmp/v129-capture/*/images/*.png
+            /tmp/v129-capture/*/images/report.json
+            /tmp/v129-capture/*/native-render-*.json
+            /tmp/v129-capture/*/native-render-*.txt
+          retention-days: 30
+          if-no-files-found: error
