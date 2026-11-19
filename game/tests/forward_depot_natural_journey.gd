@@ -206,5 +206,6 @@ func run():
  receipt["images"]=images
  if show_images:
   var file=FileAccess.open(output_dir+"/report.json",FileAccess.WRITE);file.store_string(JSON.stringify(receipt));file.close()
- print(JSON.stringify(receipt))
+ print("DEPOT_EVIDENCE "+JSON.stringify(receipt))
+ print(JSON.stringify({"suite":receipt.suite,"scope":receipt.scope,"checks":checks,"failed":n}))
  g.queue_free();quit(0 if n==0 else 1)
