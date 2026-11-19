@@ -1,4 +1,4 @@
-name: Compare real v138 battle feedback with normally aged effects
+name: Compare real v138 battle feedback with fixed integer capture ticks
 on:
   push:
     branches: [main]
@@ -26,8 +26,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '71aa25d021458a9a94fc2aefa86e43ee2cc6818d4d1b55dd7dd4cd5b7c772dcd  ci/audit-v139-combat-ab.gd' | sha256sum --strict -c
-          echo 'ce909adc5560302cb3dc84aed9d4c892251253b5aa31871758a4f50f3d4c00f5  ci/audit-v139-combat-ab-guard.py' | sha256sum --strict -c
+          echo '4414726b61faf0e48e0c3ce01c8911a3a4b98e2e87e1e1d93bf53e1f682991aa  ci/audit-v139-combat-ab.gd' | sha256sum --strict -c
+          echo '85a68a44cd378df7eb24efc45fff0cb13cb1eefece0fcb70222bd0f24675ce28  ci/audit-v139-combat-ab-guard.py' | sha256sum --strict -c
           curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v137-engine.zip
           unzip -q /tmp/v137-engine.zip -d /tmp
           echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c

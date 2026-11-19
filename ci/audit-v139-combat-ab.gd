@@ -142,7 +142,12 @@ func run():
  var role=args[4] if args.size()>=6 else (args[3] if args.size()>=4 else "baseline")
  if show_images:
   output_dir=args[0];requested_name=args[3]
-  capture_ticks=JSON.parse_string(args[5]) if args.size()>=6 else []
+  assert(args.size()==6 and args[3]=="vc-ce2efc75244b" and role in ["baseline","prototype"])
+  assert(DirAccess.make_dir_recursive_absolute(output_dir)==OK)
+  var ticks=JSON.parse_string(args[5])
+  assert(ticks is Array and ticks.size()==2)
+  capture_ticks=ticks.map(func(n):return int(n))
+  print("COMBAT_FRAME_SETTINGS ",[output_dir,role,capture_ticks])
   RenderingServer.render_loop_enabled=false
  shell=load("res://main_menu.tscn").instantiate()
  root.add_child(shell)
@@ -153,6 +158,7 @@ func run():
  g.history_path="/tmp/isolated-combat-frame-qa-never-save.json"
  g.set_process(false);g.test_mode=true
  var initial_tick=g.tick_count
+ print("COMBAT_FRAME_START ",initial_tick)
  if role=="prototype":
   var prototype=load(args[0].get_base_dir()+"/combat-variant.gd")
   assert(prototype!=null)
@@ -199,10 +205,14 @@ func run():
     assert(g.camera_focus==FRONT)
     cameraset=true
    g._update_visuals(0.0);g._refresh_fog();g._update_hud();await settle()
+   print("COMBAT_FRAME_CAPTURE ",tick)
    await frame("combat-"+str(tick))
  var report={"role":role,"start_tick":initial_tick,"build":g._snapshot().build,"signature":checker.finish().hex_encode(),"peak":peak,"samples":frame_samples,"checks":checks,"hostile_damage":visible_hostile_damage,"attacks":contacts,"ledger":g.economy.audit().ok,"images":images}
  if show_images:
   var file=FileAccess.open(output_dir+"/report.json",FileAccess.WRITE)
+  if file==null:
+   push_error("Cannot open capture report "+output_dir+"/"+str(FileAccess.get_open_error()))
+   quit(2);return
   file.store_string(JSON.stringify(report));file.close()
  print("COMBAT_FRAME_EVIDENCE "+JSON.stringify(report))
  g.queue_free()

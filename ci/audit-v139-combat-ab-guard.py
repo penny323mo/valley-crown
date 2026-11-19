@@ -18,7 +18,7 @@ out=open(R/(name+'-stdout.txt'),'w');err=open(R/(name+'-stderr.txt'),'w');t=time
 p=subprocess.Popen(cmd,stdout=out,stderr=err,preexec_fn=limits,env={**os.environ,'HOME':str(R),'XDG_DATA_HOME':str(R/'userdata'),'XDG_CONFIG_HOME':str(R/'config'),'XDG_CACHE_HOME':str(R/'cache'),'GODOT_SILENCE_ROOT_WARNING':'1','LIBGL_ALWAYS_SOFTWARE':'1','LP_NUM_THREADS':'1','GALLIUM_DRIVER':'softpipe','MESA_GL_VERSION_OVERRIDE':'3.3'});r['pid']=p.pid;r['stop_reason']=None
 try:
  while p.poll() is None:
-  s=metrics();errors=(R/(name+'-stderr.txt')).read_text()
+  s=metrics();errors=(R/(name+'-stderr.txt')).read_text()+(R/(name+'-stdout.txt')).read_text()
   if s['oom']!=r['baseline']['oom'] or s['available_kib']<3145728 or time.monotonic()-t>330 or any(x in errors for x in ['SCRIPT ERROR:','Parse Error:']):r['stop_reason']='resource_wall_or_script_error';os.killpg(p.pid,signal.SIGKILL);break
   time.sleep(.05)
 finally:
