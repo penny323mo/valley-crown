@@ -460,7 +460,9 @@ func _show_page(next_page: String):
 			description.text=SkirmishPolicy.title(match_node.skirmish_mode)+"暫不支援存檔；普通戰役與遠征存檔不變。\n\n"+description.text
 		if is_instance_valid(match_node) and match_node.skirmish_mode=="expedition":
 			description.text="遠征使用分開存檔，普通戰役存檔不變。\n\n"+description.text
-		if is_instance_valid(match_node) and match_node.campaign_chapter>=0:
+		# The generic checkpoint view also accepts lightweight noncampaign matches.
+		var chapter=match_node.get("campaign_chapter") if is_instance_valid(match_node) else null
+		if chapter is int and chapter>=0:
 			description.text="霧谷戰役只保留本次遊戲進度，不寫入存檔。\n\n"+description.text
 		elif is_instance_valid(match_node) and not match_node.game_over and match_node.skirmish_mode not in ["escort","breach"]:
 			_add_button("儲存目前戰役", "SaveCheckpointButton", _save_checkpoint)
