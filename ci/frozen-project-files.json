@@ -563,7 +563,7 @@
   "tests/food_farm_shortcut_contract.gd": "fc68b2333f2a9295d94766206b0fefc8e8baff6cd5eec465aa1b18a5602ae932",
   "tests/fortress_contract.gd": "f1c0fe9e5ec8a9304bc576e2a3c53b96b993e869fd6ee64529750cd5c3fd7d47",
   "tests/forward_depot_contract.gd": "3ec9f0d6f3c2415394bf1fd9833c6d30c48d03d5f1cc797d2049957a8fd2d1ae",
-  "tests/forward_depot_natural_journey.gd": "1470f15f544dbfb79e3ccd4488101724e2e27df07eb74f19d2638739917aae55",
+  "tests/forward_depot_natural_journey.gd": "6725e31df943ce37fdb26afeecf472638b81f9f33ab673b751ae616adaf50939",
   "tests/friendly_pick_routed_contract.gd": "c24ea835ae603c419230d7b19eb81b8b0dbebfa377ecfb430255d7b95b084e50",
   "tests/frontier_escort_contract.gd": "b7c8705d47707f15e3f3196d0a863bb9269d47585f3a142ffd1fa485e665f800",
   "tests/frontier_escort_journey.gd": "b87d64ddb70034c2355c422e008aef6b5cbcde860b3f1d190031a5a139cacb44",
