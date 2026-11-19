@@ -818,8 +818,11 @@ func _tick(dt):
 		var target=_get_entity(id)
 		if not target.is_empty() and target.alive:
 			_record_damage_feedback(target,pending_damage[id])
-			if target.team==1 and pending_damage[id]>0 and _visible_to(target,0): demo_tutorial.record("combat")
+			var visible_contact=target.team==1 and pending_damage[id]>0 and _visible_to(target,0)
 			target.hp-=pending_damage[id]; target.last_damage_tick=tick_count
+			if visible_contact:
+				demo_tutorial.record("combat")
+				match_report.record_visible_contact(target,pending_damage[id],true,tick_count)
 			battle_alerts.record_hit(target,pending_damage[id],tick_count)
 			match_report.record_settled_loss(target,pending_damage[id],tick_count)
 			if pending_damage[id]>0 and target.hp>0 and target.category=="unit": _note_unit_action(target,"hit")

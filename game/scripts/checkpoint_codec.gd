@@ -5,6 +5,7 @@ extends RefCounted
 const TacticalRoute=preload("res://scripts/tactical_route.gd")
 const Rules=preload("res://scripts/rules.gd")
 const Layout=preload("res://scripts/battlefield_layout.gd")
+const Report=preload("res://scripts/match_report.gd")
 const MAGIC="VALLEY_CROWN_CHECKPOINT"
 const SCHEMA=1
 const MAX_BYTES=16*1024*1024
@@ -191,6 +192,7 @@ static func validation_result(data)->Dictionary:
  for name in fields:
   if not exact_keys(data.modules[name],fields[name]):return failure("MODULE_FIELDS:"+name)
   if not module_types(name,data.modules[name]):return failure("MODULE_FIELD_TYPES:"+name)
+ if not Report.valid_checkpoint_events(data.modules.match_report,data.game.tick_count):return failure("MATCH_REPORT_EVENTS")
  if not exact_keys(data.rng,["seed","state"]) or not data.rng.seed is int or not data.rng.state is int:return failure("RNG")
  if not data.entities is Array or data.entities.size()>10000:return failure("ENTITY_BOUNDS")
  var ids={}
