@@ -320,6 +320,7 @@ var hud_bottom: PanelContainer
 var hud_top: PanelContainer
 var action_scroll: ScrollContainer
 var action_selection_ids=[] # Presentation-only membership; queue/status refresh keeps scrolling.
+var action_mode_identity=[] # Transient command context, not saved gameplay state.
 var action_reveal_ids=[]
 var action_reveal_generation=0
 var action_reveal_receivers=[]
@@ -4727,14 +4728,17 @@ func _update_hud():
 		var ent=faction_views[0].get_record(id)
 		if not ent.is_empty() and ent.alive: selection.append(ent)
 	var selection_ids=selection.map(func(record):return record.id);selection_ids.sort()
-	if selection_ids!=action_selection_ids:
+	var mode_identity=_command_strip_mode_identity()
+	if selection_ids!=action_selection_ids or mode_identity!=action_mode_identity:
 		action_selection_ids=selection_ids
+		action_mode_identity=mode_identity
+		action_reveal_generation+=1
 		# Different context must not inherit a builder's hidden tail. A held
 		# old strip drag cannot move the replacement context after this reset.
 		action_touch_scroll.clear()
 		if is_instance_valid(action_scroll):action_scroll.scroll_horizontal=0
 		action_reveal_ids=[]
-		if selection.size()==1 and selection[0].get("built",false) and Rules.PRODUCES.has(selection[0].kind):
+		if mode_identity.is_empty() and selection.size()==1 and selection[0].get("built",false) and Rules.PRODUCES.has(selection[0].kind):
 			action_reveal_ids=selection_ids.duplicate()
 			call_deferred("_reveal_context_primary",selection_ids.duplicate(),action_reveal_generation)
 	# Preserve the reviewed conservative warning suppression for own queued intent.
@@ -4918,6 +4922,15 @@ func _update_hud():
 					selection_summary.text=("自動待產 " if producer.get("repeat_kind","")==kind else "加訓 ")+Rules.NAMES[kind]+"："+shortfall
 					break
 	call_deferred("_layout_ui")
+
+# Changes of command purpose reset the strip once, not on price, queue,
+# preview-point, wall-count or periodic HUD refresh. No authority fields.
+func _command_strip_mode_identity() -> Array:
+	if not build_mode.is_empty():return ["build",build_mode]
+	if box_select_mode:return ["box",box_select_military_only]
+	if rally_building>=0:return ["rally",rally_building,rally_mode]
+	if touch_command:return ["command",unit_command_kind,advance_formation]
+	return []
 
 func _reveal_context_primary(identity, generation=-1):
 	if not is_inside_tree() or is_queued_for_deletion():return
