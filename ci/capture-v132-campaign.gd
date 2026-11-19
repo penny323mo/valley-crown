@@ -46,7 +46,11 @@ func run():
  # Keep the new real Game nodes on manual simulation ticks from their
  # first frame; rendering-window speed must not add a different opening.
  node_added.connect(func(n):
-  if n.scene_file_path=="res://main.tscn":n.set_process(false);n.test_mode=true
+  if n.has_method("_check_end") and n.has_method("_update_vision") and n.has_method("_tick"):
+   n.ready.connect(func():
+    n.set_process(false)
+    n.test_mode=true
+   ,CONNECT_ONE_SHOT)
  )
  root.size=Vector2i(int(args[1]),int(args[2]))
  shot_dir=args[0]

@@ -22,7 +22,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '7be4ad8204b6f6c714d22db0843f8531fdb9437338fae234b4c736459b4c2595  ci/capture-v132-full-campaign.gd' | sha256sum --strict -c
+          echo '73327bcfaa2652d43721b284f4402fae74bd6a5333251698ef644420f3344a86  ci/capture-v132-full-campaign.gd' | sha256sum --strict -c
           echo '4d1874718bf61c223ef0b2166db8e8850d0da8449ce1f3f9eeee0cf10cdf605d  ci/capture-v132-full-campaign-guard.py' | sha256sum --strict -c
           curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v132-full-engine.zip
           unzip -q /tmp/v132-full-engine.zip -d /tmp

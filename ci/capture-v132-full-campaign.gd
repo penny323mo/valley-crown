@@ -221,7 +221,11 @@ func run():
  var args=OS.get_cmdline_user_args()
  if args.size()!=4 or args[3]!=Rules.BUILD_ID:quit(1);return
  node_added.connect(func(n):
-  if n.scene_file_path=="res://main.tscn":n.set_process(false);n.test_mode=true
+  if n.has_method("_check_end") and n.has_method("_update_vision") and n.has_method("_tick"):
+   n.ready.connect(func():
+    n.set_process(false)
+    n.test_mode=true
+   ,CONNECT_ONE_SHOT)
  )
  root.size=Vector2i(int(args[1]),int(args[2]));shot_dir=args[0]
  if DirAccess.make_dir_recursive_absolute(shot_dir)!=OK:quit(1);return
