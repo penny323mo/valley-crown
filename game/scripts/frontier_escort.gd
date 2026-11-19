@@ -1,6 +1,8 @@
 extends RefCounted
 ## Public authored escort mission; no autonomous orders or grants.
 const TARGET=Vector3(-7,0,6)
+const OUTPOST_MIN=Vector2i(-11,3)
+const OUTPOST_MAX=Vector2i(-3,9)
 const STAGING=Vector3(8,0,-8)
 const ROSTER=["spearman","spearman","archer","archer","cavalry","cavalry"]
 const TITLES=["護送村民","建立前哨","守住前哨","任務完成"]
@@ -14,7 +16,7 @@ var living=3
 var buildings={}
 var remaining=0
 static func in_zone(p:Vector3)->bool:
- return p.x>=-11 and p.x<=-3 and p.z>=3 and p.z<=9
+ return p.x>=OUTPOST_MIN.x and p.x<=OUTPOST_MAX.x and p.z>=OUTPOST_MIN.y and p.z<=OUTPOST_MAX.y
 func update(tick:int,entities:Array)->bool:
  living=0;buildings={};remaining=0
  var arrived=false
@@ -41,7 +43,7 @@ func launch(ids:Array)->bool:
  counter_ids=ids.duplicate();launched=true;remaining=6;return true
 func caption(tick:int)->String:
  var task="護送指定三名村民，至少一名抵達前哨。"
- if stage==1:task="前哨區付費完成倉庫和箭塔；被毀可重建。"
+ if stage==1:task="在前哨界線內放置倉庫和箭塔中心；付費完成才計算。"
  if stage==2:task=("反攻%d秒後出發；保護村民及前哨。" % maxi(0,ceili((due-tick)/20.0))) if not launched else ("擊退餘下%d名敵軍；前哨被毀可重建。" % remaining)
  if stage==3:task="村民與前哨存活，反攻全部擊退。"
  return "護送拓荒隊 · "+TITLES[stage]+"\n村民 %d/3 · 倉庫 %d/1 · 箭塔 %d/1\n" % [living,int(buildings.has("storehouse")),int(buildings.has("tower"))]+task

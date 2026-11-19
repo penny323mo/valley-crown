@@ -425,6 +425,10 @@ const FrontierExpedition=preload("res://scripts/frontier_expedition.gd")
 var frontier_expedition=FrontierExpedition.new()
 const FrontierEscort=preload("res://scripts/frontier_escort.gd")
 var frontier_escort=FrontierEscort.new()
+var escort_outline: MeshInstance3D
+var escort_outline_segments: Array[Vector3]=[]
+var escort_outline_cells: PackedInt32Array
+var escort_outline_mask=-1
 const BreachMission=preload("res://scripts/breach_mission.gd")
 var breach_mission=BreachMission.new()
 const ControlPoint=preload("res://scripts/control_point.gd")
@@ -558,6 +562,7 @@ func _create_world():
 	_mesh(order_marker,ring,Vector3(0,0.1,0),GOLD)
 	order_marker.visible=false
 	_create_control_point_marker()
+	if skirmish_mode=="escort":_create_escort_outline()
 
 func _tree_visual(parent, p, kind, sc=1.0):
 	var root=Node3D.new(); parent.add_child(root); root.position=p; root.scale=Vector3.ONE*sc
@@ -4038,6 +4043,7 @@ func _update_vision(refresh_render=true):
 		_refresh_fog()
 
 func _refresh_fog():
+	_refresh_escort_outline()
 	if is_instance_valid(minimap):minimap.refresh_fog()
 	if is_instance_valid(fog):
 		for i in Rules.MAP_SIZE*Rules.MAP_SIZE:
@@ -4897,6 +4903,8 @@ func _update_hud():
 		if is_instance_valid(build_confirm): build_confirm.disabled=not reason.is_empty() or paused or not build_preview_held
 		if build_mode=="wall" and wall_line_count>1:help_label.text="%d 段木柵／木材 %d／每段一人。" % [wall_line_count,wall_line_count*30]+help_label.text
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
+		var escort_hint=_escort_build_zone_hint() if reason.is_empty() else ""
+		if not escort_hint.is_empty():help_label.text=escort_hint+"；"+help_label.text
 		selection_detail.text=help_label.text
 		if build_mode=="tower":selection_detail.text+=" · 射程參考 %.1f（至目標邊緣，須可見）" % Rules.RANGE.tower
 		queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else Rules.cost_label(build_mode))+(" · "+("資源不足：" if not _can_pay({"wood":30*wall_line_count} if build_mode=="wall" else COSTS[build_mode],0) else "")+_shortfall_for(build_mode,0) if not _shortfall_for(build_mode,0).is_empty() else ""); queue_label.show()
@@ -6234,6 +6242,11 @@ func _rotate_wall_line():
 	_cancel_pointer_streams();build_preview_held=false;wall_line_vertical=not wall_line_vertical
 	action_key="";_update_hud();_update_ghost()
 
+# A mission tip is never a placement rejection: outside sites remain ordinary paid builds.
+func _escort_build_zone_hint() -> String:
+	if skirmish_mode!="escort" or frontier_escort.stage not in [1,2] or build_mode not in ["storehouse","tower"] or not build_preview_held:return ""
+	return "前哨內，完成先計" if FrontierEscort.in_zone(_snap_build_position(build_mode,pointer_world)) else "前哨外，不計任務"
+
 func _build_preview_reason(check_resources=true) -> String:
 	if build_mode!="wall" or wall_line_count==1:return _placement_reason(build_mode,pointer_world,0,_selected_builder(),check_resources)
 	var crew=_selected_construction_workers()
@@ -6278,7 +6291,9 @@ func _update_ghost():
 			part.visible=i<wall_line_count
 			part.position=Vector3(0,0.15,i*2) if wall_line_vertical else Vector3(i*2,0.15,0)
 			part.material_override=ghost.get_child(0).material_override
-	if short_ui: _message(("%d 段／木材 %d。" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else "")+(("位置已選，按確認建造。" if build_preview_held else "點選空地作預覽，再按確認建造。") if placement_ok else "不可建造："+reason),1,true)
+	var escort_hint=_escort_build_zone_hint() if placement_ok else ""
+	if short_ui and not escort_hint.is_empty():_message(escort_hint+" · 可確認建造",1,true)
+	elif short_ui: _message(("%d 段／木材 %d。" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else "")+(("位置已選，按確認建造。" if build_preview_held else "點選空地作預覽，再按確認建造。") if placement_ok else "不可建造："+reason),1,true)
 
 func _confirm_build():
 	if build_mode.is_empty() or paused or not build_preview_held or touch_gesture: return
@@ -7386,6 +7401,59 @@ func _worker_safety_label(record):
 
 static func valid_victory_mode(value: String) -> String:
 	return value if value in ["conquest","control","supply"] else "conquest"
+
+## Draw only the exact public scoring boundary, on explored ground and below fog.
+## No area/collider, no pointer target and one draw surface irrespective of size.
+func _create_escort_outline():
+	var lo=FrontierEscort.OUTPOST_MIN
+	var hi=FrontierEscort.OUTPOST_MAX
+	for x in range(lo.x,hi.x):
+		escort_outline_segments.append(Vector3(x+0.5,lo.y,0))
+		escort_outline_segments.append(Vector3(x+0.5,hi.y,1))
+	for z in range(lo.y,hi.y):
+		escort_outline_segments.append(Vector3(lo.x,z+0.5,2))
+		escort_outline_segments.append(Vector3(hi.x,z+0.5,3))
+	for p in escort_outline_segments:
+		var inward=[Vector3(0,0,0.25),Vector3(0,0,-0.25),Vector3(0.25,0,0),Vector3(-0.25,0,0)][int(p.z)]
+		escort_outline_cells.append(_cell_index(Vector3(p.x,0,p.y)+inward))
+	escort_outline=MeshInstance3D.new();escort_outline.name="EscortOutpostBoundary"
+	escort_outline.mesh=ImmediateMesh.new();escort_outline.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var material=StandardMaterial3D.new()
+	material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.vertex_color_use_as_albedo=true
+	material.cull_mode=BaseMaterial3D.CULL_DISABLED
+	escort_outline.material_override=material
+	add_child(escort_outline)
+
+func _refresh_escort_outline():
+	if not is_instance_valid(escort_outline):return
+	if frontier_escort.stage>=3 or explored_cells[0].is_empty():
+		escort_outline.hide()
+		return
+	var mask=0
+	for i in escort_outline_cells.size():
+		if explored_cells[0][escort_outline_cells[i]]!=0:mask|=(1<<i)
+	escort_outline.visible=mask!=0
+	if mask==escort_outline_mask:return
+	escort_outline_mask=mask
+	var mark:ImmediateMesh=escort_outline.mesh
+	mark.clear_surfaces()
+	if mask==0:return
+	mark.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in escort_outline_segments.size():
+		if (mask&(1<<i))==0:continue
+		var p=escort_outline_segments[i]
+		var along=Vector3.RIGHT if p.z<2 else Vector3.BACK
+		var across=Vector3.BACK if p.z<2 else Vector3.RIGHT
+		var center=Vector3(p.x,0.074,p.y)
+		_escort_outline_quad(mark,center,along*0.504,across*0.12,Color("463520"))
+		center.y=0.078
+		_escort_outline_quad(mark,center,along*0.43,across*0.059,Color("efd17e"))
+	mark.surface_end()
+
+func _escort_outline_quad(mark:ImmediateMesh,center:Vector3,along:Vector3,across:Vector3,color:Color):
+	for vertex in [center-along-across,center+along-across,center+along+across,center-along-across,center+along+across,center-along+across]:
+		mark.surface_set_color(color);mark.surface_add_vertex(vertex)
 
 func _create_control_point_marker():
 	control_point_marker=Node3D.new();control_point_marker.name="CentralControlPoint";add_child(control_point_marker)
