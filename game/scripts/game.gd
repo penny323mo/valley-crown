@@ -7011,6 +7011,10 @@ func _place_tutorial_panel():
 	var card_width=minf(width,maxf(392.0,width*0.58)) if tutorial_sidecard else width
 	tutorial_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART if tutorial_sidecard else TextServer.AUTOWRAP_OFF
 	tutorial_label.max_lines_visible=2 if tutorial_sidecard else 1
+	# Label with clip+wrap has 1px minimum height. Reserve two real text
+	# lines alongside the existing touch controls; otherwise the label can
+	# report wraps while painting no glyphs in Web or native rendering.
+	tutorial_label.custom_minimum_size.y=52.0 if tutorial_sidecard else 0.0
 	tutorial_panel.position=Vector2(viewport_size.x-card_width-6,hud_top.position.y+hud_top.size.y+4)
 	tutorial_panel.size=Vector2(card_width,0)
 

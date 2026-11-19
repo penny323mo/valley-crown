@@ -29,7 +29,7 @@ func run():
    for index in 11:
     g._refresh_tutorial();await settle()
     if g.tutorial_label.get_line_count()>2:print("OVERFLOW ",dims," ",paused_state," ",index," ",g.tutorial_label.get_line_count()," ",g.tutorial_label.size.x," ",g.tutorial_label.text)
-    hints_fit=hints_fit and g.tutorial_label.get_line_count()<=2 and not g.tutorial_label.text.is_empty()
+    hints_fit=hints_fit and g.tutorial_label.get_line_count()>0 and g.tutorial_label.get_line_count()<=2 and g.tutorial_label.get_visible_line_count()==g.tutorial_label.get_line_count() and not g.tutorial_label.text.is_empty()
     if index<g.demo_tutorial.KEYS.size():g.demo_tutorial.record(g.demo_tutorial.KEYS[index])
   g.paused=false;g.demo_tutorial.achieved=achieved;g._refresh_tutorial();await settle()
   measure("all 10 short lessons, paused and running, fit two lines "+str(dims),hints_fit)
