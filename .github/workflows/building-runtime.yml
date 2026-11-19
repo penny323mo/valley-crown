@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 1acbc8ee2fdbd9171db75723d6797871bbd67052
+      BUILDING_RUNTIME_SOURCE_COMMIT: 666ada1eba7c6217dcfb40da024181947a3f3f04
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '14192867f0c040a62cd189843a3fddb31fda7a89dd4cc708c5f7d2890dcccc6d  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '185167cd88399d30c44db875b7146c7bbbbc5ea449f0994db7e29b9996195c3c  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -597,6 +597,12 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/command_mode_paid_flow_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/tactical_advance_phone/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/tactical_advance_phone/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_geometry/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_geometry/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_menu/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_menu/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_natural_journey/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/iron_crossroads_natural_journey/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
