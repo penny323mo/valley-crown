@@ -1,4 +1,4 @@
-name: Audit v138 exact Web Frontline Depot actual home and forward farm delivery
+name: Audit v138 exact Web Frontline Depot actual home and completed forward farm delivery
 on:
   push:
     branches: [main]
@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '2c5c448e74740d025b2b37bd8cb4dd4815009b2f1295ac01094d82d1d81ec688  ci/audit-v138-forward-depot.py' | sha256sum --strict -c
+          echo 'b8a54b1aeca4eb08f668107ce8e8f0a3ac29b1a916f9d8847f3c1daff2cf1a73  ci/audit-v138-forward-depot.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PY'
           import hashlib,json,os,pathlib,re,sys

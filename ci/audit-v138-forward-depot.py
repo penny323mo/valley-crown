@@ -205,7 +205,11 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
             return next((o for o in q["hud"]["own_targets"] if o["kind"]=="storehouse" and not o["built"]),None)
         g=match(lambda q:own_site(q),20)
         receipt["built_site_id"]=own_site(g)["id"];receipt["site_center"]=chosen
-        g=match(lambda q:q["built"]==prev_builds+1,120)
+        def done_site(q):
+            b=objective(q)
+            receipt["last_completion_poll"]={"built":q["built"],"tick":q["tick"],"goal":b["text"] if b else None}
+            return q["built"]==prev_builds+1 and b and "交付" in b["text"]
+        g=match(done_site,125)
         check("matching paid warehouse completion changes action to delivery, not score",zero(g) and "交付" in objective(g)["text"])
         # Use the independently won western strategy's actual close farm, not
         # the first run's long approach around the tree from this particular worker.
@@ -243,7 +247,11 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         farm_tap=project(g,*farm,y=.25)
         receipt["farm_tap"]=farm_tap
         touch(farm_tap)
-        g=match(lambda q:"10/80" in objective(q)["text"] and "0/120" in objective(q)["text"],130)
+        def forward_deposit(q):
+            b=objective(q)
+            receipt["last_deposit_poll"]={"bank":q["bank_milli"],"tick":q["tick"],"goal":b["text"] if b else None,"selection":q["selected"],"details":q["hud"]["selection_detail"]}
+            return b and "10/80" in b["text"] and "0/120" in b["text"]
+        g=match(forward_deposit,130)
         check("real working farm crop delivered at same front warehouse increases mission food by 10",g["bank_milli"]["food"]>bank+10000)
         receipt["first_forward_delivery"]={"tick":g["tick"],"bank_food":g["bank_milli"]["food"],"score":objective(g)["text"],"site":receipt["built_site_id"]}
         bx,bz=chosen
@@ -252,6 +260,15 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         check("ordinary selection identifies same now-built forward warehouse",g["selected"]==[receipt["built_site_id"]] and "10/80" in objective(g)["text"])
         png("390x844-forward-delivery-actual-battle")
         receipt["complete"]=True
+    except Exception as error:
+        receipt["error"]=repr(error)
+        if session:
+            try:
+                any_now=world()
+                receipt["error_world"]={k:any_now.get(k) for k in ["build","bank_milli","selected","built","build_mode","tick"]} if any_now else None
+                png("390x844-last-step-diagnostic-actual-battle")
+            except Exception: pass
+        raise
     finally:
         (root/"browser-proof.json").write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n")
         if session:
