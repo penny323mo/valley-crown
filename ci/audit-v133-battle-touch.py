@@ -142,6 +142,29 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         png("landscape-actual-battle")
         state=rotate(390,844,False);mark("portrait-restored",state)
         check("portrait rotation round trip keeps live running battle",state["tick"]>0 and not state["game_over"])
+        before=state["hud"]["camera"]["zoom"]
+        move((145,380),(87,380),other=((245,380),(303,380)))
+        state=match(lambda s:abs(s["hud"]["camera"]["zoom"]-before)>1.0,6);mark("portrait-pinched",state)
+        check("two-finger pinch changes zoom without dropping selection",state["selected"]==[w["id"]])
+        # Pinch back before box; select fully visible villagers in a real held
+        # rectangle from points outside their on-screen silhouettes.
+        move((87,380),(145,380),other=((303,380),(245,380)))
+        state=match(lambda s:abs(s["hud"]["camera"]["zoom"]-before)<3.0,6)
+        visible=[r for r in state["hud"]["own_targets"] if r["kind"]=="villager" and 55<r["screen"][0]<340 and 220<r["screen"][1]<635]
+        check("multiple units are visibly bracketable",len(visible)>=2)
+        lo=(min(z["screen"][0] for z in visible)-20,min(z["screen"][1] for z in visible)-35)
+        hi=(max(z["screen"][0] for z in visible)+20,max(z["screen"][1] for z in visible)+23)
+        focus=state["hud"]["camera"]["focus"]
+        move(lo,hi,wait=510)
+        state=match(lambda s:len(s["selected"])>=2,7);mark("portrait-boxed",state)
+        check("hold then one-finger rectangle selects group, not camera",state["hud"]["camera"]["focus"]==focus and not state["touch_mode"] and len(set(s["id"] for s in visible)&set(state["selected"]))>=2)
+        png("group-actual-battle")
+        target=next((r for r in state["hud"]["context_targets"] if r["kind"]=="berry" and 22<r["screen"][0]<367),None)
+        check("selected group has a clearly visible berry target",bool(target))
+        delivered=state["delivered"]
+        touch(target["screen"])
+        state=match(lambda s:s["delivered"]>delivered,35);mark("portrait-gathered",state)
+        check("direct berry tap yields real resource deliveries without command menu",not state["touch_mode"] and len(state["selected"])>=2)
         receipt["complete"]=True
     finally:
         (root/"browser-proof.json").write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n")

@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo 'f967029885d6190fe42375f11326c801683a22dd69d103e1d5d808638819702c  ci/audit-v133-battle-touch.py' | sha256sum --strict -c
+          echo '3c76bc1bf13c3a3850945df5f6993bb9687623c55e987c9b24ed6b6945ca1828  ci/audit-v133-battle-touch.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PY'
           import hashlib,json,os,pathlib,re,sys
