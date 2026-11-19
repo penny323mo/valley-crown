@@ -224,8 +224,10 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
                 # Published navigation already provides explicit castle
                 # selection, so no new QA bridge is needed for production.
                 menu=button(state,lambda t:t in ("選單","閒置","受襲"))
-                hit(menu);state=wait_button("主堡")
-                hit(button(state,"主堡"))
+                hit(menu);state=wait_button("生產")
+                hit(button(state,"生產"))
+                state=wait_button(lambda t:t.startswith("主堡 1 · 隊列"))
+                hit(button(state,lambda t:t.startswith("主堡 1 · 隊列")))
                 state=wait_button(lambda t:t.startswith("訓練村民"))
                 train=button(state,lambda t:t.startswith("訓練村民"))
                 prior_food=state["bank_milli"]["food"]

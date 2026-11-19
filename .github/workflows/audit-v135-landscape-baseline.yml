@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '29a4b6fd8df8294724dc8f60d3fcb17870b1fefe177a0e5c9dd0331fb6d19247  ci/audit-v135-landscape-browser.py' | sha256sum --strict -c
+          echo '5015076dd93decdbbe2c1806e73cfe9a120d67c19e0a09da1bc2f4a27218458a  ci/audit-v135-landscape-browser.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PY'
           import hashlib,json,os,pathlib,re,sys
