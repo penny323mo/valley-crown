@@ -3334,8 +3334,8 @@ func _aftermath_input(event):
 		camera_focus=MapRoutes.home(0);return
 	if event is InputEventMouseButton:
 		if event.button_index==MOUSE_BUTTON_MIDDLE:middle_drag=event.pressed
-		elif event.pressed and event.button_index==MOUSE_BUTTON_WHEEL_UP:camera_zoom=maxf(15,camera_zoom-2)
-		elif event.pressed and event.button_index==MOUSE_BUTTON_WHEEL_DOWN:camera_zoom=minf(46,camera_zoom+2)
+		elif event.pressed and event.button_index==MOUSE_BUTTON_WHEEL_UP:_zoom_by_wheel(-2)
+		elif event.pressed and event.button_index==MOUSE_BUTTON_WHEEL_DOWN:_zoom_by_wheel(2)
 	elif event is InputEventMouseMotion and middle_drag:_pan_camera(-event.relative)
 	elif event is InputEventScreenTouch:
 		if event.pressed and not event.canceled:
@@ -6031,6 +6031,15 @@ func _sync_touch_camera_pair():
 			touch_pinch_anchor_distance=first.distance_to(second)
 	return ids
 
+func _zoom_by_wheel(amount):
+	camera_zoom=clampf(camera_zoom+amount,15,46)
+	var ids=_sync_touch_camera_pair()
+	if ids.size()>=2:
+		# An explicitly requested wheel zoom during hybrid touch/mouse use
+		# must not be undone by the next neutral finger motion.
+		touch_pinch_anchor_zoom=camera_zoom
+		touch_pinch_anchor_distance=touch_points[ids[0]].distance_to(touch_points[ids[1]])
+
 func _update_touch_pinch(distance):
 	# Per-finger drag callbacks can momentarily reduce or enlarge the span
 	# during pure translation. An absolute owned-pair reference makes that
@@ -6086,8 +6095,8 @@ func _unhandled_input(event):
 					_cleanup_mouse_release()
 				_select(groups[key])
 	if event is InputEventMouseButton:
-		if event.button_index==MOUSE_BUTTON_WHEEL_UP and event.pressed: camera_zoom=maxf(15,camera_zoom-2)
-		elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN and event.pressed: camera_zoom=minf(46,camera_zoom+2)
+		if event.button_index==MOUSE_BUTTON_WHEEL_UP and event.pressed: _zoom_by_wheel(-2)
+		elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN and event.pressed: _zoom_by_wheel(2)
 		elif event.button_index==MOUSE_BUTTON_MIDDLE: middle_drag=event.pressed
 		elif event.button_index==MOUSE_BUTTON_RIGHT and event.pressed:
 			if not build_mode.is_empty() or box_select_mode: _cancel_mode()

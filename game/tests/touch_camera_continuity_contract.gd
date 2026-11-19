@@ -30,7 +30,9 @@ func send(g,event,world=true):
 	# Fresh viewport models unhandled state for each isolated synthetic event.
 	var viewport=SubViewport.new(); root.add_child(viewport)
 	g._track_pointer_input(event,viewport)
-	if world and not viewport.is_input_handled(): g._unhandled_input(event)
+	if world and not viewport.is_input_handled():
+		if g.game_over:g._aftermath_input(event)
+		else:g._unhandled_input(event)
 	viewport.free()
 func touch(g,id,point,pressed,world=true):
 	var e=InputEventScreenTouch.new();e.index=id;e.position=point;e.pressed=pressed
@@ -87,8 +89,21 @@ func _zoom_regression():
 	check("coincident touch pair establishes first valid span without zoom",is_equal_approx(g.camera_zoom,held_zoom))
 	dispose(g)
 
+func _wheel_pair_regression():
+	for aftermath in [false,true]:
+		var g=fixture();g.game_over=aftermath;g.aftermath_view=aftermath
+		var a=Vector2(140,200);var b=Vector2(300,200)
+		touch(g,0,a,true);touch(g,1,b,true)
+		var wheel=InputEventMouseButton.new()
+		wheel.button_index=MOUSE_BUTTON_WHEEL_DOWN;wheel.pressed=true;send(g,wheel)
+		var drift=Vector2(37,19)
+		drag(g,0,a+drift,drift);drag(g,1,b+drift,drift)
+		check("mouse wheel zoom preserved through held parallel touch "+str(aftermath),is_equal_approx(g.camera_zoom,32))
+		dispose(g)
+
 func _initialize():
 	_zoom_regression()
+	_wheel_pair_regression()
 	var g=fixture()
 	touch(g,0,Vector2(100,100),true)
 	drag(g,0,Vector2(120,100),Vector2(20,0))
