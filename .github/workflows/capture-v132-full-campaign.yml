@@ -1,0 +1,82 @@
+name: Capture genuine v132 three-mission campaign completion
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-v132-full-campaign.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+      - name: Bind official engine, exact artifact bytes and reviewed capture tools
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '7be4ad8204b6f6c714d22db0843f8531fdb9437338fae234b4c736459b4c2595  ci/capture-v132-full-campaign.gd' | sha256sum --strict -c
+          echo '4d1874718bf61c223ef0b2166db8e8850d0da8449ce1f3f9eeee0cf10cdf605d  ci/capture-v132-full-campaign-guard.py' | sha256sum --strict -c
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v132-full-engine.zip
+          unzip -q /tmp/v132-full-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,sys
+          sys.path[:0]=['scripts']
+          from web_release_archive import GitHub,verified_members
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          row,workflow_head,source,tree=({'artifact_id': 14552049410, 'run_id': 44563428226, 'build': 'vc-e559b7eec2ed', 'metadata_sha256': '7536a32378d3ebda48ce6bfc2a42f91b318e6456c3c09808d5f3965c9a96f6b2', 'zip_sha256': '71b8c733242f8f6a1a414f23126496d67632f0257aa1ae42fc8e329ce389f09c'}, '26682d530333c214cc89a53093473ce759ed7a77', 'ffb87bca95c1581332a5b4068a206fb793221592', '9fe13e38fee4afa1e9991864da561c1041489eeb')
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']==workflow_head
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          files=verified_members(g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True),row)
+          m=json.loads(files['candidate-metadata.json'])
+          assert m['source_commit']==source and m['game_tree']==tree
+          pck=files['artifacts/clean-a/index.pck']
+          assert pck==files['artifacts/clean-b/index.pck']
+          path=pathlib.Path('/tmp/v132-full-capture');path.mkdir()
+          (path/'index.pck').write_bytes(pck)
+          (path/'capture.gd').write_bytes(pathlib.Path('ci/capture-v132-full-campaign.gd').read_bytes())
+          (path/'input.json').write_text(json.dumps({'source_commit':source,'game_tree':tree,'build':row['build'],'pck_sha256':hashlib.sha256(pck).hexdigest()}))
+          PY
+      - name: Run bounded all three ordinary missions and final native capture
+        run: python3 -B ci/capture-v132-full-campaign-guard.py /tmp/v132-full-capture vc-e559b7eec2ed
+      - name: Verify authentic all-three completed PNG
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('/tmp/v132-full-capture')
+          d=json.loads((p/'images/report.json').read_text())
+          run=json.loads((p/'native-render-receipt.json').read_text())
+          info=json.loads((p/'input.json').read_text())
+          assert d['complete'] and len(d['checks'])==25 and all(x['passed'] for x in d['checks'])
+          assert d['build']=='vc-e559b7eec2ed'==info['build']
+          assert run['returncode']==0 and run['process_group_gone'] and run['stop_reason'] is None
+          assert run['inputs']['index.pck']==info['pck_sha256'] and run['after']['oom']==run['baseline']['oom']
+          assert d['victories']==[4590,10069,9400] and d['campaign_completed']==3 and d['settlers_alive']==3 and d['counter_launches']==1
+          data=(p/'images'/'all-three-complete.png').read_bytes()
+          assert d['image']['width']==390 and d['image']['height']==844
+          assert data.startswith(bytes.fromhex('89504e470d0a1a0a')) and hashlib.sha256(data).hexdigest()==d['image']['sha256']
+          assert data[12:16]==b'IHDR' and int.from_bytes(data[16:20],'big')==390 and int.from_bytes(data[20:24],'big')==844
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v132-full-campaign-real-native
+          path: |
+            /tmp/v132-full-capture/input.json
+            /tmp/v132-full-capture/images/*.png
+            /tmp/v132-full-capture/images/report.json
+            /tmp/v132-full-capture/native-render-*.json
+            /tmp/v132-full-capture/native-render-*.txt
+          retention-days: 30
+          if-no-files-found: error
