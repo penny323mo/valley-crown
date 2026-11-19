@@ -1,0 +1,107 @@
+name: Audit native prototype river approaches and mobile camera
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v139-river-mobile.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {w: 390, h: 844}
+          - {w: 844, h: 390}
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+
+      - name: Verify the exact baseline game and reviewed source-only overlay
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:game)" = a16eb9691c6a592fa41e720ea149f71377257c0b
+          dir=/tmp/v139-river-mobile
+          mkdir -p "$dir/project"
+          cp -a game/. "$dir/project"
+          cp ci/audit-v139-river-capture.gd "$dir/capture.gd"
+          echo '286e4f0f751138a53ff1f9de59f561217ead0cca4cb54ebf69b61f4db9fb687c  /tmp/v139-river-mobile/capture.gd' | sha256sum --strict -c
+          echo '198135ef42a07c9704f257d905ca5ad8fb32930e93c0f5e874a48b78179acccd  ci/audit-v139-river-guard.py' | sha256sum --strict -c
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib,subprocess
+          dest=pathlib.Path("/tmp/v139-river-mobile/project")
+          shas={"scripts/river_terrain.gd": "97f3b86445607275ffc019b78a95ab0f8f95565b313a2ebc74effff3ea1bdb38", "scripts/river_landscape.gd": "15b1559125557fd6995f9049ebc4dd2dc247828f3332ac8d59604d19c3fc68dd", "assets/mature/terrain/river_surface.gdshader": "d98e727cb870b43d512e3b461673426d8fc2c7ffb27ac99c840584c6529f459d", "scripts/game.gd": "152d66b9fdc8ffa2f56dc0f1f869a0eeef939afa953d5504f66bd52e7445b475", "scripts/battlefield_layout.gd": "b615be31f2b0479dab9569a4db65e201f661e7c19cd6d3658c17c15db2d6f6c3", "scripts/faction_work_memory.gd": "2c0df43348e79af229c148951e956f694efa4eaed7ad7a088e369393fb3ce469", "scripts/checkpoint_codec.gd": "a46f4cc5753f20538317ee4b307fb311b836ef63d775b30a1a58b2ab4e3118a4", "scripts/minimap.gd": "d6bec381d43bc30edb87d68d698c6b0fc34f068c0e70aeceef912bf6a0ec7c62", "scripts/main_menu.gd": "29413b161540ec82344d3f058107d161972956a60d6bd65be3c82b75b82882e7", "scripts/battlefield_preview.gd": "58b496721a525ae92c70775f210e70eb6b654a1a54f7a7b055eea2c7cd3d1854"}
+          transfer=json.loads(r'{"scripts/river_terrain.gd": {"file": "scripts__river_terrain.gd", "sha": "97f3b86445607275ffc019b78a95ab0f8f95565b313a2ebc74effff3ea1bdb38", "patch": false}, "scripts/river_landscape.gd": {"file": "scripts__river_landscape.gd", "sha": "15b1559125557fd6995f9049ebc4dd2dc247828f3332ac8d59604d19c3fc68dd", "patch": false}, "assets/mature/terrain/river_surface.gdshader": {"file": "assets__mature__terrain__river_surface.gdshader", "sha": "d98e727cb870b43d512e3b461673426d8fc2c7ffb27ac99c840584c6529f459d", "patch": false}, "scripts/game.gd": {"file": "scripts__game.gd.patch", "sha": "13c113dbbe3d5ebba5bb8ee9d3903c40f9d40a609cdfa90784f4d7118c8b1bfa", "patch": true}, "scripts/battlefield_layout.gd": {"file": "scripts__battlefield_layout.gd.patch", "sha": "9c8b1760705e27c68a062e480a3e60a3974e2105772c84a7018b07460fc3f24b", "patch": true}, "scripts/faction_work_memory.gd": {"file": "scripts__faction_work_memory.gd.patch", "sha": "dabac9ee129af7311df0694070944602c0476fbac5094514ecc6e0d8a3e31ed9", "patch": true}, "scripts/checkpoint_codec.gd": {"file": "scripts__checkpoint_codec.gd.patch", "sha": "15b9f7dcc891d197a0f96f3db643e924b225583e8ea59caf4be9f48339ab2f5d", "patch": true}, "scripts/minimap.gd": {"file": "scripts__minimap.gd.patch", "sha": "54d0d3f5eb2e150b61fa25d3eb6f50fab31326bfad87807722b3c57d0e99a938", "patch": true}, "scripts/main_menu.gd": {"file": "scripts__main_menu.gd.patch", "sha": "66948a71b8a7a05bf1ff0c66b3bd24daab144662789ec4534c7817bf8d72556c", "patch": true}, "scripts/battlefield_preview.gd": {"file": "scripts__battlefield_preview.gd.patch", "sha": "951f11945bc123911a80dcd5b63b5a81341e93c3ab5ec495b27f2f45e781da8b", "patch": true}}')
+          for path,expected in shas.items():
+              info=transfer[path]
+              src=pathlib.Path("ci/audit-river-overrides")/info["file"]
+              data=src.read_bytes()
+              assert hashlib.sha256(data).hexdigest()==info["sha"],path
+              out=dest/path
+              if info["patch"]:
+                  subprocess.run(["patch","--batch","--fuzz=0","--",str(out)],input=data,check=True)
+              else:
+                  out.write_bytes(data)
+              assert hashlib.sha256(out.read_bytes()).hexdigest()==expected,path
+          (dest.parent/"overlay.json").write_text(json.dumps(shas))
+          PY
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v139-river-engine.zip
+          unzip -q /tmp/v139-river-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+      - name: Import a clean isolated project with existing monitored runtime limits
+        run: |
+          python3 -B - <<'PY'
+          import sys,os,pathlib,json
+          sys.path.insert(0,"ci")
+          from hardened_monitored_run import run,Limits
+          root=pathlib.Path("/tmp/v139-river-mobile")
+          env=dict(os.environ,HOME=str(root),XDG_DATA_HOME=str(root/"import-data"),XDG_CONFIG_HOME=str(root/"config"),XDG_CACHE_HOME=str(root/"cache"))
+          for k in ["XDG_DATA_HOME","XDG_CONFIG_HOME","XDG_CACHE_HOME"]:pathlib.Path(env[k]).mkdir(exist_ok=True)
+          argv=["/tmp/Godot_v4.6.3-stable_linux.x86_64","--headless","--path",str(root/"project"),"--editor","--import","--quit"]
+          l=Limits(timeout_s=255,max_rss_kib=2097152,launch_min_available_kib=4194304,runtime_min_available_kib=1048576,terminate_grace_s=5,kill_reap_grace_s=5)
+          result=run(str(root/"import"),argv,env=env,limits=l)
+          print(json.dumps({k:result[k] for k in ['passed','seconds','exit','cleanup_complete','output_errors','stop_reason']}))
+          assert result["passed"]
+          PY
+      - name: Capture genuine native layout overview and scout on both legal surfaces
+        env:
+          WIDTH: ${{ matrix.w }}
+          HEIGHT: ${{ matrix.h }}
+        run: python3 -B ci/audit-v139-river-guard.py /tmp/v139-river-mobile vc-ce2efc75244b "$WIDTH" "$HEIGHT" prototype
+      - name: Verify images, actual route/ledger and same-build restore proof
+        env:
+          WIDTH: ${{ matrix.w }}
+          HEIGHT: ${{ matrix.h }}
+        run: |
+          python3 -B - <<'PY'
+          import os,json,hashlib,pathlib
+          r=pathlib.Path("/tmp/v139-river-mobile")
+          j=json.loads((r/"images/report.json").read_text())
+          assert j['size']==[int(os.environ['WIDTH']),int(os.environ['HEIGHT'])] and j['layout']=='river_crossings'
+          assert j['failed']==0 and len(j['checks'])==24 and all(x['passed'] for x in j['checks'])
+          assert all(j['paths'][k]['cross_ticks']>0 and not j['paths'][k]['wet_steps'] for k in ['bridge-crossing','ford-crossing'])
+          assert set(j['images'])=={'layout-overview','bridge-crossing','ford-crossing'}
+          for key,v in j['images'].items():
+              data=(r/"images"/(key+'.png')).read_bytes()
+              assert data[:8]==bytes.fromhex("89504e470d0a1a0a") and hashlib.sha256(data).hexdigest()==v['sha256'] and v['size']==j['size']
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v139-river-native-${{ matrix.w }}x${{ matrix.h }}
+          path: |
+            /tmp/v139-river-mobile/overlay.json
+            /tmp/v139-river-mobile/import.json
+            /tmp/v139-river-mobile/native-render-*
+            /tmp/v139-river-mobile/images/*.png
+            /tmp/v139-river-mobile/images/report.json
+          retention-days: 30
+          if-no-files-found: error

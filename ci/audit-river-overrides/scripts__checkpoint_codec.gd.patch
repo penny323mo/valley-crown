@@ -1,0 +1,19 @@
+--- scripts/checkpoint_codec.gd
++++ scripts/checkpoint_codec.gd
+@@ -261,6 +261,7 @@
+   var source=attack._records.decode_s64(offset+8);var target=attack._records.decode_s64(offset+16)
+   var damage=attack._records.decode_s64(offset+24)
+   if release<0 or release>data.game.tick_count or not ids.has(source) or not ids.has(target) or damage<0 or damage>1000000:return failure("ATTACK_RECORD_REFERENCE")
++ var fixed_terrain=Layout.River.blocked(data.game.layout_id)
+  if not data.work_memory is Array or data.work_memory.size()!=2:return failure("WORK_MEMORY")
+  for memory in data.work_memory:
+   if not exact_keys(memory,WORK_FIELDS+["grid_region","grid_solids"]):return failure("WORK_FIELDS")
+@@ -276,6 +277,8 @@
+   for cell in memory.grid_solids:
+    if not cell is Vector2i or not region.has_point(cell) or cells.has(cell):return failure("GRID_CELL")
+    cells[cell]=true
++  for water in fixed_terrain:
++   if not cells.has(water):return failure("PUBLIC_TERRAIN_OMITTED")
+  if not data.faction_views is Array or data.faction_views.size()!=2:return failure("FACTION_VIEWS")
+  for view in data.faction_views:
+   if not exact_keys(view,FACTION_FIELDS):return failure("FACTION_FIELDS")
