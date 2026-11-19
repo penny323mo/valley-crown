@@ -321,6 +321,8 @@ var hud_top: PanelContainer
 var action_scroll: ScrollContainer
 var action_selection_ids=[] # Presentation-only membership; queue/status refresh keeps scrolling.
 var action_reveal_ids=[]
+var action_reveal_generation=0
+var action_reveal_receivers=[]
 var action_key=""
 var return_cargo_button: Button
 var stop_button: Button
@@ -4733,7 +4735,7 @@ func _update_hud():
 		action_reveal_ids=[]
 		if selection.size()==1 and selection[0].get("built",false) and Rules.PRODUCES.has(selection[0].kind):
 			action_reveal_ids=selection_ids.duplicate()
-			call_deferred("_reveal_context_primary",selection_ids.duplicate())
+			call_deferred("_reveal_context_primary",selection_ids.duplicate(),action_reveal_generation)
 	# Preserve the reviewed conservative warning suppression for own queued intent.
 	var own_command_pending=false
 	for command in commands:
@@ -4916,15 +4918,21 @@ func _update_hud():
 					break
 	call_deferred("_layout_ui")
 
-func _reveal_context_primary(identity):
+func _reveal_context_primary(identity, generation=-1):
+	if not is_inside_tree() or is_queued_for_deletion():return
+	if generation==-1:generation=action_reveal_generation
+	if generation!=action_reveal_generation:return
 	# Let the replacement row settle. Never move it beneath an active gesture,
 	# or after a later context or explicit scroll superseded this one-shot.
-	var receiver = _finish_context_primary_reveal.bind(identity)
+	var receiver = _finish_context_primary_reveal.bind(identity,generation)
 	# Repeated same-context scheduling within this frame shares one owned callback.
 	if not get_tree().process_frame.is_connected(receiver):
 		get_tree().process_frame.connect(receiver, CONNECT_ONE_SHOT)
+		action_reveal_receivers.append(receiver)
 
-func _finish_context_primary_reveal(identity):
+func _finish_context_primary_reveal(identity,generation):
+	action_reveal_receivers.erase(_finish_context_primary_reveal.bind(identity,generation))
+	if not is_inside_tree() or is_queued_for_deletion() or generation!=action_reveal_generation:return
 	if identity!=action_selection_ids or identity!=action_reveal_ids:return
 	action_reveal_ids=[]
 	if not all_touch_ids.is_empty() or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or action_scroll.scroll_horizontal!=0:return
@@ -5444,6 +5452,14 @@ func _restore_box_input_accumulation():
 	box_input_accumulation_owned=false
 
 func _exit_tree():
+	# UI-only lifetime token invalidates both deferred and connected old reveals.
+	if is_inside_tree():
+		var frame_signal=get_tree().process_frame
+		for receiver in action_reveal_receivers:
+			if frame_signal.is_connected(receiver):frame_signal.disconnect(receiver)
+	action_reveal_receivers.clear()
+	action_reveal_generation+=1
+	action_reveal_ids=[]
 	building_damage_presenter.clear()
 	order_routes.clear()
 	_clear_attack_effects()
