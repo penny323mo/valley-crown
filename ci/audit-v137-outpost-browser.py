@@ -166,7 +166,7 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         button_touch(button(g,lambda s:s=="確認建造"))
         g=match(lambda q:q["bank_milli"]["wood"]==funds-80000 and not q["build_mode"],12)
         check("real confirm deducted exactly 80 wood and kept mission stage",button(g,lambda s:"倉庫 0/1" in s) is not None)
-        g=match(lambda q:q["built"].get("storehouse")==1,75)
+        g=match(lambda q:q["built"]==pre["built"]+1,75)
         check("outside warehouse genuinely completed but still not counted",button(g,lambda s:"倉庫 0/1" in s) is not None)
         png("390x844-outside-complete-actual-battle")
         receipt["complete"]=True

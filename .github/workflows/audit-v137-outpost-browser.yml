@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo 'de33f3b6e106834765f3e26d7dbcecc19f1db72b3cdef01ee4b2f40a65e4eac0  ci/audit-v137-outpost-browser.py' | sha256sum --strict -c
+          echo '63eaf9f196bf7ba531f8859609f90223b0b1b6328605e6e8485852ed52d9e679  ci/audit-v137-outpost-browser.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PY'
           import hashlib,json,os,pathlib,re,sys
