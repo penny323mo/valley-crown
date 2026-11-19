@@ -137,16 +137,29 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         button_touch(warehouse(g))
         g=match(lambda q:q["build_mode"]=="storehouse",10)
         funds=g["bank_milli"]["wood"]
-        # Camera view analytic projection for the immutable known public
-        # half-cell (-1.5,6.5) beyond the eastern boundary center x=-3.
+        # Resolve the same authored camera projection from demonstrated
+        # production viewport/focus. Try only public neighboring outside sites;
+        # no input bypass or hidden placement lookup.
         import math
-        zoom=g["hud"]["camera"]["zoom"]
         width,height=g["hud"]["viewport"]
         n=math.sqrt(19**2+25**2+23**2); norm=math.sqrt(19**2+23**2)
-        x=width/2+height/zoom*(23*5.5-19*.5)/norm
-        y=height/2+height/zoom*25*(19*5.5+23*.5)/(norm*n)
-        touch([round(x),round(y)])
-        g=match(lambda q:q["hud"].get("preview") and q["hud"]["preview"]["held"] and q["hud"]["preview"]["placement_ok"],10)
+        receipt["placement_attempts"]=[]
+        pre=g
+        png("390x844-before-outside-probe-actual-battle")
+        snap_points=[(-2,6),(-2,5),(-2,7),(-12,6),(-12,7),(-7,10),(-6,10)]
+        for bx,bz in snap_points:
+            focus=g["hud"]["camera"]["focus"]
+            dx,dz=bx+.5-focus[0],bz+.5-focus[2]
+            h=g["hud"]["camera"]["zoom"]
+            x=width/2+height/h*(23*dx-19*dz)/norm
+            y=height/2+height/h*25*(19*dx+23*dz)/(norm*n)
+            if not (8<x<width-8 and 220<y<670):continue
+            touch([round(x),round(y)])
+            time.sleep(.8);g=match()
+            receipt["placement_attempts"].append({"world_snap":[bx,bz],"camera":g["hud"]["camera"],"tap":[round(x),round(y)],"held":g["hud"].get("preview"),"detail":g["hud"]["selection_detail"],"paused":g["paused"],"tick":g["tick"]})
+            if (g["hud"].get("preview") or {}).get("held") and g["hud"]["preview"]["placement_ok"]:break
+        else:
+            png("390x844-last-probe-actual-battle");raise RuntimeError("No legal outside point, see placement attempts")
         check("valid outside preview does not spend wood",g["bank_milli"]["wood"]==funds)
         check("ordinary visible selection HUD shows outside scoring warning",g["hud"]["selection_detail"].startswith("前哨外，不計任務"))
         png("390x844-outside-actual-battle")
