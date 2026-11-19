@@ -1,5 +1,5 @@
 {
-  "build": "vc-c4c0f9c3fb90",
+  "build": "vc-bda85c2fe22a",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -80,6 +80,7 @@
     "assets/mature/terrain/ground.gdshader": "b8d6560cebe143f671749967a3c938dffa2995a334df95771de57114c8237232",
     "assets/mature/terrain/ground.gdshader.uid": "262f68235c73da264cb363fedfc0837a25855318d7e06becbe5593a4098e8172",
     "assets/mature/terrain/river_surface.gdshader": "2aa7a877d06f49f4db9e705403d96f1b4e7368ea1804b12dc307509efeb516a0",
+    "assets/mature/terrain/river_surface.gdshader.uid": "709f4e96ddcc859337c61fd41f7cf5aebd1af72e60b0ea3b73c991ba3d568949",
     "assets/mature/textures/clay.png": "e6e954ab8f2f4637806daffc5fa51a349d6e6d56de2ea05a65e18509c5f45b7e",
     "assets/mature/textures/clay.png.import": "f526b8dfa3eca51ae95e06c4734fd0bd0d6eb2194983d4feebf1acac29ffa306",
     "assets/mature/textures/fir_spray.png": "9d4b69116a6dc229fd69b5d69dde62039cc0a14641853cacc6711f9caab2bac1",
@@ -315,8 +316,10 @@
     "scripts/retry_gather_action.gd": "b3a34cb8aa2956be8b15c57c400317fcabb5b99608f0e918bcea59e70d42e790",
     "scripts/return_cargo_action.gd": "ab4399f51475e923f6359f766611b1998c1715b172454647a862da294588a540",
     "scripts/river_landscape.gd": "15b1559125557fd6995f9049ebc4dd2dc247828f3332ac8d59604d19c3fc68dd",
+    "scripts/river_landscape.gd.uid": "3cf5e46ceee29fea583011ff4da2a0512bfb126e0897697e541278d21cde00bd",
     "scripts/river_terrain.gd": "24af3eb1acd7b9de802ee8c67a0aae6bb05075472e0adc9cc1d8f8280d4f1e6a",
-    "scripts/rules.gd": "ba7846a3c60caa0a9fb941fb30aa8428be3097c6894e2253b8a7d88c764eaad1",
+    "scripts/river_terrain.gd.uid": "b0aa418fa5c7372bbaf967118441d38d6419a1c3e95e72f174a24563f27f3e98",
+    "scripts/rules.gd": "045779c3fbaa9baa01d91631d7fb3fbd9e107f84afd344f2e460aaff4310c7e3",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",
