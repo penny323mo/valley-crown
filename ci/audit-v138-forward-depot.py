@@ -207,20 +207,49 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         receipt["built_site_id"]=own_site(g)["id"];receipt["site_center"]=chosen
         g=match(lambda q:q["built"]==prev_builds+1,120)
         check("matching paid warehouse completion changes action to delivery, not score",zero(g) and "交付" in objective(g)["text"])
-        findwood=lambda s:nearest(project(s,-16.0,15.5,y=1),[t for t in s["hud"]["context_targets"] if t["kind"] in ("oak","pine")])
-        g=match(lambda q:saw_worker(q) and findwood(q),22)
+        # Use the independently won western strategy's actual close farm, not
+        # the first run's long approach around the tree from this particular worker.
+        g=match(saw_worker,22)
         touch(saw_worker(g)["screen"]);g=match(lambda q:q["selected"]==[worker["id"]],10)
-        wood=findwood(g);assert wood and math.dist(wood["screen"],project(g,-16.0,15.5,y=1))<95
-        receipt["ordinary_wood_target"]=wood
-        wood_bank=g["bank_milli"]["wood"]
-        touch(wood["screen"])
-        g=match(lambda q:q["bank_milli"]["wood"]>=wood_bank+10000 and not zero(q),130)
-        check("physical nearby wood drop-off credits objective and actual bank",g["bank_milli"]["wood"]==wood_bank+10000 and "10/120" in objective(g)["text"] and "0/80" in objective(g)["text"])
-        receipt["first_forward_delivery"]={"tick":g["tick"],"bank_wood":g["bank_milli"]["wood"],"before_bank_wood":wood_bank,"score":objective(g)["text"],"site":receipt["built_site_id"]}
+        farm_button=lambda q:visible_button(q,lambda t:t.startswith("農田\n"))
+        for _ in range(12):
+            g=match()
+            if farm_button(g):break
+            x,y,w,h=g["hud"]["action_scroll"]["rect"]
+            if _<6:move([x+w*.13,y+h*.5],[x+w*.88,y+h*.5],40)
+            else:move([x+w*.88,y+h*.5],[x+w*.13,y+h*.5],40)
+            time.sleep(.18)
+        touch_button(farm_button(g))
+        g=match(lambda q:q["build_mode"]=="farm",12)
+        prev_builds=g["built"];wood0=g["bank_milli"]["wood"]
+        farm=None
+        receipt["farm_preview_attempts"]=[]
+        for fx,fz in [(-13.5,19.5),(-13.5,20.5),(-13.5,21.5),(-15.5,21.5),(-15.5,20.5)]:
+            xy=project(g,fx,fz)
+            touch([round(k) for k in xy]);time.sleep(.5);g=match()
+            trial=g["hud"].get("preview") or {}
+            receipt["farm_preview_attempts"].append({"site":[fx,fz],"screen":xy,"preview":trial})
+            if trial.get("held") and trial["placement_ok"]:
+                farm=(fx,fz);break
+        assert farm,"No normal farm placement by the built forward warehouse"
+        touch_button(visible_button(g,lambda t:t=="確認建造"))
+        g=match(lambda q:q["bank_milli"]["wood"]==wood0-60000 and not q["build_mode"],15)
+        farm_site=lambda q:next((o for o in q["hud"]["own_targets"] if o["kind"]=="farm" and not o["built"]),None)
+        g=match(farm_site,20)
+        receipt["farm_id"]=farm_site(g)["id"]
+        g=match(lambda q:q["built"]==prev_builds+1 and saw_worker(q),120)
+        check("real paid adjacent farm completes without credit",zero(g))
+        touch(saw_worker(g)["screen"]);g=match(lambda q:q["selected"]==[worker["id"]],10)
+        farm_tap=project(g,*farm,y=.25)
+        receipt["farm_tap"]=farm_tap
+        touch(farm_tap)
+        g=match(lambda q:"10/80" in objective(q)["text"] and "0/120" in objective(q)["text"],130)
+        check("real working farm crop delivered at same front warehouse increases mission food by 10",g["bank_milli"]["food"]>bank+10000)
+        receipt["first_forward_delivery"]={"tick":g["tick"],"bank_food":g["bank_milli"]["food"],"score":objective(g)["text"],"site":receipt["built_site_id"]}
         bx,bz=chosen
         touch(project(g,bx,bz,y=.8))
         g=match(lambda q:any(z["id"]==receipt["built_site_id"] and z["built"] for z in q["hud"]["selected_own"]),10)
-        check("ordinary selection identifies same now-built forward warehouse",g["selected"]==[receipt["built_site_id"]] and "10/120" in objective(g)["text"])
+        check("ordinary selection identifies same now-built forward warehouse",g["selected"]==[receipt["built_site_id"]] and "10/80" in objective(g)["text"])
         png("390x844-forward-delivery-actual-battle")
         receipt["complete"]=True
     finally:
