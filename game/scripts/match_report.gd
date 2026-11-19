@@ -197,6 +197,9 @@ static func page_text(report: Dictionary,page: String) -> String:
 			var phases=["抵達前哨","前哨建成","反攻擊退"]
 			for index in mini(escort.get("stage_ticks",[]).size(),3):
 				lines.append("%s  %s" % [time_label(escort.stage_ticks[index]),phases[index]])
+		if report.has("forward_depot"):
+			var supply=report.forward_depot
+			lines.append("前線倉庫交付　木 %d · 糧 %d · %d 次" % [int(supply.get("wood_milli",0)/1000),int(supply.get("food_milli",0)/1000),int(supply.get("deliveries",0))])
 		if report.has("expedition"):
 			var mission=report.expedition
 			lines.append("遠征階段　%d/5" % mini(int(mission.get("stage",0)),5))

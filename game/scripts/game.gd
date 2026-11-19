@@ -424,6 +424,8 @@ var siege_challenge=SiegeChallenge.new()
 const FrontierExpedition=preload("res://scripts/frontier_expedition.gd")
 var frontier_expedition=FrontierExpedition.new()
 const FrontierEscort=preload("res://scripts/frontier_escort.gd")
+const ForwardDepot=preload("res://scripts/forward_depot.gd")
+var forward_depot=ForwardDepot.new()
 var frontier_escort=FrontierEscort.new()
 var escort_outline: MeshInstance3D
 var escort_outline_segments: Array[Vector3]=[]
@@ -479,6 +481,9 @@ func _ready():
 			if unit.team==0 and unit.category=="unit" and unit.kind not in ["villager","scout"]:army.append(unit.id)
 		_select(army);camera_focus=Vector3(-4,0,6) if skirmish_mode=="breach" else Vector3(-25,0,11)
 		_message("軍隊已完成。點空地移動，點敵軍攻擊；主堡與村民仍可採集與建造。",9)
+	elif skirmish_mode=="depot":
+		_select([_first(0,"town_center").id])
+		_message("先派軍隊護衛，在界線內建倉庫；採集附近資源，交付至前線倉庫。",12)
 	else:
 		_select([_first(0,"town_center").id])
 		_message("選取村民，再向漿果或樹木落指令。建立聚落，探索霧谷。",9)
@@ -562,7 +567,7 @@ func _create_world():
 	_mesh(order_marker,ring,Vector3(0,0.1,0),GOLD)
 	order_marker.visible=false
 	_create_control_point_marker()
-	if skirmish_mode=="escort":_create_escort_outline()
+	if skirmish_mode in ["escort","depot"]:_create_escort_outline()
 
 func _tree_visual(parent, p, kind, sc=1.0):
 	var root=Node3D.new(); parent.add_child(root); root.position=p; root.scale=Vector3.ONE*sc
@@ -583,12 +588,13 @@ func _seed_match():
 	siege_challenge=SiegeChallenge.new()
 	frontier_expedition=FrontierExpedition.new()
 	frontier_escort=FrontierEscort.new()
+	forward_depot=ForwardDepot.new()
 	breach_mission=BreachMission.new()
 	# Mirrored resource fairness. No free military buildings or gifted AI income.
 	for team in 2:
 		var sign_team=1.0 if team==0 else -1.0
 		_spawn("town_center",team,MapRoutes.home(team))
-		if skirmish_mode in ["survival","expedition","escort","breach"] and team==1:continue
+		if skirmish_mode in ["survival","expedition","escort","breach","depot"] and team==1:continue
 		for i in 5: _spawn("villager",team,Vector3(-14.5+i*1.3,0,13.5)*sign_team+MapRoutes.home_offset(team))
 		_spawn("scout",team,Vector3(-7,0,8)*sign_team+MapRoutes.home_offset(team))
 		for c in [Vector3(-17,0,3),Vector3(-5,0,1)]:
@@ -606,7 +612,7 @@ func _seed_match():
 		# Explicit symmetric scenario start, never paid training/completion events.
 		for team in 2:
 			var sign_team=1.0 if team==0 else -1.0
-			if skirmish_mode in ["survival","expedition","escort","breach"] and team==1:continue
+			if skirmish_mode in ["survival","expedition","escort","breach","depot"] and team==1:continue
 			_spawn("house",team,Vector3(-29,0,23)*sign_team,true)
 			if skirmish_mode in ["fortress","survival","breach"]:
 				for item in [["house",Vector3(-21,0,29)],["house",Vector3(-25,0,32)],["barracks",Vector3(-18.5,0,24.5)],["range",Vector3(-18.5,0,30.5)],["stable",Vector3(-11.5,0,24.5)],["workshop",Vector3(-11.5,0,30.5)],["tower",Vector3(-16,0,19)],["tower",Vector3(-11,0,19)]]:
@@ -642,6 +648,14 @@ func _seed_match():
 	if skirmish_mode=="escort":
 		for member in entities:
 			if member.team==0 and member.kind=="villager" and frontier_escort.villagers.size()<3:frontier_escort.villagers.append(member.id)
+		demo_tutorial.skip()
+
+	if skirmish_mode=="depot":
+		# Public authored opening, not free economy transactions or waves.
+		for item in [["spearman",Vector3(-18.5,0,19.5)],["spearman",Vector3(-19.5,0,18.5)],["archer",Vector3(-18.5,0,20.5)]]:
+			_spawn(item[0],0,item[1],true)
+		for item in [["spearman",Vector3(-11.5,0,10.5)],["spearman",Vector3(-7.5,0,13.5)],["archer",Vector3(-8.5,0,9.5)]]:
+			_spawn(item[0],1,item[1],true)
 		demo_tutorial.skip()
 
 func _spawn(kind: String, team: int, p: Vector3, complete=true, resource_capacity_milli=-1):
@@ -846,7 +860,7 @@ func _tick(dt):
 	if victory_mode=="control" and control_point.advance(entities,tick_count): progress_serial+=1
 	_publish_faction_views()
 	_update_worker_safety()
-	if ai_enabled and skirmish_mode not in ["survival","expedition","escort","breach"] and _update_ai_worker_safety():_publish_faction_views()
+	if ai_enabled and skirmish_mode not in ["survival","expedition","escort","breach","depot"] and _update_ai_worker_safety():_publish_faction_views()
 	_sync_audio()
 	audio_cues.observe(faction_views[0].records(),tick_count,Time.get_ticks_msec())
 	for team in 2:
@@ -863,7 +877,7 @@ func _tick(dt):
 		_sync_audio()
 		_message("180 秒內沒有採集、建造或交戰進展，已暫停。按繼續可重設計時。",INF)
 		paused_checkpoint_requested.emit()
-	if ai_enabled and skirmish_mode not in ["survival","expedition","escort","breach"] and not game_over and not paused and tick_count%20==0: _ai_update()
+	if ai_enabled and skirmish_mode not in ["survival","expedition","escort","breach","depot"] and not game_over and not paused and tick_count%20==0: _ai_update()
 	_update_repeat_training()
 
 func _submit(type: String, data: Dictionary={}, team=0):
@@ -1970,7 +1984,7 @@ func _process_path_requests():
 		else: ent.path_initial_searches+=1
 		ent.path_has_attempt=true; ent.path_searches+=1; last_path_queries+=1
 		var risk_records={}
-		if ai_enabled and skirmish_mode not in ["survival","expedition","escort","breach"] and ent.team==1 and ent.kind=="villager" and (ent.state=="deliver" or (ent.state=="move" and ent.get("ai_evacuation",{}).get("epoch",-1)==ent.work_epoch)):
+		if ai_enabled and skirmish_mode not in ["survival","expedition","escort","breach","depot"] and ent.team==1 and ent.kind=="villager" and (ent.state=="deliver" or (ent.state=="move" and ent.get("ai_evacuation",{}).get("epoch",-1)==ent.work_epoch)):
 			risk_records=faction_views[1].records()
 		var reanchor=ent.traffic_route and ent.pos.distance_to(_point(start))>=0.001 and _unit_step_is_free(ent,_point(start))
 		if reanchor and not risk_records.is_empty() and not AIWorkerRouteRisk.segment_allowed(risk_records,1,ent.radius,ent.pos,_point(start)):reanchor=false
@@ -2895,7 +2909,9 @@ func _deposit_cargo(ent,target,transaction_id="",expected_revision=-1):
 	if transaction_id.is_empty(): transaction_id="deposit:%d:%d" % [ent.id,expected_revision]
 	var deposited=economy.deposit(transaction_id,ent.id,expected_revision)
 	if deposited.applied:
-		if ent.team==0: demo_tutorial.record("deposit")
+		if ent.team==0:
+			demo_tutorial.record("deposit")
+			if skirmish_mode=="depot":forward_depot.observe(tick_count,target,economy,deposited)
 		_project_economy_entity(ent); progress_serial+=1
 	return deposited
 
@@ -3223,6 +3239,7 @@ func _check_end():
 	var player_alive=not _first(0,"town_center").is_empty()
 	var enemy_alive=not _first(1,"town_center").is_empty()
 	if skirmish_mode=="expedition":enemy_alive=frontier_expedition.stage<5
+	if skirmish_mode=="depot":enemy_alive=not (player_alive and forward_depot.complete(entities,economy))
 	if skirmish_mode=="breach":enemy_alive=breach_mission.stage<2
 	if skirmish_mode=="escort":
 		player_alive=player_alive and frontier_escort.living>0
@@ -3243,9 +3260,10 @@ func _check_end():
 			player_lost=true; enemy_lost=true; end_reason="time_limit"
 		else:
 			player_lost=recovery_ticks[0]>=EndRules.IRRECOVERABLE_TICKS
-			enemy_lost=skirmish_mode not in ["expedition","escort","breach"] and recovery_ticks[1]>=EndRules.IRRECOVERABLE_TICKS
+			enemy_lost=skirmish_mode not in ["expedition","escort","breach","depot"] and recovery_ticks[1]>=EndRules.IRRECOVERABLE_TICKS
 			if not player_lost and not enemy_lost: end_reason=""; return
 			end_reason="irrecoverable"
+	if skirmish_mode=="depot" and enemy_lost and not player_lost and _surrender_intent.is_empty():end_reason="forward_depot_complete"
 	if skirmish_mode=="breach" and enemy_lost and not player_lost and _surrender_intent.is_empty():end_reason="breach_complete"
 	if skirmish_mode=="expedition" and enemy_lost and not player_lost and _surrender_intent.is_empty():end_reason="expedition_complete"
 	if skirmish_mode=="escort" and _surrender_intent.is_empty():
@@ -3259,6 +3277,7 @@ func _check_end():
 	last_match_report.skirmish_mode=skirmish_mode
 	if skirmish_mode=="expedition":last_match_report.expedition=frontier_expedition.report()
 	if skirmish_mode=="escort":last_match_report.escort=frontier_escort.report()
+	if skirmish_mode=="depot":last_match_report.forward_depot=forward_depot.report()
 	last_match_report.victory_mode=victory_mode
 	last_match_report.control_ticks=control_point.scores.duplicate()
 	if victory_mode=="supply":last_match_report.supply_progress=[SupplyRace.progress(economy.stats_view(0)),SupplyRace.progress(economy.stats_view(1))]
@@ -3270,6 +3289,9 @@ func _check_end():
 		if end_reason=="surrender":
 			end_title.text={"victory":"敵方投降","defeat":"我方投降","draw":"雙方投降"}[outcome]
 			end_body.text={"victory":"敵方已確認投降。","defeat":"你已確認投降。這局判定為失敗。","draw":"雙方已確認投降。和局。"}[outcome]
+		elif end_reason=="forward_depot_complete":
+			end_title.text="前線補給線建立"
+			end_body.text="前線倉庫仍然運作；已實際送抵任務所需木材及糧食。\n"+forward_depot.progress()
 		elif end_reason=="escort_complete":
 			end_title.text="護送任務完成";end_body.text="村民抵達、前哨建成、反攻全部擊退。村民與前哨仍然存活。"
 		elif end_reason=="escort_villagers_lost":
@@ -4369,7 +4391,7 @@ func _create_ui():
 	compact_unit_tools=HBoxContainer.new(); compact_unit_tools.add_theme_constant_override("separation",8); command_row.add_child(compact_unit_tools); command_row.move_child(compact_unit_tools,0)
 	touch_button=_button("指定",_toggle_unit_command,54); compact_unit_tools.add_child(touch_button)
 	compact_cancel_button=_button("取消",func(): _cancel_mode(),54); compact_unit_tools.add_child(compact_cancel_button)
-	objective_button=_button("",_activate_objective_camera,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort","breach"]; compact_top_stack.add_child(objective_button)
+	objective_button=_button("",_activate_objective_camera,0); objective_button.name="ControlPointScore"; objective_button.clip_text=true; objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort","breach","depot"]; compact_top_stack.add_child(objective_button)
 	compact_menu_dismiss=Control.new(); compact_menu_dismiss.name="MenuDismissShield"; compact_menu_dismiss.mouse_filter=Control.MOUSE_FILTER_STOP; compact_menu_dismiss.gui_input.connect(_dismiss_compact_menu_input); ui.add_child(compact_menu_dismiss); compact_menu_dismiss.hide()
 	compact_menu=PanelContainer.new(); compact_menu.name="ShortcutMenu"; ui.add_child(compact_menu); compact_menu.add_theme_stylebox_override("panel",_style(Color("1d241ef5")))
 	var menu_stack=VBoxContainer.new();menu_stack.add_theme_constant_override("separation",6);compact_menu.add_child(menu_stack)
@@ -4740,6 +4762,7 @@ func _update_hud():
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
 	if skirmish_mode=="escort":mission_label.text=frontier_escort.caption(tick_count)
+	elif skirmish_mode=="depot":mission_label.text=_forward_depot_help()
 	if skirmish_mode=="expedition":mission_label.text=frontier_expedition.caption(tick_count)
 	elif skirmish_mode=="survival":mission_label.text=siege_challenge.caption(tick_count)
 	elif victory_mode=="control": mission_label.text=control_point.caption()
@@ -4781,6 +4804,7 @@ func _update_hud():
 	elif selection.size()==1:
 		var ent=selection[0]
 		selection_title.text="前線補給站" if ent.get("supply_station",false) else Rules.NAMES.get(ent.kind,ent.kind)
+		if skirmish_mode=="depot" and ent.kind=="storehouse" and ent.owned and ForwardDepot.in_zone(ent.pos):selection_title.text="任務前線倉庫"
 		if skirmish_mode=="escort" and ent.id in frontier_escort.villagers:selection_title.text+=" · 拓荒隊"
 		var state_names={"idle":"待命","move":"移動","gather":"採集","deliver":"交付","build":"建造","repair":"修理","return":"返回守備點","attack":"攻擊"}
 		var missing=WorkerIdleStatus.missing_resource(ent,faction_views[0].records(),own_command_pending)
@@ -6244,6 +6268,8 @@ func _rotate_wall_line():
 
 # A mission tip is never a placement rejection: outside sites remain ordinary paid builds.
 func _escort_build_zone_hint() -> String:
+	if skirmish_mode=="depot" and build_mode=="storehouse" and build_preview_held:
+		return "補給區內，可計交付" if ForwardDepot.in_zone(_snap_build_position(build_mode,pointer_world)) else "補給區外，不計任務"
 	if skirmish_mode!="escort" or frontier_escort.stage not in [1,2] or build_mode not in ["storehouse","tower"] or not build_preview_held:return ""
 	return "前哨內，完成先計" if FrontierEscort.in_zone(_snap_build_position(build_mode,pointer_world)) else "前哨外，不計任務"
 
@@ -7405,8 +7431,8 @@ static func valid_victory_mode(value: String) -> String:
 ## Draw only the exact public scoring boundary, on explored ground and below fog.
 ## No area/collider, no pointer target and one draw surface irrespective of size.
 func _create_escort_outline():
-	var lo=FrontierEscort.OUTPOST_MIN
-	var hi=FrontierEscort.OUTPOST_MAX
+	var lo=ForwardDepot.ZONE_MIN if skirmish_mode=="depot" else FrontierEscort.OUTPOST_MIN
+	var hi=ForwardDepot.ZONE_MAX if skirmish_mode=="depot" else FrontierEscort.OUTPOST_MAX
 	for x in range(lo.x,hi.x):
 		escort_outline_segments.append(Vector3(x+0.5,lo.y,0))
 		escort_outline_segments.append(Vector3(x+0.5,hi.y,1))
@@ -7416,7 +7442,7 @@ func _create_escort_outline():
 	for p in escort_outline_segments:
 		var inward=[Vector3(0,0,0.25),Vector3(0,0,-0.25),Vector3(0.25,0,0),Vector3(-0.25,0,0)][int(p.z)]
 		escort_outline_cells.append(_cell_index(Vector3(p.x,0,p.y)+inward))
-	escort_outline=MeshInstance3D.new();escort_outline.name="EscortOutpostBoundary"
+	escort_outline=MeshInstance3D.new();escort_outline.name="ForwardDepotBoundary" if skirmish_mode=="depot" else "EscortOutpostBoundary"
 	escort_outline.mesh=ImmediateMesh.new();escort_outline.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var material=StandardMaterial3D.new()
 	material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -7427,7 +7453,7 @@ func _create_escort_outline():
 
 func _refresh_escort_outline():
 	if not is_instance_valid(escort_outline):return
-	if frontier_escort.stage>=3 or explored_cells[0].is_empty():
+	if (skirmish_mode=="escort" and frontier_escort.stage>=3) or (skirmish_mode=="depot" and game_over) or explored_cells[0].is_empty():
 		escort_outline.hide()
 		return
 	var mask=0
@@ -7464,14 +7490,22 @@ func _create_control_point_marker():
 	control_point_flag=_mesh(control_point_marker,banner,Vector3(0.8,2.5,0),GOLD)
 	control_point_marker.visible=victory_mode=="control"
 
+func _forward_depot_help() -> String:
+	return "在界線內付費建倉庫。讓村民在附近採集，正常交付至此倉庫；主堡、區外倉庫、交易及起始資源不計。無需升級；倉庫被毀可重建，交付量保留。"
+
 func _refresh_control_point_marker():
 	if not is_instance_valid(control_point_marker):return
 	control_point_marker.visible=victory_mode=="control"
-	if is_instance_valid(objective_button): objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort","breach"]
+	if is_instance_valid(objective_button): objective_button.visible=victory_mode in ["control","supply"] or skirmish_mode in ["expedition","escort","breach","depot"]
 	if skirmish_mode=="breach":
 		if is_instance_valid(objective_button):
 			objective_button.text=_objective_camera_prefix()+"攻城突破 · "+BreachMission.TITLES[breach_mission.stage]+"\n"+breach_mission.caption()
 			objective_button.tooltip_text=_authored_camera_tip()+"；劇本守軍無經濟AI。"
+		return
+	if skirmish_mode=="depot":
+		if is_instance_valid(objective_button):
+			objective_button.text=_objective_camera_prefix()+("前線補給線 · 交付" if forward_depot.built_site(entities,economy) else "前線補給線 · 建倉庫")+"\n"+forward_depot.progress()
+			objective_button.tooltip_text=_authored_camera_tip()+"。"+_forward_depot_help()
 		return
 	if skirmish_mode=="escort":
 		if is_instance_valid(objective_button):
@@ -7506,6 +7540,7 @@ func _authored_objective_position() -> Vector3:
 	match skirmish_mode:
 		"breach":return breach_mission.target()
 		"escort":return FrontierEscort.TARGET
+		"depot":return ForwardDepot.TARGET
 		"expedition":return frontier_expedition.target()
 	return Vector3.INF
 
@@ -7547,6 +7582,7 @@ func _activate_objective_camera():
 func _focus_control_point():
 	if skirmish_mode=="breach":camera_focus=breach_mission.target();_camera_update();return
 	if skirmish_mode=="escort":camera_focus=FrontierEscort.TARGET;_camera_update();return
+	if skirmish_mode=="depot":camera_focus=ForwardDepot.TARGET;_camera_update();return
 	if skirmish_mode=="expedition":camera_focus=frontier_expedition.target();_camera_update();return
 	if victory_mode=="supply":
 		var keep=_first(0,"town_center")
@@ -8555,7 +8591,7 @@ func _ai_shelter_resource(worker,records):
 	return best
 
 func _update_ai_worker_safety():
-	if paused or game_over or skirmish_mode in ["survival","expedition","escort","breach"]:return false
+	if paused or game_over or skirmish_mode in ["survival","expedition","escort","breach","depot"]:return false
 	# Resume claims last this simulation tick only, including an AI policy turn.
 	for id in ai_claimed_workers.keys():
 		if ai_claimed_workers[id]=="safety_resume":ai_claimed_workers.erase(id)
@@ -8880,7 +8916,7 @@ func _select_blocked_military(source_selection,identity):
 # count, refund, free birth, or permission to send old workers into danger.
 func _ai_farm_shelter_staffing(goal,workers,queued_workers,capacity,committed,castle):
 	if goal!="farm":return false
-	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach"]:return false
+	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach","depot"]:return false
 	if workers.is_empty() or workers.size()>=8 or queued_workers>0 or committed>=capacity or not _ai_can_budget("villager"):return false
 	if castle.is_empty() or not castle.get("owned",false) or not castle.get("alive",false) or not castle.get("built",false) or castle.get("team",-1)!=1 or castle.get("kind","")!="town_center" or castle.get("queue",[]).size()>=2:return false
 	for command in commands:
@@ -8894,7 +8930,7 @@ func _ai_farm_shelter_staffing(goal,workers,queued_workers,capacity,committed,ca
 
 # A new local AI task for an unloaded parked worker, never a retry for the carrier.
 func _ai_idle_yield_plan(worker):
-	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach"]:return {}
+	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach","depot"]:return {}
 	if worker.is_empty() or worker.get("team",-1)!=1 or not worker.get("alive",false) or worker.get("kind","")!="villager" or worker.state!="idle" or worker.mode=="STOP" or _garrisoned(worker) or _cargo_amount(worker)>0:return {}
 	if not worker.get("path",[]).is_empty() or worker.get("path_pending",false) or worker.get("path_status","") in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED,"NO_WORK"]:return {}
 	if tick_count<worker_manual_until.get(worker.id,-1) or tick_count-worker.get("traffic_last_replan",tick_count)<AI_TRAFFIC_ESCAPE_COOLDOWN or tick_count-worker.get("last_damage_tick",tick_count)<=WorkerSafety.SAFE_TICKS or _ai_worker_pending_intent(worker.id):return {}
@@ -8922,7 +8958,7 @@ func _ai_idle_yield_plan(worker):
 	return {}
 
 func _ai_request_idle_yield(carrier,waypoint):
-	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach"] or carrier.is_empty() or not carrier.get("alive",false) or carrier.get("team",-1)!=1 or carrier.state!="deliver" or _cargo_amount(carrier)<=0:return false
+	if not ai_enabled or paused or game_over or skirmish_mode in ["survival","expedition","escort","breach","depot"] or carrier.is_empty() or not carrier.get("alive",false) or carrier.get("team",-1)!=1 or carrier.state!="deliver" or _cargo_amount(carrier)<=0:return false
 	for record in faction_views[1].records().values():
 		if not record.get("owned",false) or record.get("kind","")!="villager" or record.id==carrier.id or ai_claimed_workers.get(record.id,"") not in ["","evacuation"]:continue
 		var worker=_get_entity(record.id)

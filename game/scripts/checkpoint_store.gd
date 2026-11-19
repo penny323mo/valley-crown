@@ -17,6 +17,7 @@ static func save_slot(game:Node,path:String=PATH)->Dictionary:
  var chapter=game.get("campaign_chapter")
  if chapter is int and chapter>=0:return {"ok":false,"reason":"霧谷戰役不寫入存檔"}
  if game.skirmish_mode=="breach":return {"ok":false,"reason":"攻城突破暫不支援存檔"}
+ if game.skirmish_mode=="depot":return {"ok":false,"reason":"前線補給線暫不支援存檔"}
  if game.skirmish_mode=="escort":return {"ok":false,"reason":"護送任務暫不支援存檔"}
  if game.skirmish_mode=="expedition":return {"ok":false,"reason":"前線遠征暫不支援存檔"}
  if game.game_over or not game.paused:return {"ok":false,"reason":"NOT_PAUSED_MATCH"}

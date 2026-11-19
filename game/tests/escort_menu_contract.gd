@@ -15,7 +15,7 @@ func run():
  check("escort is explicitly supported policy",Policy.valid("escort")=="escort" and Policy.title("escort")=="護送拓荒隊")
  var entry=Catalogue.option("escort")
  check("escort is selectable scripted conquest",entry.get("group",-1)==3 and entry.get("mode","")=="escort" and entry.get("victory","")=="conquest")
- check("catalogue retains nine earlier configurations",Catalogue.OPTIONS.size()==11 and ["practice","standard","pressure","control","supply","battle","fortress","survival","expedition","escort","breach"].all(func(id):return not Catalogue.option(id).is_empty()))
+ check("catalogue retains nine earlier configurations",Catalogue.OPTIONS.size()==12 and ["practice","standard","pressure","control","supply","battle","fortress","survival","expedition","escort","breach","depot"].all(func(id):return not Catalogue.option(id).is_empty()))
  var brief=Catalogue.briefing("escort","conquest")
  check("briefing discloses no save and no economic AI",brief.contains("暫不支援存檔") and brief.contains("沒有經濟 AI") and brief.contains("不消耗敵方資源"))
  check("briefing explains paid forward construction and defeat",brief.contains("正常付費") and brief.contains("三名任務村民全部死亡") and brief.contains("建築被毀可重建"))

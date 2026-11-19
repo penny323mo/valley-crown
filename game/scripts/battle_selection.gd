@@ -13,6 +13,7 @@ const OPTIONS=[
  {"id":"breach","group":3,"mode":"breach","victory":"conquest","title":"攻城突破"},
  {"id":"survival","group":3,"mode":"survival","victory":"conquest","title":"三波守城挑戰"},
  {"id":"escort","group":3,"mode":"escort","victory":"conquest","title":"護送拓荒隊"},
+ {"id":"depot","group":3,"mode":"depot","victory":"conquest","title":"前線補給線"},
  {"id":"expedition","group":3,"mode":"expedition","victory":"conquest","title":"前線遠征"}]
 const CAMPAIGN=["breach","survival","escort"]
 const CAMPAIGN_TITLE="霧谷戰役"
@@ -46,6 +47,11 @@ static func briefing(mode:String,victory:String,difficulty:String="standard")->S
   enemy="正常付費完成前哨倉庫及箭塔後，30 秒迎接固定 6 人混合反攻；沒有經濟 AI，不消耗敵方資源。保留正常視野、尋路及傷害。"
   win="擊退全部反攻，至少一名任務村民及區內完成的倉庫、箭塔仍存活；建築被毀可重建。"
   lose="主堡被毀、三名任務村民全部死亡或投降。40 分鐘上限可判和局。"
+ elif mode=="depot":
+  opening+="額外有長槍兵2及弓手1；初始軍隊為劇本配置。"
+  enemy="前線有固定長槍兵及弓手，正常視野與戰鬥。可從側翼繞過或擊退守軍，無定時增援。"
+  win="前線區界內正常付費建倉庫，實際送抵木材120及糧食80；至少一座前線倉庫仍運作。主堡、區外倉庫、起始庫存、交易及退款不計。"
+  lose="主堡被摧毀或投降；時限可判和局。此劇本暫不支援存檔。"
  elif mode=="expedition":
   opening+="可用分開本機存檔，普通戰役存檔不變；只支援相同版本。"
   enemy="固定守軍與一次 6 人反攻，不使用經濟 AI，不消耗敵方資源；攻破哨站後 30 秒出發。"
