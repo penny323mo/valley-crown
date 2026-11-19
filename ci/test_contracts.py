@@ -378,7 +378,7 @@ class ConsolidatedTests(unittest.TestCase):
                 original_delta=b'            except (FileNotFoundError, KeyError, ProcessLookupError):\n                child.wait(timeout=0.05)\n'
                 self.assertEqual(data.count(reviewed_delta),1)
                 data=data.replace(reviewed_delta,original_delta)
-                for current,baseline in [('10bc1ffef4f4715e294b2ae82a8ae966448c0fab','677096aaaa5131089971c2ec85b598ad20bd91da'),('317d215e916239bbc25caf73156fc8291b59a6ca','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-037b3db3b754','vc-cf764648c52f')]:
+                for current,baseline in [('420a7c3d3769a33f4a929577122efd4ed2d10db3','677096aaaa5131089971c2ec85b598ad20bd91da'),('ba9e44ecf1f97db5c148e2e1934c206ef8023a18','dec0eabb654f36c837e68db547d4282bea0754fb'),('vc-98a66fc81dbe','vc-cf764648c52f')]:
                     self.assertEqual(data.count(current.encode()),1)
                     data=data.replace(current.encode(),baseline.encode())
             self.assertEqual(hashlib.sha256(data).hexdigest(),sha)
