@@ -28,7 +28,7 @@ func run():
   ck("three distinct maps and back are reachable "+str(size),fit(shell,size) and shell.buttons.get_child_count()==4 and shell.buttons.has_node("LayoutValleyButton") and shell.buttons.has_node("LayoutWoodlandButton") and shell.buttons.has_node("LayoutIronCrossroadsButton"))
  await click(shell.buttons.get_node("LayoutIronCrossroadsButton"))
  ck("actual pointer selects crossroads and returns briefing",shell.page=="setup" and shell.selected_layout=="iron_crossroads" and shell.battlefield_preview.layout_id=="iron_crossroads" and shell.battlefield_preview.visible)
- ck("briefing discloses tradeoff without additional start resources",shell.description.text.contains("爭奪鐵礦") and shell.description.text.contains("家礦") and not is_instance_valid(shell.match_node))
+ ck("briefing discloses tradeoff without additional start resources",shell.description.text.contains("爭奪鐵礦") and shell.description.text.contains("基地附近礦區") and not is_instance_valid(shell.match_node))
  await click(shell.buttons.get_node("LaunchMatchButton"))
  var g=shell.match_node
  ck("ordinary Launch actually starts selected crossroads under standard rules",is_instance_valid(g) and g.layout_id=="iron_crossroads" and g.skirmish_mode=="standard" and g.ai_enabled)
@@ -45,7 +45,7 @@ func run():
    ck("strict restore applies to prepared matching new layout",Restore.apply(candidate,captured.data) and Codec.capture(candidate)==captured.data)
    candidate.free()
   g._submit("surrender");g._tick(.05)
-  ck("actual completed report names crossroads",g.game_over and g.last_match_report.layout_title=="赤鐵岔道")
+  ck("actual completed report names crossroads",g.game_over and g.last_match_report.layout_title=="前線鐵谷")
   shell._restart_match();await settle()
   var h=shell.match_node;ck("restart preserves crossroads identity",is_instance_valid(h) and h!=g and h.layout_id=="iron_crossroads")
   shell._open_menu()

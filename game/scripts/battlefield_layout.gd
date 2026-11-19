@@ -13,10 +13,10 @@ static func valid(id:String)->String:
 static func supported(mode:String,victory:String)->bool:
  return mode in ["practice","standard","pressure"] and victory=="conquest"
 static func title(id:String)->String:
- if valid(id)=="iron_crossroads":return "赤鐵岔道"
+ if valid(id)=="iron_crossroads":return "前線鐵谷"
  return "雙翼林地" if valid(id)=="woodland" else "經典谷地"
 static func details(id:String)->String:
- if valid(id)=="iron_crossroads":return "中央是短路與爭奪鐵礦；兩翼分布前置糧食及石材，方便繞路或興建前線倉庫。出生點家礦與資源總量不變。"
+ if valid(id)=="iron_crossroads":return "中央是短路與爭奪鐵礦；兩翼分布前置糧食及石材，可繞路或建前線倉庫。基地附近礦區及資源總量不變。"
  return "中場林帶留有中央缺口；兩側有前置糧食與礦區，可繞路或正常伐木開路。" if valid(id)=="woodland" else "原有谷地配置，基地及中場資源位置不變。"
 static func expansion_resources(id:String)->Array:
  var result=[]

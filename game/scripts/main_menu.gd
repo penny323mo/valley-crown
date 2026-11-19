@@ -428,10 +428,10 @@ func _show_page(next_page: String):
 		_add_button("返回","DifficultyBackButton",func():_show_page("setup"))
 	elif page == "battlefield":
 		heading.text="選擇戰場"
-		description.text="經典谷地：保留原有開局與資源布局。\n\n雙翼林地：中場林帶與兩翼資源路線；樹木仍可正常砍伐，空地仍可自由建造。\n\n赤鐵岔道：中央短路可爭前線鐵礦，兩翼可繞行並採糧石；家礦和資源總量不變。\n\n只改戰場布局，不贈送資源或軍隊；普通對戰 AI、視野與付費規則不變。"
+		description.text="經典谷地：保留原有開局與資源布局。\n\n雙翼林地：中場林帶與兩翼資源路線；樹木仍可正常砍伐，空地仍可自由建造。\n\n前線鐵谷：中央短路可爭前線鐵礦，兩翼可繞行並採糧石；基地附近礦區及資源總量不變。\n\n只改戰場布局，不贈送資源或軍隊；普通對戰 AI、視野與付費規則不變。"
 		_add_button("經典谷地", "LayoutValleyButton", func(): selected_layout="valley";_show_page("setup"))
 		_add_button("雙翼林地", "LayoutWoodlandButton", func(): selected_layout="woodland";_show_page("setup"))
-		_add_button("赤鐵岔道", "LayoutIronCrossroadsButton", func(): selected_layout="iron_crossroads";_show_page("setup"))
+		_add_button("前線鐵谷", "LayoutIronCrossroadsButton", func(): selected_layout="iron_crossroads";_show_page("setup"))
 		_add_button("返回", "LayoutBackButton", func(): _show_page("setup"))
 	elif page == "checkpoint":
 		heading.text="本機戰役存檔"

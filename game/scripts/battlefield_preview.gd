@@ -25,5 +25,5 @@ func _draw():
   var home=Vector3(-25,0,24)*(1 if team==0 else -1)
   draw_rect(Rect2(project(home)-Vector2(4,4),Vector2(8,8)),Color("81aab6") if team==0 else Color("bd6c57"))
  var font=get_theme_default_font()
- var legend="中央橙圈：前線鐵礦 · 兩翼另有糧石" if layout_id=="iron_crossroads" else "PUBLIC LAYOUT · bases / expansion resources"
+ var legend="中間圈起的是前線鐵礦 · 兩翼另有糧石" if layout_id=="iron_crossroads" else "PUBLIC LAYOUT · bases / expansion resources"
  draw_string(font,Vector2(8,185),legend,HORIZONTAL_ALIGNMENT_LEFT,-1,10,Color("e4dfcb"))
