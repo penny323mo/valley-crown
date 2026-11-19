@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: c17003d5f0b1dcfec86ecab59a6019b0aeab2eb2
+      BUILDING_RUNTIME_SOURCE_COMMIT: f37ee49486c7abb2757b9eb901ca69179aff01ec
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '0b404629ac8b7518453ebe833cbd6f69857a1c185ee8b7a5b60e71602a3d67c9  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '1d310eaba7923151c89e223ffcb7a21328065ff45ef05e544e1cde47b9bb4b2c  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -267,6 +267,7 @@ jobs:
             ${{ env.RTS_WORK }}/product/building-contracts/construction_visual/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/mineral_trade_policy_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/mineral_trade_runtime_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/trade_icon_classification_contract/receipt.json
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
@@ -428,6 +429,7 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/siege_challenge_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/mineral_trade_policy_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/mineral_trade_input_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/trade_icon_classification_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
