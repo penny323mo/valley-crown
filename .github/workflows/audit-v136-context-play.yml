@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '9903c114d1a637b4a52d90a39e7690387f10e50b454f3fab647aabbdae7b733c  ci/audit-v136-context-play.py' | sha256sum --strict -c
+          echo '10406f1e25db44029b5632f7acbf878dca95f3c667914749444cbbba37211cc7  ci/audit-v136-context-play.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PY'
           import hashlib,json,os,pathlib,re,sys

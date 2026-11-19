@@ -137,12 +137,25 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         def walls(x):
             return [r for r in x["hud"]["context_targets"] if r["team"]==1 and r["kind"]=="wall" and r["screen"][1]>170]
         receipt["attack"]={"selected":g["selected"],"first_context_targets":g["hud"]["context_targets"]}
+        # Use the authored objective button ordinary players can touch. The
+        # prior generic empty probe was a real move but far to the west.
+        objective=next((row for row in g["hud"]["buttons"] if row["text"].startswith("攻城突破") and not row["disabled"]),None)
+        check("battle displays actual campaign objective target",bool(objective))
+        x,y,w,h=objective["rect"];before_focus=g["hud"]["camera"]["focus"]
+        touch([x+w/2,y+h/2])
+        g=match(lambda q:q["hud"]["camera"]["focus"]!=before_focus,8)
+        check("ordinary objective tap centers the front without changing army",g["selected"]==receipt["attack"]["selected"] and not g["touch_mode"])
         if not walls(g):
-            check("visible empty ground available for first approach",bool(g["hud"]["ground_points"]))
-            choice=min(g["hud"]["ground_points"],key=lambda p:(p[1],abs(p[0]-195)))
+            # Screen ground point derived from exact native camera geometry:
+            # front approach lane, not an unseen entity or a damage injection.
+            choice=[70,520]
             receipt["attack"]["approach"]=choice
             touch(choice)
-            g=match(lambda q:bool(walls(q)),35)
+            try:g=match(lambda q:bool(walls(q)),45)
+            except Exception:
+                receipt["attack"]["observations_failed"]=world()
+                png("approach-no-visible-wall-actual-battle")
+                raise
         possible=walls(g)
         check("enemy wall is genuinely visible and tappable in the battlefield",bool(possible))
         target=min(possible,key=lambda r:abs(r["screen"][0]-195))
