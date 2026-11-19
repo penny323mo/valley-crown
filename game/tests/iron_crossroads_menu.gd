@@ -25,7 +25,7 @@ func run():
  ck("conquest selector routes ordinary pointer without starting game",shell.page=="battlefield" and not is_instance_valid(shell.match_node))
  for size in [Vector2i(320,568),Vector2i(390,844),Vector2i(640,360)]:
   root.size=size;shell._show_page("battlefield");await settle()
-  ck("three distinct maps and back are reachable "+str(size),fit(shell,size) and shell.buttons.get_child_count()==4 and shell.buttons.has_node("LayoutValleyButton") and shell.buttons.has_node("LayoutWoodlandButton") and shell.buttons.has_node("LayoutIronCrossroadsButton"))
+  ck("four distinct maps and back are reachable "+str(size),fit(shell,size) and shell.buttons.get_child_count()==5 and shell.buttons.has_node("LayoutValleyButton") and shell.buttons.has_node("LayoutWoodlandButton") and shell.buttons.has_node("LayoutIronCrossroadsButton") and shell.buttons.has_node("LayoutRiverCrossingsButton"))
  await click(shell.buttons.get_node("LayoutIronCrossroadsButton"))
  ck("actual pointer selects crossroads and returns briefing",shell.page=="setup" and shell.selected_layout=="iron_crossroads" and shell.battlefield_preview.layout_id=="iron_crossroads" and shell.battlefield_preview.visible)
  ck("briefing discloses tradeoff without additional start resources",shell.description.text.contains("爭奪鐵礦") and shell.description.text.contains("基地附近礦區") and not is_instance_valid(shell.match_node))

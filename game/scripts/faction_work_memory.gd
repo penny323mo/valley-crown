@@ -11,17 +11,21 @@ var structures: Dictionary = {}
 var known_obstacles: Dictionary = {}
 var observed_solids: Dictionary = {}
 var own_solids: Dictionary = {}
+var public_terrain:Dictionary = {}
 var resource_observed_at: Dictionary = {}
 var obstacle_observed_at: Dictionary = {}
 var cell_observed_at: Dictionary = {}
 const UNKNOWN_POLICY := "free_except_fixed_public_boundary"
 
-func _init() -> void:
+func _init(fixed_map_solids:Dictionary={}) -> void:
+	public_terrain=fixed_map_solids.duplicate()
+	public_terrain.make_read_only()
 	grid.region = Rect2i(0, 0, Rules.MAP_SIZE, Rules.MAP_SIZE); grid.update()
 	for y in Rules.MAP_SIZE:
 		for x in Rules.MAP_SIZE:
 			if x < Rules.MAP_BORDER or y < Rules.MAP_BORDER or x > Rules.MAP_LAST_PLAYABLE or y > Rules.MAP_LAST_PLAYABLE:
 				grid.set_point_solid(Vector2i(x, y))
+	for cell in public_terrain:grid.set_point_solid(cell)
 
 func observe(seen_static: Dictionary, owned: Dictionary, own_cells: Dictionary, tick: int) -> Dictionary:
 	var changed := {}
@@ -51,7 +55,7 @@ func observe(seen_static: Dictionary, owned: Dictionary, own_cells: Dictionary, 
 	for cell in own_solids: touched[cell] = true
 	for cell in touched:
 		if not grid.region.has_point(cell): continue
-		var solid: bool = cell.x < Rules.MAP_BORDER or cell.y < Rules.MAP_BORDER or cell.x > Rules.MAP_LAST_PLAYABLE or cell.y > Rules.MAP_LAST_PLAYABLE or observed_solids.has(cell) or own_solids.has(cell)
+		var solid: bool = cell.x < Rules.MAP_BORDER or cell.y < Rules.MAP_BORDER or cell.x > Rules.MAP_LAST_PLAYABLE or cell.y > Rules.MAP_LAST_PLAYABLE or public_terrain.has(cell) or observed_solids.has(cell) or own_solids.has(cell)
 		if grid.is_point_solid(cell) != solid:
 			grid.set_point_solid(cell, solid); changed[cell] = true
 	if records_changed or not changed.is_empty(): revision += 1

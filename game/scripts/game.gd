@@ -415,6 +415,8 @@ var traffic_tick_segments={}
 
 const BattlefieldLayout=preload("res://scripts/battlefield_layout.gd")
 var layout_id="valley"
+const RiverTerrain=preload("res://scripts/river_terrain.gd")
+var public_terrain:Dictionary = {}
 const SkirmishPolicy=preload("res://scripts/skirmish_policy.gd")
 const AIDifficulty=preload("res://scripts/ai_difficulty.gd")
 var ai_difficulty="standard"
@@ -451,6 +453,7 @@ func _ready():
 	if victory_mode in ["control","supply"]: skirmish_mode="standard"
 	ai_difficulty=AIDifficulty.valid_for(skirmish_mode,victory_mode,ai_difficulty)
 	layout_id=BattlefieldLayout.valid(layout_id) if BattlefieldLayout.supported(skirmish_mode,victory_mode) else "valley"
+	_init_public_terrain()
 	_sync_web_display_scale()
 	audio_cues=preload("res://scripts/audio_cues.gd").new(); add_child(audio_cues)
 	_reset_economy(INITIAL_STOCKS)
@@ -460,6 +463,7 @@ func _ready():
 	body_font=load("res://assets/fonts/ui_tc.otf")
 	# Baked original native scenes share textures; legacy GLBs are not loaded.
 	models["berry"]=load("res://assets/mature/models/berry.scn")
+	if layout_id==RiverTerrain.ID:ground_trails=RiverTerrain.corridor_mask()
 	_create_world()
 	_seed_match()
 	_navigation_rebuild()
@@ -544,6 +548,7 @@ func _create_world():
 		var _radius=rng.randf_range(0.5,2.7)
 		var _rotation=rng.randf()*TAU
 	camera_ground=MatureWorld.create_ground(ground,ground_trails)
+	if layout_id==RiverTerrain.ID:preload("res://scripts/river_landscape.gd").render(ground)
 	# No decorative water on otherwise buildable land. Low grass is not an obstacle.
 	for i in 150:
 		var p=Vector3(rng.randf_range(-MAP_LIMIT,MAP_LIMIT),0.05,rng.randf_range(-MAP_LIMIT,MAP_LIMIT))
@@ -1580,6 +1585,10 @@ func _perimeter_cells(ent):
 			if x==first.x-1 or x==last.x+1 or z==first.y-1 or z==last.y+1: result.append(Vector2i(x,z))
 	return result
 
+func _init_public_terrain():
+	public_terrain=RiverTerrain.blocked(layout_id)
+	work_memory=[WorkMemory.new(public_terrain),WorkMemory.new(public_terrain)]
+
 func _navigation_rebuild():
 	navigation.clear()
 	navigation.region=Rect2i(0,0,Rules.MAP_SIZE,Rules.MAP_SIZE)
@@ -1591,6 +1600,7 @@ func _navigation_rebuild():
 	for y in Rules.MAP_SIZE:
 		for x in Rules.MAP_SIZE:
 			if x<Rules.MAP_BORDER or y<Rules.MAP_BORDER or x>Rules.MAP_LAST_PLAYABLE or y>Rules.MAP_LAST_PLAYABLE: navigation.set_point_solid(Vector2i(x,y))
+	for cell in public_terrain:navigation.set_point_solid(cell)
 	for ent in entities:
 		if ent.alive and ent.category!="unit":
 			for c in _occupied_cells(ent):
@@ -2317,6 +2327,10 @@ func _placement_reason(kind,p,team,builder_id,check_resources=true):
 	var footprint=_occupied_cells(mock)
 	for c in footprint:
 		if c.x<Rules.MAP_BORDER+1 or c.y<Rules.MAP_BORDER+1 or c.x>Rules.MAP_LAST_PLAYABLE-1 or c.y>Rules.MAP_LAST_PLAYABLE-1: return "地圖邊界"
+	if layout_id==RiverTerrain.ID:
+		for c in footprint:
+			if public_terrain.has(c):return "河水阻隔，不可建築"
+			if RiverTerrain.surface_at(layout_id,c)==RiverTerrain.BRIDGE:return "木橋須留作通行"
 	for c in _placement_visibility_cells(footprint):
 		# Out-of-map envelope cells are public boundary, not observable cells.
 		# Bounds precede indexing even if the public size catalog grows.
@@ -6484,7 +6498,7 @@ func _test_reset(initial_stocks_units=INITIAL_STOCKS):
 	application_focused=true; application_suspended=false; background_paused=false; discard_return_delta=false; tick_accumulator=0.0
 	for team in 2:
 		visible_cells[team].fill(0); explored_cells[team].fill(0)
-	work_memory=[WorkMemory.new(),WorkMemory.new()]
+	_init_public_terrain()
 	_reset_economy(initial_stocks_units)
 	completed_builds=[0,0]; trained_total=[0,0]
 	ai_enabled=false; end_panel.hide(); rng.seed=824613; _seed_match(); _navigation_rebuild(); _update_vision()

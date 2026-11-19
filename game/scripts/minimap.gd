@@ -1,4 +1,5 @@
 extends Control
+const River=preload("res://scripts/river_terrain.gd")
 const Rules=preload("res://scripts/rules.gd")
 var game: Node
 const UNSEEN=Color("101c22")
@@ -9,11 +10,17 @@ var fog_texture: ImageTexture
 var fog_visible=PackedByteArray()
 var fog_explored=PackedByteArray()
 var fog_updates=0
+var terrain_colors=PackedByteArray()
 var pointer={}
 func _ready():
  visibility_changed.connect(_visibility_changed)
  texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST
  tooltip_text="按住小地圖拖曳巡視；亮綠：目前視野，暗綠：曾探索，深色：未探索。"
+ if is_instance_valid(game) and game.layout_id==River.ID:
+  tooltip_text="按住小地圖巡視；已見河水為藍色，木橋為棕色，淺灘為淺綠色。未探索仍為深色。"
+  terrain_colors.resize(Rules.MAP_SIZE*Rules.MAP_SIZE)
+  for index in terrain_colors.size():
+   terrain_colors[index]=River.surface_at(game.layout_id,Vector2i(index%Rules.MAP_SIZE,index/Rules.MAP_SIZE))
 func _visibility_changed():
  if not is_visible_in_tree() and not pointer.is_empty():pointer.valid=false
 func _area():return Rect2(Vector2(9,9),size-Vector2(18,18))
@@ -24,7 +31,18 @@ func refresh_fog():
  if fog_texture!=null and visible==fog_visible and explored==fog_explored:return
  fog_visible=visible.duplicate();fog_explored=explored.duplicate()
  if fog_image==null:fog_image=Image.create(Rules.MAP_SIZE,Rules.MAP_SIZE,false,Image.FORMAT_RGB8)
- for i in visible.size():fog_image.set_pixel(i%Rules.MAP_SIZE,i/Rules.MAP_SIZE,VISIBLE if visible[i]!=0 else (EXPLORED if explored[i]!=0 else UNSEEN))
+ if terrain_colors.is_empty():
+  for i in visible.size():fog_image.set_pixel(i%Rules.MAP_SIZE,i/Rules.MAP_SIZE,VISIBLE if visible[i]!=0 else (EXPLORED if explored[i]!=0 else UNSEEN))
+ else:
+  for i in visible.size():
+   var cell=Vector2i(i%Rules.MAP_SIZE,i/Rules.MAP_SIZE)
+   var color=VISIBLE if visible[i]!=0 else (EXPLORED if explored[i]!=0 else UNSEEN)
+   if explored[i]!=0 or visible[i]!=0:
+    match terrain_colors[i]:
+     River.WATER:color=Color("49747f") if visible[i]!=0 else Color("263d48")
+     River.BRIDGE:color=Color("c89b63") if visible[i]!=0 else Color("6c543b")
+     River.FORD:color=Color("95ae8d") if visible[i]!=0 else Color("4d6154")
+   fog_image.set_pixelv(cell,color)
  if fog_texture==null:fog_texture=ImageTexture.create_from_image(fog_image)
  else:fog_texture.update(fog_image)
  fog_updates+=1;queue_redraw()
