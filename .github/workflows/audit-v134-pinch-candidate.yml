@@ -1,0 +1,61 @@
+name: Audit candidate camera scale with exact real browser input
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v134-pinch-candidate.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  browser:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact real product archive and isolate browser files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '92f0aea8924408420abc2ad5ec991b0f43baa90be6011a4a4a17aa9451983f2c  ci/audit-v134-pinch-candidate.py' | sha256sum --strict -c
+          google-chrome --version
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,re,sys
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          row={'artifact_id': 14562197426, 'run_id': 44584806093, 'build': 'vc-ea0e9d130c01', 'metadata_sha256': '74feac342f06eda0386f499789ce30e2b8f2b9ff8dac8ac433dd4cce3457e4fa', 'zip_sha256': 'fe0835768fbe3f70fa6582c68a4074e0f3473d4de7a16223ec6250ce998857a3'}
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']=='244dbadc2648a59d126caa31ca34666cef9319b7'
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
+          members=verified_members(data,row)
+          identity=json.loads(members['candidate-metadata.json'])
+          assert identity['source_commit']=='3cd3b3ea0da6cdea5ef88b7f87782b9585c46fb7' and identity['game_tree']=='90ac49bdd1fe1b9ac69f94aeb181ce2a8280c984'
+          dest=pathlib.Path('/tmp/v133-browser-proof');dest.mkdir()
+          for path,data in members.items():
+              if path.startswith('artifacts/clean-a/'):
+                  name=path.split('/')[-1]
+                  assert name.startswith('index.')
+                  (dest/name).write_bytes(data)
+          (dest/'probe.html').write_text('<!doctype html><title>local disposable browser proof</title>')
+          (dest/'input.json').write_text(json.dumps(row))
+          PY
+      - name: Run real Web export with ordinary battle taps, real movement and rotation
+        run: python3 -B ci/audit-v134-pinch-candidate.py /tmp/v133-browser-proof battle
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v134-camera-scale-candidate-proof
+          path: |
+            /tmp/v133-browser-proof/input.json
+            /tmp/v133-browser-proof/browser-proof.json
+            /tmp/v133-browser-proof/chromedriver.log
+            /tmp/v133-browser-proof/browser-console.json
+            /tmp/v133-browser-proof/*-actual-battle.png
+          retention-days: 15
+          if-no-files-found: error
