@@ -32,7 +32,7 @@ func _initialize():
   check(mode+" normal refund",result.applied and e.bank_units_floor(0).food==({"unstarted":200,"started":175,"destroyed":100}[mode]))
   check(mode+" never credits output",e.bank_units_floor(0).iron==200 and not e.complete_trade("late","p",0).applied and e.audit().ok)
  var e=fresh()
- for pair in [["food","food"],["iron","food"],["wood","iron"],["stone","wood"],["bad","food"]]:
+ for pair in [["food","food"],["iron","wood"],["wood","iron"],["stone","wood"],["bad","food"]]:
   check("reject recipe "+str(pair),not e.pay_trade(str(pair),0,pair[0],pair[1]).applied and e.bank_units_floor(0).food==200)
  check("wrong team rejected",not e.pay_trade("wrong",2,"food","wood").applied)
  e.pay_trade("p",0,"food","wood");e.mark_started("p",0)

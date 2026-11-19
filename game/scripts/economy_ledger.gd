@@ -26,7 +26,7 @@ const REFUND_UNSTARTED = "unstarted"
 const REFUND_STARTED = "started"
 const REFUND_NONE = "none"
 
-const TRADE_RECIPES={"wood_food":60,"food_wood":60,"food_iron":30,"food_stone":40}
+const TRADE_RECIPES={"wood_food":60,"food_wood":60,"food_iron":30,"food_stone":40,"iron_food":60,"stone_food":60}
 var _banks: Array = []
 var _initial: Array = []
 var _stats: Array = []

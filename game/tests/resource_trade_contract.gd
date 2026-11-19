@@ -11,7 +11,7 @@ func settle():
 func run():
  var g=fresh();await settle();var keep=g._first(0,"town_center")
  var pop=g._population(0);var bank=g.economy.bank_milli(0).duplicate(true);var delivered=g.economy.snapshot().stats[0].delivered.duplicate(true)
- check("four fixed recipes only",g.TradePolicy.RECIPES.size()==4 and g.TradePolicy.kind("iron","food")=="")
+ check("six fixed recipes only",g.TradePolicy.RECIPES.size()==6 and g.TradePolicy.kind("iron","wood")=="")
  check("ordinary completed age two keep accepts trade",g._enqueue_trade(keep.id,"wood","food",0))
  var receipt=keep.queue[0].receipt_id
  check("payment immediately takes exact input only",g.economy.bank_milli(0).wood==bank.wood-100000 and g.economy.bank_milli(0).food==bank.food)
@@ -28,7 +28,7 @@ func run():
  check("later ticks cannot repeat output",g.economy.bank_milli(0)==after)
  check("trade output never counts as delivery",g.economy.snapshot().stats[0].delivered==delivered)
  check("trade economy audit holds",g.economy.audit().ok)
- check("invalid reverse pair rejected without charging",not g._enqueue_trade(keep.id,"iron","food",0) and g.economy.bank_milli(0)==after)
+ check("unlisted mineral wood pair rejected without charging",not g._enqueue_trade(keep.id,"iron","wood",0) and g.economy.bank_milli(0)==after)
  check("enemy keep cannot be used",not g._enqueue_trade(g._first(1,"town_center").id,"food","wood",0))
  check("malformed producer id rejected",not g._enqueue_trade(true,"food","wood",0))
  check("boolean team is not a faction",not g._enqueue_trade(keep.id,"food","wood",true))
@@ -93,7 +93,7 @@ func run():
   var prefix=str(size)+" "
   check(prefix+"dedicated panel opens without world targeting",ui_game.context_detail_kind=="trade" and ui_game.trade_content.visible and not ui_game.touch_command)
   check(prefix+"panel remains inside viewport",Rect2(Vector2.ZERO,Vector2(size)).encloses(ui_game.context_details.get_global_rect()))
-  check(prefix+"four recipes remain in vertical scroll",ui_game.trade_buttons.size()==4 and ui_game.context_details_scroll.vertical_scroll_mode==ScrollContainer.SCROLL_MODE_AUTO)
+  check(prefix+"six recipes remain in vertical scroll",ui_game.trade_buttons.size()==6 and ui_game.context_details_scroll.vertical_scroll_mode==ScrollContainer.SCROLL_MODE_AUTO)
   for button in ui_game.trade_buttons.values():check(prefix+"button target "+button.name,button.size.y>=44 and button.size.x<=ui_game.context_details.size.x)
   ui_game._request_trade("trade_wood_food");ui_game._request_trade("trade_wood_food")
   check(prefix+"repeated touch queues one pending trade",ui_game.commands.filter(func(c):return c.type=="trade").size()==1)

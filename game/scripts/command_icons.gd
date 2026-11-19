@@ -2,6 +2,8 @@ extends RefCounted
 ## Presentation-only portraits rendered from the actual in-game models.
 ## Names, prices, disabled states and all command callbacks remain on the Button.
 const ICONS = {
+	"trade_iron_food":preload("res://assets/mature/ui/icons/trade_iron_food.svg"),
+	"trade_stone_food":preload("res://assets/mature/ui/icons/trade_stone_food.svg"),
 	"villager":preload("res://assets/mature/ui/portraits/villager.png"),
 	"scout":preload("res://assets/mature/ui/portraits/scout.png"),
 	"spearman":preload("res://assets/mature/ui/portraits/spearman.png"),

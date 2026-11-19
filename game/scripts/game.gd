@@ -4333,7 +4333,8 @@ func _create_ui():
 	trade_help.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;trade_content.add_child(trade_help)
 	for trade_kind in TradePolicy.RECIPES:
 		var chosen=trade_kind
-		var option=_button(TradePolicy.label(chosen),func():_request_trade(chosen),160)
+		var option=_button(TradePolicy.label(chosen)+"\n處理 15 秒（另計排隊）",func():_request_trade(chosen),160)
+		CommandIcons.apply(option,chosen)
 		option.name=chosen;trade_content.add_child(option);trade_buttons[chosen]=option
 	trade_content.hide()
 	context_details.hide()

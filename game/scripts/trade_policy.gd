@@ -5,7 +5,9 @@ const RECIPES={
  "trade_wood_food":{"from":"wood","to":"food","input":100,"output":60},
  "trade_food_wood":{"from":"food","to":"wood","input":100,"output":60},
  "trade_food_iron":{"from":"food","to":"iron","input":100,"output":30},
- "trade_food_stone":{"from":"food","to":"stone","input":100,"output":40}}
+ "trade_food_stone":{"from":"food","to":"stone","input":100,"output":40},
+ "trade_iron_food":{"from":"iron","to":"food","input":100,"output":60},
+ "trade_stone_food":{"from":"stone","to":"food","input":100,"output":60}}
 static func recipe(from_resource,to_resource)->Dictionary:
  for key in RECIPES:
   var row=RECIPES[key]
