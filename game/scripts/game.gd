@@ -5013,9 +5013,10 @@ func _rebuild_actions(selection):
 		actions.add_child(_button("選取村民",func(): _select_group("villagers"),120))
 		actions.add_child(_button("探索霧谷",func(): _select_group("scout"),120))
 		actions.add_child(_button("選取軍事生產建築",_select_military_producers,190)); return
+	var type_groups=UnitTypeSelection.groups(faction_views[0].records(),selected)
 	var has_military=_has_selected_military()
-	var military_only=has_military and selection.all(func(ent):return ent.get("owned",false) and ent.get("category","")=="unit" and ent.get("kind","")!="villager")
-	if military_only:
+	var mixed_army=has_military and type_groups.size()>1 and selection.all(func(ent):return ent.get("owned",false) and ent.get("category","")=="unit" and ent.get("kind","")!="villager")
+	if mixed_army:
 		# Lead with the existing tactic and undo selection, before optional
 		# filters. Both must fit the initial phone strip beside pinned controls.
 		var primary_advance=_button("警戒前進",_start_advance_command,86)
@@ -5023,7 +5024,7 @@ func _rebuild_actions(selection):
 		primary_advance.tooltip_text="點目的地；射程內迎擊，敵軍離開後繼續，不追擊。"
 		actions.add_child(primary_advance)
 		actions.add_child(_button("取消選取",func(): _select([]),76))
-	var type_groups=UnitTypeSelection.groups(faction_views[0].records(),selected)
+
 	if type_groups.size()>1:
 		for unit_kind in Rules.UNIT_KINDS:
 			if not type_groups.has(unit_kind): continue
@@ -5141,7 +5142,7 @@ func _rebuild_actions(selection):
 			actions.add_child(_button("拆除建築\n不退資源",func(): _confirm_demolish(ent.id),120))
 	# Preserve the first build targets on narrow phones. Cargo delivery is
 	# reachable through the existing horizontal action strip.
-	if not military_only:
+	if not mixed_army:
 		actions.add_child(_button("取消選取",func(): _select([]),100))
 	return_cargo_button=_button("交付資源",_return_selected_cargo,100)
 	actions.add_child(return_cargo_button)
@@ -5151,7 +5152,7 @@ func _rebuild_actions(selection):
 		retry_gather_button.tooltip_text="只重試所選空手閒置村民原本可見的採集點；不會自動循環重試，不保證路線已暢通。搬運資源請用交付資源。"
 		actions.add_child(retry_gather_button)
 	if has_military:
-		if not military_only:actions.add_child(_button("警戒前進",_start_advance_command,100))
+		if not mixed_army:actions.add_child(_button("警戒前進",_start_advance_command,100))
 		actions.add_child(_button("橫列前進",func(): _start_formation_command("line"),100))
 		actions.add_child(_button("分散前進",func(): _start_formation_command("spread"),100))
 		actions.add_child(_button("巡邏",_start_patrol_command,100))
