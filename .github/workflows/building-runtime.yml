@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 420a7c3d3769a33f4a929577122efd4ed2d10db3
+      BUILDING_RUNTIME_SOURCE_COMMIT: 26bedd332af33fc08b3084daffd9a5541b770565
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '984c268eb3882b601ee1bae105adedef3c30ff0155254fb115550277a0c2995f  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'fa6a919d35bd3ec2a76d9674ce3871fa0088805f1da4ca2da5c44e6e4c83e8c5  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -619,6 +619,10 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/objective_camera_route_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/escort_outpost_boundary_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/escort_outpost_boundary_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/forward_depot_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/forward_depot_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/forward_depot_natural_journey/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/forward_depot_natural_journey/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
