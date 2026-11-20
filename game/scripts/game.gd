@@ -5866,7 +5866,7 @@ func _friendly_unit_pick(screen,winner):
 			closest=distance;result=record.id
 	return result
 
-func _pick(screen,allow_enemy=true,allow_resource_anchor=true):
+func _pick(screen,allow_enemy=true):
 	if not screen.is_finite(): return -1
 	var best=-1; var distance=34.0 if compact_ui else 24.0
 	var best_category=""
@@ -5891,7 +5891,7 @@ func _pick(screen,allow_enemy=true,allow_resource_anchor=true):
 			resource=record.id; depth=hit_distance
 	# Closest visible resource mesh wins overlap; equal depths use stable ID.
 	# A missed triangle keeps the existing resource-anchor touch tolerance.
-	return resource if resource>=0 else (best if allow_resource_anchor else -1)
+	return resource if resource>=0 else best
 
 # A visible explicit selection shortcut, not an automatic global rally order.
 func _select_military_producers():
@@ -5965,14 +5965,18 @@ func _send_world_order(screen,contextual=false):
 	if selected.is_empty(): return
 	var p=_world_at(screen)
 	var ids=selected.duplicate()
-	# A work-assist anchor outside a real rendered mesh should not discard a
-	# military-only contextual move to clean ground. For mixed/worker groups
-	# retain the intentionally generous resource halo and exact existing work.
-	var ground_cell=_cell(p)
-	var knowledge=work_memory[0].grid
-	var known_open=knowledge.region.has_point(ground_cell) and visible_cells[0][_cell_index(p)]!=0 and not knowledge.is_point_solid(ground_cell)
-	var target_id=_pick(screen,true,not contextual or not known_open or ids.any(_contextual_worker_eligible))
+	var target_id=_pick(screen)
 	var tapped=faction_views[0].get_record(target_id)
+	# Only resolve a real scene's resource hit; keep _pick and explicit input
+	# paths unchanged. Visible faction-known grass is required, never hidden
+	# authoritative navigation. A genuine mesh hit stays a resource tap.
+	if contextual and tapped.get("category","")=="resource" and is_instance_valid(camera) and not ids.any(_contextual_worker_eligible):
+		var ground_cell=_cell(p)
+		var knowledge=work_memory[0].grid
+		var known_open=knowledge.region.has_point(ground_cell) and visible_cells[0][_cell_index(p)]!=0 and not knowledge.is_point_solid(ground_cell)
+		if known_open and not is_finite(_resource_ray_distance(tapped,camera.project_ray_origin(screen),camera.project_ray_normal(screen))):
+			target_id=-1
+			tapped={}
 	var towers=_selected_towers()
 	if not towers.is_empty():
 		if tapped.get("team",-1)==1 and tapped.get("alive",false) and not tapped.get("remembered",false):_submit("tower_focus",{"ids":towers,"target":target_id})
