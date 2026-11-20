@@ -1,0 +1,71 @@
+name: Audit exact campaign replay and stale reset in two real Chrome tabs
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v142-campaign-web.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [baseline]
+        size: [390x844, 640x360]
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact dual export and storage expression
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+          echo 'f70bba1cd80563a99143b2210541acb03a9f68398a1b8c553e65a6367cf76f76  ci/audit-v142-campaign-web.py' | sha256sum --strict -c
+          google-chrome --version
+          python3 -B - <<'PYCODE'
+          import hashlib,json,os,pathlib,re,subprocess,sys
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          pin={'baseline': {'product': {'artifact_id': 14594445542, 'run_id': 44654250619, 'build': 'vc-1028af6f48ab', 'metadata_sha256': 'be1dd885b6e87ea22bacb393866f800d1e9d1192247a4f1565d978625f1dccaf', 'zip_sha256': '06c195d21104fd03e751e2901649577f1839740f773390db02c8626715f4c121'}, 'source': '41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232', 'support': 'b370bd351076fd1770462d2bdfcadb8fb60a479b', 'tree': '7e902e69f0932b9f8301d8bade8ad685cd3e1920', 'store_sha': '472d89ce49d03e4f605e8e0935c96217663fd6ccc54ffe9125b7fa1425a28299'}}[os.environ['ROLE']]
+          row=pin['product']
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']==pin['support']
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
+          members=verified_members(data,row)
+          identity=json.loads(members['candidate-metadata.json'])
+          assert identity['source_commit']==pin['source'] and identity['game_tree']==pin['tree'] and identity['build']==row['build']
+          dest=pathlib.Path('/tmp/v142-browser-package');dest.mkdir()
+          for path,data in members.items():
+              if path.startswith('artifacts/clean-a/'):
+                  name=path.split('/')[-1]
+                  assert name.startswith('index.')
+                  (dest/name).write_bytes(data)
+          command=lambda *args:subprocess.check_output(['git',*args])
+          command('fetch','--no-tags','--depth=1','origin',pin['source'])
+          assert command('rev-parse',pin['source']+':game').decode().strip()==pin['tree']
+          store=command('show',pin['source']+':game/scripts/campaign_progress.gd')
+          assert hashlib.sha256(store).hexdigest()==pin['store_sha']
+          match=re.search(rb'const WEB_FUNCTION='+bytes([34])*3+rb'([\s\S]*?)'+bytes([34])*3,store)
+          assert match
+          (dest/'exact-storage.js').write_bytes(match.group(1))
+          out=pathlib.Path('/tmp/v142-browser-proof');out.mkdir()
+          (out/'input.json').write_text(json.dumps(pin))
+          PYCODE
+      - name: Real stale two-tab reset, protected replay and explicit normal confirm
+        run: python3 -B ci/audit-v142-campaign-web.py /tmp/v142-browser-package ${{ matrix.role }} ${{ matrix.size }} /tmp/v142-browser-package/exact-storage.js /tmp/v142-browser-proof
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v142-web-campaign-${{ matrix.role }}-${{ matrix.size }}
+          path: /tmp/v142-browser-proof/
+          retention-days: 15
+          if-no-files-found: error
