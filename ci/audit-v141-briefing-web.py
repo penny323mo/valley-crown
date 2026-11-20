@@ -60,11 +60,25 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
                 s=snapshot();return s if s and s["visible"] and s["page"]==page else None
             return wait_for(matches,18)
         def tap(button):
-            current=wait_for(snapshot,12)
-            item=next((x for x in current["buttons"] if x["id"]==button),None)
-            if item is None:raise RuntimeError(f"Missing button {button}, {current}")
+            last=None;streak=0
+            def settled():
+                nonlocal last,streak
+                now=snapshot()
+                if not now or not now["visible"]:return None
+                items=now["buttons"]
+                item=next((x for x in items if x["id"]==button),None)
+                if item is None:return None
+                x,y,w,h=item["rect"]
+                tx,ty=x+w/2,y+h/2
+                distinct=all(not (q["rect"][0]<=tx<q["rect"][0]+q["rect"][2] and q["rect"][1]<=ty<q["rect"][1]+q["rect"][3]) for q in items if q["id"]!=button)
+                if not distinct or w<40 or h<40:return None
+                mark=json.dumps((now["page"],items),sort_keys=True)
+                streak=streak+1 if mark==last else 1
+                last=mark
+                return (now,item) if streak>=3 else None
+            current,item=wait_for(settled,17)
             x,y,w,h=item["rect"]
-            if w<40 or h<40:raise RuntimeError(f"Not visible at touch size: {button} {item}")
+            receipt.setdefault("ordinary_touch_route",[]).append({"page":current["page"],"button":button,"screen":[int(x+w/2),int(y+h/2)],"geometry":current["buttons"]})
             request("POST",prefix+"/actions",{"actions":[{"type":"pointer","id":"finger","parameters":{"pointerType":"touch"},"actions":[{"type":"pointerMove","duration":80,"x":int(x+w/2),"y":int(y+h/2),"origin":"viewport"},{"type":"pointerDown","button":0},{"type":"pause","duration":75},{"type":"pointerUp","button":0}]}]})
         go(web+"/probe.html")
         rc=js("return {webgl:!!document.createElement('canvas').getContext('webgl2'),width:window.innerWidth,height:window.innerHeight}")

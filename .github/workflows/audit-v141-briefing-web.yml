@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '1b7e0b83800dd28e8121c0e77ffc0f91841bbc7856edd41b31c2c91c41843743  ci/audit-v141-briefing-web.py' | sha256sum --strict -c
+          echo 'ccd64a654c0f63026d4be4662af3575cac6b92da4e10f36d939b8dbee70d3ac3  ci/audit-v141-briefing-web.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PY'
           import hashlib,json,os,pathlib,re,sys
