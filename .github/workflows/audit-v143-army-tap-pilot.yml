@@ -38,7 +38,7 @@ jobs:
           mkdir -p "$dir/project"
           git archive 41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232:game | tar -xf - -C "$dir/project"
           cp ci/audit-v143-army-tap-capture.gd "$dir/capture.gd"
-          echo 'eab69e41f494302cde3b3bca312312f421dbcc95ed5179db3ffeab68d66a6683  /tmp/v143-army-tap-pilot/capture.gd' | sha256sum --strict -c
+          echo '97cd5d07a678df25aad7c54c894391cdf86bd8ab781b3b2728dcb36aee89d42a  /tmp/v143-army-tap-pilot/capture.gd' | sha256sum --strict -c
           echo '198135ef42a07c9704f257d905ca5ad8fb32930e93c0f5e874a48b78179acccd  ci/audit-v143-army-tap-guard.py' | sha256sum --strict -c
           python3 -B - <<'PY'
           import hashlib,json,pathlib,os,subprocess

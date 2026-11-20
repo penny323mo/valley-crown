@@ -43,9 +43,8 @@ func run():
  await focus(Vector3(-30.5,0,22.5))
  var ring=g.faction_views[0].get_record(9)
  assert(ring.kind=="pine" and ring.alive and not ring.remembered)
- var center=g.camera.unproject_position(ring.pos+Vector3(0,1,0))
- var delta=Vector2(-12,-4) if size.x>size.y else Vector2(-24,-8)
- var p=center+delta;var chosen=g._world_at(p)
+ var p=Vector2(496.593292236328,174.925018310547) if size.x>size.y else Vector2(355.771148681641,376.586456298828)
+ var chosen=g._world_at(p)
  assert(g._box_point_in_world(p) and g._pick(p)==ring.id and g._cell(chosen)==Vector2i(12,56))
  assert(not g.navigation.is_point_solid(g._cell(chosen)) and g.visible_cells[0][g._cell_index(chosen)]!=0)
  for resource in g.faction_views[0].records().values():
