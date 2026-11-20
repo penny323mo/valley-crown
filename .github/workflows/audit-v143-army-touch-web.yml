@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        role: [baseline]
+        role: [candidate]
         size: [390x844, 844x390]
     if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -32,7 +32,7 @@ jobs:
           import hashlib,json,os,pathlib,re,subprocess,sys
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,verified_members
-          pins={'baseline': {'product': {'artifact_id': 14598194658, 'run_id': 44664462444, 'build': 'vc-fe3463fcb0ee', 'metadata_sha256': 'e43344fbf981bd7cf57b561dd7d5141bbcd5c5eca183a9dcc60997989e6101be', 'zip_sha256': '1eada13ee4e23f315930e11e530744268c2b0caf04a544472dc9b9935603bbd0'}, 'source': 'fc11512afd3cfbf546902359a8a4933f0a04c470', 'support': 'e94854c44a71745db2dd41dfb697816909ef6cdc', 'tree': '42bfd3f9823475df4aaa2782128d5aea4e383fa2'}}
+          pins={'candidate': {'product': {'artifact_id': 14601606068, 'run_id': 44671637993, 'build': 'vc-145cea227d83', 'metadata_sha256': '4fe2bcc39736a16858431ba7974861fc29b74c8f35821dfd1507c06022e2281e', 'zip_sha256': 'f0ab885000eb0bf50014fafdaee7c5dffbc117661f5c345ad53b109feefe2f07'}, 'source': 'aaaa8a372fbbf0e093db65b94855389307b9f541', 'support': '4e75c033c59cbf66ae766ead118032e88fd7e5f2', 'tree': '35d0f3c6aaa76eb7711682df1debd33be6338aa2'}}
           pin=pins[os.environ['ROLE']]
           row=pin['product']
           g=GitHub(os.environ['GITHUB_REPOSITORY'])
