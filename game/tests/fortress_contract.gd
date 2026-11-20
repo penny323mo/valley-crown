@@ -13,7 +13,10 @@ func run():
 	check("setup discloses symmetric scenario army",shell.description.text.contains("長槍兵 4") and shell.description.text.contains("兩座箭塔"))
 	for size in [Vector2i(390,844),Vector2i(320,568),Vector2i(568,320),Vector2i(1280,800)]:
 		root.size=size;shell._layout();await process_frame;await process_frame
-		check("fortress setup prose cannot overlap actions %s" % size,shell.scroll.get_global_rect().end.y<=shell.buttons.get_global_rect().position.y)
+		var prose=shell.scroll.get_global_rect()
+		var actions=shell.buttons.get_global_rect()
+		var separated=prose.end.x+14.0<=actions.position.x if shell.setup_split_active else prose.end.y<=actions.position.y
+		check("fortress setup prose cannot overlap actions %s" % size,separated and not prose.intersects(actions))
 		for button in shell.buttons.get_children():check("fortress setup button fits %s %s" % [size,button.name],Rect2(Vector2.ZERO,Vector2(size)).encloses(button.get_global_rect()))
 	shell._start_match();await process_frame;await process_frame
 	var g=shell.match_node;g.set_process(false)
