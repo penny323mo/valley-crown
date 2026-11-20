@@ -17,6 +17,9 @@ var campaign_expected={}
 var campaign_unlocked=0
 var selected_campaign=-1
 var restart_campaign_on_launch=false
+var replay_campaign_on_launch=false
+var live_campaign_replay=false
+var campaign_notice=""
 const Rules=preload("res://scripts/rules.gd")
 var checkpoint_path=CheckpointStore.PATH
 var expedition_checkpoint_path=ExpeditionCheckpointStore.PATH
@@ -269,7 +272,7 @@ func _layout():
 	if latin_name.visible:
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
-	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","setup","help"]) else 1)
+	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","campaign","setup","help"]) else 1)
 	if split:buttons.columns=1
 	var button_height=54.0
 	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0
@@ -405,7 +408,7 @@ func _button_touch(button: Button, event: InputEvent):
 
 func _show_page(next_page: String):
 	if next_page in ["home","battle_groups","campaign"]:
-		selected_campaign=-1;restart_campaign_on_launch=false
+		selected_campaign=-1;restart_campaign_on_launch=false;replay_campaign_on_launch=false
 	if next_page=="manual" and page!="manual":manual_back_page="home" if page=="home" else "help"
 	if is_instance_valid(manual_preview):manual_preview.clear_model();manual_preview.hide()
 	if is_instance_valid(battlefield_preview):battlefield_preview.hide()
@@ -455,12 +458,15 @@ func _show_page(next_page: String):
 	elif page == "campaign":
 		heading.text=BattleSelection.CAMPAIGN_TITLE
 		description.text="三場連戰 · 已完成 %d / 3\n各場重新開局，資源與軍隊不帶到下一場。\n%s\n\n" % [campaign_unlocked,_campaign_storage_label()]
+		if not campaign_notice.is_empty():description.text=campaign_notice+"\n\n"+description.text
 		for i in BattleSelection.CAMPAIGN.size():
 			var chapter=BattleSelection.option(BattleSelection.CAMPAIGN[i])
 			var status="已完成" if i<campaign_unlocked else ("可出征" if i==campaign_unlocked else "先完成上一場")
 			description.text+="第 %d 場 · %s · %s\n%s\n\n" % [i+1,chapter.title,status,BattleSelection.CAMPAIGN_BLURBS[i]]
 		if campaign_unlocked<BattleSelection.CAMPAIGN.size():_add_button("查看第 %d 場" % (campaign_unlocked+1),"CampaignChapterButton",func():_choose_campaign(campaign_unlocked))
-		if campaign_unlocked>0:_add_button("重開第一場","RestartCampaignButton",func():_choose_campaign(0,true))
+		if campaign_unlocked>0:
+			_add_button("重玩第一場（保留進度）","ReplayCampaignButton",func():_choose_campaign(0,false,true))
+			if campaign_storage.ok:_add_button("清除進度並重開","RestartCampaignButton",func():_choose_campaign(0,true))
 		_add_button("返回主選單","CampaignBackButton",func():_show_page("battle_groups"))
 	elif page == "battle_groups":
 		heading.text="選擇戰役"
@@ -491,9 +497,13 @@ func _show_page(next_page: String):
 		if BattlefieldLayout.supported(selected_mode,selected_victory_mode):_add_button("選擇戰場", "ChooseLayoutButton", func(): _show_page("battlefield"))
 		if selected_campaign>=0:
 			heading.text="霧谷戰役 · 第 %d / 3 場" % (selected_campaign+1)
-			description.text=BattleSelection.CAMPAIGN_BLURBS[selected_campaign]+"\n各場獨立開局；此戰役不寫入存檔。\n\n"+description.text
+			description.text=BattleSelection.CAMPAIGN_BLURBS[selected_campaign]+"\n"+_campaign_briefing_line()+"\n\n"+description.text
+			if restart_campaign_on_launch:
+				heading.text="清除戰役進度？"
+				short_setup_goal.text="清除已完成場次，並重新開始第一場"
+			elif replay_campaign_on_launch:heading.text="重玩第一場 · 保留進度"
 		else:_add_button("選擇其他戰役", "ChooseBattleButton", func(): _show_page("battle_groups"))
-		_add_button("出征", "LaunchMatchButton", _start_match)
+		_add_button("清除進度並出征" if restart_campaign_on_launch else "出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("campaign" if selected_campaign>=0 else "home"))
 		setup_original_description=description.text
 	elif page == "difficulty":
@@ -611,6 +621,7 @@ func _choose_mode(mode: String):
 func _restart_match():
 	if is_instance_valid(match_node):
 		selected_campaign=match_node.campaign_chapter
+		replay_campaign_on_launch=live_campaign_replay
 		selected_mode=match_node.skirmish_mode
 		selected_victory_mode=match_node.victory_mode
 		selected_layout=match_node.layout_id
@@ -624,16 +635,24 @@ func _start_match():
 	call_deferred("_replace_match")
 
 func _replace_match():
+	if restart_campaign_on_launch and selected_campaign==0:
+		if not _write_campaign_progress(campaign_storage,0,true):
+			var conflict=campaign_storage.get("reason","")=="CONFLICT"
+			campaign_storage=CampaignProgress.read(campaign_progress_path)
+			if campaign_storage.ok:campaign_unlocked=campaign_storage.completed
+			campaign_notice="進度已喺另一頁更新；未有清除。請重新選擇。" if conflict and campaign_storage.ok else "未能清除進度，沒有開始新戰場。"
+			transition_busy=false
+			_show_page("campaign")
+			return
+		campaign_unlocked=0
+	live_campaign_replay=replay_campaign_on_launch
 	if is_instance_valid(match_node):
 		remove_child(match_node)
 		match_node.queue_free()
 	match_node = MATCH_SCENE.instantiate()
 	match_node.campaign_chapter=selected_campaign
-	if restart_campaign_on_launch and selected_campaign==0:
-		_write_campaign_progress(campaign_storage,0,true)
-		campaign_unlocked=0
 	campaign_expected=campaign_storage.duplicate(true) if selected_campaign>=0 else {}
-	selected_campaign=-1;restart_campaign_on_launch=false
+	selected_campaign=-1;restart_campaign_on_launch=false;replay_campaign_on_launch=false
 	match_node.ai_difficulty=AIDifficulty.valid_for(selected_mode,selected_victory_mode,selected_difficulty)
 	match_node.skirmish_mode=selected_mode
 	match_node.layout_id=selected_layout if BattlefieldLayout.supported(selected_mode,selected_victory_mode) else "valley"
@@ -879,23 +898,33 @@ func _inspect_checkpoint_backup(expedition:bool,name:String):
 	backup_info={"ok":result.ok,"reason":result.get("reason",""),"source_build":result.get("source_build","未知")}
 	_show_page("checkpoint_backup_detail")
 
-func _choose_campaign(index:int,restart=false):
+func _choose_campaign(index:int,restart=false,replay=false):
 	if transition_busy or index<0 or index>=BattleSelection.CAMPAIGN.size():return
-	if index!=(0 if restart else campaign_unlocked):return
+	if index!=(0 if restart or replay else campaign_unlocked) or ((restart or replay) and campaign_unlocked<=0):return
 	if is_instance_valid(match_node) and not match_node.game_over:return
 	var row=BattleSelection.option(BattleSelection.CAMPAIGN[index])
-	selected_campaign=index;restart_campaign_on_launch=restart;selected_mode=row.mode;selected_victory_mode=row.victory
+	campaign_notice=""
+	selected_campaign=index;restart_campaign_on_launch=restart;replay_campaign_on_launch=replay;selected_mode=row.mode;selected_victory_mode=row.victory
 	selected_layout="valley";selected_difficulty="standard"
 	_show_page("setup")
 
 func _observe_campaign_result(game):
 	if game!=match_node or not game.game_over:return
+	if live_campaign_replay:
+		game.end_setup_button.text="戰役流程"
+		game.end_body.text+="\n重玩不會更改已完成場次。"
+		return
 	var index=game.campaign_chapter
 	if index<0 or index>=BattleSelection.CAMPAIGN.size() or index!=campaign_unlocked:return
 	if not BattleSelection.campaign_completed(index,game.skirmish_mode,game.outcome,game.end_reason) or game.layout_id!="valley" or game.victory_mode!="conquest":return
 	campaign_unlocked+=1
 	if not _write_campaign_progress(campaign_expected,campaign_unlocked):
 		game.end_body.text+="\n"+_campaign_storage_label()
+
+func _campaign_briefing_line() -> String:
+	if restart_campaign_on_launch:return "出征會清除這個瀏覽器或裝置已完成的場次，從第一場重新開始。"
+	if replay_campaign_on_launch:return "只重玩第一場，不改動已完成紀錄。不會保留未完成的戰場。"
+	return "完成後保留場次進度；不會保留未完成的戰場。" if campaign_storage.get("ok",false) else "目前未能保留場次進度；不會保留未完成的戰場。"
 
 func _campaign_storage_label() -> String:
 	if campaign_storage.get("ok",false):return "已完成場次保留在此瀏覽器或裝置；未完成戰場不會恢復。"
@@ -909,13 +938,13 @@ func _write_campaign_progress(expected:Dictionary,completed:int,reset=false)->bo
 func _campaign_next():
 	if not is_instance_valid(match_node) or not match_node.game_over or match_node.campaign_chapter<0 or transition_busy:return
 	var chapter=match_node.campaign_chapter
-	var proceed=BattleSelection.campaign_completed(chapter,match_node.skirmish_mode,match_node.outcome,match_node.end_reason) and campaign_unlocked==chapter+1 and campaign_unlocked<BattleSelection.CAMPAIGN.size()
+	var proceed=not live_campaign_replay and BattleSelection.campaign_completed(chapter,match_node.skirmish_mode,match_node.outcome,match_node.end_reason) and campaign_unlocked==chapter+1 and campaign_unlocked<BattleSelection.CAMPAIGN.size()
 	_open_menu()
 	if proceed:_choose_campaign(campaign_unlocked)
 	else:_show_page("campaign")
 
 func _choose_battle(id:String):
-	selected_campaign=-1;restart_campaign_on_launch=false
+	selected_campaign=-1;restart_campaign_on_launch=false;replay_campaign_on_launch=false
 	var option=BattleSelection.option(id)
 	if option.is_empty():return
 	selected_mode=option.mode;selected_victory_mode=option.victory
