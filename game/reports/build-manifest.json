@@ -1,5 +1,5 @@
 {
-  "build": "vc-3e08cd449107",
+  "build": "vc-b7cc4e26eec8",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -286,7 +286,7 @@
     "scripts/idle_worker_selection.gd": "aa7c8b804c7449409ec852bf290c7240321d3f2174b8d65bc6d75f1d7133c619",
     "scripts/licensed_rock_data.gd": "e5ffba22365fab902b67b27cb54700174c1c58a023c3c08159ebf9221c3f3913",
     "scripts/licensed_rock_visual.gd": "d0871a649f033b14e423a8adbc87a67ea76511c12bcbba1845eae8bfbb16d5a0",
-    "scripts/main_menu.gd": "e29358bdbc65b672fb6c1ef1b3d7264e5c5077b3856dbaccd2999c9164b8c18e",
+    "scripts/main_menu.gd": "d8340b84d226c9cb9b8b6f6db808d0f8b19bf4a3a1dba70f69c6e87bb26b32f7",
     "scripts/map_routes.gd": "bbfc680f0f165859a67f881721faf88dd7b36f9a2a5d6cdf7f81c22ae5930bde",
     "scripts/map_routes.gd.uid": "f4e1cdbff702603f0496ccad8079b45832556bce365f5d59c6b8668058499f3c",
     "scripts/match_report.gd": "c795fcca9d174dcebbdddea3b36907ca8153ed743e4ca0d0cf7a3eba1e2faa4e",
@@ -319,7 +319,7 @@
     "scripts/river_landscape.gd.uid": "3cf5e46ceee29fea583011ff4da2a0512bfb126e0897697e541278d21cde00bd",
     "scripts/river_terrain.gd": "24af3eb1acd7b9de802ee8c67a0aae6bb05075472e0adc9cc1d8f8280d4f1e6a",
     "scripts/river_terrain.gd.uid": "b0aa418fa5c7372bbaf967118441d38d6419a1c3e95e72f174a24563f27f3e98",
-    "scripts/rules.gd": "a20fe9fd32002e73c1d4de18cc26d86eeb677aec6a18f8bc3f0f0d6869369276",
+    "scripts/rules.gd": "28b022866f69c3869405815dc5f35148e9c85cb891d1f6c65907255e900a2f7e",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",

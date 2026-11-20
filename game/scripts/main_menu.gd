@@ -640,7 +640,7 @@ func _replace_match():
 			var conflict=campaign_storage.get("reason","")=="CONFLICT"
 			campaign_storage=CampaignProgress.read(campaign_progress_path)
 			if campaign_storage.ok:campaign_unlocked=campaign_storage.completed
-			campaign_notice="進度已喺另一頁更新；未有清除。請重新選擇。" if conflict and campaign_storage.ok else "未能清除進度，沒有開始新戰場。"
+			campaign_notice="進度已在另一頁更新；未有清除。請重新選擇。" if conflict and campaign_storage.ok else "未能清除進度，沒有開始新戰場。"
 			transition_busy=false
 			_show_page("campaign")
 			return
