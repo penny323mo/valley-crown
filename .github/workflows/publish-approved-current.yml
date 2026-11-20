@@ -27,10 +27,10 @@ jobs:
           import sys,json,pathlib,hashlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,verified_members
-          row={'artifact_id': 14598194658, 'run_id': 44664462444, 'build': 'vc-fe3463fcb0ee', 'metadata_sha256': 'e43344fbf981bd7cf57b561dd7d5141bbcd5c5eca183a9dcc60997989e6101be', 'zip_sha256': '1eada13ee4e23f315930e11e530744268c2b0caf04a544472dc9b9935603bbd0'}
+          row={'artifact_id': 14601606068, 'run_id': 44671637993, 'build': 'vc-145cea227d83', 'metadata_sha256': '4fe2bcc39736a16858431ba7974861fc29b74c8f35821dfd1507c06022e2281e', 'zip_sha256': 'f0ab885000eb0bf50014fafdaee7c5dffbc117661f5c345ad53b109feefe2f07'}
           g=GitHub(os.environ['GITHUB_REPOSITORY'])
           run=g.request('/actions/runs/'+str(row['run_id']))
-          assert run['conclusion']=='success' and run['head_sha']=='e94854c44a71745db2dd41dfb697816909ef6cdc'
+          assert run['conclusion']=='success' and run['head_sha']=='4e75c033c59cbf66ae766ead118032e88fd7e5f2'
           meta=g.request('/actions/artifacts/'+str(row['artifact_id']))
           assert not meta['expired'] and meta['workflow_run']['id']==row['run_id']
           data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
@@ -42,8 +42,8 @@ jobs:
            for prefix in ('artifacts/clean-a/','notices/'):
             if name.startswith(prefix):
              p=root/name[len(prefix):];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
-          manifest={'build':row['build'],'source_commit':m['source_commit'],'export_run':m['export_run'],'files_sha256':{p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()},'browser_acceptance':'Exact stock Chrome real two-tab reset/replay, portrait and landscape; no physical iPhone','single_threaded':True}
-          manifest['screenshot_evidence']='v142 exact dual Web exports and ordinary two-tab Chrome taps, controlled storage contention fixture; preserves current progress and separate replay';(root/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n');(root/'.nojekyll').touch()
+          manifest={'build':row['build'],'source_commit':m['source_commit'],'export_run':m['export_run'],'files_sha256':{p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()},'browser_acceptance':'Exact stock Chrome ordinary scout and open-ground touch, portrait and landscape; no physical iPhone','single_threaded':True}
+          manifest['screenshot_evidence']='v143 exact PCK authentic scout old/new after the same touch at one camera and 295 ticks';(root/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n');(root/'.nojekyll').touch()
           catalog={'files':{'builds/'+row['build']+'/'+p.relative_to(root).as_posix():{'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.rglob('*')) if p.is_file()}}
           pathlib.Path('approved-catalog.json').write_text(json.dumps(catalog,indent=2)+'\n')
           print('Verified exact artifact and prepared seed',row['build'])
@@ -60,7 +60,7 @@ jobs:
           row=json.loads(pathlib.Path('approved-row.json').read_text());data=pathlib.Path('approved-product.zip').read_bytes()
           verified_members(data,row);g=GitHub(os.environ['GITHUB_REPOSITORY']);release=g.release(row)
           if release is None:
-           release=g.request('/releases',method='POST',body={'tag_name':'web-archive-artifact-'+str(row['artifact_id']),'target_commitish':'e94854c44a71745db2dd41dfb697816909ef6cdc','name':'Durable Web archive: '+row['build'],'body':'Exact owner-approved verified artifact. ZIP SHA-256: '+row['zip_sha256'],'draft':False,'prerelease':True,'make_latest':'false'})
+           release=g.request('/releases',method='POST',body={'tag_name':'web-archive-artifact-'+str(row['artifact_id']),'target_commitish':'4e75c033c59cbf66ae766ead118032e88fd7e5f2','name':'Durable Web archive: '+row['build'],'body':'Exact owner-approved verified artifact. ZIP SHA-256: '+row['zip_sha256'],'draft':False,'prerelease':True,'make_latest':'false'})
           asset=g.asset(release,row)
           if asset is None:
            asset=g.request(release['upload_url'].split('{')[0]+'?name='+str(row['artifact_id'])+'.zip',method='POST',body=data)
@@ -68,7 +68,7 @@ jobs:
           assert readback==data
           print('Durable archive readback verified',row['artifact_id'])
           PY
-          GITHUB_SHA=e94854c44a71745db2dd41dfb697816909ef6cdc python3 scripts/publish_web_seed.py --build vc-fe3463fcb0ee --directory seed-approved --catalog approved-catalog.json
+          GITHUB_SHA=4e75c033c59cbf66ae766ead118032e88fd7e5f2 python3 scripts/publish_web_seed.py --build vc-145cea227d83 --directory seed-approved --catalog approved-catalog.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: approved-current-seed-receipt
