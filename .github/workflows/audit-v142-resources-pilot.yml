@@ -44,7 +44,7 @@ jobs:
           import hashlib,json,pathlib,os
           d=pathlib.Path("/tmp/v142-resources-pilot"); role=os.environ['ROLE']; identity={}
           assert role in ['baseline','candidate']
-          for path,(name,before,after) in {'scripts/resource_visuals.gd': ('resource_visuals.gd', '22efd46e4509ebdfcfc47249e3aebd5add09709927871e41ec6e62e89a6e4a2c', '3130d36eebcbc0af808d629f7e5d7eecab8faabc95ff839167650798da724b61'), 'scripts/bush_donor_diagnostic.gd': ('bush_donor_diagnostic.gd', 'c52e25ffa0dd57cbf9b35c856b1fa1e0ee6bfb842f90142e2cfe6fe67692f78d', '32dd7610379c72b279181c574af778043c43e8fbea7789b6f28f2833af53a7ef'), 'scripts/stone_outcrop.gd': ('stone_outcrop.gd', None, 'bf621f224d1b196aaec5d43cea1bab81e9fddb1b95f465deea709e0a8643c423')}.items():
+          for path,(name,before,after) in {'scripts/resource_visuals.gd': ('resource_visuals.gd', '22efd46e4509ebdfcfc47249e3aebd5add09709927871e41ec6e62e89a6e4a2c', '3130d36eebcbc0af808d629f7e5d7eecab8faabc95ff839167650798da724b61'), 'scripts/bush_donor_diagnostic.gd': ('bush_donor_diagnostic.gd', 'c52e25ffa0dd57cbf9b35c856b1fa1e0ee6bfb842f90142e2cfe6fe67692f78d', '9e57618915020bca46ddbfb4c03824f3d7ff071d989b88de690c2ab79d0a3006'), 'scripts/stone_outcrop.gd': ('stone_outcrop.gd', None, 'e65fa20b598145dde796a86751b653478aaf31792f885431438cd2423f79a096')}.items():
               target=d/'project'/path
               data=(pathlib.Path("ci/audit-v142-resources-pilot")/name).read_bytes()
               if before is None:assert not target.exists(),path

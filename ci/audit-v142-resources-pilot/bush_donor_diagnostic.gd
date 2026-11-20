@@ -30,7 +30,7 @@ static func make_mesh() -> ArrayMesh:
   var azimuth=atan2(point.z,point.x)
   var radius_xz=Vector2(point.x,point.z).length()
   var crown=smoothstep(.10,.32,point.y)*(1.0-smoothstep(.62,.76,point.y))
-  var lobes=0.82+0.24*cos(3.0*azimuth+.31)+0.11*sin(2.0*azimuth-.42)
+  var lobes=0.82+0.30*cos(3.0*azimuth+.31)+0.15*sin(2.0*azimuth-.42)
   var radial=minf(lobes*crown+1.0-crown,.55/maxf(.001,radius_xz))
   point.x*=radial;point.z*=radial
   vertices[i]=point;normals[i]=(normal_basis*normals[i]).normalized()
@@ -41,7 +41,7 @@ static func make_mesh() -> ArrayMesh:
  assert(material.transparency==BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR)
  # Custom CC0 derivative material, NOT an official green variant. PNG unchanged.
  material.albedo_texture=preload('res://assets/diagnostic/bush_common/Leaves_TwistedTree.png')
- material.albedo_color=Color('697d48')
+ material.albedo_color=Color('788c42')
  cached.surface_set_material(0,material);root.free();return cached
 
 static func tri(st:SurfaceTool,a:Vector3,b:Vector3,c:Vector3,color:Color) -> void:
@@ -61,8 +61,8 @@ static func fruit(st:SurfaceTool,c:Vector3,r:float) -> void:
    var p1=c+Vector3(sin(b)*cos(u),cos(b),sin(b)*sin(u))*Vector3(r,r*1.12,r)
    var p2=c+Vector3(sin(a)*cos(v),cos(a),sin(a)*sin(v))*Vector3(r,r*1.12,r)
    var p3=c+Vector3(sin(b)*cos(v),cos(b),sin(b)*sin(v))*Vector3(r,r*1.12,r)
-   if band>0:tri(st,p0,p1,p2,Color('b33439'))
-   if band<3:tri(st,p2,p1,p3,Color('ca4840'))
+   if band>0:tri(st,p0,p1,p2,Color('bd313b'))
+   if band<3:tri(st,p2,p1,p3,Color('de5146'))
 static func resource_mesh(stage:int) -> ArrayMesh:
  assert(stage>=0 and stage<=3)
  if stages.has(stage):return stages[stage]
@@ -78,7 +78,7 @@ static func resource_mesh(stage:int) -> ArrayMesh:
    var fruit_count=2 if stage==3 else 3
    for j in fruit_count:
     var center=junction+radial*.027+tangent*(j-(fruit_count-1)*.5)*.064+Vector3(0,-.051-(.057 if j==1 else 0),0)
-    stem(st,junction,center+Vector3(0,.04,0));fruit(st,center,.052 if stage==3 else .064)
+    stem(st,junction,center+Vector3(0,.04,0));fruit(st,center,.064 if stage==3 else .077)
   st.generate_normals();var fruit_mesh=st.commit()
   mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,fruit_mesh.surface_get_arrays(0))
   var mat=StandardMaterial3D.new();mat.vertex_color_use_as_albedo=true;mat.roughness=1;mesh.surface_set_material(1,mat)

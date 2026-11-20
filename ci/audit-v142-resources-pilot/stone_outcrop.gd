@@ -7,7 +7,7 @@ const RIDGES := [
 	[Vector2(-1.00,-0.36),Vector2(-0.41,-0.96),Vector2(0.75,-0.94),Vector2(0.98,0.47),Vector2(0.27,0.85),Vector2(-0.79,0.75)]
 ]
 static func _tri(st:SurfaceTool,a:Vector3,b:Vector3,c:Vector3,tint:Color)->void:
-	st.set_color(tint.srgb_to_linear());st.add_vertex(a);st.add_vertex(b);st.add_vertex(c)
+	st.set_color(tint);st.add_vertex(a);st.add_vertex(b);st.add_vertex(c)
 
 static func _piece(st:SurfaceTool,loop:Array,center:Vector2,width:Vector2,h:float,angle:float,phase:float,color:Color,scale_factor:float)->void:
 	var rows=[]
@@ -24,7 +24,7 @@ static func _piece(st:SurfaceTool,loop:Array,center:Vector2,width:Vector2,h:floa
 	for level in 3:
 		for i in loop.size():
 			var n=(i+1)%loop.size()
-			var tint=color.darkened(0.21-0.07*level+0.03*(i%2))
+			var tint=color.darkened(0.13-0.045*level+0.03*(i%2))
 			# Stratified faces stay broad and the visual seam is actual geometry.
 			_tri(st,rows[level][i],rows[level+1][i],rows[level][n],tint)
 			_tri(st,rows[level][n],rows[level+1][i],rows[level+1][n],tint.lightened(0.025))
@@ -37,14 +37,14 @@ static func make_mesh(stage:int,variant:int)->ArrayMesh:
 	var amount:float=[1.0,0.83,0.66,0.46][clampi(stage,0,3)]
 	var st=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var angle:float=[0.27,-0.46,0.80][kind]
-	var tone:Color=[Color("939283"),Color("9b9586"),Color("8e928d")][kind]
+	var tone:Color=[Color("d1ccba"),Color("d6c8b2"),Color("c6cdc5")][kind]
 	var center=Vector2(-0.035,-0.05).rotated(angle)
 	_piece(st,RIDGES[kind],center,Vector2(0.42,0.32),FULL_HEIGHT,angle,1.0,tone,amount)
-	_piece(st,RIDGES[(kind+1)%3],Vector2(0.21,0.17).rotated(angle),Vector2(0.24,0.23),0.34,angle-0.32,-1.0,tone.darkened(0.09),amount)
+	_piece(st,RIDGES[(kind+1)%3],Vector2(0.21,0.17).rotated(angle),Vector2(0.28,0.24),0.39,angle-0.32,-1.0,tone.darkened(0.09),amount)
 	if stage<3:
 		_piece(st,RIDGES[(kind+2)%3],Vector2(-0.27,0.15).rotated(angle),Vector2(0.17,0.14),0.20,angle+0.10,1.0,tone.darkened(0.12),amount)
 	st.generate_normals()
 	var mat=StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo=true;mat.roughness=0.97;mat.metallic_specular=0.10;mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+	mat.vertex_color_use_as_albedo=true;mat.vertex_color_is_srgb=true;mat.roughness=0.97;mat.metallic_specular=0.10;mat.cull_mode=BaseMaterial3D.CULL_DISABLED
 	st.set_material(mat)
 	return st.commit()
