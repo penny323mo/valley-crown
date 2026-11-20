@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        role: [baseline]
+        role: [candidate]
         size: [390x844, 640x360]
     if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -26,13 +26,14 @@ jobs:
           ROLE: ${{ matrix.role }}
         run: |
           set -euo pipefail
-          echo 'f70bba1cd80563a99143b2210541acb03a9f68398a1b8c553e65a6367cf76f76  ci/audit-v142-campaign-web.py' | sha256sum --strict -c
+          echo '9ac01c440d35c13eec8fe0ee4bd32427b014df6190fda85eea785bd675d04c37  ci/audit-v142-campaign-web.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PYCODE'
           import hashlib,json,os,pathlib,re,subprocess,sys
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,verified_members
-          pin={'baseline': {'product': {'artifact_id': 14594445542, 'run_id': 44654250619, 'build': 'vc-1028af6f48ab', 'metadata_sha256': 'be1dd885b6e87ea22bacb393866f800d1e9d1192247a4f1565d978625f1dccaf', 'zip_sha256': '06c195d21104fd03e751e2901649577f1839740f773390db02c8626715f4c121'}, 'source': '41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232', 'support': 'b370bd351076fd1770462d2bdfcadb8fb60a479b', 'tree': '7e902e69f0932b9f8301d8bade8ad685cd3e1920', 'store_sha': '472d89ce49d03e4f605e8e0935c96217663fd6ccc54ffe9125b7fa1425a28299'}}[os.environ['ROLE']]
+          pins={'baseline': {'product': {'artifact_id': 14594445542, 'run_id': 44654250619, 'build': 'vc-1028af6f48ab', 'metadata_sha256': 'be1dd885b6e87ea22bacb393866f800d1e9d1192247a4f1565d978625f1dccaf', 'zip_sha256': '06c195d21104fd03e751e2901649577f1839740f773390db02c8626715f4c121'}, 'source': '41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232', 'support': 'b370bd351076fd1770462d2bdfcadb8fb60a479b', 'tree': '7e902e69f0932b9f8301d8bade8ad685cd3e1920', 'store_sha': '472d89ce49d03e4f605e8e0935c96217663fd6ccc54ffe9125b7fa1425a28299'}, 'candidate': {'product': {'artifact_id': 14597169609, 'run_id': 44663572565, 'build': 'vc-b7cc4e26eec8', 'metadata_sha256': '512bc55c3ae3fe25cb58ded67482ff6bc789d00ba829e7c54ab0e9940c0fcfb4', 'zip_sha256': 'c05a295730686c2a451f1d1adc82d8a6183e69e63eaa65565d48595c22bbad27'}, 'source': '9f95a6add7be902e069e648e47f58b308c621103', 'support': '239e759a22adc2e71b68f626df7d02a3895ba453', 'tree': '72416005b94a36f8877ab0419af17ac703f76f27', 'store_sha': '472d89ce49d03e4f605e8e0935c96217663fd6ccc54ffe9125b7fa1425a28299'}}
+          pin=pins[os.environ['ROLE']]
           row=pin['product']
           g=GitHub(os.environ['GITHUB_REPOSITORY'])
           run=g.request('/actions/runs/'+str(row['run_id']))
@@ -49,6 +50,23 @@ jobs:
                   name=path.split('/')[-1]
                   assert name.startswith('index.')
                   (dest/name).write_bytes(data)
+          if os.environ['ROLE']=='candidate':
+              baseline=pins['baseline']
+              peer=dest/'peer'
+              peer.mkdir()
+              item=baseline['product']
+              baseline_run=g.request('/actions/runs/'+str(item['run_id']))
+              assert baseline_run['conclusion']=='success' and baseline_run['head_sha']==baseline['support']
+              b=g.request('/actions/artifacts/'+str(item['artifact_id']))
+              assert not b['expired'] and b['workflow_run']['id']==item['run_id']
+              peer_members=verified_members(g.request('/actions/artifacts/'+str(item['artifact_id'])+'/zip',binary=True),item)
+              peer_meta=json.loads(peer_members['candidate-metadata.json'])
+              assert peer_meta['source_commit']==baseline['source'] and peer_meta['game_tree']==baseline['tree'] and peer_meta['build']==item['build']
+              for path,data in peer_members.items():
+                  if path.startswith('artifacts/clean-a/'):
+                      name=path.split('/')[-1]
+                      assert name.startswith('index.')
+                      (peer/name).write_bytes(data)
           command=lambda *args:subprocess.check_output(['git',*args])
           command('fetch','--no-tags','--depth=1','origin',pin['source'])
           assert command('rev-parse',pin['source']+':game').decode().strip()==pin['tree']

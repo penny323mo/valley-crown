@@ -41,7 +41,9 @@ def wait_for(fn,sec):
 def check(name,cond):
     if not cond:raise AssertionError(name)
     receipt["checks"].append(name)
-receipt={"mode":mode,"scope":"Same-origin Chrome tabs with controlled progression using exact shipped JS storage function; real menu taps, not an earned browser victory or physical iPhone.","expression_sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"package_sha256":{f.name:hashlib.file_digest(f.open("rb"),"sha256").hexdigest() for f in root.glob("index.*") if f.is_file()},"checks":[],"browser":"stock hosted Google Chrome, API-compatible driver; disposable profile; not iPhone","webgl":False}
+peer=root/"peer"
+peer_packages={f.name:hashlib.file_digest(f.open("rb"),"sha256").hexdigest() for f in peer.glob("index.*") if f.is_file()}
+receipt={"peer_package_sha256":peer_packages,"mode":mode,"scope":"Same-origin Chrome tabs with controlled progression using exact shipped JS storage function; real menu taps, not an earned browser victory or physical iPhone.","expression_sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"package_sha256":{f.name:hashlib.file_digest(f.open("rb"),"sha256").hexdigest() for f in root.glob("index.*") if f.is_file()},"checks":[],"browser":"stock hosted Google Chrome, API-compatible driver; disposable profile; not iPhone","webgl":False}
 session=None
 with (out/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(prefix="v133-browser-") as profile:
     proc=subprocess.Popen([driver,f"--port={dport}","--allowed-ips=127.0.0.1"],stdout=logs,stderr=logs)
@@ -94,6 +96,7 @@ with (out/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(pr
         key="penny323mo.valley-crown.campaign-progress.v1"
         sentinel="english-quest.sibling-sentinel"
         url=web+"/index.html?qa=1"
+        peer_url=web+"/peer/index.html?qa=1" if peer_packages else url
         first='{"completed":1,"revision":1,"schema":1}'
         next_record='{"completed":2,"revision":2,"schema":1}'
         def raw():return js("return localStorage.getItem(arguments[0]);",key)
@@ -114,7 +117,7 @@ with (out/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(pr
             check("live world projection confirms dimensions",world.get("hud",{}).get("viewport")==[width,height])
             receipt.setdefault("live_worlds",[]).append({"build":world["build"],"tick":world["tick"],"viewport":world["hud"]["viewport"]})
             return s
-        go(url);on("home")
+        go(peer_url);on("home")
         rc=js("return {webgl:!!document.createElement('canvas').getContext('webgl2'),width:window.innerWidth,height:window.innerHeight}")
         receipt["webgl"]=rc["webgl"];receipt["viewport"]=[rc["width"],rc["height"]]
         check("browser WebGL2 and designed viewport",rc["webgl"] and receipt["viewport"]==[width,height])
@@ -123,7 +126,7 @@ with (out/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(pr
         check("disposable browser campaign slot empty",raw() is None)
         controlled_write(None,first)
         js("localStorage.setItem(arguments[0],'preserve')",sentinel)
-        go(url);campaign(1)
+        go(peer_url);campaign(1)
         a=tab()
         b=request("POST",prefix+"/window/new",{"type":"tab"})["handle"]
         check("two independent tabs exist",a!=b)
