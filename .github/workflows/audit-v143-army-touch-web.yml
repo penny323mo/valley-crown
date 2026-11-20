@@ -26,7 +26,7 @@ jobs:
           ROLE: ${{ matrix.role }}
         run: |
           set -euo pipefail
-          echo '6ec361dc4a583f65b0460ea74a7a5cefea36a46d75aec40bf43e3ddedfcb9b54  ci/audit-v143-army-touch-web.py' | sha256sum --strict -c
+          echo '3457ff135412872cd5438341b8f5937403454fce2210fca146a4cb5a51390bda  ci/audit-v143-army-touch-web.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PYCODE'
           import hashlib,json,os,pathlib,re,subprocess,sys

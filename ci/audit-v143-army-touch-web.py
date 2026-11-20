@@ -115,24 +115,24 @@ with (out/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(pr
         screenshot("selected-scout-before-tap.png")
         point=points[(width,height)]
         receipt["touch"]={"screen":point,"tick_before":idle["tick"],"status_before":idle["hud"]["selection_detail"],"camera":idle["hud"]["camera"]}
+        # Record the read-only HUD/state at 120ms cadence across the genuine
+        # W3C pointer sequence, not solely on the test client's request return.
+        js("window.armyTapSamples=[];const sample=()=>{window.valleySnapshot();const s=window.valleyState;if(s&&s.hud)window.armyTapSamples.push({tick:s.tick,selected:s.selected,label:s.hud.selection_detail,mode:s.touch_mode});};sample();window.armyTapTimer=setInterval(sample,120);")
         touch(point)
+        def sampled():
+            a=js("return window.armyTapSamples;")
+            return a if len(a)>=7 and a[-1]["tick"]>=a[0]["tick"]+110 else None
+        samples=wait_for(sampled,16)
+        js("clearInterval(window.armyTapTimer);")
+        receipt["touch"]["samples"]=samples
+        check("same scout remained solely selected without command mode",all(x["selected"]==[6] and not x["mode"] for x in samples))
+        check("ordinary camera did not move when dispatching unit",world()["hud"]["camera"]==idle["hud"]["camera"])
+        moving=[x for x in samples if "移動" in x["label"]]
         if mode=="candidate":
-            moving=matching(lambda s:s["selected"]==[6] and "移動" in s["hud"]["selection_detail"],5)
-            receipt["touch"]["moving_tick"]=moving["tick"]
-            check("same open point starts ordinary moving state without command menu",moving["selected"]==[6] and moving["hud"]["camera"]==idle["hud"]["camera"] and not moving["touch_mode"])
-            screenshot("scout-moving.png")
-            finished=matching(lambda s:s["tick"]>moving["tick"] and s["selected"]==[6] and "待命" in s["hud"]["selection_detail"],14)
-            check("scout naturally returns to idle after movement",finished["tick"]>moving["tick"])
+            check("same open point starts ordinary moving state without command menu",bool(moving))
+            check("scout naturally returns to idle after movement",any(x["tick"]>moving[-1]["tick"] and "待命" in x["label"] for x in samples) or bool(matching(lambda s:s["selected"]==[6] and "待命" in s["hud"]["selection_detail"],14)))
         else:
-            statuses=[]
-            result_tick=idle["tick"]+60
-            while True:
-                s=matching(lambda s:s["selected"]==[6],5)
-                statuses.append(s["hud"]["selection_detail"])
-                if s["tick"]>=result_tick:break
-                time.sleep(.15)
-            receipt["touch"]["baseline_samples"]=statuses
-            check("identical open point never starts movement in baseline",len(statuses)>=4 and all("待命" in x and "移動" not in x for x in statuses))
+            check("identical open point never starts movement in baseline",not moving and all("待命" in x["label"] for x in samples))
         screenshot("scout-after-tap.png")
         receipt["complete"]=True
     finally:
