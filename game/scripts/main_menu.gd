@@ -272,7 +272,9 @@ func _layout():
 	if latin_name.visible:
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
-	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","campaign","setup","help"]) else 1)
+	var compact_campaign_actions=page=="campaign" and buttons.get_child_count()>=3
+	var compact_other_actions=buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","setup","help"])
+	buttons.columns=3 if page=="manual" else (2 if short_landscape and (compact_campaign_actions or compact_other_actions) else 1)
 	if split:buttons.columns=1
 	var button_height=54.0
 	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0

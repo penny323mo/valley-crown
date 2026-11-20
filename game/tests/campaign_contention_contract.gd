@@ -20,6 +20,15 @@ func press(menu,id):
  var button=menu.buttons.get_node_or_null(id)
  assert(button!=null and button.visible and not button.disabled,id)
  button.pressed.emit();await frames()
+func layout_fit(menu,size,case):
+ root.size=size;menu._layout();await frames()
+ var matches=menu.scroll.size.y>=100.0 and not menu.scroll.get_global_rect().intersects(menu.buttons.get_global_rect())
+ var seen=[]
+ for b in menu.buttons.get_children():
+  var hit=b.get_global_rect()
+  matches=matches and hit.size.y>=54.0 and menu.card.get_global_rect().encloses(hit) and not seen.any(func(r):return r.intersects(hit))
+  seen.append(hit)
+ ck(case+" campaign controls and notice prose remain visible "+str(size),matches)
 func run():
  path="user://campaign-contention-"+str(Time.get_ticks_usec())+".json"
  var first=Progress.save(Progress.read(path),1,false,path)
@@ -44,14 +53,7 @@ func run():
  ck("stale reset preserves exact new bytes and displays actual new unlock",stale.campaign_unlocked==2 and Progress.read(path).raw==next.raw and stale.buttons.get_node("CampaignChapterButton").text.contains("3"))
  ck("stale reset clearly discloses that it did not erase progress",stale.description.text.contains("未有清除"))
  for size in [Vector2i(568,320),Vector2i(640,360),Vector2i(390,844)]:
-  root.size=size;stale._layout();await frames()
-  var matches=stale.scroll.size.y>=100.0 and not stale.scroll.get_global_rect().intersects(stale.buttons.get_global_rect())
-  var seen=[]
-  for b in stale.buttons.get_children():
-   var hit=b.get_global_rect()
-   matches=matches and hit.size.y>=54.0 and stale.card.get_global_rect().encloses(hit) and not seen.any(func(r):return r.intersects(hit))
-   seen.append(hit)
-  ck("four campaign controls and notice prose remain visible "+str(size),matches)
+  await layout_fit(stale,size,"four")
  await press(stale,"ReplayCampaignButton")
  ck("non-destructive replay is an explicitly different action",stale.description.text.contains("不改動已完成紀錄") and stale.buttons.get_node("LaunchMatchButton").text=="出征")
  await press(stale,"LaunchMatchButton")
@@ -88,6 +90,19 @@ func run():
  ck("unreadable record is not silently rewritten",FileAccess.get_file_as_string(path)=="malformed disposable campaign state")
  for key in ["manual","expedition","auto"]:
   ck("campaign operations preserve independent "+key+" bytes",FileAccess.get_file_as_string(path+"-"+key)=="existing disposable slot "+key)
+ path=path+"-all"
+ var one=Progress.save(Progress.read(path),1,false,path)
+ var two=Progress.save(one,2,false,path)
+ var full=new_menu();await frames()
+ await press(full,"StartMatchButton");await press(full,"CampaignMenuButton")
+ await press(full,"RestartCampaignButton")
+ var three=Progress.save(two,3,false,path)
+ assert(three.ok)
+ await press(full,"LaunchMatchButton")
+ ck("stale reset protects a complete 3/3 campaign and cannot start a fresh battle",full.campaign_unlocked==3 and full.description.text.contains("未有清除") and full.menu_layer.visible and not is_instance_valid(full.match_node) and Progress.read(path).raw==three.raw and not full.buttons.has_node("CampaignChapterButton"))
+ for size in [Vector2i(568,320),Vector2i(640,360)]:
+  await layout_fit(full,size,"three")
+ full.queue_free()
  var failed=checks.filter(func(c):return not c.passed).size()
  print(JSON.stringify({"suite":"campaign_contention_contract","scope":"bound native campaign menu, disposable shared scoped storage, injected contender write and replay terminal; no unrelated slots","checks":checks,"failed":failed}))
  first_menu.queue_free();stale.queue_free();quit(0 if failed==0 else 1)
