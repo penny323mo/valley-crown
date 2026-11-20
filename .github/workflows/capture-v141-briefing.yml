@@ -1,0 +1,90 @@
+name: Capture exact landscape pre-battle briefing before and after
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-v141-briefing.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {role: baseline}
+          - {role: candidate}
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+      - name: Bind official engine, exact artifact bytes and reviewed capture tools
+        env:
+          ROLE: ${{ matrix.role }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '2a540d14f9019ce475a72fa6d3a341304bbef03093d4401f298567dfb2ddbe9d  ci/capture-v141-briefing.gd' | sha256sum --strict -c
+          echo '61cb64f9dfaa1a6aee1ca288435b1eb8b6349e3ae2a2d52b00c9a67962a05355  ci/capture-v141-briefing-guard.py' | sha256sum --strict -c
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v137-engine.zip
+          unzip -q /tmp/v137-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,sys
+          sys.path[:0]=['scripts']
+          from web_release_archive import GitHub,verified_members
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          role=os.environ["ROLE"]
+          row,workflow_head,source,tree={'baseline': ({'artifact_id': 14591161497, 'run_id': 44647332444, 'build': 'vc-f8e5d36dd70d', 'metadata_sha256': 'da5e338cfb7f96f243d885bc8dd3b520cc174d207f20d5b32e684e1716e1de8c', 'zip_sha256': '39afc3aecc11824f14af4e33238f2fff8ebe9e4aee5198181e37bbd0cb9b50b0'}, 'f002d8549c915502a1f8db0dbf2020a0c6bb2b62', '915f1e073e73a2d16e1d237e354f064b40c3911d', '38793dd9ad11fe053cbf2c15675b96d3216c2c81'), 'candidate': ({'artifact_id': 14594445542, 'run_id': 44654250619, 'build': 'vc-1028af6f48ab', 'metadata_sha256': 'be1dd885b6e87ea22bacb393866f800d1e9d1192247a4f1565d978625f1dccaf', 'zip_sha256': '06c195d21104fd03e751e2901649577f1839740f773390db02c8626715f4c121'}, 'b370bd351076fd1770462d2bdfcadb8fb60a479b', '41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232', '7e902e69f0932b9f8301d8bade8ad685cd3e1920')}[role]
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']==workflow_head
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          files=verified_members(g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True),row)
+          m=json.loads(files['candidate-metadata.json'])
+          assert m['source_commit']==source and m['game_tree']==tree
+          pck=files['artifacts/clean-a/index.pck']
+          assert pck==files['artifacts/clean-b/index.pck']
+          path=pathlib.Path('/tmp/v141-briefing');path.mkdir()
+          (path/'index.pck').write_bytes(pck)
+          (path/'capture.gd').write_bytes(pathlib.Path('ci/capture-v141-briefing.gd').read_bytes())
+          (path/'input.json').write_text(json.dumps({'source_commit':source,'game_tree':tree,'build':row['build'],'pck_sha256':hashlib.sha256(pck).hexdigest(),'role':role}))
+          PY
+
+      - name: Render both authentic 640x360 briefings after ordinary touch selection
+        env:
+          ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+          BUILD="$(python3 -c 'import json; print(json.load(open("/tmp/v141-briefing/input.json"))["build"])')"
+          python3 -B ci/capture-v141-briefing-guard.py /tmp/v141-briefing "$BUILD" 640 360 "$ROLE"
+      - name: Verify exact package, real launch, complete goal and actual pixels
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib
+          d=pathlib.Path('/tmp/v141-briefing'); i=json.loads((d/'input.json').read_text()); j=json.loads((d/'images/report.json').read_text()); g=json.loads((d/'native-render-receipt.json').read_text())
+          assert j['build']==i['build'] and j['role']==i['role'] and j['size']==[640,360]
+          assert j['failed']==0 and all(c['passed'] for c in j['checks']) and j['long_goal_visible']==(i['role']=='candidate')
+          assert g['returncode']==0 and g['stop_reason'] is None and g['live_process_group_gone'] and g['inputs']['index.pck']==i['pck_sha256'] and g['after']['oom']==g['baseline']['oom']
+          assert set(j['images'])=={'river-briefing','long-goal-briefing'}
+          for key,row in j['images'].items():
+              data=(d/'images'/(key+'.png')).read_bytes()
+              assert data[:8]==bytes.fromhex('89504e470d0a1a0a') and hashlib.sha256(data).hexdigest()==row['sha256'] and row['size']==[640,360]
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v141-exact-briefing-${{ matrix.role }}
+          path: |
+            /tmp/v141-briefing/input.json
+            /tmp/v141-briefing/native-render-*
+            /tmp/v141-briefing/images/*.png
+            /tmp/v141-briefing/images/report.json
+          retention-days: 30
+          if-no-files-found: error

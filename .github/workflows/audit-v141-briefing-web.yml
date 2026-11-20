@@ -1,0 +1,61 @@
+name: Audit exact short landscape setup and actual touch launch in stock Chrome
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v141-briefing-web.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  browser:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact real product archive and isolate browser files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '1364ecbed8d6ba5670caf2ec1a31389c878bd7212992b78ae71a81827f8ac180  ci/audit-v141-briefing-web.py' | sha256sum --strict -c
+          google-chrome --version
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,re,sys
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          row={'artifact_id': 14594445542, 'run_id': 44654250619, 'build': 'vc-1028af6f48ab', 'metadata_sha256': 'be1dd885b6e87ea22bacb393866f800d1e9d1192247a4f1565d978625f1dccaf', 'zip_sha256': '06c195d21104fd03e751e2901649577f1839740f773390db02c8626715f4c121'}
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']=='b370bd351076fd1770462d2bdfcadb8fb60a479b'
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
+          members=verified_members(data,row)
+          identity=json.loads(members['candidate-metadata.json'])
+          assert identity['source_commit']=='41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232' and identity['game_tree']=='7e902e69f0932b9f8301d8bade8ad685cd3e1920'
+          dest=pathlib.Path('/tmp/v133-browser-proof');dest.mkdir()
+          for path,data in members.items():
+              if path.startswith('artifacts/clean-a/'):
+                  name=path.split('/')[-1]
+                  assert name.startswith('index.')
+                  (dest/name).write_bytes(data)
+          (dest/'probe.html').write_text('<!doctype html><title>local disposable browser proof</title>')
+          (dest/'input.json').write_text(json.dumps(row))
+          PY
+      - name: Run exact Web setup, real touch controls and portrait rotation
+        run: python3 -B ci/audit-v141-briefing-web.py /tmp/v133-browser-proof candidate vc-1028af6f48ab
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v141-exact-briefing-web-proof
+          path: |
+            /tmp/v133-browser-proof/input.json
+            /tmp/v133-browser-proof/browser-proof.json
+            /tmp/v133-browser-proof/chromedriver.log
+            /tmp/v133-browser-proof/browser-console.json
+            /tmp/v133-browser-proof/*.png
+          retention-days: 15
+          if-no-files-found: error
