@@ -5866,7 +5866,7 @@ func _friendly_unit_pick(screen,winner):
 			closest=distance;result=record.id
 	return result
 
-func _pick(screen,allow_enemy=true):
+func _pick(screen,allow_enemy=true,allow_resource_anchor=true):
 	if not screen.is_finite(): return -1
 	var best=-1; var distance=34.0 if compact_ui else 24.0
 	var best_category=""
@@ -5891,7 +5891,7 @@ func _pick(screen,allow_enemy=true):
 			resource=record.id; depth=hit_distance
 	# Closest visible resource mesh wins overlap; equal depths use stable ID.
 	# A missed triangle keeps the existing resource-anchor touch tolerance.
-	return resource if resource>=0 else best
+	return resource if resource>=0 else (best if allow_resource_anchor else -1)
 
 # A visible explicit selection shortcut, not an automatic global rally order.
 func _select_military_producers():
@@ -5932,6 +5932,10 @@ func _start_ground_rally(id,mode="move"):
 	_cancel_mode()
 	rally_building=id; rally_mode=mode; touch_command=true; action_key=""; _update_hud()
 
+func _contextual_worker_eligible(id):
+	var record=faction_views[0].get_record(id)
+	return record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and record.get("kind","")=="villager" and not record.get("remembered",false)
+
 func _send_world_order(screen,contextual=false):
 	if touch_command and unit_command_kind=="route":
 		var points=tactical_draft.duplicate();var point=_world_at(screen);point.y=0
@@ -5960,8 +5964,14 @@ func _send_world_order(screen,contextual=false):
 		return
 	if selected.is_empty(): return
 	var p=_world_at(screen)
-	var target_id=_pick(screen)
 	var ids=selected.duplicate()
+	# A work-assist anchor outside a real rendered mesh should not discard a
+	# military-only contextual move to clean ground. For mixed/worker groups
+	# retain the intentionally generous resource halo and exact existing work.
+	var ground_cell=_cell(p)
+	var knowledge=work_memory[0].grid
+	var known_open=knowledge.region.has_point(ground_cell) and visible_cells[0][_cell_index(p)]!=0 and not knowledge.is_point_solid(ground_cell)
+	var target_id=_pick(screen,true,not contextual or not known_open or ids.any(_contextual_worker_eligible))
 	var tapped=faction_views[0].get_record(target_id)
 	var towers=_selected_towers()
 	if not towers.is_empty():
@@ -5970,9 +5980,7 @@ func _send_world_order(screen,contextual=false):
 		if ids.is_empty():return
 	if contextual and (tapped.get("category","")=="resource" or (tapped.get("kind","")=="farm" and tapped.get("owned",false)) or (tapped.get("category","")=="building" and tapped.get("owned",false) and not tapped.get("built",true))):
 		# Resource, farm and unfinished-site taps task workers only; escorts keep their orders.
-		ids=ids.filter(func(id):
-			var record=faction_views[0].get_record(id)
-			return record.get("owned",false) and record.get("alive",false) and record.get("team",-1)==0 and record.get("category","")=="unit" and record.get("kind","")=="villager" and not record.get("remembered",false))
+		ids=ids.filter(_contextual_worker_eligible)
 		if ids.is_empty(): return
 	var order={"ids":ids,"target":target_id,"position":p}
 	if contextual and tapped.get("owned",false) and tapped.get("alive",false) and not tapped.get("remembered",false) and tapped.get("kind","")=="farm" and tapped.get("built",false):
