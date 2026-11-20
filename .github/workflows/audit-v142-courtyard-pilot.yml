@@ -1,0 +1,113 @@
+name: Audit actual matched starting courtyard terrain and ordinary move
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v142-courtyard-pilot.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {role: baseline, w: 390, h: 844}
+          - {role: candidate, w: 390, h: 844}
+          - {role: baseline, w: 640, h: 360}
+          - {role: candidate, w: 640, h: 360}
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+
+      - name: Bind exact original source and reviewed content-only prototype
+        env:
+          ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+
+          git fetch --no-tags --depth=1 origin 41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232
+          test "$(git rev-parse 41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232:game)" = 7e902e69f0932b9f8301d8bade8ad685cd3e1920
+          dir=/tmp/v142-courtyard-pilot
+          mkdir -p "$dir/project"
+          git archive 41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232:game | tar -xf - -C "$dir/project"
+          cp ci/audit-v142-courtyard-capture.gd "$dir/capture.gd"
+          echo 'de8ca60a30e77928d33b128d4ee54557b741434b5d99a74d33b7c1afe6547b56  /tmp/v142-courtyard-pilot/capture.gd' | sha256sum --strict -c
+          echo '198135ef42a07c9704f257d905ca5ad8fb32930e93c0f5e874a48b78179acccd  ci/audit-v142-courtyard-guard.py' | sha256sum --strict -c
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib,os
+          d=pathlib.Path("/tmp/v142-courtyard-pilot"); role=os.environ['ROLE']; identity={}
+          assert role in ['baseline','candidate']
+          for path,(name,before,after) in {'assets/mature/terrain/ground.gdshader': ('ground-shader.gdshader', 'b8d6560cebe143f671749967a3c938dffa2995a334df95771de57114c8237232', 'a69031c23831ef53cf438b0ec5595a08a30c29b94a3c87457f60650be3fb99e5')}.items():
+              target=d/'project'/path
+              data=(pathlib.Path("ci/audit-v142-courtyard-pilot")/name).read_bytes()
+              assert hashlib.sha256(target.read_bytes()).hexdigest()==before,path
+              assert hashlib.sha256(data).hexdigest()==after,path
+              if role=='candidate':target.write_bytes(data)
+              identity[path]=hashlib.sha256(target.read_bytes()).hexdigest()
+          (d/'overlay.json').write_text(json.dumps({'role':role,'exact_published_baseline_commit':'41bd55d9a2ee679c5f8fd2bfdcd7d126b3915232','game_tree':'7e902e69f0932b9f8301d8bade8ad685cd3e1920','bound_source':identity}))
+          PY
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v139-river-engine.zip
+          unzip -q /tmp/v139-river-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+      - name: Import a clean isolated project with existing monitored runtime limits
+        run: |
+          python3 -B - <<'PY'
+          import sys,os,pathlib,json
+          sys.path.insert(0,"ci")
+          from hardened_monitored_run import run,Limits
+          root=pathlib.Path("/tmp/v142-courtyard-pilot")
+          env=dict(os.environ,HOME=str(root),XDG_DATA_HOME=str(root/"import-data"),XDG_CONFIG_HOME=str(root/"config"),XDG_CACHE_HOME=str(root/"cache"))
+          for k in ["XDG_DATA_HOME","XDG_CONFIG_HOME","XDG_CACHE_HOME"]:pathlib.Path(env[k]).mkdir(exist_ok=True)
+          argv=["/tmp/Godot_v4.6.3-stable_linux.x86_64","--headless","--path",str(root/"project"),"--editor","--import","--quit"]
+          l=Limits(timeout_s=255,max_rss_kib=2097152,launch_min_available_kib=4194304,runtime_min_available_kib=1048576,terminate_grace_s=5,kill_reap_grace_s=5)
+          result=run(str(root/"import"),argv,env=env,limits=l)
+          print(json.dumps({k:result[k] for k in ['passed','seconds','exit','cleanup_complete','output_errors','stop_reason']}))
+          assert result["passed"]
+          PY
+      - name: Render real native courtyard at normal and distant zoom after an ordinary move
+        env:
+          ROLE: ${{ matrix.role }}
+          WIDTH: ${{ matrix.w }}
+          HEIGHT: ${{ matrix.h }}
+        run: python3 -B ci/audit-v142-courtyard-guard.py /tmp/v142-courtyard-pilot vc-1028af6f48ab "$WIDTH" "$HEIGHT" "$ROLE"
+      - name: Verify exact real scene, authorized move, same world receipts and original PNGs
+        env:
+          WIDTH: ${{ matrix.w }}
+          HEIGHT: ${{ matrix.h }}
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib,os
+          r=pathlib.Path("/tmp/v142-courtyard-pilot")
+          overlay=json.loads((r/'overlay.json').read_text()); role=overlay['role']
+          j=json.loads((r/'images/report.json').read_text())
+          g=json.loads((r/'native-render-receipt.json').read_text())
+          assert j['failed']==0 and all(c['passed'] for c in j['checks'])
+          assert j['size']==[int(os.environ['WIDTH']),int(os.environ['HEIGHT'])] and j['build']=='vc-1028af6f48ab' and j['role']==role
+          assert j['world']['selected']==[6] and len(j['checks'])==7
+          assert g['returncode']==0 and g['stop_reason'] is None and g['live_process_group_gone'] and g['after']['oom']==g['baseline']['oom']
+          for path,digest in overlay['bound_source'].items():assert g['inputs']['project/'+path]==digest
+          assert set(j['images'])=={'courtyard-normal','courtyard-distant'}
+          for key,row in j['images'].items():
+              image=(r/'images'/(key+'.png')).read_bytes()
+              assert image[:8]==bytes.fromhex('89504e470d0a1a0a') and hashlib.sha256(image).hexdigest()==row['sha256'] and row['size']==j['size']
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v142-courtyard-pilot-${{ matrix.role }}-${{ matrix.w }}x${{ matrix.h }}
+          path: |
+            /tmp/v142-courtyard-pilot/overlay.json
+            /tmp/v142-courtyard-pilot/import.json
+            /tmp/v142-courtyard-pilot/native-render-*
+            /tmp/v142-courtyard-pilot/images/*.png
+            /tmp/v142-courtyard-pilot/images/report.json
+          retention-days: 30
+          if-no-files-found: error
