@@ -150,11 +150,14 @@ func run():
   if g.navigation.is_point_solid(c) or not g._static_unit_step_is_free({"pos":p,"radius":.35},p):continue
   var region=cells(c);exits.append({"position":str(p),"cells":region.size(),"reaches_destination":region.has(g._cell(TARGET))})
  check("another physically valid exit reaches real field",exits.any(func(e):return e.reaches_destination))
- g._submit("order",{"ids":[arch.id],"position":TARGET})
+ # Isolate the selected newborn's genuine outcome in the actual frame.
  g._submit("order",{"ids":[newborn.id],"position":TARGET})
  for i in range(300):g._tick(.05)
- check("older unit remains sealed; new unit obeys expected ordinary destination",g._get_entity(arch.id).get("path_status")=="NO_PATH" and (g._get_entity(newborn.id).pos.distance_to(TARGET)<=1.1 and g._get_entity(newborn.id).pos.distance_to(g._get_entity(newborn.id).dest)<.12 and g._get_entity(newborn.id).path_status=="FOUND" and g._get_entity(newborn.id).pos.distance_to(birth_pos)>4.0 if corrected else g._get_entity(newborn.id).get("path_status")=="NO_PATH"))
  await frame("production-egress",newborn)
+ # The independent old-unit regression still occurs, after the newborn frame.
+ g._submit("order",{"ids":[arch.id],"position":TARGET})
+ for i in range(160):g._tick(.05)
+ check("older unit remains sealed; new unit obeys expected ordinary destination",g._get_entity(arch.id).get("path_status")=="NO_PATH" and (g._get_entity(newborn.id).pos.distance_to(TARGET)<=1.1 and g._get_entity(newborn.id).pos.distance_to(g._get_entity(newborn.id).dest)<.12 and g._get_entity(newborn.id).path_status=="FOUND" and g._get_entity(newborn.id).pos.distance_to(birth_pos)>4.0 if corrected else g._get_entity(newborn.id).get("path_status")=="NO_PATH"))
  var saved=Codec.capture_result(g)
  check("ordinary completed sequence supports an exact-build checkpoint",saved.ok)
  if saved.ok:

@@ -29,7 +29,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '05702779175958510909dec3e4c2596653321c690e56ef27852e7c28da647edc  ci/capture-v140-egress.gd' | sha256sum --strict -c
+          echo 'dd2f51eece6c504ededa7c8b24a9cdb2e7b7b6385b2286c8d1c8dbbd34bb4ac1  ci/capture-v140-egress.gd' | sha256sum --strict -c
           echo '61cb64f9dfaa1a6aee1ca288435b1eb8b6349e3ae2a2d52b00c9a67962a05355  ci/capture-v140-egress-guard.py' | sha256sum --strict -c
           curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v137-engine.zip
           unzip -q /tmp/v137-engine.zip -d /tmp
