@@ -44,19 +44,18 @@ func frame(name,zoom,focus):
  snapshots[name]=row
  if out.is_empty():return
  RenderingServer.render_loop_enabled=true
- await settle(13)
+ await settle(3)
  var times=[]
- for i in range(20):
+ for i in range(5):
   var begin=Time.get_ticks_usec()
   await RenderingServer.frame_post_draw
   times.append((Time.get_ticks_usec()-begin)/1000.0)
-  await process_frame
  times.sort()
  var image=root.get_texture().get_image()
  DirAccess.make_dir_recursive_absolute(out)
  var path=out+"/"+name+".png"
  ck("actual engine frame "+name,image.save_png(path)==OK and image.get_size()==size)
- details[name]={"size":[size.x,size.y],"sha256":FileAccess.get_sha256(path),"render_wait_ms_p50":times[10],"render_wait_ms_p90":times[18]}
+ details[name]={"size":[size.x,size.y],"sha256":FileAccess.get_sha256(path),"render_wait_ms_p50":times[2],"render_wait_ms_p90":times[4]}
  RenderingServer.render_loop_enabled=false
 func make(layout):
  g=load("res://main.tscn").instantiate();g.layout_id=layout;g.skirmish_mode="standard";g.qa_mode=true

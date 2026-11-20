@@ -38,7 +38,7 @@ jobs:
           mkdir -p "$dir/project"
           git archive aaaa8a372fbbf0e093db65b94855389307b9f541:game | tar -xf - -C "$dir/project"
           cp ci/audit-v144-rim-capture.gd "$dir/capture.gd"
-          echo '7cbfeddc703aca5333ba8687d0182a8b959dfbfb5ac6746e5a46de51a0a8d796  /tmp/v144-rim-pilot/capture.gd' | sha256sum --strict -c
+          echo 'c7be84adde111bb5c2acde914d27b7ac67a3003948049cbb7b4841a8c1e4f05c  /tmp/v144-rim-pilot/capture.gd' | sha256sum --strict -c
           echo '198135ef42a07c9704f257d905ca5ad8fb32930e93c0f5e874a48b78179acccd  ci/audit-v144-rim-guard.py' | sha256sum --strict -c
           python3 -B - <<'PY'
           import hashlib,json,pathlib,os
