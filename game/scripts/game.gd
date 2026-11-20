@@ -381,6 +381,7 @@ var path_requests=[]
 var path_budget_tick=-1
 var path_expansion_budget=4096
 var spawn_availability_polls=0
+var spawn_egress_cache=[{},{}] # derived per-faction known static geometry only; never stored
 var spawn_candidate_checks=0
 var ready_cursor=-1
 var next_queue_id=0
@@ -1428,13 +1429,58 @@ func _enqueue_train(id,kind,team):
 	next_queue_id+=1
 	return true
 
-func _spawn_exit(building,order):
-	# Maximum building is 4x4, so its one-cell outer perimeter has 20 cells.
-	# Fixed (x,z) coordinate order; bounded occupancy checks only, never A*.
+# Only birth uses this test. Garrison evacuation keeps its existing safety rules.
+# Bounded flood labels each faction-known static component in a 17x17 box;
+# once a component reaches the local edge it is not a sealed nearby pocket.
+# Never call A*, spend path budget, or reason about a remote rally here.
+func _production_egress_key(building,kind):
+	return Vector2i(building.id,roundi(Rules.UNIT_RADII.get(kind,Rules.UNIT_RADIUS)*1000))
+
+func _production_egress(building,kind):
+	var radius=Rules.UNIT_RADII.get(kind,Rules.UNIT_RADIUS)
+	var key=_production_egress_key(building,kind)
+	var cache=spawn_egress_cache[building.team]
+	if cache.has(key):return cache[key]
+	var grid=work_memory[building.team].grid
+	var middle=_cell(building.pos);var offset=Vector2i(8,8)
+	var bounds=Rect2i(middle-offset,Vector2i(17,17))
+	var open={};var known={};var verdict={}
+	for cell in _production_exit_cells(building,kind):
+		if not _egress_standable(cell,radius,known,grid):continue
+		if not open.has(cell):
+			var reached=false;var seen={cell:true}
+			var queue=[cell];var index=0
+			while index<queue.size():
+				var here=queue[index];index+=1
+				var from=_point(here)
+				for dir in [Vector2i.LEFT,Vector2i.RIGHT,Vector2i.UP,Vector2i.DOWN]:
+					var next=here+dir
+					if seen.has(next) or not _egress_standable(next,radius,known,grid):continue
+					if not _static_unit_step_is_free({"pos":from,"radius":radius},_point(next),grid):continue
+					if not bounds.has_point(next) or open.get(next,false):reached=true;break
+					if not open.has(next):seen[next]=true;queue.append(next)
+				if reached:break
+			for member in seen:open[member]=reached
+		if open[cell]:verdict[cell]=true
+	cache[key]=verdict
+	return verdict
+
+func _egress_standable(cell,radius,known,grid):
+	if known.has(cell):return known[cell]
+	var point=_point(cell)
+	var yes=grid.region.has_point(cell) and not grid.is_point_solid(cell) and _static_unit_step_is_free({"pos":point,"radius":radius},point,grid)
+	known[cell]=yes
+	return yes
+
+func _spawn_exit(building,order,require_egress=false):
+	# Maximum ordinary perimeter is 20 cells; the existing siege ring is larger.
+	# Fixed (x,z) coordinate order, short physical checks and optionally a locally cached witness; never A*.
 	# Placement preserves a locally open exit, not exclusive birth cells.
 	var candidates=_production_exit_cells(building,order.kind)
+	var egress=_production_egress(building,order.kind) if require_egress else {}
 	for cell in candidates:
 		spawn_candidate_checks+=1
+		if require_egress and not egress.has(cell):continue
 		if cell.x<Rules.MAP_BORDER or cell.y<Rules.MAP_BORDER or cell.x>Rules.MAP_LAST_PLAYABLE or cell.y>Rules.MAP_LAST_PLAYABLE or navigation.is_point_solid(cell): continue
 		var point=_point(cell); var blocked=false
 		for unit in entities:
@@ -1534,7 +1580,7 @@ func _try_ready_production(ent):
 	order.next_retry_tick=tick_count+20
 	spawn_availability_polls+=1
 	if _population(ent.team,false)>=_capacity(ent.team): return
-	var spawn_point=_spawn_exit(ent,order)
+	var spawn_point=_spawn_exit(ent,order,true)
 	if spawn_point==Vector3.INF: return
 	# This is the commit point. Prior commits are already in entities/population.
 	if _population(ent.team,false)>=_capacity(ent.team) or navigation.is_point_solid(_cell(spawn_point)): return
@@ -1588,6 +1634,7 @@ func _perimeter_cells(ent):
 func _init_public_terrain():
 	public_terrain=RiverTerrain.blocked(layout_id)
 	work_memory=[WorkMemory.new(public_terrain),WorkMemory.new(public_terrain)]
+	spawn_egress_cache=[{},{}]
 
 func _navigation_rebuild():
 	navigation.clear()
@@ -1693,6 +1740,7 @@ func _refresh_work_memory():
 				observed[ent.id]=_work_snapshot(ent)
 				observed[ent.id].knowledge_source="visible_static_entity_observation"
 		var change=work_memory[team].observe(observed,own,owned_cells,tick_count)
+		if not change.cells.is_empty():spawn_egress_cache[team].clear()
 		if change.records_changed or not change.cells.is_empty():
 			for ent in entities:
 				if ent.alive and ent.team==team and ent.category=="unit" and not _garrisoned(ent):
@@ -2120,16 +2168,17 @@ func _segment_box_distance_squared(from,to,cell):
 		distance=minf(distance,_segment_distance_squared(Vector3(corner.x,0,corner.y),from,to))
 	return distance
 
-func _static_unit_step_is_free(ent,to):
+func _static_unit_step_is_free(ent,to,grid=null):
 	# Only the short physical capsule touches authority. Planning still uses
 	# faction-known static grids; hidden distant cells cannot affect this test.
+	if grid==null:grid=navigation
 	var radius_squared=ent.radius*ent.radius
 	var low=Vector2i(floori(minf(ent.pos.x,to.x)+Rules.MAP_HALF-ent.radius),floori(minf(ent.pos.z,to.z)+Rules.MAP_HALF-ent.radius))
 	var high=Vector2i(floori(maxf(ent.pos.x,to.x)+Rules.MAP_HALF+ent.radius),floori(maxf(ent.pos.z,to.z)+Rules.MAP_HALF+ent.radius))
 	for y in range(low.y,high.y+1):
 		for x in range(low.x,high.x+1):
 			var cell=Vector2i(x,y)
-			if navigation.region.has_point(cell) and not navigation.is_point_solid(cell): continue
+			if grid.region.has_point(cell) and not grid.is_point_solid(cell): continue
 			var distance=_segment_box_distance_squared(ent.pos,to,cell)
 			if distance>=radius_squared-0.0000001: continue
 			# A site may have appeared next to an off-center unit. Permit only
@@ -4854,7 +4903,11 @@ func _update_hud():
 			if ent.queue[0].get("trade",false) and ent.queue[0].remaining_ticks<=0:
 				queue_label.text="交易等待入庫；尚未收到資源"
 			elif ent.queue[0].remaining_ticks<=0:
-				queue_label.text="訓練完成，等待人口空位" if _population(0,false)>=_capacity(0) else "訓練完成，出口受阻；選取出口單位，再點空地移開"
+				var order=ent.queue[0]
+				var exit_key=_production_egress_key(ent,order.kind)
+				if _population(0,false)>=_capacity(0):queue_label.text="訓練完成，等待人口空位"
+				elif spawn_egress_cache[0].has(exit_key) and spawn_egress_cache[0][exit_key].is_empty():queue_label.text="訓練完成，出口受阻；隊列保留"
+				else:queue_label.text="訓練完成，出口受阻；選取出口單位，再點空地移開"
 			elif not ent.queue[0].get("research",false) and not ent.queue[0].get("trade",false) and _population(0)>_capacity(0): queue_label.text="缺少住房，訓練暫停"
 	else:
 		selection_title.text="已選取 %d 個單位" % selection.size()
