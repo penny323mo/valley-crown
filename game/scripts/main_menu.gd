@@ -62,6 +62,11 @@ var wordmark: Label
 var latin_name: Label
 var footer: Label
 var scroll: ScrollContainer
+var prose_stack: VBoxContainer
+var short_setup_map: Label
+var short_setup_goal: Label
+var setup_split_active=false
+var setup_original_description=""
 var card_style: StyleBoxFlat
 var backdrop_material: ShaderMaterial
 var eyebrow: Label
@@ -147,6 +152,7 @@ func _ready():
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	card.add_child(scroll)
 	var box = VBoxContainer.new()
+	prose_stack=box
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 14)
 	eyebrow = Label.new()
@@ -171,6 +177,18 @@ func _ready():
 	mode_title.add_theme_color_override("font_color", Color("f2e9d7"))
 	mode_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(mode_title)
+	short_setup_map=Label.new()
+	short_setup_map.add_theme_font_size_override("font_size",15)
+	short_setup_map.add_theme_color_override("font_color",Color("c7ae7b"))
+	short_setup_map.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	short_setup_map.hide()
+	box.add_child(short_setup_map)
+	short_setup_goal=Label.new()
+	short_setup_goal.add_theme_font_size_override("font_size",16)
+	short_setup_goal.add_theme_color_override("font_color",Color("f2e9d7"))
+	short_setup_goal.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	short_setup_goal.hide()
+	box.add_child(short_setup_goal)
 	manual_preview=ModelCatalogue.new()
 	box.add_child(manual_preview)
 	manual_preview.hide()
@@ -214,6 +232,17 @@ func _layout():
 	var available = get_viewport().get_visible_rect().size
 	var wide = available.x >= 900.0 and available.x > available.y * 1.15
 	var short_landscape = available.x > available.y and available.y < 500.0
+	var split=page=="setup" and short_landscape and available.x>=568 and available.y>=320 and buttons.get_child_count()<=5
+	var changed_split=setup_split_active!=split
+	setup_split_active=split
+	short_setup_map.visible=split
+	short_setup_goal.visible=split
+	if page=="setup":
+		var duplicate_line=short_setup_map.text+"\n"
+		description.text=setup_original_description.replace(duplicate_line,"") if split else setup_original_description
+	battlefield_preview.set_compact_setup(split)
+	prose_stack.add_theme_constant_override("separation",8 if split else 14)
+	mode_title.add_theme_font_size_override("font_size",21 if split else 24)
 	var margin = 24.0 if available.x >= 360.0 else 16.0
 	var home = page == "home"
 	var home_auto=home and (not auto_checkpoint_status.is_empty() or FileAccess.file_exists(auto_checkpoint_path))
@@ -241,12 +270,17 @@ func _layout():
 		identity_height += latin_name.get_combined_minimum_size().y + 10.0
 	identity.size = Vector2(width, identity_height)
 	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","setup","help"]) else 1)
-	var button_height=54.0
+	if split:buttons.columns=1
+	var button_height=46.0 if split else 54.0
 	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0
-	var button_gap=10
+	var button_gap=6 if split else 10
 	buttons.add_theme_constant_override("v_separation",button_gap)
 	buttons.add_theme_constant_override("h_separation",6)
-	for button in buttons.get_children():button.custom_minimum_size.y=button_height
+	for button in buttons.get_children():
+		button.custom_minimum_size.y=button_height
+		if page!="manual":
+			button.add_theme_font_size_override("font_size",16 if split else 18)
+			button.size_flags_horizontal=Control.SIZE_EXPAND_FILL if split else Control.SIZE_FILL
 	var action_rows=ceili(float(buttons.get_child_count())/buttons.columns)
 	var actions_height = button_height * action_rows + button_gap * max(0, action_rows - 1)
 	var height: float
@@ -261,8 +295,8 @@ func _layout():
 		card_style.set_content_margin_all(0)
 		scroll.custom_minimum_size.y = 0
 	else:
-		width = minf(520.0, available.x - margin * 2.0)
-		x = available.x * 0.08 if wide else (available.x - width) * 0.5
+		width = minf(760.0,available.x-32.0) if split else minf(520.0, available.x - margin * 2.0)
+		x = (available.x - width) * 0.5 if split else (available.x * 0.08 if wide else (available.x - width) * 0.5)
 		height = minf(650.0, available.y - 32.0)
 		y = (available.y - height) * 0.5
 		card_style.bg_color = Color(0.045, 0.06, 0.064, 0.94)
@@ -274,14 +308,25 @@ func _layout():
 	card.position = Vector2(x, y)
 	card.size = Vector2(width, height)
 	identity.visible = home and identity.position.y + identity_height + 16.0 <= card.position.y
-	var inset = 0.0 if home else 22.0
+	var inset = 0.0 if home else (16.0 if split else 22.0)
 	var content_width = maxf(1.0, width - inset * 2.0)
 	var actions_y = height - inset - actions_height - (34.0 if home else 0.0)
 	buttons.position = Vector2(inset, actions_y)
 	buttons.size = Vector2(content_width, actions_height)
 	scroll.position = Vector2(inset, inset)
 	scroll.size = Vector2(content_width, maxf(1.0, actions_y - inset - 14.0))
-	if page=="manual" and short_landscape:
+	if split:
+		var rail_width=198.0
+		for button in buttons.get_children():rail_width=maxf(rail_width,button.get_combined_minimum_size().x)
+		rail_width=minf(maxf(rail_width,content_width*0.35),content_width-190.0)
+		var gap=16.0
+		var prose_width=content_width-rail_width-gap
+		scroll.size=Vector2(prose_width,height-2.0*inset)
+		buttons.position=Vector2(inset+prose_width+gap,inset)
+		buttons.size=Vector2(rail_width,actions_height)
+		heading.add_theme_font_size_override("font_size",22)
+		if changed_split:scroll.scroll_vertical=0
+	elif page=="manual" and short_landscape:
 		heading.add_theme_font_size_override("font_size",22)
 		manual_preview.custom_minimum_size.y=maxf(100.0,minf(160.0,scroll.size.y-64.0))
 	else:heading.add_theme_font_size_override("font_size",28)
@@ -435,6 +480,8 @@ func _show_page(next_page: String):
 		selected_layout=BattlefieldLayout.valid(selected_layout) if BattlefieldLayout.supported(selected_mode,selected_victory_mode) else "valley"
 		if BattlefieldLayout.supported(selected_mode,selected_victory_mode):
 			battlefield_preview.configure(selected_layout);battlefield_preview.show()
+		short_setup_map.text="戰場："+BattlefieldLayout.title(selected_layout)
+		short_setup_goal.text="勝利："+BattleSelection.briefing_sections(selected_mode,selected_victory_mode,selected_difficulty).win
 		description.text="戰場："+BattlefieldLayout.title(selected_layout)+"\n"+BattlefieldLayout.details(selected_layout)+"\n\n"+BattleSelection.briefing(selected_mode,selected_victory_mode,selected_difficulty)
 		if AIDifficulty.supported(selected_mode,selected_victory_mode):
 			description.text+="\n\n電腦難度："+AIDifficulty.title(selected_difficulty)
@@ -446,6 +493,7 @@ func _show_page(next_page: String):
 		else:_add_button("選擇其他戰役", "ChooseBattleButton", func(): _show_page("battle_groups"))
 		_add_button("出征", "LaunchMatchButton", _start_match)
 		_add_button("返回", "BackButton", func(): _show_page("campaign" if selected_campaign>=0 else "home"))
+		setup_original_description=description.text
 	elif page == "difficulty":
 		heading.text="電腦難度"
 		description.text="只適用於標準戰役。\n\n"+AIDifficulty.title("easy")+"\n"+AIDifficulty.details("easy")+"\n\n標準\n"+AIDifficulty.details("standard")

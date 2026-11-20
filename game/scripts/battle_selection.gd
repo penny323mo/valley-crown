@@ -26,6 +26,9 @@ static func option(id:String)->Dictionary:
   if item.id==id:return item
  return {}
 static func briefing(mode:String,victory:String,difficulty:String="standard")->String:
+ var sections=briefing_sections(mode,victory,difficulty)
+ return "開局\n"+sections.opening+"\n\n敵軍\n"+sections.enemy+"\n\n勝利\n"+sections.win+"\n\n失敗\n"+sections.lose
+static func briefing_sections(mode:String,victory:String,difficulty:String="standard")->Dictionary:
  var opening="5 名村民、1 名斥候及標準起始資源；由採集與建造開始。"
  var enemy="標準電腦：至少 5 兵出征，兩次遠征至少相隔 90 秒。"
  var win="摧毀敵方主堡。"
@@ -67,4 +70,4 @@ static func briefing(mode:String,victory:String,difficulty:String="standard")->S
   lose="敵方先送抵資源目標亦會落敗。"+lose
   enemy="標準電腦，雙方經濟規則相同。資源進度公開，敵軍位置仍受迷霧限制。"
   win="先實際送抵 600 糧及 400 木，或摧毀敵堡；起始庫存、退款與身上負重不計。同回合達標為和局。"
- return "開局\n"+opening+"\n\n敵軍\n"+enemy+"\n\n勝利\n"+win+"\n\n失敗\n"+lose
+ return {"opening":opening,"enemy":enemy,"win":win,"lose":lose}
