@@ -12,9 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {role: baseline, w: 390, h: 844}
           - {role: candidate, w: 390, h: 844}
-          - {role: baseline, w: 844, h: 390}
           - {role: candidate, w: 844, h: 390}
     if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -44,7 +42,7 @@ jobs:
           import hashlib,json,pathlib,os
           d=pathlib.Path("/tmp/v144-rim-pilot"); role=os.environ['ROLE']; identity={}
           assert role in ['baseline','candidate']
-          for path,(name,before,after) in {'assets/mature/terrain/ground.gdshader': ('ground-shader.gdshader', 'b8d6560cebe143f671749967a3c938dffa2995a334df95771de57114c8237232', '37fae9c2307991888b6a8c0b2a1879ad41b8a3532bbfac3864cb27e81e65875d')}.items():
+          for path,(name,before,after) in {'assets/mature/terrain/ground.gdshader': ('ground-shader.gdshader', 'b8d6560cebe143f671749967a3c938dffa2995a334df95771de57114c8237232', '9d0df5e1ae092b62fdffc61c57e8c018691cdd4696bb3b292ff44203274dc608')}.items():
               target=d/'project'/path
               data=(pathlib.Path("ci/audit-v144-rim-pilot")/name).read_bytes()
               assert hashlib.sha256(target.read_bytes()).hexdigest()==before,path

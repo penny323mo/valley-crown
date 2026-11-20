@@ -77,14 +77,15 @@ void fragment() {
     courtyard = mix(vec3(0.405, 0.393, 0.302), courtyard, stone_detail);
     terrain = mix(terrain, courtyard, apron);
 
-    // Finite board, with distant non-playable terrain beyond the public rim.
-    // No vision data, new textures, geometry, or draw calls. Exactly zero
-    // weight on every playable interior fragment.
-    float outer = max(abs(p.x), abs(p.y)) - float(map_size) * 0.5;
-    float fringe = smoothstep(0.0, max(0.18, fwidth(outer) * 1.35), outer);
-    float fade = smoothstep(1.0, 21.0, outer);
-    vec3 perimeter = mix(vec3(0.019, 0.039, 0.036), vec3(0.026, 0.049, 0.053), fade);
-    perimeter *= 0.93 + broad * 0.11 + patches * 0.06;
+    // The map has two permanent non-playable border cells. Begin the
+    // outer terrain treatment beyond that public playable square so not
+    // a single playable fragment changes. This avoids an exterior bright
+    // seam where the fixed fog tile grid ends.
+    float distance_from_rim = max(abs(p.x), abs(p.y)) - (float(map_size) * 0.5 - 2.0);
+    float fringe = smoothstep(0.0, 1.8, distance_from_rim);
+    float fade = smoothstep(1.6, 23.0, distance_from_rim);
+    vec3 perimeter = mix(vec3(0.108, 0.178, 0.153), vec3(0.134, 0.204, 0.192), fade);
+    perimeter *= 0.87 + broad * 0.22 + patches * 0.07;
     ALBEDO = mix(terrain, perimeter, fringe);
     ROUGHNESS = 0.95;
     SPECULAR = 0.10;
