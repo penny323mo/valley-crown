@@ -18,7 +18,11 @@ func check_visible_controls(shell, phase: String):
 			push_error("MENU_LAYOUT " + JSON.stringify({"phase": phase, "button": str(rect), "card": str(card_rect), "card_minimum": str(shell.card.get_combined_minimum_size()), "scroll": str(shell.scroll.get_global_rect()), "actions": str(shell.buttons.get_global_rect()), "footer": str(shell.footer.get_global_rect())}))
 		check(previous_rects.all(func(other):return not rect.intersects(other)), phase + ": " + button.name + " nonoverlapping")
 		previous_rects.append(rect)
-	check(shell.scroll.get_global_rect().end.y <= shell.buttons.get_global_rect().position.y, phase + ": prose cannot push or overlap actions")
+	var prose=shell.scroll.get_global_rect()
+	var actions=shell.buttons.get_global_rect()
+	# Both authored layouts keep a strict gap; a right rail must not overlap prose.
+	var separated=prose.end.x+14.0 <= actions.position.x if shell.setup_split_active else prose.end.y <= actions.position.y
+	check(separated and not prose.intersects(actions), phase + ": prose cannot push or overlap actions")
 	if shell.footer.visible:
 		if viewport.size.y >= viewport.size.x or viewport.size.y >= 500.0:
 			check(shell.identity.is_visible_in_tree(), phase + ": home identity must be visible on portrait and desktop")

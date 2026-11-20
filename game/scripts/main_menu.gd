@@ -271,9 +271,9 @@ func _layout():
 	identity.size = Vector2(width, identity_height)
 	buttons.columns=3 if page=="manual" else (2 if short_landscape and buttons.get_child_count()>3 and (home or page in ["checkpoint","checkpoint_backup_slot","battle_groups","battle_options","setup","help"]) else 1)
 	if split:buttons.columns=1
-	var button_height=46.0 if split else 54.0
+	var button_height=54.0
 	if is_instance_valid(manual_preview):manual_preview.custom_minimum_size.y=160.0 if short_landscape else 230.0
-	var button_gap=6 if split else 10
+	var button_gap=(4 if available.y<358 else 6) if split else 10
 	buttons.add_theme_constant_override("v_separation",button_gap)
 	buttons.add_theme_constant_override("h_separation",6)
 	for button in buttons.get_children():
@@ -297,7 +297,7 @@ func _layout():
 	else:
 		width = minf(760.0,available.x-32.0) if split else minf(520.0, available.x - margin * 2.0)
 		x = (available.x - width) * 0.5 if split else (available.x * 0.08 if wide else (available.x - width) * 0.5)
-		height = minf(650.0, available.y - 32.0)
+		height = minf(650.0, available.y - (16.0 if split and available.y<358 else 32.0))
 		y = (available.y - height) * 0.5
 		card_style.bg_color = Color(0.045, 0.06, 0.064, 0.94)
 		card_style.border_color = Color("5f5745")
@@ -321,8 +321,10 @@ func _layout():
 		rail_width=minf(maxf(rail_width,content_width*0.35),content_width-190.0)
 		var gap=16.0
 		var prose_width=content_width-rail_width-gap
-		scroll.size=Vector2(prose_width,height-2.0*inset)
-		buttons.position=Vector2(inset+prose_width+gap,inset)
+		var rail_inset=8.0 if available.y<358 else inset
+		scroll.position=Vector2(inset,rail_inset)
+		scroll.size=Vector2(prose_width,height-2.0*rail_inset)
+		buttons.position=Vector2(inset+prose_width+gap,rail_inset)
 		buttons.size=Vector2(rail_width,actions_height)
 		heading.add_theme_font_size_override("font_size",22)
 		if changed_split:scroll.scroll_vertical=0

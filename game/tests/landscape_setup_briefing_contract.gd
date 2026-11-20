@@ -26,7 +26,7 @@ func measure(size,selection,label):
  var goal=shell.short_setup_goal
  var action_rects=[]
  for b in shell.buttons.get_children():action_rects.append(b.get_global_rect())
- check("all actual touch actions fully accessible "+label,action_rects.size()>=3 and action_rects.all(func(r):return r.size.y>=44 and root.get_visible_rect().encloses(r) and not r.intersects(sc)))
+ check("all actual touch actions fully accessible "+label,action_rects.size()>=3 and action_rects.all(func(r):return r.size.y>=54 and root.get_visible_rect().encloses(r) and not r.intersects(sc)))
  for i in range(action_rects.size()):
   for j in range(i+1,action_rects.size()):
    if action_rects[i].intersects(action_rects[j]):check("actions never overlap "+label,false)
