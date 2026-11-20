@@ -162,6 +162,23 @@ with (out/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(pr
             check("confirmed actual reset launch writes 0/3 revision 3",reset=={"schema":1,"revision":3,"completed":0})
             go(url);campaign(0)
             check("confirmed reset persists on normal reload",json.loads(raw())==reset)
+            reset_raw=raw()
+            record4='{"completed":1,"revision":4,"schema":1}'
+            record5='{"completed":2,"revision":5,"schema":1}'
+            record6='{"completed":3,"revision":6,"schema":1}'
+            select(a)
+            controlled_write(reset_raw,record4)
+            controlled_write(record4,record5)
+            select(b)
+            go(url);campaign(2)
+            tap("RestartCampaignButton");on("setup")
+            select(a);controlled_write(record5,record6);select(b)
+            tap("LaunchMatchButton")
+            full=on("campaign")
+            check("stale reset retains full three-chapter progress and does not start a match",not full["match_exists"] and full["campaign_completed"]==3 and raw()==record6 and not any(x["id"]=="CampaignChapterButton" for x in full["buttons"]))
+            check("fully-completed campaign keeps three distinct touch actions",set(x["id"] for x in full["buttons"])=={"ReplayCampaignButton","RestartCampaignButton","CampaignBackButton"} and all(x["rect"][3]>=53 for x in full["buttons"]))
+            screenshot("candidate-full-campaign-warning.png")
+
         check("same-origin sibling sentinel was untouched",js("return localStorage.getItem(arguments[0]);",sentinel)=="preserve")
         receipt["complete"]=True
     finally:
