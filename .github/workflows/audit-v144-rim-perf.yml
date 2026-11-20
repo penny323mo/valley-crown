@@ -1,0 +1,106 @@
+name: Compare warmed terrain shader render cadence within the same Godot process
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v144-rim-perf.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {role: candidate, w: 390, h: 844}
+          - {role: candidate, w: 844, h: 390}
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+
+      - name: Bind exact original source and reviewed content-only prototype
+        env:
+          ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+
+          git fetch --no-tags --depth=1 origin aaaa8a372fbbf0e093db65b94855389307b9f541
+          test "$(git rev-parse aaaa8a372fbbf0e093db65b94855389307b9f541:game)" = 35d0f3c6aaa76eb7711682df1debd33be6338aa2
+          dir=/tmp/v144-rim-perf
+          mkdir -p "$dir/project"
+          git archive aaaa8a372fbbf0e093db65b94855389307b9f541:game | tar -xf - -C "$dir/project"
+          cp ci/audit-v144-rim-perf-capture.gd "$dir/capture.gd"
+          echo 'e5222507f6dea45cad5c03b33a6fbb2ff0e1bee974b9a069be0276b8e8fb5693  /tmp/v144-rim-perf/capture.gd' | sha256sum --strict -c
+          echo '198135ef42a07c9704f257d905ca5ad8fb32930e93c0f5e874a48b78179acccd  ci/audit-v144-rim-perf-guard.py' | sha256sum --strict -c
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib,os
+          d=pathlib.Path("/tmp/v144-rim-perf"); role=os.environ['ROLE']; identity={}
+          assert role in ['baseline','candidate']
+          for path,(name,before,after) in {'assets/mature/terrain/ground.gdshader': ('ground-shader.gdshader', 'b8d6560cebe143f671749967a3c938dffa2995a334df95771de57114c8237232', '9d0df5e1ae092b62fdffc61c57e8c018691cdd4696bb3b292ff44203274dc608')}.items():
+              target=d/'project'/path
+              data=(pathlib.Path("ci/audit-v144-rim-perf")/name).read_bytes()
+              assert hashlib.sha256(target.read_bytes()).hexdigest()==before,path
+              assert hashlib.sha256(data).hexdigest()==after,path
+              (target.parent/'rim-alternative.gdshader').write_bytes(data)
+              identity[path]=hashlib.sha256(target.read_bytes()).hexdigest()
+              identity[(target.parent/'rim-alternative.gdshader').relative_to(d/'project').as_posix()]=hashlib.sha256(data).hexdigest()
+          (d/'overlay.json').write_text(json.dumps({'role':role,'exact_published_baseline_commit':'aaaa8a372fbbf0e093db65b94855389307b9f541','game_tree':'35d0f3c6aaa76eb7711682df1debd33be6338aa2','bound_source':identity}))
+          PY
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v139-river-engine.zip
+          unzip -q /tmp/v139-river-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+      - name: Import a clean isolated project with existing monitored runtime limits
+        run: |
+          python3 -B - <<'PY'
+          import sys,os,pathlib,json
+          sys.path.insert(0,"ci")
+          from hardened_monitored_run import run,Limits
+          root=pathlib.Path("/tmp/v144-rim-perf")
+          env=dict(os.environ,HOME=str(root),XDG_DATA_HOME=str(root/"import-data"),XDG_CONFIG_HOME=str(root/"config"),XDG_CACHE_HOME=str(root/"cache"))
+          for k in ["XDG_DATA_HOME","XDG_CONFIG_HOME","XDG_CACHE_HOME"]:pathlib.Path(env[k]).mkdir(exist_ok=True)
+          argv=["/tmp/Godot_v4.6.3-stable_linux.x86_64","--headless","--path",str(root/"project"),"--editor","--import","--quit"]
+          l=Limits(timeout_s=255,max_rss_kib=2097152,launch_min_available_kib=4194304,runtime_min_available_kib=1048576,terminate_grace_s=5,kill_reap_grace_s=5)
+          result=run(str(root/"import"),argv,env=env,limits=l)
+          print(json.dumps({k:result[k] for k in ['passed','seconds','exit','cleanup_complete','output_errors','stop_reason']}))
+          assert result["passed"]
+          PY
+      - name: Warm up and measure the two exact shader texts in the same on-screen scene
+        env:
+          ROLE: ${{ matrix.role }}
+          WIDTH: ${{ matrix.w }}
+          HEIGHT: ${{ matrix.h }}
+        run: python3 -B ci/audit-v144-rim-perf-guard.py /tmp/v144-rim-perf vc-145cea227d83 "$WIDTH" "$HEIGHT" "$ROLE"
+      - name: Verify exact real scene, authorized move, same world receipts and original PNGs
+        env:
+          WIDTH: ${{ matrix.w }}
+          HEIGHT: ${{ matrix.h }}
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib,os
+          r=pathlib.Path("/tmp/v144-rim-perf")
+          overlay=json.loads((r/'overlay.json').read_text()); role=overlay['role']
+          j=json.loads((r/'images/report.json').read_text())
+          g=json.loads((r/'native-render-receipt.json').read_text())
+          assert j['build']=='vc-145cea227d83' and j['size']==[int(os.environ['WIDTH']),int(os.environ['HEIGHT'])]
+          assert [x['role'] for x in j['variants']]==['baseline','candidate','candidate','baseline'] and all(len(x['samples_ms'])==4 and min(x['samples_ms'])>0 for x in j['variants'])
+          assert g['returncode']==0 and g['stop_reason'] is None and g['live_process_group_gone'] and g['after']['oom']==g['baseline']['oom']
+          for path,digest in overlay['bound_source'].items():assert g['inputs']['project/'+path]==digest
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v144-rim-perf-${{ matrix.role }}-${{ matrix.w }}x${{ matrix.h }}
+          path: |
+            /tmp/v144-rim-perf/overlay.json
+            /tmp/v144-rim-perf/import.json
+            /tmp/v144-rim-perf/native-render-*
+            /tmp/v144-rim-perf/images/report.json
+          retention-days: 30
+          if-no-files-found: error
