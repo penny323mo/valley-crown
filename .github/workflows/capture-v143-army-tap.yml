@@ -1,0 +1,89 @@
+name: Capture matching exact Godot scout movement before and after
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-v143-army-tap.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  capture:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {role: baseline}
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official distribution display dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+      - name: Bind official engine, exact artifact bytes and reviewed capture tools
+        env:
+          ROLE: ${{ matrix.role }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo '97cd5d07a678df25aad7c54c894391cdf86bd8ab781b3b2728dcb36aee89d42a  ci/capture-v143-army-tap.gd' | sha256sum --strict -c
+          echo '61cb64f9dfaa1a6aee1ca288435b1eb8b6349e3ae2a2d52b00c9a67962a05355  ci/capture-v143-army-tap-guard.py' | sha256sum --strict -c
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o /tmp/v137-engine.zip
+          unzip -q /tmp/v137-engine.zip -d /tmp
+          echo 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3  /tmp/Godot_v4.6.3-stable_linux.x86_64' | sha256sum --strict -c
+          chmod +x /tmp/Godot_v4.6.3-stable_linux.x86_64
+          python3 -B - <<'PY'
+          import hashlib,json,os,pathlib,sys
+          sys.path[:0]=['scripts']
+          from web_release_archive import GitHub,verified_members
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          role=os.environ["ROLE"]
+          row,workflow_head,source,tree={'baseline': ({'artifact_id': 14598194658, 'run_id': 44664462444, 'build': 'vc-fe3463fcb0ee', 'metadata_sha256': 'e43344fbf981bd7cf57b561dd7d5141bbcd5c5eca183a9dcc60997989e6101be', 'zip_sha256': '1eada13ee4e23f315930e11e530744268c2b0caf04a544472dc9b9935603bbd0'}, 'e94854c44a71745db2dd41dfb697816909ef6cdc', 'fc11512afd3cfbf546902359a8a4933f0a04c470', '42bfd3f9823475df4aaa2782128d5aea4e383fa2')}[role]
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']==workflow_head
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          files=verified_members(g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True),row)
+          m=json.loads(files['candidate-metadata.json'])
+          assert m['source_commit']==source and m['game_tree']==tree
+          pck=files['artifacts/clean-a/index.pck']
+          assert pck==files['artifacts/clean-b/index.pck']
+          path=pathlib.Path('/tmp/v143-army-tap');path.mkdir()
+          (path/'index.pck').write_bytes(pck)
+          (path/'capture.gd').write_bytes(pathlib.Path('ci/capture-v143-army-tap.gd').read_bytes())
+          (path/'input.json').write_text(json.dumps({'source_commit':source,'game_tree':tree,'build':row['build'],'pck_sha256':hashlib.sha256(pck).hexdigest(),'role':role}))
+          PY
+
+      - name: Render authentic 844x390 scout after actual matched tap
+        env:
+          ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+          BUILD="$(python3 -c 'import json; print(json.load(open("/tmp/v143-army-tap/input.json"))["build"])')"
+          python3 -B ci/capture-v143-army-tap-guard.py /tmp/v143-army-tap "$BUILD" 844 390 "$ROLE"
+      - name: Verify exact package, actual scout order and original pixels
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,pathlib
+          d=pathlib.Path('/tmp/v143-army-tap'); i=json.loads((d/'input.json').read_text()); j=json.loads((d/'images/report.json').read_text()); g=json.loads((d/'native-render-receipt.json').read_text())
+          assert j['build']==i['build'] and j['role']==i['role'] and j['size']==[844,390] and j['tick']==295
+          assert j['mesh_hits']==0 and j['cell']=='(12, 56)' and j['selected']==[6]
+          assert g['returncode']==0 and g['stop_reason'] is None and g['live_process_group_gone'] and g['inputs']['index.pck']==i['pck_sha256'] and g['after']['oom']==g['baseline']['oom']
+          data=(d/'images/scout-result.png').read_bytes()
+          assert data[:8]==bytes.fromhex('89504e470d0a1a0a') and hashlib.sha256(data).hexdigest()==j['sha256']
+          if j['role']=='baseline':assert j['delta_commands']==0 and j['distance_to_tap']>8.0
+          else:assert j['delta_commands']==1 and j['distance_to_tap']<.70
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v143-exact-army-tap-${{ matrix.role }}
+          path: |
+            /tmp/v143-army-tap/input.json
+            /tmp/v143-army-tap/native-render-*
+            /tmp/v143-army-tap/images/*.png
+            /tmp/v143-army-tap/images/report.json
+          retention-days: 30
+          if-no-files-found: error
