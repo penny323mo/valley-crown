@@ -69,11 +69,13 @@ with (root/"chromedriver.log").open("wb") as logs, tempfile.TemporaryDirectory(p
         go(web+"/probe.html")
         rc=js("return {webgl:!!document.createElement('canvas').getContext('webgl2'),width:window.innerWidth,height:window.innerHeight}")
         receipt["webgl"]=rc["webgl"];receipt["viewport"]=[rc["width"],rc["height"]]
-        check("actual browser WebGL2",rc["webgl"] and receipt["viewport"]==[640,360])
+        check("actual browser WebGL2",rc["webgl"])
         url=web+"/index.html?qa=1"
         go(url)
         state=on("home")
-        check("exact Web export opens native game-generated menu",not state["match_exists"])
+        active_view=js("let c=document.querySelector('#canvas').getBoundingClientRect();return [innerWidth,innerHeight,c.width,c.height]")
+        check("exact Web export opens native game-generated menu",not state["match_exists"] and active_view==[640,360,640,360])
+        receipt["game_viewport"]=active_view
 
         def world():
             return js("if(typeof window.valleySnapshot!=='function')return null;window.valleySnapshot();return window.valleyState;")

@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo '1364ecbed8d6ba5670caf2ec1a31389c878bd7212992b78ae71a81827f8ac180  ci/audit-v141-briefing-web.py' | sha256sum --strict -c
+          echo '1b7e0b83800dd28e8121c0e77ffc0f91841bbc7856edd41b31c2c91c41843743  ci/audit-v141-briefing-web.py' | sha256sum --strict -c
           google-chrome --version
           python3 -B - <<'PY'
           import hashlib,json,os,pathlib,re,sys
@@ -56,6 +56,7 @@ jobs:
             /tmp/v133-browser-proof/browser-proof.json
             /tmp/v133-browser-proof/chromedriver.log
             /tmp/v133-browser-proof/browser-console.json
-            /tmp/v133-browser-proof/*.png
+            /tmp/v133-browser-proof/*-briefing.png
+            /tmp/v133-browser-proof/*-diagnostic-actual-battle.png
           retention-days: 15
           if-no-files-found: error
