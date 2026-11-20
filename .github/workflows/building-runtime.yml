@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 9f95a6add7be902e069e648e47f58b308c621103
+      BUILDING_RUNTIME_SOURCE_COMMIT: fc11512afd3cfbf546902359a8a4933f0a04c470
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo 'a483b3fbe02a79bd3df3017135d2d5c6036ff56e482a9cf9e3c226e7788488b6  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'e7d1d6203f3c052b6253067fee22086ad4ee1d99a5117716b6b06c8f5e850908  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"

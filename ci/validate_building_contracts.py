@@ -3,9 +3,9 @@ import hashlib
 import json
 import re
 from pathlib import Path
-BUILD = 'vc-b7cc4e26eec8'
-GAME_TREE = '72416005b94a36f8877ab0419af17ac703f76f27'
-INVENTORY_SHA = '4a72e0e52d417b393a84c36f448598fae01c565441ca4a134cb0e82284e3b57c'
+BUILD = 'vc-fe3463fcb0ee'
+GAME_TREE = '42bfd3f9823475df4aaa2782128d5aea4e383fa2'
+INVENTORY_SHA = 'fe9680f18e98224fa8c81d0d67d6197507d45f09cda49a4e672304f9a51f0955'
 COUNTS = {'advanced_building_visuals':175, 'advanced_building_observation':52,
           'construction_visual':203, 'building_damage_component':106,
           'building_damage_projection':17, 'map80_sparse_memory':10}
