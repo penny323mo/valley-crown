@@ -11,10 +11,10 @@ FIXTURES = {
  'stance_target_cancel_phone': ('tests/stance_target_cancel_phone.gd', 'af1fdb39fe571ed38019991fee0801935e128667608b2dfc88cf001bfda9b3ce'),
  'contextual_touch_contract': ('tests/contextual_touch_contract.gd', '020e0ba0df41b0406fc29d27386ba2a4cdc327737d5129250d65c97de429d0ea'),
  'contextual_touch_phone': ('tests/contextual_touch_phone.gd', '5962568a2347360f8ed70cca4d3f026181b0c24a965c0f9b0a64b224143e7e5d'),
- 'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '851d4fe2101ea82f65eecb3e5d3302bc79a008c82a7c4a59fdeb4ef7e00cca6e')}
-MENU_SHA = '680f974cee3472298e519d9021252a95d756a39fcc354edee4b762fdfefc4937'
+ 'main_menu_flow_contract': ('tests/main_menu_flow_contract.gd', '6c066c9a06d8a8d1dcf67030e0437833cb2f8c381fbf0976ff0b0ea616d89845')}
+MENU_SHA = '01ab3d50d32e0963bffdefab6fdbb760b3bd9e4d145739c79c629a16f8d2e52d'
 MENU_SCOPE = 'Controlled button-signal and synthetic event-handler integration; not browser input dispatch, rendering, or physical-device acceptance. Terminal navigation uses an explicitly synthetic game_over assignment, not a played victory.'
-BUILD = 'vc-b104684437fe'
+BUILD = 'vc-1028af6f48ab'
 ARRAY_COUNTS = {'contextual_touch_contract':76, 'contextual_touch_phone':26}
 PREFIXES = {'contextual_touch_contract':'CONTEXTUAL_TOUCH_CONTRACT',
             'contextual_touch_phone':'CONTEXTUAL_TOUCH_PHONE'}

@@ -13,12 +13,12 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 BRANCH = 'refs/heads/main'
-SOURCE = 'd65329a226eb89cd681f6018e4bff4976f6e4b81'
+SOURCE = 'f93b039ffd0a84a3c75dad5a15b31545b78433df'
 ENGINE = '4.6.3.stable.official.7d41c59c4'
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
 TEMPLATE_SHA = '1446f79dc12f60ce5d244c39fb6628ec298337ca5c4f91a16491feea72aa1bc9'
 SIDES = {
-    'product': {'directory':'game', 'build':'vc-b104684437fe', 'tree':'d831bd756b625760568c58aa7e2cf17f161c2778', 'files':759, 'runtime':341, 'runner':'run_export.py'},
+    'product': {'directory':'game', 'build':'vc-1028af6f48ab', 'tree':'f0b1982d1d669f2e0aefabeb1c33e3fe7c735cfc', 'files':759, 'runtime':341, 'runner':'run_export.py'},
     'diagnostic': {'directory':'diagnostic-game', 'build':'vc-09c394aef6d8', 'tree':'5d478c5414ba732f41b109515e90d45495406a1b', 'files':258, 'runtime':155, 'runner':'run_export_diagnostic.py'},
 }
 OUTPUT_FILES = sorted(['index.html','index.js','index.wasm','index.pck','index.png','index.icon.png','index.apple-touch-icon.png','index.audio.worklet.js','index.audio.position.worklet.js'])
