@@ -1,0 +1,64 @@
+name: Audit actual scout touch and open-ground response on stock Chrome
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v143-army-touch-web.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [baseline]
+        size: [390x844, 844x390]
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact dual export for actual scene input
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+          echo '6ec361dc4a583f65b0460ea74a7a5cefea36a46d75aec40bf43e3ddedfcb9b54  ci/audit-v143-army-touch-web.py' | sha256sum --strict -c
+          google-chrome --version
+          python3 -B - <<'PYCODE'
+          import hashlib,json,os,pathlib,re,subprocess,sys
+          sys.path.insert(0,'scripts')
+          from web_release_archive import GitHub,verified_members
+          pins={'baseline': {'product': {'artifact_id': 14598194658, 'run_id': 44664462444, 'build': 'vc-fe3463fcb0ee', 'metadata_sha256': 'e43344fbf981bd7cf57b561dd7d5141bbcd5c5eca183a9dcc60997989e6101be', 'zip_sha256': '1eada13ee4e23f315930e11e530744268c2b0caf04a544472dc9b9935603bbd0'}, 'source': 'fc11512afd3cfbf546902359a8a4933f0a04c470', 'support': 'e94854c44a71745db2dd41dfb697816909ef6cdc', 'tree': '42bfd3f9823475df4aaa2782128d5aea4e383fa2'}}
+          pin=pins[os.environ['ROLE']]
+          row=pin['product']
+          g=GitHub(os.environ['GITHUB_REPOSITORY'])
+          run=g.request('/actions/runs/'+str(row['run_id']))
+          assert run['conclusion']=='success' and run['head_sha']==pin['support']
+          a=g.request('/actions/artifacts/'+str(row['artifact_id']))
+          assert not a['expired'] and a['workflow_run']['id']==row['run_id']
+          data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
+          members=verified_members(data,row)
+          identity=json.loads(members['candidate-metadata.json'])
+          assert identity['source_commit']==pin['source'] and identity['game_tree']==pin['tree'] and identity['build']==row['build']
+          dest=pathlib.Path('/tmp/v143-browser-package');dest.mkdir()
+          for path,data in members.items():
+              if path.startswith('artifacts/clean-a/'):
+                  name=path.split('/')[-1]
+                  assert name.startswith('index.')
+                  (dest/name).write_bytes(data)
+          out=pathlib.Path('/tmp/v143-browser-proof');out.mkdir()
+          (out/'input.json').write_text(json.dumps(pin))
+          PYCODE
+      - name: Real direct scout and open grass touch
+        run: python3 -B ci/audit-v143-army-touch-web.py /tmp/v143-browser-package ${{ matrix.role }} ${{ matrix.size }} "$(python3 -c 'import json; print(json.load(open("/tmp/v143-browser-proof/input.json"))["product"]["build"])')" /tmp/v143-browser-proof
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v143-web-army-${{ matrix.role }}-${{ matrix.size }}
+          path: /tmp/v143-browser-proof/
+          retention-days: 15
+          if-no-files-found: error
