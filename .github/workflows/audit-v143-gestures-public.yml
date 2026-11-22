@@ -1,3 +1,4 @@
+# Replay balanced gesture transactions and preflight browser touch delivery.
 name: Valley Crown v143 public build gesture audit
 on:
   workflow_dispatch:

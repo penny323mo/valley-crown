@@ -2,6 +2,7 @@
 """Read-only Valley Crown v143 public-build QA; discard all Chromium state."""
 import argparse
 import contextlib
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import itertools
 import json
@@ -127,39 +128,66 @@ def browser_bin(cli):
     return cli or os.environ.get("CHROME_BIN") or shutil.which("google-chrome") or shutil.which("chromium")
 
 
-def w3c_payload(kind, points, active):
-    """Map one complete input tick to named touch pointers; return new state."""
-    touch = {i:(x,y) for i,x,y in points}
-    state = dict(active)
-    schedules = {}
-    if kind == "touchStart":
-        if not touch or any(i in state for i in touch):
-            raise ProbeError("W3C touchStart requires fresh pointer IDs")
-        for i,(x,y) in touch.items():
-            schedules[i] = [{"type":"pointerMove","x":x,"y":y,"origin":"viewport","duration":0},
-                            {"type":"pointerDown","button":0}]
-            state[i]=(x,y)
-    elif kind == "touchMove":
-        if not touch or not touch.keys() <= state.keys():
-            raise ProbeError("W3C touchMove requires active pointer IDs")
-        for i,(x,y) in touch.items():
-            schedules[i] = [{"type":"pointerMove","x":x,"y":y,"origin":"viewport","duration":0}]
-            state[i]=(x,y)
-    elif kind == "touchEnd":
-        release=touch.keys() if touch else list(state)
-        if not set(release) <= state.keys():
-            raise ProbeError("W3C touchEnd requires active pointer IDs")
-        for i in release:
-            schedules[i] = [{"type":"pointerUp","button":0}]
-            del state[i]
-        # Keep unreleased pointers as explicit pauses on the same action tick.
-        for i in state:
-            schedules[i] = [{"type":"pause","duration":0}]
-    else:
-        raise ProbeError("Unsupported input phase: "+kind)
+def move(point, duration=0):
+    return {"type":"pointerMove","x":point[0],"y":point[1],"origin":"viewport","duration":duration}
+
+
+def press():
+    return {"type":"pointerDown","button":0}
+
+
+def release():
+    return {"type":"pointerUp","button":0}
+
+
+def actions_transaction(ticks):
+    """One W3C request owns the entire balanced sequence for every pointer."""
+    ids=sorted({i for t in ticks if isinstance(t,dict) for i in t})
+    if not ids:
+        raise ProbeError("No touch pointers in action transaction")
+    rows={i:[] for i in ids}
+    live=set()
+    positioned=set()
+    for tick in ticks:
+        if isinstance(tick,int):
+            tick={i:{"type":"pause","duration":tick} for i in ids}
+        for i in ids:
+            action=tick.get(i,{"type":"pause","duration":0})
+            kind=action["type"]
+            if kind=="pointerMove":
+                positioned.add(i)
+            elif kind=="pointerDown":
+                if i in live or i not in positioned:
+                    raise ProbeError("Unpositioned or repeated touch pointerDown")
+                live.add(i)
+            elif kind=="pointerUp":
+                if i not in live:
+                    raise ProbeError("pointerUp without matching in-request pointerDown")
+                live.remove(i)
+            elif kind!="pause":
+                raise ProbeError("Unsupported touch action "+kind)
+            rows[i].append(action)
+    if live:
+        raise ProbeError("Action transaction must release every started pointer")
     return {"actions":[{"type":"pointer","id":f"vc-finger-{i}",
-                        "parameters":{"pointerType":"touch"},"actions":acts}
-                       for i,acts in sorted(schedules.items())]},state
+                        "parameters":{"pointerType":"touch"},"actions":rows[i]} for i in ids]}
+
+
+def tap_ticks(point):
+    return [{0:move(point,80)},{0:press()},75,{0:release()}]
+
+
+def pair_prefix(a,b):
+    return [{0:move(a,80),1:move(b,80)},{0:press(),1:press()}]
+
+
+def release_pattern(events):
+    return [len(e["active"]) for e in events if e["type"]=="touchend"]
+
+
+def trusted(events, target="canvas"):
+    return bool(events) and all(e["trusted"] and e["target"]==target
+                                and e["type"]!="touchcancel" for e in events)
 
 
 class ChromeDriver:
@@ -170,7 +198,6 @@ class ChromeDriver:
             self.port=listener.getsockname()[1]
         self.opener=build_opener(ProxyHandler({}))
         self.session=None
-        self.active={}
         self.proc=None
         self.logs=(out/"chromedriver.log").open("wb")
         try:
@@ -209,11 +236,9 @@ class ChromeDriver:
         with self.opener.open(req,timeout=40) as response:
             return json.load(response)["value"]
 
-    def dispatch(self, kind, points):
-        payload,new=w3c_payload(kind,points,self.active)
-        if payload["actions"]:
-            self.request("POST",f"/session/{self.session}/actions",payload)
-        self.active=new
+    def execute(self, ticks):
+        payload=actions_transaction(ticks)
+        self.request("POST",f"/session/{self.session}/actions",payload)
 
     def close(self):
         if self.session:
@@ -230,24 +255,16 @@ class ChromeDriver:
 
 
 class Probe:
-    def __init__(self, browser, width, height, out, receipt, driver=None):
+    def __init__(self, browser, width, height, out, receipt, driver):
         self.out = out
         self.r = receipt
         self.size = (width, height)
         self.driver = driver
-        if driver:
-            # One blank context/page is created for this owned ChromeDriver only.
-            self.ctx = browser.contexts[0]
-            self.page = self.ctx.pages[0]
-        else:
-            self.ctx = browser.new_context(
-                viewport={"width": width, "height": height}, device_scale_factor=1,
-                is_mobile=True, has_touch=True, service_workers="block",
-            )
-            self.page = self.ctx.new_page()
+        # One blank context/page is created for this owned ChromeDriver only.
+        self.ctx = browser.contexts[0]
+        self.page = self.ctx.pages[0]
         self.cdp = self.ctx.new_cdp_session(self.page)
-        if driver:
-            self.cdp.send("Network.setBypassServiceWorker",{"bypass":True})
+        self.cdp.send("Network.setBypassServiceWorker",{"bypass":True})
         self.asset_responses = {}
         self.page.on("response", self.response)
         self.page.on("pageerror", lambda e: self.r["page_errors"].append(str(e)))
@@ -307,38 +324,86 @@ class Probe:
           return a ? {events:a.events,samples:a.samples} : {events:[],samples:[]};
         }""")
 
-    def dispatch(self, kind, points=()):
-        if self.driver:
-            return self.driver.dispatch(kind,points)
-        self.cdp.send("Input.dispatchTouchEvent", {
-            "type":kind, "touchPoints":[dict(id=i,x=x,y=y) for i,x,y in points]})
+    def require_input(self, label, condition, observed=None):
+        if not condition:
+            self.r["input_limitation"]=label
+        self.check(label,condition,observed)
 
-    def tap(self, point, finger=0):
-        self.dispatch("touchStart", [(finger,*point)])
-        self.page.wait_for_timeout(80)
-        self.dispatch("touchEnd")
+    def tap(self, point):
+        phase=self.r["phase"]
+        previous=len(self.phases(phase)["events"])
+        self.driver.execute(tap_ticks(point))
         self.page.wait_for_timeout(150)
+        events=self.phases(phase)["events"][previous:]
+        self.require_input("trusted canvas tap delivered both press and release",
+            trusted(events) and [e["type"] for e in events]==["touchstart","touchend"]
+            and [len(e["active"]) for e in events]==[1,0],events)
+
+    def preflight(self):
+        # Plain transient DOM, before loading the game. Proves transport on this
+        # Chrome/ChromeDriver pair and cannot be counted as gameplay.
+        self.page.set_content("""<meta name="viewport" content="width=device-width,initial-scale=1">
+            <style>html,body{margin:0;touch-action:none}canvas{width:100vw;height:100vh;display:block;touch-action:none}</style>
+            <canvas id="canvas"></canvas>""")
+        self.page.evaluate(LISTEN)
+        self.phase("fixture-tap")
+        self.tap((60,80))
+        self.phase("fixture-pair")
+        a,b=(54,95),(120,95)
+        self.driver.execute(pair_prefix(a,b)+[80,{0:move((64,105),120),1:move((130,105),120)},
+          90,{1:release()},95,{0:move((86,120),100)},90,{0:release()}])
+        self.page.wait_for_timeout(125)
+        e=self.phases("fixture-pair")["events"]
+        self.r["input_preflight"]=self.traces()["events"]
+        with_two=any(row["type"]=="touchmove" and len(row["active"])==2 for row in e)
+        lift=next((row for row in e if row["type"]=="touchend" and len(row["active"])==1),None)
+        retained=bool(lift and any(row["type"]=="touchmove" and len(row["active"])==1
+                    and row["active"][0][0]==lift["active"][0][0]
+                    and row["timeMs"]>lift["timeMs"] for row in e))
+        self.require_input("plain DOM preflight received trusted pair, partial lift and retained-finger drag",
+                           trusted(e) and with_two and release_pattern(e)==[1,0] and retained,e)
+
+    def during(self, ticks, phase, checkpoints):
+        """Playwright stays on this thread; worker only sends raw W3C HTTP."""
+        results=[]
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future=pool.submit(self.driver.execute,ticks)
+            previous=-1
+            for positions, screenshot in checkpoints:
+                def held():
+                    events=self.phases(phase)["events"]
+                    if not events:
+                        return None
+                    event=events[-1]
+                    active=[p[1:] for p in event["active"]]
+                    distance=lambda a,b: math.dist(a,b)
+                    if (event["timeMs"]>previous and len(active)==len(positions)
+                        and all(any(distance(p,q)<=2 for q in active) for p in positions)):
+                        return event
+                    if future.done():
+                        future.result()
+                        raise ProbeError(f"{phase}: action completed before observable held checkpoint")
+                    return None
+                event=self.wait(held,phase+" held positions "+str(positions),seconds=10)
+                previous=event["timeMs"]
+                self.page.wait_for_timeout(95)  # allow engine input processing while held
+                state=self.world()
+                if screenshot:
+                    self.screenshot(screenshot)
+                    # Don't label a post-release frame as held.
+                    last=self.phases(phase)["events"][-1]
+                    self.check("recorded "+screenshot+" while intended contacts held",
+                               last["active"]==event["active"],last)
+                results.append(state)
+            future.result(timeout=40)
+        self.page.wait_for_timeout(160)
+        return results
 
     def box(self, plan):
-        self.dispatch("touchStart", [(0,*plan["start"])])
-        # Explicit stationary hold before the drag, in addition to the motion slop.
-        self.page.wait_for_timeout(250)
-        for point in path_steps(plan["start"], plan["end"], 9):
-            self.dispatch("touchMove", [(0,*point)])
-            self.page.wait_for_timeout(30)
-        self.page.wait_for_timeout(200)
-        self.screenshot("02-box-held")
-        self.dispatch("touchEnd")
-        self.page.wait_for_timeout(160)
-
-    def touch_end_one(self, released):
-        # W3C sends pointerUp only for the released finger; its partner pauses.
-        # Optional direct CDP named End is backend-dependent. No forged events.
-        try:
-            self.dispatch("touchEnd", [released])
-        except Exception as exc:
-            self.r["input_limitation"] = str(exc)
-            raise ProbeError("Automation backend did not accept partial finger release") from exc
+        ticks=[{0:move(plan["start"],80)},{0:press()},250]
+        ticks += [{0:move(point,30)} for point in path_steps(plan["start"],plan["end"],9)]
+        ticks += [2100,{0:release()}]
+        self.during(ticks,"box",[([plan["end"]],"02-box-held")])
 
     def phases(self, *names):
         rows = self.traces()
@@ -383,6 +448,7 @@ class Probe:
                       "tick_range":[rows[0]["tick"],rows[-1]["tick"]] if rows else []}
 
     def run(self):
+        self.preflight()
         meta = self.ctx.request.get(ORIGIN+"release.json", timeout=30000)
         advertised = meta.json()
         self.check("current public release matches the frozen build and source",
@@ -448,9 +514,8 @@ class Probe:
         box_result = self.world()
         self.r["box_result"] = self.state(box_result)
         trace = self.phases("box")["events"]
-        self.check("trusted one-contact canvas drag and release arrived",
-                   bool(trace) and all(x["trusted"] and x["target"]=="canvas"
-                   and len(x["active"])<=1 for x in trace)
+        self.require_input("trusted one-contact canvas drag and release arrived",
+                   trusted(trace) and all(len(x["active"])<=1 for x in trace)
                    and trace[0]["type"]=="touchstart"
                    and sum(x["type"]=="touchmove" for x in trace)>=2
                    and next(x["timeMs"] for x in trace if x["type"]=="touchmove")-trace[0]["timeMs"]>=225
@@ -476,56 +541,52 @@ class Probe:
         offsets = path_steps((0,0),(42,28),14)
         camera0 = before["hud"]["camera"]
         self.phase("pan")
-        self.dispatch("touchStart",[(0,*first),(1,*second)])
-        for dx,dy in offsets:
-            self.dispatch("touchMove",[(0,first[0]+dx,first[1]+dy),(1,second[0]+dx,second[1]+dy)])
-            self.page.wait_for_timeout(35)
-        peak = self.world()
+        def pair_at(dx,dy):
+            return ((first[0]+dx,first[1]+dy),(second[0]+dx,second[1]+dy))
+        def pair_move(dx,dy):
+            a,b=pair_at(dx,dy)
+            return {0:move(a,35),1:move(b,35)}
+        # Start, pan, 2→1, residual drag, and release stay in ONE action request.
+        ticks=pair_prefix(first,second)+[70]
+        ticks.extend(pair_move(dx,dy) for dx,dy in offsets)
+        ticks.append(2100)
+        ticks.extend(pair_move(dx,dy) for dx,dy in reversed([(0,0)]+offsets[:-1]))
+        ticks.extend([1300,{1:release()},125])
+        remaining_positions=[(first[0]+dx,first[1]+dy)
+                             for dx,dy in [(5,4),(11,8),(18,12),(25,18),(34,20)]]
+        ticks.extend({0:move(point,40)} for point in remaining_positions)
+        ticks.extend([2100,{0:release()}])
+        peak,returned,_=self.during(ticks,"pan",[
+            (pair_at(*offsets[-1]),"05-two-finger-pan-apex"),
+            ((first,second),None),
+            ([remaining_positions[-1]],"06-one-finger-held-after-pan")])
         self.r["pan_peak"] = self.state(peak)
         rows = [e for e in self.phases("pan")["events"] if len(e["active"])==2]
         spans = [math.dist(e["active"][0][1:],e["active"][1][1:]) for e in rows]
-        self.check("trusted two-contact canvas moves carried the equal start/end span",
-                   len(rows)>=4 and all(e["trusted"] and e["target"]=="canvas" for e in rows)
+        self.require_input("trusted two-contact canvas moves carried the equal start/end span",
+                   len(rows)>=4 and trusted(rows)
                    and {p[0] for p in rows[0]["active"]}=={p[0] for p in rows[-1]["active"]}
                    and abs(spans[0]-spans[-1])<=.5,{"paired":len(rows),"spans":spans})
         self.check("pan moved camera focus without pinch zoom and kept sole selection",
                    camera_distance(camera0,peak["hud"]["camera"])>=.5
                    and abs(camera0["zoom"]-peak["hud"]["camera"]["zoom"])<.1
                    and peak["selected"]==[6],self.state(peak))
-        self.screenshot("05-two-finger-pan-apex")
-
-        # Rebase to exact audited move target, without releasing the pair.
-        for dx,dy in reversed([(0,0)]+offsets[:-1]):
-            self.dispatch("touchMove",[(0,first[0]+dx,first[1]+dy),(1,second[0]+dx,second[1]+dy)])
-            self.page.wait_for_timeout(35)
-        returned = self.world()
         self.check("return stroke restores the exact-scout fixture camera",
                    camera_distance(camera0,returned["hud"]["camera"])<.12
                    and abs(camera0["zoom"]-returned["hud"]["camera"]["zoom"])<.1,self.state(returned))
-        self.phase("release-2-to-1")
-        self.touch_end_one((1,*second))
-        self.page.wait_for_timeout(125)
-        # A >14px remaining-finger drag would normally box-select.
-        for dx,dy in [(5,4),(11,8),(18,12),(25,18),(34,20)]:
-            self.dispatch("touchMove", [(0,first[0]+dx,first[1]+dy)])
-            self.page.wait_for_timeout(40)
-        self.screenshot("06-one-finger-held-after-pan")
-        self.dispatch("touchEnd")
         wait_from = self.world()
         released = self.wait(lambda: (s:=self.world()) and s["tick"]>=wait_from["tick"]+45 and s,
                              "45 post-release simulation ticks",15)
-        trace = self.phases("release-2-to-1")["events"]
+        trace = self.phases("pan")["events"]
         remaining = next((e for e in trace if e["type"]=="touchend" and len(e["active"])==1
                           and len(e["changed"])==1),None)
-        if remaining is None:
-            self.r["input_limitation"] = "Browser did not emit a named partial touchend with one active point"
-        self.check("trusted 2-to-1 partial release, retained-finger drag and final release arrived",
-                   remaining is not None and bool(trace)
-                   and all(x["trusted"] and x["target"]=="canvas" for x in trace)
+        self.require_input("trusted 2-to-1 partial release, retained-finger drag and final release arrived",
+                   remaining is not None and trusted(trace) and release_pattern(trace)==[1,0]
                    and any(e["type"]=="touchmove" and len(e["active"])==1
-                           and e["active"][0][0]==remaining["active"][0][0] for e in trace)
+                           and e["active"][0][0]==remaining["active"][0][0]
+                           and e["timeMs"]>remaining["timeMs"] for e in trace)
                    and trace[-1]["type"]=="touchend" and not trace[-1]["active"],trace)
-        quiet, qt = self.quiet(("pan","release-2-to-1"),[6],scout=True)
+        quiet, qt = self.quiet(("pan",),[6],scout=True)
         self.check("pan and 2-to-1 aftermath kept Scout 6 idle, with no observed own command",
                    quiet and released["selected"]==[6] and "待命" in released["hud"]["selection_detail"]
                    and camera_distance(returned["hud"]["camera"],released["hud"]["camera"])<.05
@@ -537,22 +598,16 @@ class Probe:
         self.phase("stationary-release")
         goal = POINTS[self.size]["goal"]
         other = (goal[0]-65,goal[1])
-        self.dispatch("touchStart",[(0,*goal),(1,*other)])
-        self.page.wait_for_timeout(100)
-        self.touch_end_one((1,*other))
-        self.page.wait_for_timeout(130)
-        self.dispatch("touchEnd")
+        self.driver.execute(pair_prefix(goal,other)+[100,{1:release()},130,{0:release()}])
         base = self.world()
         stationary = self.wait(lambda: (s:=self.world()) and s["tick"]>=base["tick"]+45 and s,
                                "stationary release did not stall play",15)
         sr = self.phases("stationary-release")["events"]
-        s_end = [e for e in sr if e["type"]=="touchend"]
         qa, qdetails = self.quiet(("stationary-release",),[6],scout=True)
-        if [len(e["active"]) for e in s_end] != [1,0]:
-            self.r["input_limitation"] = "Stationary release was not observed as 2→1→0"
+        self.require_input("stationary partial lift reached canvas as trusted 2→1→0",
+                           release_pattern(sr)==[1,0] and trusted(sr),sr)
         self.check("stationary 2-to-1 release at the known ground goal did not dispatch the scout",
-                   [len(e["active"]) for e in s_end]==[1,0] and all(e["trusted"] and e["target"]=="canvas" for e in sr)
-                   and qa and stationary["selected"]==[6]
+                   qa and stationary["selected"]==[6]
                    and camera_distance(camera0,stationary["hud"]["camera"])<.12, {"touch":sr,"samples":qdetails})
         self.screenshot("08-stationary-release")
 
@@ -581,8 +636,8 @@ def main():
     parser.add_argument("--out",type=Path,required=True,help="new evidence directory")
     parser.add_argument("--chrome",help="path to GitHub-hosted Chrome or Chromium executable")
     parser.add_argument("--driver",help="path to ChromeDriver for W3C Actions (default: PATH/CHROMEWEBDRIVER)")
-    parser.add_argument("--input",choices=["webdriver","cdp"],default="webdriver",
-                        help="W3C multi-pointer actions are the portable default")
+    parser.add_argument("--input",choices=["webdriver"],default="webdriver",
+                        help="complete W3C multi-pointer transaction per gesture")
     args=parser.parse_args()
     args.out.mkdir(parents=True,exist_ok=False)
     r = {"status":"STARTED","url":ENTRY,"build":BUILD,"source":SOURCE,"size":args.size,
@@ -597,27 +652,18 @@ def main():
             raise ProbeError("No browser executable; pass --chrome or set CHROME_BIN")
         with tempfile.TemporaryDirectory(prefix="vc-v143-profile-") as browser_home, sync_playwright() as p, contextlib.ExitStack() as cleanup:
             size=tuple(map(int,args.size.split("x")))
-            driver=None
-            if args.input=="webdriver":
-                wd=args.driver or shutil.which("chromedriver")
-                if not wd and os.environ.get("CHROMEWEBDRIVER"):
-                    wd=str(Path(os.environ["CHROMEWEBDRIVER"])/"chromedriver")
-                if not wd or not Path(wd).is_file():
-                    raise ProbeError("No ChromeDriver; use --driver with a version matching Chrome")
-                driver=ChromeDriver(wd,chrome,size,browser_home,args.out)
-                cleanup.callback(driver.close)
-                browser=p.chromium.connect_over_cdp(driver.cdp_url,timeout=20000)
-            else:
-                browser=p.chromium.launch(executable_path=chrome,headless=True,
-                      args=["--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"],
-                      env={**os.environ,"HOME":browser_home,"XDG_CONFIG_HOME":browser_home,
-                           "XDG_CACHE_HOME":browser_home})
+            wd=args.driver or shutil.which("chromedriver")
+            if not wd and os.environ.get("CHROMEWEBDRIVER"):
+                wd=str(Path(os.environ["CHROMEWEBDRIVER"])/"chromedriver")
+            if not wd or not Path(wd).is_file():
+                raise ProbeError("No ChromeDriver; use --driver with a version matching Chrome")
+            driver=ChromeDriver(wd,chrome,size,browser_home,args.out)
+            cleanup.callback(driver.close)
+            browser=p.chromium.connect_over_cdp(driver.cdp_url,timeout=20000)
             cleanup.callback(browser.close)
             r["browser_version"]=browser.version
             print(f"Started isolated Chromium {browser.version}, input={args.input}",flush=True)
             probe=Probe(browser,*size,args.out,r,driver)
-            if not driver:
-                cleanup.callback(probe.ctx.close)
             try:
                 probe.run()
                 r["status"]="PASS"
