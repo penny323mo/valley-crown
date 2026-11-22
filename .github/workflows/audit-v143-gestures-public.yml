@@ -1,0 +1,42 @@
+name: Valley Crown v143 public build gesture audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-v143-gestures-public.yml]
+permissions:
+  contents: read
+jobs:
+  chromium:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    strategy:
+      fail-fast: false
+      matrix:
+        size: [390x844, 844x390]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Run frozen public build gesture regression
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+          PYTHONDONTWRITEBYTECODE: '1'
+          SIZE: ${{ matrix.size }}
+          OUT: ${{ runner.temp }}/vc-v143-gesture-${{ matrix.size }}
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vc-gesture-venv"
+          source "$RUNNER_TEMP/vc-gesture-venv/bin/activate"
+          python -m pip --disable-pip-version-check install playwright==1.62.0
+          google-chrome --version
+          chromedriver --version || "$CHROMEWEBDRIVER/chromedriver" --version
+          python -u ci/audit-v143-gestures-public.py --input webdriver --size "$SIZE" --out "$OUT"
+      - name: Retain genuine screenshots, receipt and trusted touch trace
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: vc-v143-public-gesture-${{ matrix.size }}
+          path: ${{ runner.temp }}/vc-v143-gesture-${{ matrix.size }}/
+          retention-days: 14
+          if-no-files-found: warn
