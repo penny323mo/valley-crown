@@ -1,0 +1,47 @@
+name: Capture exact stamped Valley Crown construction Recon
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-recon-exact.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 27
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 8602a3e19fc0d2563cf408e30270097c2656a624
+          path: exact-recon-baseline
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: cf573046ad5efb601a5cc4d6bd34f7cc002b4163
+          path: exact-recon-candidate
+          persist-credentials: false
+      - name: Install pinned Godot and known software display
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-exact-recon-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-exact-recon-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Render exact remembered-site construction reconnaissance on both committed games
+        run: |
+          bash ci/construction-recon-exact/run.sh \
+            "$GITHUB_WORKSPACE/exact-recon-baseline" "$GITHUB_WORKSPACE/exact-recon-candidate" \
+            "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" "$RUNNER_TEMP/vc-exact-recon"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-758fa5a99e0f-native-exact-recon
+          path: ${{ runner.temp }}/vc-exact-recon/
+          retention-days: 30
+          if-no-files-found: ignore
