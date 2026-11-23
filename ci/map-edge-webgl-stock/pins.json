@@ -1,0 +1,29 @@
+{
+  "mode": "HOSTED_STOCK_ONLY",
+  "fixtures": {
+    "gl-observe.js": "ede588f6ee877b5af8f35880d463d39d37065c92740c6f958443e10f6aceb5ad",
+    "verify-map-edge.py": "f4aa04456e425f0d93e3bedcc2d38b072e0b882c7f1bd78b5b5fdfe3f2bc779f"
+  },
+  "baseline": {
+    "artifact_id": 14809765123,
+    "run_id": 45152889280,
+    "build": "vc-e6b4b7b5efdf",
+    "metadata_sha256": "8213cb940ff571ef12e59308c9a62e3cd5dd70d437cf309853b0c971db18d012",
+    "zip_sha256": "15391f122163da2376da92c6e0069b99f76f4f47475cf7ad2be677a523de6644",
+    "game_tree": "db8c603fb178bbd5a39f954ab9cd0630f926f6dd",
+    "source_commit": "88935d2b95ccf6a7159339e60e26eeff1784c64f",
+    "formal_commit": "5eac10626abfcddcbe261c39b38f53a0b3d50f21",
+    "shader_source_sha": "36ceb3210f6d1e99f43e26feed023ed5c2f8b1cd849061082c593110e005c027"
+  },
+  "candidate": {
+    "run_id": 45160944253,
+    "build": "vc-c57441a91f81",
+    "artifact_id": 14813977366,
+    "zip_sha256": "f3ddc1289491dc1768408770227e417f378ffb56c068242cc805df31d3f0b3e8",
+    "metadata_sha256": "1ed5d705839eba307a7dead6f453017f9fb25a8df13d1d04fdc18e7ad8b4912e",
+    "game_tree": "24e844112a8db26746f3ad722d6e06d275a91ed1",
+    "source_commit": "9e5f9e9cfccb0238f2c9b7ce36d67058a3ea0394",
+    "formal_commit": "501b2d07adb5767d990945ce2afc7ddfcc2417e7",
+    "shader_source_sha": "1ad3a014aa20a9df87906111e2c471a635e7b589589b61d9ee2d181bc78fb3fd"
+  }
+}
