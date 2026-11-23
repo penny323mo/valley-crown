@@ -23,6 +23,11 @@ func named(text):
  return null
 func shown(b,area):
  return b!=null and b.is_visible_in_tree() and area.encloses(b.get_global_rect()) and root.get_visible_rect().encloses(b.get_global_rect())
+func usable_filter(b,clip):
+ if not b is Button or not b.is_visible_in_tree() or b.disabled:return false
+ var rect=b.get_global_rect()
+ var hit=rect.intersection(clip).intersection(root.get_visible_rect())
+ return hit.size.x>=44 and hit.size.y>=44 and hit.has_point(rect.get_center())
 func run_case(size,baseline):
  root.size=size;game=load("res://main.tscn").instantiate();game.skirmish_mode="battle";game.victory_mode="conquest";root.add_child(game);game.set_process(false)
  for j in 200:game._process(game.Rules.TICK)
@@ -71,7 +76,10 @@ func run_case(size,baseline):
   touch(b,false);await settle()
  ck("subtype filter still reachable by ordinary swipes "+str(size),shown(game.actions.get_node_or_null("SelectType_archer"),game.action_scroll.get_global_rect()) and game.commands==queue)
  var worker=game._first(0,"villager");game._select([worker.id,ids[0],ids[1]]);await settle()
- ck("worker and army mixed selection keeps original first worker filter "+str(size),game.actions.get_child(0).name=="SelectType_villager")
+ var army_filter=game.actions.get_node_or_null("FilterSelectedMilitary")
+ var villager_filter=game.actions.get_node_or_null("SelectType_villager")
+ var mixed_clip=game.action_scroll.get_global_rect()
+ ck("worker and army mixed selection exposes army then worker filters "+str(size),usable_filter(army_filter,mixed_clip) and usable_filter(villager_filter,mixed_clip) and army_filter.get_index()==0 and army_filter.get_index()<villager_filter.get_index() and game.selected==[worker.id,ids[0],ids[1]] and game.action_scroll.scroll_horizontal==0 and not game.touch_command and game.commands==queue and game.economy.bank_milli(0)==bank)
  game._select(ids);await settle()
  await tap(named("警戒前進").get_global_rect().get_center())
  ck("first touch only arms tactic and preserves selection/queue/bank "+str(size),game.touch_command and game.unit_command_kind=="advance" and game.selected==ids and game.commands==queue and game.economy.bank_milli(0)==bank)

@@ -5,6 +5,11 @@ var checks=[]
 func check(name,ok):
  checks.append({"name":name,"passed":bool(ok)})
  if not ok:push_error(name)
+func usable_filter(b,clip):
+ if not b is Button or not b.is_visible_in_tree() or b.disabled:return false
+ var rect=b.get_global_rect()
+ var hit=rect.intersection(clip).intersection(root.get_visible_rect())
+ return hit.size.x>=44 and hit.size.y>=44 and hit.has_point(rect.get_center())
 func primary_train():
  for b in g.actions.get_children():
   if b is Button and b.get_meta("primary_train",false):return b
@@ -45,7 +50,10 @@ func run():
   g._select([home.id]);await settle();snapshot("home-after-scrolled-worker")
   check("new home selection exposes primary training "+str(size),g.action_scroll.scroll_horizontal==0 and g.action_scroll.get_global_rect().encloses(primary_train().get_global_rect()))
   g._select([worker.id,scout.id]);await settle();snapshot("mixed-worker-scout")
-  check("new mixed selection starts with type shortcut "+str(size),g.action_scroll.scroll_horizontal==0 and g.actions.get_child(0).name=="SelectType_villager")
+  var army_filter=g.actions.get_node_or_null("FilterSelectedMilitary")
+  var villager_filter=g.actions.get_node_or_null("SelectType_villager")
+  var clip=g.action_scroll.get_global_rect()
+  check("new mixed selection exposes army then villager shortcuts "+str(size),usable_filter(army_filter,clip) and usable_filter(villager_filter,clip) and army_filter.get_index()==0 and army_filter.get_index()<villager_filter.get_index() and g.action_scroll.scroll_horizontal==0 and g.commands.is_empty())
   await swipe();var mixed_scroll=g.action_scroll.scroll_horizontal;g._select([scout.id,worker.id]);await settle()
   check("same membership reversed order preserves scroll "+str(size),g.action_scroll.scroll_horizontal==mixed_scroll)
  var plot=Vector3.INF;var best=INF
