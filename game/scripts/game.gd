@@ -71,6 +71,7 @@ const MatureVisuals = preload("res://assets/mature/visual_library.gd")
 const BuildingDamagePresenter = preload("res://scripts/building_damage_presenter.gd")
 const ConstructionVisual = preload("res://scripts/construction_visual.gd")
 const MatureWorld = preload("res://scripts/mature_world_visuals.gd")
+const FogInwardEdge = preload("res://scripts/fog_inward_edge.gd")
 const CharacterPresenter = preload("res://scripts/observed_character_presenter.gd")
 const COSTS = Rules.COSTS
 const MAX_HP = Rules.HP
@@ -4146,10 +4147,11 @@ func _create_fog():
 	material.vertex_color_use_as_albedo=true; material.no_depth_test=false
 	plane.material=material
 	for i in Rules.MAP_SIZE*Rules.MAP_SIZE:
-		mm.set_instance_transform(i,Transform3D(Basis.IDENTITY,Vector3((i%Rules.MAP_SIZE)-Rules.MAP_HALF+0.5,0.11,floor(i/float(Rules.MAP_SIZE))-Rules.MAP_HALF+0.5)))
+		mm.set_instance_transform(i,Transform3D(Basis.IDENTITY,Vector3((i%Rules.MAP_SIZE)-Rules.MAP_HALF+0.5,FogInwardEdge.BASE_TILE_Y,floor(i/float(Rules.MAP_SIZE))-Rules.MAP_HALF+0.5)))
 	fog.multimesh=mm; add_child(fog)
-	fog_inward_edge=preload("res://scripts/fog_inward_edge.gd").new()
+	fog_inward_edge=FogInwardEdge.new()
 	fog_inward_edge.initialize(Rules.MAP_SIZE); add_child(fog_inward_edge)
+	_cover_camera_ground()
 
 func _update_vision(refresh_render=true):
 	if visible_cells[0].is_empty(): return
@@ -5967,6 +5969,7 @@ func _cover_camera_ground():
 		required.x=maxf(required.x,absf(point.x)+1.0)
 		required.y=maxf(required.y,absf(point.z)+1.0)
 	camera_ground.scale=Vector3(required.x/half_size.x,1.0,required.y/half_size.y)
+	if is_instance_valid(fog_inward_edge): fog_inward_edge.cover_world(required)
 
 func _ui_owns_camera_keys():
 	if not is_inside_tree():return false

@@ -64,7 +64,7 @@ func run():
  c('helper follows existing current states',g.fog_inward_edge.last_states==g.fog_render_state)
  c('repeat refresh is presentation cache hit',not g.fog_inward_edge.refresh(g.fog_render_state))
  var source=FileAccess.get_file_as_string('res://scripts/game.gd')
- c('exact lattice construction source retained',source.contains('Vector3((i%Rules.MAP_SIZE)-Rules.MAP_HALF+0.5,0.11,floor(i/float(Rules.MAP_SIZE))-Rules.MAP_HALF+0.5)'))
+ c('exact lattice construction source retained',Edge.BASE_TILE_Y==0.11 and source.contains('Vector3((i%Rules.MAP_SIZE)-Rules.MAP_HALF+0.5,FogInwardEdge.BASE_TILE_Y,floor(i/float(Rules.MAP_SIZE))-Rules.MAP_HALF+0.5)'))
  c('exact unit tile source bound',source.contains('plane.size=Vector2(1.0,1.0)'))
  # Actual renderer MultiMesh transform buffer is tested natively, not dummy headless.
  var visibility=[]
