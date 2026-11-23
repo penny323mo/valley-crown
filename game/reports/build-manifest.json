@@ -1,5 +1,5 @@
 {
-  "build": "vc-9b7236f5e71c",
+  "build": "vc-561fdd2865e3",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -238,7 +238,7 @@
     "scripts/bal01_content.gd": "2671abf2feb6bc78299815baf77c459ad43aef958e6d680ff502e8e5b7a497cd",
     "scripts/batch_construction_dispatch.gd": "f56fbc14b0e3eca56e18718ab832943977ce020e0eea235034716676c63c5398",
     "scripts/batch_repair_dispatch.gd": "450c44e78ed0f2b0fcfc652729cf7e1cf69fd0b16401775cae89d0039830b14d",
-    "scripts/battle_alerts.gd": "7197005c0d5705fa082261be061c401227910e9ffd827a27b27ba3062b4c4359",
+    "scripts/battle_alerts.gd": "45030a820068df83ff8359a433e386997f253bc316b58f5a40183ccf65b47627",
     "scripts/battle_history.gd": "cd319d7708846f3a83fa28618e778aa5e69ed49afabfb3e405f94c3013f0521d",
     "scripts/battle_selection.gd": "90cda522a46b9f9a1d864796bdbab6ec6a95e69d19bfcd629133d29bd42ed365",
     "scripts/battlefield_layout.gd": "b615be31f2b0479dab9569a4db65e201f661e7c19cd6d3658c17c15db2d6f6c3",
@@ -288,7 +288,7 @@
     "scripts/forward_depot.gd": "a5c74cbcba7bd796d1174f34425a575f410c5d7d365f46ee0dd12b48eb831144",
     "scripts/frontier_escort.gd": "dfc955aec941c08ec9272c04c3fe20fc0801beeb495e461a74de0a41b7ab024e",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "0e2f994a1a78a3b672ca6aac24a3241a0908138927bf633513a3efb219a04888",
+    "scripts/game.gd": "40896b0122bc86173bd94020a07686395fe81334e359feab821c75dcce33af25",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/garrison_checkpoint.gd": "85b9c4696b7b632600e2fe81c083015edb482f07bf100a4c08be43fba0f88427",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
@@ -331,7 +331,7 @@
     "scripts/river_landscape.gd.uid": "3cf5e46ceee29fea583011ff4da2a0512bfb126e0897697e541278d21cde00bd",
     "scripts/river_terrain.gd": "24af3eb1acd7b9de802ee8c67a0aae6bb05075472e0adc9cc1d8f8280d4f1e6a",
     "scripts/river_terrain.gd.uid": "b0aa418fa5c7372bbaf967118441d38d6419a1c3e95e72f174a24563f27f3e98",
-    "scripts/rules.gd": "3c4655c12972c5b851c43c0e73157014ccf16a90b703d2424937c6384de362bc",
+    "scripts/rules.gd": "4dce01a02ea5108f69e723c28b0afc3139e4f2b5cb5aa3783b67395f3e497a12",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "c97f96da3e57833ebb6cdc6ed78785c2ce6b8f50087e0e3b3cab257fedc4f81e",

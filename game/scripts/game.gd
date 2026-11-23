@@ -374,6 +374,7 @@ var battle_alerts=BattleAlerts.new()
 var match_report=MatchReport.new()
 var last_match_report={}
 var attack_alert_button: Button
+var battle_return_button: Button
 var battle_jump_button: Button
 var attack_ledger=AttackLedger.new()
 var delivered_total:
@@ -4544,6 +4545,12 @@ func _create_ui():
 		var category_button=_button(category_names[category],func():_set_shortcut_category(page),44)
 		category_button.name="ShortcutCategory_"+category;category_button.toggle_mode=true;category_button.add_theme_font_size_override("font_size",12)
 		category_row.add_child(category_button);shortcut_category_buttons[category]=category_button
+	# Quiet return lives outside the scroll body and keeps the original top
+	# toolbar (including its idle-worker geometry) and unread action separate.
+	battle_return_button=_button("回看",_focus_battle_return,56)
+	battle_return_button.name="ReturnToBattleSite"
+	battle_return_button.tooltip_text="回看受襲位置；只移動鏡頭。"
+	category_row.add_child(battle_return_button);battle_return_button.hide()
 	attack_alert_button=_button("前往受襲位置",_focus_attack_alert,110); attack_alert_button.name="AttackAlert"; menu_box.add_child(attack_alert_button); attack_alert_button.hide()
 	mission_label=_label("",14,Color("c8d4b3")); mission_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(mission_label)
 	if skirmish_mode=="escort":
@@ -7343,7 +7350,31 @@ func _refresh_attack_alert():
 		battle_jump_button.text="受襲%d" % battle_alerts.pending(tick_count).size()
 		battle_jump_button.tooltip_text=attack_alert_button.text+"；只移動鏡頭，不改部隊指令。"
 		if was_visible!=battle_jump_button.visible:_defer_layout()
+	_refresh_battle_return(current.is_empty())
 	if is_instance_valid(minimap):minimap.queue_redraw()
+
+func _refresh_battle_return(no_unread:bool) -> void:
+	if not is_instance_valid(battle_return_button):return
+	var site=battle_alerts.acknowledged_site(tick_count) if no_unread and not game_over else {}
+	var blocked=site.is_empty() or not compact_menu.visible or not _battle_return_ready()
+	# Same incident and point stay steady even if their expiry changes.
+	# A different hit point or incident cannot inherit a held contact.
+	_bind_squad_button(battle_return_button,[] if site.is_empty() else [site.sequence,site.position],blocked)
+	battle_return_button.visible=not site.is_empty()
+
+func _battle_return_ready() -> bool:
+	return _squad_actions_available() and _command_strip_mode_identity().is_empty() and is_instance_valid(camera) and camera.is_inside_tree()
+
+func _focus_battle_return() -> void:
+	if not is_instance_valid(battle_return_button) or not battle_return_button.is_visible_in_tree() or battle_return_button.disabled:return
+	if not _battle_return_ready() or not battle_alerts.peek(tick_count).is_empty():return
+	var site=battle_alerts.acknowledged_site(tick_count)
+	if site.is_empty() or battle_return_button.get_meta("squad_ids",[])!=[site.sequence,site.position]:return
+	# Unlike unread acknowledgement, returning never cancels a command draft
+	# or consumes an alert; the button is disabled while a draft is active.
+	camera_focus=site.position
+	_camera_update()
+	_toggle_compact_menu()
 
 func _focus_battle_jump():
 	if not is_instance_valid(battle_jump_button) or battle_jump_button.disabled:return
@@ -7472,6 +7503,7 @@ func _toggle_compact_menu():
 		_refresh_squad_buttons()
 		if box_select_mode: _cancel_mode()
 	compact_menu_dismiss.visible=compact_menu.visible
+	_refresh_battle_return(battle_alerts.peek(tick_count).is_empty())
 	compact_menu_button.text=_shortcut_menu_caption()
 	_layout_ui()
 
