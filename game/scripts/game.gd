@@ -5114,7 +5114,9 @@ func _rebuild_actions(selection):
 		cancel.gui_input.connect(func(event): _box_cancel_button_input(cancel,event))
 		actions.add_child(cancel); return
 	if not build_mode.is_empty():
-		build_confirm=_button("確認建造",func(): _confirm_build(),120); actions.add_child(build_confirm)
+		build_confirm=_button("確認建造",func(): _confirm_build(),120)
+		CommandIcons.apply(build_confirm,build_mode)
+		actions.add_child(build_confirm)
 		actions.add_child(_button("取消建造",func(): _cancel_mode(),110))
 		if build_mode=="wall":
 			var segments=_button("木柵段數：%d" % wall_line_count,_cycle_wall_line_count,150)
@@ -5209,6 +5211,7 @@ func _rebuild_actions(selection):
 				safety.name="WorkerSafety"; actions.add_child(safety)
 			if ent.kind=="town_center" and not _age2(0):
 				var research=_button("城防時代\n"+Rules.cost_label("age2"),func(): _submit("research",{"building":ent.id}),160)
+				CommandIcons.apply(research,"age2")
 				research.disabled=_research_pending(0); actions.add_child(research)
 			if ent.kind=="town_center" and _age2(0):
 				for technology in Rules.RESEARCH_TECHS:
@@ -5218,6 +5221,7 @@ func _rebuild_actions(selection):
 					var label=Rules.NAMES[tech]+(" · 已完成" if completed else (" · 研究中" if pending else " · 45 秒"))+"\n"+Rules.TECH_DETAILS[tech]
 					if not completed and not pending: label+=(" · " if low_landscape_ui else "\n")+Rules.cost_label(tech)
 					var button=_button(label,func(): _submit("military_research",{"building":ent.id,"kind":tech}),200)
+					CommandIcons.apply(button,tech)
 					button.disabled=completed or pending; button.name=tech; actions.add_child(button)
 			if ent.kind=="town_center":
 				var trade_open=_button("資源交易",func():_open_trade_panel(ent.id),130)
@@ -5233,11 +5237,13 @@ func _rebuild_actions(selection):
 		if ent.owned and ent.built and ent.kind=="storehouse":
 			var upgraded=ent.get("supply_station",false)
 			var button=_button("前線補給站"+(" · 已完成" if upgraded else (" · 升級中" if not ent.queue.is_empty() else " · 30 秒"))+"\n"+("資源交付不變" if upgraded else "木 100 · 食 100 · 需城防時代"),func():_submit("supply_upgrade",{"building":ent.id}),220)
+			CommandIcons.apply(button,"supply_station")
 			button.name="SupplyStationUpgrade";button.disabled=upgraded or not ent.queue.is_empty() or not _age2(0)
 			actions.add_child(button)
 			for item in ent.queue:
 				var queue_id=item.queue_id
 				var cancel=_button("",func():_queue_cancel_request(ent.id,queue_id),180)
+				CommandIcons.apply(cancel,item.kind)
 				cancel.name="CancelQueue%d" % queue_id;actions.add_child(cancel);queue_actions.append({"building":ent.id,"queue_id":queue_id,"button":cancel})
 		if ent.owned and ent.built and ent.kind=="farm":
 			farm_dispatch_button=_button("派閒置村民耕作",func():_request_farm_dispatch(ent.id),180)

@@ -1,6 +1,6 @@
 extends RefCounted
-## Presentation-only model portraits and separately classified trade symbols.
-## ICONS contains only the sixteen actual-model renders; trade SVGs are not portraits.
+## Presentation-only model portraits and separate trade/upgrade symbols.
+## ICONS contains only the sixteen actual-model renders, never authored SVGs.
 ## Names, prices, disabled states and all command callbacks remain on the Button.
 const ICONS = {
 	"villager":preload("res://assets/mature/ui/portraits/villager.png"),
@@ -24,9 +24,19 @@ const TRADE_ICONS = {
 	"trade_iron_food":preload("res://assets/mature/ui/icons/trade_iron_food.svg"),
 	"trade_stone_food":preload("res://assets/mature/ui/icons/trade_stone_food.svg"),
 }
+# These small silhouettes are upgrade identifiers, not model portraits.
+const UPGRADE_ICONS = {
+	"age2":preload("res://assets/mature/ui/icons/age2.svg"),
+	"forged_blades":preload("res://assets/mature/ui/icons/forged_blades.svg"),
+	"tempered_arrows":preload("res://assets/mature/ui/icons/tempered_arrows.svg"),
+	"reinforced_armor":preload("res://assets/mature/ui/icons/reinforced_armor.svg"),
+	"wheelbarrow":preload("res://assets/mature/ui/icons/wheelbarrow.svg"),
+	"supply_station":preload("res://assets/mature/ui/icons/supply_station.svg"),
+}
 static func apply(button: Button, kind: String, prominent: bool=false) -> void:
-	if not ICONS.has(kind) and not TRADE_ICONS.has(kind): return
-	button.icon=ICONS[kind] if ICONS.has(kind) else TRADE_ICONS[kind]
+	var texture: Texture2D=ICONS.get(kind,TRADE_ICONS.get(kind,UPGRADE_ICONS.get(kind)))
+	if texture==null: return
+	button.icon=texture
 	button.expand_icon=true
 	button.icon_alignment=HORIZONTAL_ALIGNMENT_LEFT
 	button.add_theme_constant_override("icon_max_width",40 if prominent else 32)
