@@ -25,6 +25,16 @@ SIZE=(568,320)
 FILES=tuple("index."+p for p in (
     "apple-touch-icon.png","audio.position.worklet.js","audio.worklet.js","html","icon.png","js","pck","png","wasm"))
 ROLES=("baseline","candidate")
+# Exact normal Survival opens in preparation; first possible authored wave
+# is tick 900 (45s). Bound actual browser start much tighter (6s), with no
+# paid actions/order/selection/pose drift, so no synthetic tick zero claim.
+MAX_OPENING_TICK=120
+FIRST_WAVE_TICK=900
+INITIAL_BANK={"food":150000,"wood":200000,"stone":100000,"iron":0}
+
+def opening_clock(s):
+    tick=s.get("tick")
+    return type(tick) is int and 0<=tick<=MAX_OPENING_TICK<FIRST_WAVE_TICK and abs(s["time"]-tick*.05)<1e-6
 ERROR=re.compile(
     r"shader error|shader compilation (?:failed|error)|failed to (?:compile|link)|(?:compile|link)(?:ing)? [^\n]{0,30}shader.*(?:failed|error)|"
     r"gl_invalid_(?:enum|value|operation|framebuffer_operation)|context lost|wasm.*(?:trap|unreachable)|"
@@ -178,7 +188,7 @@ def browser(root,out,row,role,driver,chrome,web):
             return {k:s[k] for k in ("victory_mode","control_ticks","paused","game_over","outcome","selected","bank_milli","age","military_techs",
                        "population","capacity","delivered","built","trained","own_pending_commands","touch_mode","build_mode")}
         def opening_state(s):
-            return s["victory_mode"]=="conquest" and s["age"]==2 and s["population"]==18 and s["capacity"]==25 and len(s["selected"])==12 and not s["game_over"] and not s["own_pending_commands"] and not s["touch_mode"] and not s["build_mode"] and s["built"]==s["trained"]==s["delivered"]==0
+            return s["bank_milli"]==INITIAL_BANK and s["victory_mode"]=="conquest" and s["age"]==2 and s["population"]==18 and s["capacity"]==25 and len(s["selected"])==12 and not s["game_over"] and not s["own_pending_commands"] and not s["touch_mode"] and not s["build_mode"] and s["built"]==s["trained"]==s["delivered"]==0
         def gl_ok(g):
             c=(g or {}).get("canvas") or {}
             return c.get("version","").startswith("WebGL 2.0") and c.get("glsl","").startswith("WebGL GLSL ES 3.00") and not g["errorCount"] and not g["contextLost"]
@@ -204,7 +214,7 @@ def browser(root,out,row,role,driver,chrome,web):
             return o if world(o) else None
         first=until(live,30)
         f=first["state"]
-        require(opening_state(f) and not f["paused"] and 0<=f["tick"]<=28,"not an early ordinary Survival battlefield")
+        require(opening_state(f) and not f["paused"] and opening_clock(f),"not an early ordinary Survival battlefield")
         receipt["first_battlefield"]={"state":f,"gl":first["gl"]}
         pause=[b for b in f["hud"]["buttons"] if b["text"]=="暫停" and not b["disabled"]]
         require(len(pause)==1,"ordinary Pause touch target not unique")
@@ -214,9 +224,12 @@ def browser(root,out,row,role,driver,chrome,web):
             return o if world(o) and o["state"]["paused"] and drew(o["gl"]) else None
         e=until(frozen,10)
         initial=e["state"]; frozen_auth=auth(initial)
-        require(0<=initial["tick"]<=32 and opening_state(initial) and frozen_auth=={**auth(f),"paused":True},"startup advanced or changed public state before ordinary pause")
+        pre={**auth(f),"paused":True}
+        receipt["early_battlefield"]={"tick":initial["tick"],"time":initial["time"],"tick_delta":initial["tick"]-f["tick"],
+            "camera":initial["hud"]["camera"],"gl":e["gl"],"public_auth_diff":{k:[pre[k],frozen_auth[k]] for k in pre if pre[k]!=frozen_auth[k]}}
         receipt["first_battlefield_png_sha256"]=diagnostic("first-battlefield")
-        receipt["early_battlefield"]={"tick":initial["tick"],"camera":initial["hud"]["camera"],"gl":e["gl"]}
+        require(opening_clock(initial) and initial["tick"]>=f["tick"] and opening_state(initial) and frozen_auth==pre,
+                "stock pause outside frozen opening bound or with real public authority drift")
         top=[6,6,556,54];bottom=[6,223,556,91]
         def settled():
             o=observe()
@@ -316,8 +329,14 @@ def main():
         threading.Thread(target=server.serve_forever,daemon=True).start()
         try:
             url=f"http://127.0.0.1:{server.server_port}"
-            for role in ROLES:browser(temp,out,pins[role],role,driver,chrome,url)
+            role_errors={}
+            for role in ROLES:
+                try:browser(temp,out,pins[role],role,driver,chrome,url)
+                except Exception as error:role_errors[role]=str(error)
         finally:server.shutdown()
+    if role_errors:
+        jdump(out/"nonpassing-roles.json",{"pass":False,"role_errors":role_errors})
+        raise RuntimeError("one or both stock renderer roles did not meet proof conditions; see exact receipts")
     a,b=(json.loads((out/f"{r}-browser.json").read_text()) for r in ROLES)
     c=pixels(out/"baseline.png",out/"candidate.png",a["runtime"]["w"],b["runtime"]["w"],verify)
     result={"pass":satisfy(c),"scope":"Exact unmodified stock exports via ordinary touch menu with paused early Survival, hosted Chrome WebGL2 and strict original canvas PNG; public observations only, not Safari/iPhone.",
