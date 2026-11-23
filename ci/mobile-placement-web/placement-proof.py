@@ -20,6 +20,7 @@ MENU=(("home","StartMatchButton","開始戰役",[64,88,162,54]),
       ("battle_options","ChooseBattle_escort","護送拓荒隊",[46,164,126,54]),
       ("setup","LaunchMatchButton","出征",[338,74,198,54]))
 FOCUS={"focus":[-7,0,6],"zoom":22}
+OPENING_CAMERA={"focus":[-25,0,24],"zoom":22}
 BUILDER=3
 MOVE=[286,173]
 PLOT=[274,161]
@@ -50,6 +51,14 @@ def fields(s):
 def plot_unpaid(s):
     return fields(s)=={"selected":[BUILDER],"bank_milli":BANK,"built":0,"trained":0,"delivered":0,
                       "own_pending_commands":0,"paused":False,"game_over":False}
+def opening(s):
+    # The actual ordinary stock Escort start auto-selects the home keep (0).
+    return (s["hud"]["camera"]==OPENING_CAMERA and not s["build_mode"] and
+           fields(s)=={"selected":[0],"bank_milli":BANK,"built":0,"trained":0,"delivered":0,
+                       "own_pending_commands":0,"paused":False,"game_over":False} and
+           button(s,"定位目標 · 護送拓荒隊",True,True) is not None and
+           any(x.get("id")==BUILDER and x["kind"]=="villager" and close(x["screen"],(241.484375,173.165237426758)) for x in s["hud"]["own_targets"]))
+
 def before_ok(s):
     p=s["hud"]["preview"] or {}
     return s["build_mode"]=="storehouse" and plot_unpaid(s) and not p.get("held",True) and button(s,CONFIRM,False) is not None
@@ -77,7 +86,7 @@ def browser(temp,out,row,role,driver,chrome,web):
         except HTTPError as e:raise RuntimeError(f"WebDriver {e.code}: {e.read().decode(errors='replace')[:1300]}") from None
     def cdp(command,args):return call("POST",prefix+"/goog/cdp/execute",{"cmd":command,"params":args})
     def logs():return call("POST",prefix+"/log",{"type":"browser"})
-    proof={"role":role,"expected":row,"menu":[],"images":{},"pass":False}
+    proof={"role":role,"expected":row,"menu":[],"images":{},"pass":False,"phase":"00 stock Chromium bootstrap"}
     with (out/(role+"-chromedriver.log")).open("wb") as log:
       proc=subprocess.Popen([driver,f"--port={port}","--allowed-ips=127.0.0.1"],stdout=log,stderr=log)
       try:
@@ -135,6 +144,7 @@ def browser(temp,out,row,role,driver,chrome,web):
             raw=base64.b64decode(call("GET",prefix+"/element/"+el+"/screenshot"),validate=True)
             R(raw[:8]==b"\x89PNG\r\n\x1a\n" and struct.unpack(">II",raw[16:24])==(W,H),"not original landscape canvas PNG")
             path=role+"-"+name+".png";(out/path).write_bytes(raw);proof["images"][path]=hashlib.sha256(raw).hexdigest()
+        proof["phase"]="01 enter real ordinary Escort menus"
         call("POST",prefix+"/url",{"url":f"{web}/{role}/index.html?qa=1"})
         stock.until(lambda:(lambda o: gl_ok(o["gl"]) and not o["gl"]["maskDrawn"] and menu_target(o,*MENU[0]))(observe()),60)
         proof["menu_console"]=logs()
@@ -143,19 +153,24 @@ def browser(temp,out,row,role,driver,chrome,web):
             ticks=call("POST",prefix+"/execute/async",{"script":"const d=arguments[arguments.length-1];requestAnimationFrame(a=>requestAnimationFrame(b=>d([a,b])));","args":[]})
             R(len(ticks)==2 and ticks[1]>ticks[0] and menu_target(observe(),*route)==o,"menu control not settled in two distinct display frames")
             touch(center(o));proof["menu"].append({"page":route[0],"button":o,"frames":ticks})
-        def opening(s):
-            return s["bank_milli"]==BANK and not s["selected"] and not s["game_over"] and not s["paused"] and button(s,"定位目標 · 護送拓荒隊",True,True) and any(x.get("id")==BUILDER and x["kind"]=="villager" and close(x["screen"],(241.484375,173.165237426758)) for x in s["hud"]["own_targets"])
-        start=sample(opening,38)
-        worker=next(x for x in start["s"]["hud"]["own_targets"] if x["id"]==BUILDER)
+        proof["phase"]="02 observe authentic unchanged starting keep selection"
+        start=sample(opening,38)["s"]
+        proof["stock_opening"]={"tick":start["tick"],"camera":start["hud"]["camera"],"authority":fields(start)}
+        worker=next(x for x in start["hud"]["own_targets"] if x["id"]==BUILDER)
+        proof["phase"]="03 select actual visible worker without payment or command"
         proof["worker"]=worker;touch([round(x) for x in worker["screen"]])
-        selected=sample(lambda s:s["selected"]==[BUILDER] and button(s,"定位目標 · 護送拓荒隊",True,True))["s"]
+        selected=sample(lambda s:plot_unpaid(s) and not s["build_mode"] and s["hud"]["camera"]==OPENING_CAMERA and button(s,"定位目標 · 護送拓荒隊",True,True))["s"]
+        proof["worker_selected"]={"tick":selected["tick"],"camera":selected["hud"]["camera"],"authority":fields(selected)}
+        proof["phase"]="04 focus the actual Escort objective control"
         touch(center(button(selected,"定位目標 · 護送拓荒隊",True,True)))
         focused=sample(lambda s:s["hud"]["camera"]==FOCUS and plot_unpaid(s))["s"]
+        proof["phase"]="05 send the visible worker and reach authored outpost"
         proof["move"]=MOVE;touch(MOVE)
         def arrived(s):
             return s["hud"]["camera"]==FOCUS and plot_unpaid(s) and any("建立前哨" in b["text"] and "倉庫 0/1" in b["text"] for b in s["hud"]["buttons"])
         a=sample(arrived,100)["s"]
         proof["arrived"]={"tick":a["tick"],"authority":fields(a),"camera":a["hud"]["camera"]}
+        proof["phase"]="06 find and tap ordinary Warehouse action strip control"
         for _ in range(3):
             option=button(a,WAREHOUSE,True)
             if option:break
@@ -163,14 +178,17 @@ def browser(temp,out,row,role,driver,chrome,web):
         option=button(a,WAREHOUSE,True)
         touch(center(option))
         base=role=="baseline"
+        proof["phase"]="07 witness unpaid unheld placement before tapping map"
         before=sample(lambda s:s["hud"]["camera"]==FOCUS and before_ok(s) and has_banner(s)==base)["s"]
         proof["before_tap"]=before
         R(not any(x.get("kind")=="storehouse" for x in before["hud"]["own_targets"]),"warehouse already exists before the test")
+        proof["phase"]="08 adjudicate identical map touch with unchanged bank and orders"
         proof["plot_tap"]=PLOT;touch(PLOT)
         accepted=sample(lambda s:s["hud"]["camera"]==FOCUS and s["tick"]>before["tick"] and after_ok(s,base))["s"]
         R(accepted["tick"]>before["tick"] and fields(accepted)==fields(before),"touch did not traverse an actual state or changed authority")
         proof["after_tap"]=accepted;png("after-identical-tap")
         if not base:
+            proof["phase"]="09 distinct normal Confirm, exact charge and unique unfinished Warehouse"
             check=sample(lambda s:s["hud"]["camera"]==FOCUS and after_ok(s,False))["s"]
             R(fields(check)==fields(before),"capture changed placement authority")
             proof["confirm_tap"]=center(button(check,CONFIRM,True));touch(proof["confirm_tap"])
@@ -179,11 +197,13 @@ def browser(temp,out,row,role,driver,chrome,web):
         else:
             result=sample(lambda s:s["hud"]["camera"]==FOCUS and after_ok(s,True))
             R(fields(result["s"])==fields(before),"baseline charged or changed after rejected touch")
+        proof["phase"]="10 verify actual sandbox-preserving renderer and console"
         proof["runtime_gl"]=result["gl"];proof["final_console"]=logs()
         R(not any(stock.ERROR.search(x.get("message","")) for k in ("menu_console","final_console") for x in proof[k]),"product console reported runtime/WebGL error")
         proof["pass"]=True
+        proof["phase"]="PASS"
       except Exception as ex:
-        proof["error"]=str(ex)
+        proof["error"]=f"{proof['phase']}: {ex}"
         if prefix:
             try:
                 proof["last"]=observe();png("nonpassing-diagnostic")

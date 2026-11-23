@@ -20,7 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo 'ec3813219a0063ed195cb1ce2f4ee51aeac3a976b925c7cfe46cffbbffd474a7  ci/mobile-placement-web/placement-proof.py' | sha256sum --strict --check
+          echo 'c071c55f94eff260faea3795ca4fa7e180b7844fe0375a65e87154c969681d5d  ci/mobile-placement-web/placement-proof.py' | sha256sum --strict --check
           echo '76f134983e34dd9c095097c7c73a96cfa83735b2991087a3a2db052bf9873754  ci/mobile-placement-web/pins.json' | sha256sum --strict --check
           echo '07ef064054d6d1a66ceb8c01de2cf8a84d67abc3a756533ca7e47bf36d16c740  ci/map-edge-webgl-stock/stock-proof.py' | sha256sum --strict --check
           echo 'ede588f6ee877b5af8f35880d463d39d37065c92740c6f958443e10f6aceb5ad  ci/map-edge-webgl-stock/gl-observe.js' | sha256sum --strict --check
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: vc-21fe3bd842be-stock-placement-chromium-568
+          name: vc-21fe3bd842be-stock-placement-chromium-568-start-keep
           path: ${{ runner.temp }}/vc-mobile-placement-web/
           retention-days: 30
           if-no-files-found: warn
