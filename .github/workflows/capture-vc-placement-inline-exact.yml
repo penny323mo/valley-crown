@@ -1,0 +1,47 @@
+name: Capture exact stamped Valley Crown placement touch
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-placement-inline-exact.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 27
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 9e5f9e9cfccb0238f2c9b7ce36d67058a3ea0394
+          path: exact-placement-baseline
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 601b8607fb82e741018541d2a6922bc508094dab
+          path: exact-placement-candidate
+          persist-credentials: false
+      - name: Install pinned Godot and known software display
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-exact-placement-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-exact-placement-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Render exact same formerly swallowed touch on both committed games
+        run: |
+          bash ci/placement-inline-exact/run-exact-capture.sh \
+            "$GITHUB_WORKSPACE/exact-placement-baseline" "$GITHUB_WORKSPACE/exact-placement-candidate" \
+            "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" "$RUNNER_TEMP/vc-exact-placement"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-21fe3bd842be-native-exact-placement-touch
+          path: ${{ runner.temp }}/vc-exact-placement/
+          retention-days: 30
+          if-no-files-found: ignore
