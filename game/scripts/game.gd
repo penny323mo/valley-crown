@@ -5397,7 +5397,7 @@ func _rebuild_actions(selection):
 	if is_instance_valid(stop_button):
 		stop_button.get_parent().remove_child(stop_button); stop_button.queue_free()
 	stop_button=null
-	if is_instance_valid(build_recon_button) and build_recon_button.get_parent()==ui:
+	if is_instance_valid(ui) and is_instance_valid(build_recon_button) and build_recon_button.get_parent()==ui:
 		ui.remove_child(build_recon_button);build_recon_button.queue_free()
 	for child in actions.get_children(): actions.remove_child(child); child.queue_free()
 	town_research_jump=null;town_research_return=null
@@ -5438,11 +5438,12 @@ func _rebuild_actions(selection):
 		actions.add_child(build_confirm)
 		var cancel_build=_button("取消建造",func(): _cancel_mode(),110)
 		cancel_build.name="CancelBuildPreview";actions.add_child(cancel_build)
-		build_recon_button=_button("前往查看",_request_build_recon,112)
-		build_recon_button.name="BuildRecon"
-		build_recon_button.tooltip_text="只移動已選的閒置村民，不扣資源。保留所選地點，取得視野後仍須自行確認建造；不保證路線可到。"
-		build_recon_button.hide()
-		ui.add_child(build_recon_button)
+		if is_instance_valid(ui):
+			build_recon_button=_button("前往查看",_request_build_recon,112)
+			build_recon_button.name="BuildRecon"
+			build_recon_button.tooltip_text="只移動已選的閒置村民，不扣資源。保留所選地點，取得視野後仍須自行確認建造；不保證路線可到。"
+			build_recon_button.hide()
+			ui.add_child(build_recon_button)
 		if build_mode=="wall":
 			var segments=_button("木柵段數：%d" % wall_line_count,_cycle_wall_line_count,150)
 			segments.name="WallLineCount";segments.tooltip_text="選取多位村民可成排建造，每人一段，最多四段；每段木材30。"
