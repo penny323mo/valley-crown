@@ -1,0 +1,81 @@
+--- a/game/scripts/fog_inward_edge.gd
++++ b/game/scripts/fog_inward_edge.gd
+@@ -1,6 +1,7 @@
+ extends MeshInstance3D
+ # Presentation only. Original per-cell fog is retained without modification.
+-# Adds darkness exclusively INSIDE currently visible cells. No knowledge writes.
++# Adds darkness inside visible cells and an unknown veil over visual-only ground
++# outside the map. No knowledge writes.
+ const EDGE_WIDTH = 0.65
+ const SHADER_CODE = """
+ shader_type spatial;
+@@ -19,19 +20,25 @@
+ }
+ void fragment() {
+  vec2 cell = floor(ground_position);
+- float current = cell_state(cell);
+- float opacity = 0.0;
+- // Unknown/explored output stays zero; their original opacity is unchanged.
+- if (current > 0.75) {
+-  for (int y = -1; y <= 1; y++) {
+-   for (int x = -1; x <= 1; x++) {
+-    if (x != 0 || y != 0) {
+-     vec2 n = cell + vec2(float(x), float(y));
+-     float s = cell_state(n);
+-     if (s < 0.75) {
+-      vec2 delta = max(max(n - ground_position, ground_position - (n + vec2(1.0))), vec2(0.0));
+-      float inward = 1.0 - smoothstep(0.0, edge_width, length(delta));
+-      opacity = max(opacity, (s > 0.25 ? 0.65 : 0.94) * inward);
++ bool exterior = any(lessThan(cell, vec2(0.0))) || any(greaterThanEqual(cell, vec2(map_size)));
++ // Visual-only ground beyond the gameplay grid must not look revealed.
++ // Inside the grid, original unknown/explored cells still contribute zero
++ // to this helper, preserving the original per-cell fog exactly.
++ float opacity = 0.94;
++ if (!exterior) {
++  opacity = 0.0;
++  float current = cell_state(cell);
++  if (current > 0.75) {
++   for (int y = -1; y <= 1; y++) {
++    for (int x = -1; x <= 1; x++) {
++     if (x != 0 || y != 0) {
++      vec2 n = cell + vec2(float(x), float(y));
++      float s = cell_state(n);
++      if (s < 0.75) {
++       vec2 delta = max(max(n - ground_position, ground_position - (n + vec2(1.0))), vec2(0.0));
++       float inward = 1.0 - smoothstep(0.0, edge_width, length(delta));
++       opacity = max(opacity, (s > 0.25 ? 0.65 : 0.94) * inward);
++      }
+      }
+     }
+    }
+@@ -63,6 +70,12 @@
+  material.set_shader_parameter('map_half',float(size)*0.5)
+  material.set_shader_parameter('edge_width',EDGE_WIDTH)
+  material_override = material
++func cover_world(half_extents: Vector2) -> void:
++ # Expand this same draw only; MODEL_MATRIX keeps map cell coordinates fixed.
++ var half_grid := float(grid_size) * 0.5
++ var extent := (half_extents / half_grid).max(Vector2.ONE)
++ var desired := Vector3(extent.x,1.0,extent.y)
++ if scale != desired: scale = desired
+ static func encode_states(states: PackedByteArray) -> PackedByteArray:
+  var bytes:=PackedByteArray()
+  bytes.resize(states.size())
+--- a/game/scripts/game.gd
++++ b/game/scripts/game.gd
+@@ -4150,6 +4150,7 @@
+ 	fog.multimesh=mm; add_child(fog)
+ 	fog_inward_edge=preload("res://scripts/fog_inward_edge.gd").new()
+ 	fog_inward_edge.initialize(Rules.MAP_SIZE); add_child(fog_inward_edge)
++	_cover_camera_ground()
+ 
+ func _update_vision(refresh_render=true):
+ 	if visible_cells[0].is_empty(): return
+@@ -5967,6 +5968,7 @@
+ 		required.x=maxf(required.x,absf(point.x)+1.0)
+ 		required.y=maxf(required.y,absf(point.z)+1.0)
+ 	camera_ground.scale=Vector3(required.x/half_size.x,1.0,required.y/half_size.y)
++	if is_instance_valid(fog_inward_edge): fog_inward_edge.cover_world(required)
+ 
+ func _ui_owns_camera_keys():
+ 	if not is_inside_tree():return false
