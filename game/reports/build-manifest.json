@@ -1,5 +1,5 @@
 {
-  "build": "vc-2bf736f4bf15",
+  "build": "vc-758fa5a99e0f",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -288,7 +288,7 @@
     "scripts/forward_depot.gd": "a5c74cbcba7bd796d1174f34425a575f410c5d7d365f46ee0dd12b48eb831144",
     "scripts/frontier_escort.gd": "dfc955aec941c08ec9272c04c3fe20fc0801beeb495e461a74de0a41b7ab024e",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "6c470b6d0db0c59c6d8034060e44b69f60a92cb5ad53277658039491176d683c",
+    "scripts/game.gd": "fd16bdd8acd7652d5a003e046042a6c7791ce29f63eae2a6c210c8a5d46cbf12",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/garrison_checkpoint.gd": "85b9c4696b7b632600e2fe81c083015edb482f07bf100a4c08be43fba0f88427",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
@@ -331,7 +331,7 @@
     "scripts/river_landscape.gd.uid": "3cf5e46ceee29fea583011ff4da2a0512bfb126e0897697e541278d21cde00bd",
     "scripts/river_terrain.gd": "24af3eb1acd7b9de802ee8c67a0aae6bb05075472e0adc9cc1d8f8280d4f1e6a",
     "scripts/river_terrain.gd.uid": "b0aa418fa5c7372bbaf967118441d38d6419a1c3e95e72f174a24563f27f3e98",
-    "scripts/rules.gd": "5dd455b2135d835f10cf92e0009e64adbf6c2671ac827ab66920f62135ecae2a",
+    "scripts/rules.gd": "486f677fb174a79cd1df9adfd6a1e0b394a001b1da9d239b3f6b1f7a80782240",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "c97f96da3e57833ebb6cdc6ed78785c2ce6b8f50087e0e3b3cab257fedc4f81e",

@@ -213,6 +213,8 @@ var wall_line_count=1
 var wall_line_vertical=false
 var clear_site_button: Button
 var build_preview_held=false # Presentation/input intent only; no payment until explicit Confirm.
+var build_recon_button: Button
+var build_recon_attempt={} # Transient UI witness of an already explicit ordinary Move.
 var pointer_world=Vector3.ZERO
 var pointer_screen=Vector2.ZERO
 var hover_id=-1
@@ -5190,6 +5192,7 @@ func _update_hud():
 			selection_detail.text+=" · 請重新落指令"
 		elif has_unit and compact_ui:
 			selection_detail.text+=" · 點空地移動／敵軍攻擊／資源採集"
+	var recon={}
 	if build_mode.is_empty():
 		help_label.text="點選單位，再點空地移動、敵軍攻擊或資源採集。單指拖曳框選；雙指移鏡／縮放。窄畫面可左右滑動底列，查看全部行動。" if compact_ui else "左鍵選取／框選，再點目標落指令 · 右鍵亦可落指令 · WASD／方向鍵平移 · 滾輪縮放 · 空白鍵返回主堡"
 		if touch_command: help_label.text="指定目標：點擊地面、資源或可見敵軍；一般移動和攻擊毋須按此鈕。"
@@ -5200,14 +5203,16 @@ func _update_hud():
 			touch_button.text="規劃中"
 	else:
 		var reason=_build_preview_reason()
+		recon=_refresh_build_recon(reason)
 		help_label.text=("位置已選，按確認建造；點空地可重選。" if build_preview_held else "點選空地作預覽，再按確認建造。") if reason.is_empty() else "不可建造："+reason
+		if not recon.is_empty():help_label.text=recon.detail
 		if Rules.PRODUCES.has(build_mode): selection_detail.text="可在目前可見空地建造，留有施工通道，勿堵住既有生產建築最後出口。"
 		if is_instance_valid(build_confirm): build_confirm.disabled=not reason.is_empty() or paused or not build_preview_held
 		if build_mode=="wall" and wall_line_count>1:help_label.text="%d 段木柵／木材 %d／每段一人。" % [wall_line_count,wall_line_count*30]+help_label.text
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		var escort_hint=_escort_build_zone_hint() if reason.is_empty() else ""
 		if inline_build:
-			inline_build_status=_build_inline_summary(reason,escort_hint)
+			inline_build_status=_build_inline_summary(reason,escort_hint) if recon.is_empty() else recon.summary
 		if not escort_hint.is_empty():help_label.text=escort_hint+"；"+help_label.text
 		selection_detail.text=help_label.text
 		if build_mode=="tower":selection_detail.text+=" · 射程參考 %.1f（至目標邊緣，須可見）" % Rules.RANGE.tower
@@ -5254,6 +5259,7 @@ func _update_hud():
 		var shortfall=_shortfall_for(build_mode)
 		if not shortfall.is_empty():selection_summary.text=shortfall
 		elif inline_build:selection_summary.text=inline_build_status
+		elif not recon.is_empty():selection_summary.text=recon.summary
 	elif not touch_command and rally_building<0 and not box_select_mode and selection.size()==1:
 		var producer=selection[0]
 		if producer.owned and producer.built and Rules.PRODUCES.has(producer.kind) and producer.queue.is_empty():
@@ -5391,9 +5397,12 @@ func _rebuild_actions(selection):
 	if is_instance_valid(stop_button):
 		stop_button.get_parent().remove_child(stop_button); stop_button.queue_free()
 	stop_button=null
+	if is_instance_valid(build_recon_button) and build_recon_button.get_parent()==ui:
+		ui.remove_child(build_recon_button);build_recon_button.queue_free()
 	for child in actions.get_children(): actions.remove_child(child); child.queue_free()
 	town_research_jump=null;town_research_return=null
 	build_confirm=null
+	build_recon_button=null
 	clear_site_button=null
 	return_cargo_button=null
 	queue_actions.clear()
@@ -5427,7 +5436,13 @@ func _rebuild_actions(selection):
 		build_confirm=_button("確認建造",func(): _confirm_build(),120)
 		CommandIcons.apply(build_confirm,build_mode)
 		actions.add_child(build_confirm)
-		actions.add_child(_button("取消建造",func(): _cancel_mode(),110))
+		var cancel_build=_button("取消建造",func(): _cancel_mode(),110)
+		cancel_build.name="CancelBuildPreview";actions.add_child(cancel_build)
+		build_recon_button=_button("前往查看",_request_build_recon,112)
+		build_recon_button.name="BuildRecon"
+		build_recon_button.tooltip_text="只移動已選的閒置村民，不扣資源。保留所選地點，取得視野後仍須自行確認建造；不保證路線可到。"
+		build_recon_button.hide()
+		ui.add_child(build_recon_button)
 		if build_mode=="wall":
 			var segments=_button("木柵段數：%d" % wall_line_count,_cycle_wall_line_count,150)
 			segments.name="WallLineCount";segments.tooltip_text="選取多位村民可成排建造，每人一段，最多四段；每段木材30。"
@@ -6671,6 +6686,7 @@ func _start_build(kind):
 	_cancel_pointer_streams()
 	_clear_box_select()
 	wall_line_count=1; wall_line_vertical=false
+	build_recon_attempt.clear()
 	build_mode=kind; touch_command=false; rally_building=-1; rally_group.clear(); build_preview_held=false
 	var builder=faction_views[0].get_record(_selected_builder())
 	pointer_world=_point(_cell(builder.pos+Vector3(3,0,0)))
@@ -6752,6 +6768,109 @@ func _build_preview_reason(check_resources=true) -> String:
 		if before and not after:return "整排木柵不可阻住生產建築最後出口"
 	return ""
 
+# Fog is still checked by the ordinary placement validator BEFORE resources or
+# physical occupancy. A UI-only recon plan is allowed only for a remembered,
+# single-site preview and uses no authoritative hidden cells, occupants or paths.
+func _build_recon_fog(reason:String) -> String:
+	if not build_preview_held or reason!="先派村民探索建築範圍":return ""
+	if not Rules.BUILD_TIME.has(build_mode) or (build_mode=="wall" and wall_line_count!=1):return ""
+	var site={"kind":build_mode,"pos":_snap_build_position(build_mode,pointer_world)}
+	for cell in _occupied_cells(site):
+		if explored_cells[0][cell.y*Rules.MAP_SIZE+cell.x]==0:return "unseen"
+	return "remembered"
+
+func _build_recon_identity() -> Array:
+	return [build_mode,_snap_build_position(build_mode,pointer_world),_selected_builder()]
+
+func _known_build_recon_plan(fog_state:String) -> Dictionary:
+	if fog_state!="remembered" or not _squad_actions_available() or touch_gesture or compact_menu.visible or not context_detail_kind.is_empty():return {}
+	# Narrow first pass: one idle worker, no work theft, group wall or mission handoff.
+	if selected.size()!=1 or skirmish_mode in ["escort","depot","expedition","breach"]:return {}
+	var id=selected[0]
+	var worker=faction_views[0].get_record(id)
+	if not worker.get("owned",false) or not worker.get("alive",false) or worker.get("team",-1)!=0 or worker.get("kind","")!="villager":return {}
+	if worker.get("state","")!="idle" or worker.get("path_pending",false) or not worker.get("path",[]).is_empty() or worker.get("cargo_milli",0)>0 or worker.has("garrison_pending") or worker.has("construction_return_type") or _worker_pending_intent(id):return {}
+	var identity=_build_recon_identity()
+	if build_recon_attempt.get("identity",[])==identity:return {}
+	var site={"kind":build_mode,"pos":identity[1]}
+	var cells=_occupied_cells(site)
+	var low:Vector2i=cells.front();var high:Vector2i=cells.back()
+	var grid=work_memory[0].grid
+	var sight:int=Rules.SIGHT.villager
+	var candidates=[]
+	# Two bounded concentric perimeter rings, at most 48 candidates for a
+	# four-cell-wide footprint. Every staging point is outside the footprint
+	# and can reveal it in full if reached. Never query an authoritative grid.
+	for y in range(low.y-2,high.y+3):
+		for x in range(low.x-2,high.x+3):
+			var cell=Vector2i(x,y)
+			if x>=low.x and x<=high.x and y>=low.y and y<=high.y:continue
+			if x<Rules.MAP_BORDER or y<Rules.MAP_BORDER or x>Rules.MAP_LAST_PLAYABLE or y>Rules.MAP_LAST_PLAYABLE:continue
+			if explored_cells[0][y*Rules.MAP_SIZE+x]==0 or grid.is_point_solid(cell):continue
+			if cells.any(func(c):return (c-cell).length_squared()>sight*sight):continue
+			var point=_point(cell)
+			candidates.append({"point":point,"distance":worker.pos.distance_squared_to(point),"cell":y*Rules.MAP_SIZE+x})
+	candidates.sort_custom(func(a,b):return a.cell<b.cell if a.distance==b.distance else a.distance<b.distance)
+	for candidate in candidates.slice(0,6):
+		if _known_destination_clear(worker,candidate.point):
+			return {"identity":identity,"position":candidate.point}
+	return {}
+
+func _build_recon_info(fog_state:String,plan:Dictionary) -> Dictionary:
+	if fog_state=="unseen":
+		return {"summary":"範圍未探索","detail":"建築範圍仍有未探索地段；先選斥候或村民探路。"}
+	if fog_state!="remembered":return {}
+	if build_recon_attempt.get("identity",[])==_build_recon_identity():
+		var worker=faction_views[0].get_record(_selected_builder())
+		var pending=commands.any(func(c):return c.get("team",-1)==0 and c.get("sequence",-1)==build_recon_attempt.sequence)
+		var moving=worker.get("state","")=="move" and worker.get("dest",Vector3.INF)==build_recon_attempt.position and worker.get("path_status","") not in [BoundedPath.NO_PATH,BoundedPath.LIMIT_REACHED]
+		if pending or moving:return {"summary":"正前往查看 · 未扣資源","detail":"村民正前往已探索位置；未扣資源。取得視野後仍須按確認；取消建造不會停止已下達的移動。"}
+		return {"summary":"未取得視野 · 可重選","detail":"村民未取得整個範圍的視野；可重選位置，或先派斥候探路。未扣資源。"}
+	if not plan.is_empty():return {"summary":"已探索 · 查看不扣資源","detail":"此處已探索，但暫無視野。可派已選的閒置村民查看；只移動，不扣資源，能見後仍須確認。"}
+	return {"summary":"已探索 · 暫無視野","detail":"此處已探索，但暫無視野。可改選位置，或先用斥候／村民取得視野。"}
+
+func _refresh_build_recon(reason:String) -> Dictionary:
+	# Re-aiming or clearing the held placement retires its transient receipt;
+	# an already accepted normal Move continues under ordinary unit orders.
+	if not build_recon_attempt.is_empty() and (not build_preview_held or build_recon_attempt.identity!=_build_recon_identity()):
+		build_recon_attempt.clear()
+	var fog_state=_build_recon_fog(reason)
+	var plan=_known_build_recon_plan(fog_state)
+	var info=_build_recon_info(fog_state,plan)
+	if is_instance_valid(build_recon_button):
+		# Rebinding retires old press ownership if the chosen site, villager
+		# or known approach changes, even when the new button occupies the same pixels.
+		_bind_squad_button(build_recon_button,[] if plan.is_empty() else [plan],plan.is_empty())
+		var owns_attempt=fog_state=="remembered" and build_recon_attempt.get("identity",[])==_build_recon_identity()
+		# Keep this exact lane occupied after the tap while still fogged;
+		# a quick second tap must not land on an unrelated shifted control.
+		var present=not plan.is_empty() or owns_attempt
+		# Do not put an inactive optional control (or its fallback rectangle)
+		# in the action strip of visible builds or the group Wall workflow.
+		if present and build_recon_button.get_parent()==ui:
+			build_recon_button.reparent(actions,false)
+			actions.move_child(build_recon_button,actions.get_node("CancelBuildPreview").get_index()+1)
+		elif not present and build_recon_button.get_parent()==actions:
+			build_recon_button.hide()
+			build_recon_button.reparent(ui,false)
+		build_recon_button.visible=present
+		build_recon_button.text=("查看中" if info.get("summary","").begins_with("正前往查看") else "未到達") if owns_attempt else "前往查看"
+	return info
+
+func _request_build_recon():
+	if not is_instance_valid(build_recon_button) or not build_recon_button.is_visible_in_tree() or build_recon_button.disabled:return
+	var reason=_build_preview_reason()
+	var plan=_known_build_recon_plan(_build_recon_fog(reason))
+	if plan.is_empty() or build_recon_button.get_meta("squad_ids",[])!=[plan]:
+		_refresh_build_recon(reason)
+		return
+	# This is exactly the standard explicit ground MOVE path, addressed only
+	# to the selected builder. Do not touch build authority, payment or production queues.
+	_cancel_pointer_streams()
+	_submit("order",{"ids":[plan.identity[2]],"target":-1,"position":plan.position})
+	build_recon_attempt={"identity":plan.identity,"position":plan.position,"sequence":command_sequence}
+	_update_hud()
+
 func _update_ghost():
 	if not is_instance_valid(ghost): return
 	ghost.position=_snap_build_position(build_mode,pointer_world)
@@ -6768,7 +6887,8 @@ func _update_ghost():
 	if _inline_build_guidance(get_viewport().get_visible_rect().size):return
 	var escort_hint=_escort_build_zone_hint() if placement_ok else ""
 	if short_ui and not escort_hint.is_empty():_message(escort_hint+" · 可確認建造",1,true)
-	elif short_ui: _message(("%d 段／木材 %d。" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else "")+(("位置已選，按確認建造。" if build_preview_held else "點選空地作預覽，再按確認建造。") if placement_ok else "不可建造："+reason),1,true)
+	# Keep the fog-specific help in the HUD; do not put a new overlay over the battlefield.
+	elif short_ui and _build_recon_fog(reason).is_empty(): _message(("%d 段／木材 %d。" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else "")+(("位置已選，按確認建造。" if build_preview_held else "點選空地作預覽，再按確認建造。") if placement_ok else "不可建造："+reason),1,true)
 
 func _confirm_build():
 	if build_mode.is_empty() or paused or not build_preview_held or touch_gesture: return
@@ -6791,6 +6911,7 @@ func _cancel_mode():
 	if toast_build_guidance:
 		toast_build_guidance=false; toast_time=0.0
 		if is_instance_valid(toast_label): toast_label.text=""; toast_label.visible=false
+	build_recon_attempt.clear()
 	build_mode=""; build_preview_held=false; touch_command=false; unit_command_kind="order"; advance_formation=""; rally_building=-1; rally_group.clear(); rally_mode="move"
 	_cancel_pointer_streams()
 	if is_instance_valid(ghost): ghost.queue_free(); ghost=null
