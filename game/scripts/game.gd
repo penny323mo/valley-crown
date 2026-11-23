@@ -247,6 +247,7 @@ var time_label: Label
 var toast_label: Label
 var toast_time=0.0
 var toast_build_guidance=false
+var toast_clear_world_point:=Vector3.INF
 var selection_title: Label
 var selection_detail: Label
 var help_label: Label
@@ -3188,7 +3189,10 @@ func _update_unit(ent,dt):
 						var notice=Rules.NAMES[target.kind]+"建造完成。"
 						if returned>0:notice+=" %d 村民已返回工作。" % returned
 						if waiting>0:notice+=" %d 村民待命：%s。" % [waiting,"；".join(reasons)]
-						_message(notice,6)
+						# Paid military producers are immediately actionable. If this
+						# notice would obscure the building, keep it on the other side.
+						var clear_point:Vector3=target.pos+Vector3.UP if not receipt_id.is_empty() and target.kind in ["barracks","range","stable","workshop"] else Vector3.INF
+						_message(notice,6,false,clear_point)
 
 # A one-shot continuation of the job interrupted by this paid construction.
 # No hidden authority scan, new command budget, repeated retry or cargo edit.
@@ -4702,6 +4706,9 @@ func _battle_top_row_fits(view_size:Vector2) -> bool:
 	required+=compact_top_line.get_theme_constant("separation")*(count-1)
 	return required<=view_size.x-margin*2
 
+func _compact_build_price(size: Vector2) -> bool:
+	return not build_mode.is_empty() and size.y<=430 and size.x>=480 and size.x>size.y
+
 func _layout_ui():
 	if not is_inside_tree() or not is_instance_valid(ui): return
 	var size=get_viewport().get_visible_rect().size
@@ -4725,10 +4732,11 @@ func _layout_ui():
 	var info_parent=compact_narrow_info if stack_info else selection_row
 	for label in [selection_summary,queue_label]:
 		if label.get_parent()!=info_parent: label.reparent(info_parent)
-	queue_label.custom_minimum_size.x=0 if narrow or queue_label.text.is_empty() else 222
-	# The compact row price must own its measured one-line width, rather than
-	# shrinking to a one-glyph column beside the expanding summary label.
-	queue_label.autowrap_mode=TextServer.AUTOWRAP_OFF if short_ui and build_mode=="wall" and wall_line_count>1 else TextServer.AUTOWRAP_WORD_SMART
+	var compact_price=_compact_build_price(size)
+	queue_label.custom_minimum_size.x=0 if compact_price or narrow or queue_label.text.is_empty() else 222
+	# A compact preview price is text-sized, not a wrapped queue paragraph.
+	# Auto-wrap gave it a 1px minimum and displaced the entire bottom HUD.
+	queue_label.autowrap_mode=TextServer.AUTOWRAP_OFF if compact_price or (short_ui and build_mode=="wall" and wall_line_count>1) else TextServer.AUTOWRAP_WORD_SMART
 	compact_narrow_info.visible=stack_info
 	var margin=6.0 if short_ui or narrow else 8.0
 	var width=size.x-margin*2
@@ -5004,7 +5012,17 @@ func _update_hud():
 		if not escort_hint.is_empty():help_label.text=escort_hint+"；"+help_label.text
 		selection_detail.text=help_label.text
 		if build_mode=="tower":selection_detail.text+=" · 射程參考 %.1f（至目標邊緣，須可見）" % Rules.RANGE.tower
-		queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else Rules.cost_label(build_mode))+(" · "+("資源不足：" if not _can_pay({"wood":30*wall_line_count} if build_mode=="wall" else COSTS[build_mode],0) else "")+_shortfall_for(build_mode,0) if not _shortfall_for(build_mode,0).is_empty() else ""); queue_label.show()
+		var build_price=Rules.cost_label(build_mode)
+		var build_shortfall=_shortfall_for(build_mode)
+		if _compact_build_price(get_viewport().get_visible_rect().size):
+			# Full placement and shortage reasons still live in Details. Keep
+			# the exact total (also for wall rows) separate from wrapping prose.
+			queue_label.text="%d段 · 木%d" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else build_price
+			if not build_shortfall.is_empty():selection_detail.text+=" · "+build_shortfall
+		else:
+			var cost={"wood":30*wall_line_count} if build_mode=="wall" else COSTS[build_mode]
+			queue_label.text=("%d 段木柵 · 木材 %d · 每段一位村民" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else build_price)+(" · "+("資源不足：" if not _can_pay(cost,0) else "")+build_shortfall if not build_shortfall.is_empty() else "")
+		queue_label.show()
 	if rally_building>=0:
 		selection_detail.text="警戒集合點：點可見空地；新軍隊射程內迎擊，敵軍離開後繼續前進，不追擊。" if rally_mode=="advance" else "點可見空地設定集合點；主堡亦可點資源，讓新村民自動採集。"
 		help_label.text=selection_detail.text
@@ -5634,12 +5652,15 @@ func _submit_selected_stance(type: String):
 			_cancel_pointer_streams()
 	_submit(type,{"ids":selected.duplicate()})
 
-func _message(text,duration=4.0,build_guidance=false):
+func _message(text,duration=4.0,build_guidance=false,clear_world_point=Vector3.INF):
 	# Ordinary feedback replaces any previous construction-mode guidance.
+	var relayout=toast_clear_world_point.is_finite() or clear_world_point.is_finite()
+	toast_clear_world_point=clear_world_point
 	toast_build_guidance=build_guidance
 	if is_instance_valid(toast_label): toast_label.text=text
 	toast_time=duration
 	_refresh_tutorial()
+	if relayout and is_instance_valid(tutorial_panel):_place_tutorial_panel()
 
 func _select(ids):
 	# Choosing a different group/building ends the previous builder preview.
@@ -7216,6 +7237,8 @@ func _skip_tutorial():
 func _refresh_tutorial():
 	if not is_instance_valid(tutorial_panel): return
 	var feedback=toast_time>0 and not toast_label.text.is_empty()
+	var completion_expired=toast_clear_world_point.is_finite() and not feedback
+	if completion_expired:toast_clear_world_point=Vector3.INF
 	tutorial_panel.visible=(feedback or (not demo_tutorial.skipped and not tutorial_collapsed)) and not game_over and not compact_menu.visible and context_detail_kind.is_empty()
 	tutorial_label.visible=not feedback
 	toast_label.visible=feedback and tutorial_panel.visible
@@ -7232,7 +7255,7 @@ func _refresh_tutorial():
 	if is_instance_valid(guidance_detail):
 		guidance_detail.text=toast_label.text if feedback else demo_tutorial.checklist(paused)
 	var sidecard=low_landscape_ui and not feedback
-	if sidecard!=tutorial_sidecard:
+	if sidecard!=tutorial_sidecard or completion_expired:
 		tutorial_sidecard=sidecard
 		_place_tutorial_panel()
 	_refresh_tutorial_locator()
@@ -7249,13 +7272,22 @@ func _place_tutorial_panel():
 	# such as blocked building sites and mission/restore notifications.
 	# Only the persistent lesson moves aside; it still opens by default.
 	var card_width=minf(width,maxf(392.0,width*0.58)) if tutorial_sidecard else width
+	var card_y=hud_top.position.y+hud_top.size.y+4
+	var align_left=false
+	if short_ui and viewport_size.x>=480 and viewport_size.x>viewport_size.y and toast_time>0 and toast_clear_world_point.is_finite():
+		var target=camera.unproject_position(toast_clear_world_point)
+		var frame:=tutorial_panel.get_theme_stylebox("panel")
+		var feedback_height=guidance_detail_button.get_combined_minimum_size().y+frame.get_content_margin(SIDE_TOP)+frame.get_content_margin(SIDE_BOTTOM)
+		if target.is_finite() and Rect2(6,card_y,width,feedback_height).has_point(target):
+			card_width=floorf(width*0.5)-8.0
+			align_left=target.x>=viewport_size.x*0.5
 	tutorial_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART if tutorial_sidecard else TextServer.AUTOWRAP_OFF
 	tutorial_label.max_lines_visible=2 if tutorial_sidecard else 1
 	# Label with clip+wrap has 1px minimum height. Reserve two real text
 	# lines alongside the existing touch controls; otherwise the label can
 	# report wraps while painting no glyphs in Web or native rendering.
 	tutorial_label.custom_minimum_size.y=52.0 if tutorial_sidecard else 0.0
-	tutorial_panel.position=Vector2(viewport_size.x-card_width-6,hud_top.position.y+hud_top.size.y+4)
+	tutorial_panel.position=Vector2(6 if align_left else viewport_size.x-card_width-6,card_y)
 	tutorial_panel.size=Vector2(card_width,0)
 
 # Standalone battlefield fixtures retain deliberate startup; the product shell
