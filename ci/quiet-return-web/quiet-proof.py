@@ -142,19 +142,21 @@ def browser(temp,out,row,role,driver,chrome,web):
         proof["frames"]["opening"]=initial
         def pan_to_leave(target,label):
             previous=sample(authority)["s"]
-            trace=[]
-            for i in range(7):
-                if off_camera(previous,target):break
-                before=previous["hud"]["camera"]["focus"]
-                fingers=((180,145),(242,145))
-                def pair(dx):
-                    return [{"x":x+dx,"y":y,"id":j+1} for j,(x,y) in enumerate(fingers)]
-                cdp("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":pair(0)})
-                for step in range(1,12):cdp("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":pair(-52*step/11)})
-                cdp("Input.dispatchTouchEvent",{"type":"touchEnd","touchPoints":[]})
-                previous=sample(lambda s:authority(s) and not close(s["hud"]["camera"]["focus"],before),8)["s"]
-                trace.append({"fingers":fingers,"both_delta":[-52,0],"received_camera":previous["hud"]["camera"],"tick":previous["tick"]})
-            R(trace and off_camera(previous,target),"ordinary pan never moved exact site offscreen")
+            R(not off_camera(previous,target),"ordinary pan must begin with site still in view")
+            before=previous["hud"]["camera"]["focus"]
+            # One genuine constant-separation swipe in the same clear y=145
+            # terrain lane. 15 move samples avoid a large transient pinch
+            # and remove 48 actual WebDriver round trips per departure.
+            fingers=((390,145),(452,145))
+            def pair(dx):
+                return [{"x":x+dx,"y":y,"id":j+1} for j,(x,y) in enumerate(fingers)]
+            cdp("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":pair(0)})
+            for step in range(1,16):
+                cdp("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":pair(-19*step)})
+            cdp("Input.dispatchTouchEvent",{"type":"touchEnd","touchPoints":[]})
+            previous=sample(lambda s:authority(s) and not close(s["hud"]["camera"]["focus"],before),8)["s"]
+            R(off_camera(previous,target),"one genuine two-finger swipe did not move exact site fully offscreen")
+            trace=[{"fingers":fingers,"both_delta":[-285,0],"move_samples":15,"received_camera":previous["hud"]["camera"],"tick":previous["tick"]}]
             proof["touches"].append({"label":label,"pans":trace})
             return previous
         proof["frames"]["pan_away_from_home"]=pan_to_leave(HOME,"ordinary two-finger pans away from home")
@@ -168,6 +170,7 @@ def browser(temp,out,row,role,driver,chrome,web):
         proof["phase"]="04 same battle offscreen, damage continues naturally with no repeated unread"
         away=pan_to_leave(FIRST,"ordinary two-finger pans away after acknowledgement")
         proof["frames"]["pan_away_after_ack"]=away
+        R(away["tick"]<AVAIL_CHECK_MAX,"offscreen swipe settled past the unchanged live Keep test window")
         last=[]
         def joined(s):
             life=hp(s)
