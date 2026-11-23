@@ -27,10 +27,10 @@ jobs:
           import sys,json,pathlib,hashlib,os
           sys.path.insert(0,'scripts')
           from web_release_archive import GitHub,verified_members
-          row={'artifact_id': 14783964290, 'run_id': 45096333341, 'build': 'vc-8018c5b0e95b', 'metadata_sha256': '5215822fcdb7d03fde5e9b9513cefe3e747bbe53deb3533b619ede8f810d1804', 'zip_sha256': 'f1544cc6fc022290b7f92fcee5a7fc76f45490731db20eb93bc5aa39065a8262'}
+          row={'artifact_id': 14788907635, 'run_id': 45106940156, 'build': 'vc-48407f5501e4', 'metadata_sha256': '070a0e215ad388110802654802cdfaf07352102aa8fb49c71214878a83984907', 'zip_sha256': '83d54c7ac0866ad2caac3bf58fc1bcbf950443c67a91bc4f1e75b82f13bca013'}
           g=GitHub(os.environ['GITHUB_REPOSITORY'])
           run=g.request('/actions/runs/'+str(row['run_id']))
-          assert run['conclusion']=='success' and run['head_sha']=='728a27eb0dee6e2f92ff673955be265b01281f78'
+          assert run['conclusion']=='success' and run['head_sha']=='1447da607618f5b830105873c951a6892fc11707'
           meta=g.request('/actions/artifacts/'+str(row['artifact_id']))
           assert not meta['expired'] and meta['workflow_run']['id']==row['run_id']
           data=g.request('/actions/artifacts/'+str(row['artifact_id'])+'/zip',binary=True)
@@ -43,7 +43,7 @@ jobs:
             if name.startswith(prefix):
              p=root/name[len(prefix):];p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
           manifest={'build':row['build'],'source_commit':m['source_commit'],'export_run':m['export_run'],'files_sha256':{p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()},'browser_acceptance':'No browser or physical iPhone play test for this build','single_threaded':True}
-          manifest['screenshot_evidence']='Authentic native Godot command-icon fixtures at 390x844 and 844x390 from exact product source; capture run 45096827995';(root/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n');(root/'.nojekyll').touch()
+          manifest['screenshot_evidence']='Authentic native Godot Training and Research screenshots at 390x844 and 568x320 from exact source; capture run 45106971345';(root/'WEB_EXPORT_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n');(root/'.nojekyll').touch()
           catalog={'files':{'builds/'+row['build']+'/'+p.relative_to(root).as_posix():{'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.rglob('*')) if p.is_file()}}
           pathlib.Path('approved-catalog.json').write_text(json.dumps(catalog,indent=2)+'\n')
           print('Verified exact artifact and prepared seed',row['build'])
@@ -60,7 +60,7 @@ jobs:
           row=json.loads(pathlib.Path('approved-row.json').read_text());data=pathlib.Path('approved-product.zip').read_bytes()
           verified_members(data,row);g=GitHub(os.environ['GITHUB_REPOSITORY']);release=g.release(row)
           if release is None:
-           release=g.request('/releases',method='POST',body={'tag_name':'web-archive-artifact-'+str(row['artifact_id']),'target_commitish':'728a27eb0dee6e2f92ff673955be265b01281f78','name':'Durable Web archive: '+row['build'],'body':'Exact owner-approved verified artifact. ZIP SHA-256: '+row['zip_sha256'],'draft':False,'prerelease':True,'make_latest':'false'})
+           release=g.request('/releases',method='POST',body={'tag_name':'web-archive-artifact-'+str(row['artifact_id']),'target_commitish':'1447da607618f5b830105873c951a6892fc11707','name':'Durable Web archive: '+row['build'],'body':'Exact owner-approved verified artifact. ZIP SHA-256: '+row['zip_sha256'],'draft':False,'prerelease':True,'make_latest':'false'})
           asset=g.asset(release,row)
           if asset is None:
            asset=g.request(release['upload_url'].split('{')[0]+'?name='+str(row['artifact_id'])+'.zip',method='POST',body=data)
@@ -68,7 +68,7 @@ jobs:
           assert readback==data
           print('Durable archive readback verified',row['artifact_id'])
           PY
-          GITHUB_SHA=728a27eb0dee6e2f92ff673955be265b01281f78 python3 scripts/publish_web_seed.py --build vc-8018c5b0e95b --directory seed-approved --catalog approved-catalog.json
+          GITHUB_SHA=1447da607618f5b830105873c951a6892fc11707 python3 scripts/publish_web_seed.py --build vc-48407f5501e4 --directory seed-approved --catalog approved-catalog.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: approved-current-seed-receipt
