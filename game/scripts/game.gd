@@ -247,6 +247,10 @@ var time_label: Label
 var toast_label: Label
 var toast_time=0.0
 var toast_build_guidance=false
+# UI feedback only: an ordinary camera gesture already retires targeting.
+enum AdvanceCameraNotice { NONE, POSSIBLE, WORLD_PAIR }
+var advance_camera_notice=AdvanceCameraNotice.NONE
+var toast_advance_action=""
 var toast_clear_world_point:=Vector3.INF
 var selection_title: Label
 var selection_detail: Label
@@ -4664,6 +4668,7 @@ func _on_viewport_size_changed():
 	_layout_ui()
 
 func _cancel_pointer_streams():
+	advance_camera_notice=AdvanceCameraNotice.NONE
 	if is_instance_valid(minimap):minimap.cancel_pointer()
 	box_cancel_press.clear(); box_cancel_repeat.clear()
 	for index in all_touch_ids: canceled_touch_ids[index]=true
@@ -5614,14 +5619,14 @@ func _start_advance_command():
 	_cancel_mode()
 	unit_command_kind="advance"; touch_command=true
 	_update_hud()
-	_message("警戒前進：點目的地；射程內迎擊，敵軍離開後繼續，不追擊。",6)
+	_message("警戒前進：點目的地；射程內迎擊，敵軍離開後繼續，不追擊。",6,false,Vector3.INF,"警戒前進")
 
 func _start_formation_command(style):
 	if style not in ArmyFormation.TYPES or paused or game_over or not _has_selected_military(): return
 	_start_advance_command()
 	advance_formation=style
 	_update_hud()
-	_message("點目的地：近戰前排、弓手與攻城器後排；沿途警戒迎擊。地形會調整落點，不保證行軍時保持陣形。",7)
+	_message("點目的地：近戰前排、弓手與攻城器後排；沿途警戒迎擊。地形會調整落點，不保證行軍時保持陣形。",7,false,Vector3.INF,"橫列前進" if style=="line" else "分散前進")
 
 func _start_unit_command():
 	# Validate current projected selection before retiring another valid mode.
@@ -5659,7 +5664,10 @@ func _submit_selected_stance(type: String):
 			_cancel_pointer_streams()
 	_submit(type,{"ids":selected.duplicate()})
 
-func _message(text,duration=4.0,build_guidance=false,clear_world_point=Vector3.INF):
+func _message(text,duration=4.0,build_guidance=false,clear_world_point=Vector3.INF,advance_action=""):
+	# Every new notice supersedes the previous notice and any pending rewording.
+	advance_camera_notice=AdvanceCameraNotice.NONE
+	toast_advance_action=advance_action
 	# Ordinary feedback replaces any previous construction-mode guidance.
 	var relayout=toast_clear_world_point.is_finite() or clear_world_point.is_finite()
 	toast_clear_world_point=clear_world_point
@@ -6215,17 +6223,23 @@ func _track_pointer_input(event,viewport):
 			gui_touch_press.erase(event.index)
 			if event.index not in all_touch_ids: all_touch_ids.append(event.index)
 			if all_touch_ids.size()>1:
+				if all_touch_ids.size()==2 and touch_command and unit_command_kind=="advance" and _advance_guidance_visible():
+					# Global input runs before world routing. Only a confirmed pair
+					# of world contacts may publish the post-gesture cancellation.
+					advance_camera_notice=AdvanceCameraNotice.POSSIBLE
 				_clear_touch_hold()
 				if box_select_mode: _clear_box_select(); call_deferred("_update_hud")
 				touch_gesture=true; touch_command=false; rally_building=-1
 				for key in gui_touch_press: gui_touch_press[key].valid=false
 		else:
 			if event.canceled:
+				advance_camera_notice=AdvanceCameraNotice.NONE
 				_clear_touch_hold()
 				if box_select_mode: _clear_box_select(); call_deferred("_update_hud")
 				touch_gesture=true; touch_command=false; rally_building=-1
 				if not build_mode.is_empty(): build_preview_held=false
 			all_touch_ids.erase(event.index)
+			if all_touch_ids.is_empty():_finish_advance_camera_notice()
 			call_deferred("_cleanup_touch_release",event.index,touch_press_epochs.get(event.index,0))
 			call_deferred("_cleanup_button_touch",event.index,touch_press_epochs.get(event.index,0))
 	if event is InputEventMouseButton and not event.pressed:
@@ -6235,6 +6249,16 @@ func _track_pointer_input(event,viewport):
 
 	if is_instance_valid(minimap):minimap.track_pointer(event,viewport)
 	_track_action_scroll(event,viewport)
+
+func _advance_guidance_visible() -> bool:
+	return not toast_advance_action.is_empty() and toast_time>0 and is_instance_valid(toast_label) and toast_label.is_visible_in_tree()
+
+func _finish_advance_camera_notice() -> void:
+	var show_cancel=advance_camera_notice==AdvanceCameraNotice.WORLD_PAIR and not touch_command and _advance_guidance_visible()
+	advance_camera_notice=AdvanceCameraNotice.NONE
+	# Do not move/rebuild controls during a camera gesture; both contacts
+	# have lifted and only this tactic's still-visible guidance is replaced.
+	if show_cancel:_message(toast_advance_action+"已取消。請重選。",4)
 
 func _track_action_scroll(event,viewport):
 	# Mouse emulation is disabled: route touch scrolling explicitly before GUI
@@ -6400,6 +6424,7 @@ func _unhandled_input(event):
 					Input.use_accumulated_input=false
 					touch_hold={"index":event.index,"epoch":touch_press_epochs.get(event.index,-1),"started":_touch_hold_clock(),"origin":event.position}
 			if active_world_ids.size()>=2:
+				if advance_camera_notice==AdvanceCameraNotice.POSSIBLE:advance_camera_notice=AdvanceCameraNotice.WORLD_PAIR
 				touch_gesture=true; touch_command=false; rally_building=-1
 		else:
 			if (box_select_mode or touch_box_automatic) and touch_box_index==event.index:
