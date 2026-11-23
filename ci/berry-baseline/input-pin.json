@@ -1,0 +1,22 @@
+{
+  "source": "4966433bfca3ebfd7a02f37342e9a58776d94508",
+  "game_tree": "8d96e7a3d62a39c65acfcfa96b678e904461a242",
+  "build": "vc-ec0980cd3908",
+  "engine_sha256": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
+  "engine_commit": "7d41c59c457bd5a245092b4e7eb2d833e3b3f8c3",
+  "source_files": {
+    "game/scripts/resource_visuals.gd": "22efd46e4509ebdfcfc47249e3aebd5add09709927871e41ec6e62e89a6e4a2c",
+    "game/scripts/bush_donor_diagnostic.gd": "c52e25ffa0dd57cbf9b35c856b1fa1e0ee6bfb842f90142e2cfe6fe67692f78d",
+    "game/scripts/licensed_rock_visual.gd": "d0871a649f033b14e423a8adbc87a67ea76511c12bcbba1845eae8bfbb16d5a0",
+    "game/scripts/licensed_rock_data.gd": "e5ffba22365fab902b67b27cb54700174c1c58a023c3c08159ebf9221c3f3913",
+    "game/scripts/game.gd": "c588cfd0ce8ad692edebc945f15431e7eed3e00ebc214edfc61b98e93cef847c",
+    "game/scripts/rules.gd": "4ef2656be2afb21e4a2c76f946171cb0c94a69af9ceb554e1cd40c1d86bcdf76",
+    "game/reports/build-manifest.json": "b66aa2c2b1f06f2cadf69a993b12b78e11a1e6ef24ffc624db017eb5e3694713",
+    "game/project.godot": "b952a4e5fa246659b7ca31b15a4cd3a4b1f18db4c53816a1f5a0eb2742d56231"
+  },
+  "qa_files": {
+    "capture-berry-baseline.gd": "e12bc6d418d6481079b3a8ec9a88a29f1389070574c8c7ae34e69bdd2b9afa2d",
+    "run-headful.sh": "7123f99a0721b270248a477bd734ecc344e177347fe11a6e72ed451255e0e839",
+    "verify-berry-capture.py": "817b86163e0483fd1df1a2774a7d50f8ac6a23142647e2395d718a68829eaaf1"
+  }
+}
