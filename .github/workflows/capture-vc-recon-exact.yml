@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: cf573046ad5efb601a5cc4d6bd34f7cc002b4163
+          ref: e9f3305743ae4e36a25362de87cf0437e7556da9
           path: exact-recon-candidate
           persist-credentials: false
       - name: Install pinned Godot and known software display
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: vc-758fa5a99e0f-native-exact-recon
+          name: vc-9b7236f5e71c-native-exact-recon
           path: ${{ runner.temp }}/vc-exact-recon/
           retention-days: 30
           if-no-files-found: ignore
