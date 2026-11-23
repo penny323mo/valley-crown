@@ -17,14 +17,14 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: eb6674eff49794cce98a27cef221e2620c0c6434
+          ref: 40ed8f286d56459bd304568d6131909d00764736
           path: reviewed-source
           persist-credentials: false
       - name: Verify exact candidate and install known display dependencies
         run: |
           set -euo pipefail
-          test "$(git -C reviewed-source rev-parse HEAD)" = eb6674eff49794cce98a27cef221e2620c0c6434
-          test "$(git -C reviewed-source rev-parse 'HEAD^{tree}')" = 77726f9f5e34835780ac5945be8d0e18ad0537ad
+          test "$(git -C reviewed-source rev-parse HEAD)" = 40ed8f286d56459bd304568d6131909d00764736
+          test "$(git -C reviewed-source rev-parse 'HEAD^{tree}')" = acd76b05c11da33d94a83acd5800869e2d29cd1e
           sudo apt-get update -qq
           sudo apt-get install -y xvfb xauth libgl1-mesa-dri
           curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-engine.zip"
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: vc-ab4b930fe35a-native-town-research-bookmarks
+          name: vc-48407f5501e4-native-town-research-bookmarks
           path: ${{ runner.temp }}/vc-town-research-bookmarks/
           retention-days: 30
           if-no-files-found: ignore

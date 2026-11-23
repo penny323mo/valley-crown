@@ -1,16 +1,17 @@
 {
   "status": "REVIEWED_FOR_CAPTURE",
-  "source_commit": "eb6674eff49794cce98a27cef221e2620c0c6434",
-  "full_tree": "77726f9f5e34835780ac5945be8d0e18ad0537ad",
-  "game_tree": "019816636f8904d63c6ddd0673fb1e9871f7983c",
-  "build": "vc-ab4b930fe35a",
-  "fixture_sha256": "f99bf77c44d26fd783903a51095a2cf56dad47cd4601c788ecffb19d4ade13cf",
+  "source_commit": "40ed8f286d56459bd304568d6131909d00764736",
+  "full_tree": "acd76b05c11da33d94a83acd5800869e2d29cd1e",
+  "game_tree": "9db74af4c2f59ad0673d0bc7880b0d033150ba37",
+  "build": "vc-48407f5501e4",
+  "fixture_sha256": "4acd854e7d26c410015841153d3ecce0005578444a5c7103a3bd67ca27230705",
   "source_files_sha256": {
     "game/main.tscn": "502a45b8d70e44bf4017a7674dcc9c18c0b0ca199fef2daec0b3a437a2fdf54b",
     "game/project.godot": "b952a4e5fa246659b7ca31b15a4cd3a4b1f18db4c53816a1f5a0eb2742d56231",
-    "game/scripts/game.gd": "5efb89e0318c33f2d9bddfd8c1d6e38475d3f4a8ee87c4b6af98cf87a03c80e5",
-    "game/scripts/rules.gd": "9cd6836f946c08a03f986583c60cd8fef835402de420f2da9e6a38c5eb7cb7b5",
-    "game/tests/town_research_bookmarks_contract.gd": "541c05ee23d672b6e5307706c90ef3dbaf4966f79cf532e5bab8f17c13bb91be",
-    "game/tests/town_research_lifecycle_contract.gd": "06510007f0b80e6bd3bce74007a6c0b0389e1bf7b223a35d612b34d77bc9acae"
+    "game/scripts/game.gd": "ad4efcd75e48cf88cfcbc6ef3cc5b58dafa1399cd7e7ac69cf88a9b0dee8f760",
+    "game/scripts/rules.gd": "9fa49eb5ca0b3926ca5ba2fe3ba11157301393df348469a8e5b6b7e1ed06e709",
+    "game/tests/town_research_bookmarks_contract.gd": "462060ccf510a7e818e20e4aa55a0e933555f04bf386033bc696df82d0acef0b",
+    "game/tests/town_research_lifecycle_contract.gd": "06510007f0b80e6bd3bce74007a6c0b0389e1bf7b223a35d612b34d77bc9acae",
+    "game/reports/build-manifest.json": "0ab4aa65486fedb51c31eeb3fd61f6b437eb49616c0d3faec7b34c2ab060c372"
   }
 }

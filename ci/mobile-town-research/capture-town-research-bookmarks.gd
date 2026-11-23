@@ -158,14 +158,14 @@ func run():
 	var join=game.town_research_jump
 	var research=locate("age2","城防時代")
 	if not check("ordinary world tap selected the keep and both Train cards and Research are initially visible",
-		game.selected==[keep.id] and reachable(villager) and reachable(scout) and reachable(join) and join.text=="研究 ›" and not reachable(research) and game.action_scroll.scroll_horizontal==0 and game.commands.is_empty()):
+		game.selected==[keep.id] and reachable(villager) and reachable(scout) and reachable(join) and join.text=="研究 >" and join.tooltip_text=="移到主堡研究；不會開始研究或扣款。" and not reachable(research) and game.action_scroll.scroll_horizontal==0 and game.commands.is_empty()):
 		finish();return
 	if not await capture("01-training-before-jump",{"train_villager":villager,"train_scout":scout,"research_jump":join},keep.id,bank,cam,zoom,center):
 		finish();return
 	await tap(join.get_global_rect().get_center(),31)
 	var back=game.town_research_return
 	if not check("one ordinary tap makes real research row and back button reachable at same camera",
-		reachable(research) and reachable(back) and back.text=="‹ 訓練" and root.gui_get_focus_owner()==back and game.action_scroll.scroll_horizontal>0 and game.camera.global_transform==cam):
+		reachable(research) and reachable(back) and back.text=="< 訓練" and root.gui_get_focus_owner()==back and game.action_scroll.scroll_horizontal>0 and game.camera.global_transform==cam):
 		finish();return
 	if not await capture("02-research-after-jump",{"age_research":research,"return_to_training":back},keep.id,bank,cam,zoom,center):
 		finish();return
