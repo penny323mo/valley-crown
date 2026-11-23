@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 5afa32159c331bbafdd923fe305e4fbf97318150
+      BUILDING_RUNTIME_SOURCE_COMMIT: cf573046ad5efb601a5cc4d6bd34f7cc002b4163
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '39fb774c24c9ed187e9877b1a4fcc2fe7996f7385f8f8239d999b98f3b049d18  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '2babdae4e8247e8510b5512d4e6541b230b7cd77925276f087d7aabaf09a34f1  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -661,6 +661,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/inline_construction_guidance_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/short_landscape_idle_worker_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/short_landscape_idle_worker_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/construction_recon_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/construction_recon_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
