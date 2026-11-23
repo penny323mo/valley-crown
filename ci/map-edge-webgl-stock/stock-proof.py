@@ -32,6 +32,21 @@ MAX_OPENING_TICK=120
 FIRST_WAVE_TICK=900
 INITIAL_BANK={"food":150000,"wood":200000,"stone":100000,"iron":0}
 
+# Exact settled 568x320 controls independently matched by native routing
+# and both stock-browser arms. The pre-layout Survival x46 maps to Breach.
+STOCK_MENU_CONTROLS={
+    ("home","StartMatchButton"):("開始戰役",[64,88,162,54]),
+    ("battle_groups","BattleGroup3"):("劇本挑戰",[160,164,126,54]),
+    ("battle_options","ChooseBattle_survival"):("三波守城挑戰",[178,100,144,54]),
+    ("setup","LaunchMatchButton"):("出征",[338,74,198,54]),
+}
+
+def settled_menu_target(o,page,identity):
+    m=o.get("menu") or {}; text,rect=STOCK_MENU_CONTROLS[(page,identity)]
+    if not m.get("visible") or m.get("page")!=page or m.get("match_exists") or o.get("css")!=[568,320,1] or o.get("canvas")!=[568,320]:return None
+    found=[b for b in m.get("buttons",[]) if b.get("id")==identity and b.get("text")==text and b.get("rect")==rect]
+    return found[0] if len(found)==1 else None
+
 def opening_clock(s):
     tick=s.get("tick")
     return type(tick) is int and 0<=tick<=MAX_OPENING_TICK<FIRST_WAVE_TICK and abs(s["time"]-tick*.05)<1e-6
@@ -170,14 +185,17 @@ def browser(root,out,row,role,driver,chrome,web):
             cdp("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":[{"x":x,"y":y,"id":1}]})
             cdp("Input.dispatchTouchEvent",{"type":"touchEnd","touchPoints":[]})
         def tap_menu(page,identity):
-            def target():
-                o=observe(); m=o["menu"]
-                if not m or not m["visible"] or m["page"]!=page:return None
-                return next((b for b in m["buttons"] if b["id"]==identity and min(b["rect"][2:])>=44),None)
-            # All four controls fit this exact supported viewport in the
-            # native routed reference; a different or clipped Web layout fails.
-            b=until(target,8)
-            tap(b["rect"]);return {"page":page,**b}
+            def target():return settled_menu_target(observe(),page,identity)
+            # A canonical first rect alone is not proof that the grid has
+            # settled. Sample after two genuinely distinct Chrome rAF frames.
+            for attempt in range(3):
+                b=until(target,8)
+                frames=call("POST",prefix+"/execute/async",{"script":"""const done=arguments[arguments.length-1];
+                    requestAnimationFrame(a=>requestAnimationFrame(b=>done([a,b])));""","args":[]})
+                require(type(frames) is list and len(frames)==2 and frames[1]>frames[0],"two distinct actual menu animation frames not observed")
+                if target()==b:
+                    tap(b["rect"]);return {"page":page,"layout_frames_ms":frames,**b}
+            raise RuntimeError(f"stock menu would not remain settled: {page}/{identity}")
         def dims(o):
             return o["css"]==[568,320,1] and o["canvas"]==list(SIZE) and o["rect"]==[0,0,568,320]
         def world(o):
@@ -211,7 +229,15 @@ def browser(root,out,row,role,driver,chrome,web):
             receipt["route"].append(tap_menu(page,identity))
         def live():
             o=observe()
-            return o if world(o) else None
+            s=o.get("state");menu=o.get("menu") or {}
+            if s and menu.get("match_exists") and not menu.get("visible"):
+                h=s.get("hud") or {}
+                receipt["first_stock_match_observation"]={"camera":h.get("camera"),"tick":s.get("tick"),
+                    "visible_objective_controls":[b["text"] for b in h.get("buttons",[]) if "定位目標" in b["text"]]}
+                wrong=receipt["first_stock_match_observation"]
+                require(not wrong["visible_objective_controls"] and (wrong["camera"] or {}).get("focus")!=[-4,0,6],
+                        "stock game actually opened a different authored mission; not a Survival render")
+                if world(o):return o
         first=until(live,30)
         f=first["state"]
         require(opening_state(f) and not f["paused"] and opening_clock(f),"not an early ordinary Survival battlefield")
