@@ -1,0 +1,48 @@
+name: Capture matched Valley Crown first-army HUD
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-first-army-hud.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 40ed8f286d56459bd304568d6131909d00764736
+          path: reviewed-baseline
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: b7158f7a0498cec499f521aba5412fade0d7b84c
+          path: reviewed-candidate
+          persist-credentials: false
+      - name: Install pinned Godot and known software display
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-first-army-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-first-army-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Capture matched real Range placement, plus paid completion
+        run: |
+          bash ci/mobile-first-army/run-first-army-capture.sh \
+            "$GITHUB_WORKSPACE/reviewed-baseline" "$GITHUB_WORKSPACE/reviewed-candidate" \
+            "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" ci/mobile-first-army/pins.json \
+            "$RUNNER_TEMP/vc-first-army-hud"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-2ca62083d195-native-first-army-hud
+          path: ${{ runner.temp }}/vc-first-army-hud/
+          retention-days: 30
+          if-no-files-found: ignore
