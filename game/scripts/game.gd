@@ -4785,6 +4785,17 @@ func _layout_survival_wave(stack_resources: bool,view_size: Vector2) -> void:
 		var gap=clampi(floori(content_width-top_resources.get_combined_minimum_size().x-status_width),0,6)
 		survival_stacked_resources_row.add_theme_constant_override("separation",gap)
 
+# Construction guidance belongs in the reserved bottom HUD on short landscape.
+# A full-width guidance overlay otherwise consumes ordinary world taps.
+func _inline_build_guidance(size:Vector2) -> bool:
+	return not build_mode.is_empty() and size.x>=480.0 and size.x>size.y and size.y<560.0
+
+func _build_inline_summary(reason:String, zone_hint:String) -> String:
+	if not build_preview_held:return "點空地選位置"
+	if not reason.is_empty():return "不可建造："+reason
+	if zone_hint.is_empty():return "位置有效 · 按確認建造"
+	return zone_hint.replace("，完成先計"," · 按確認").replace("，可計交付"," · 按確認")
+
 func _layout_ui():
 	if not is_inside_tree() or not is_instance_valid(ui): return
 	var size=get_viewport().get_visible_rect().size
@@ -4813,6 +4824,10 @@ func _layout_ui():
 	var info_parent=compact_narrow_info if stack_info else selection_row
 	for label in [selection_summary,queue_label]:
 		if label.get_parent()!=info_parent: label.reparent(info_parent)
+	var inline_build=_inline_build_guidance(size)
+	selection_summary.autowrap_mode=TextServer.AUTOWRAP_OFF if inline_build else TextServer.AUTOWRAP_WORD_SMART
+	selection_summary.clip_text=inline_build
+	selection_summary.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS if inline_build else TextServer.OVERRUN_NO_TRIMMING
 	var compact_price=_compact_build_price(size)
 	queue_label.custom_minimum_size.x=0 if compact_price or narrow or queue_label.text.is_empty() else 222
 	# A compact preview price is text-sized, not a wrapped queue paragraph.
@@ -4898,6 +4913,8 @@ func _rally_detail(record):
 
 func _update_hud():
 	if not is_instance_valid(top_resources): return
+	var inline_build=_inline_build_guidance(get_viewport().get_visible_rect().size)
+	var inline_build_status=""
 	selection_detail.tooltip_text=""
 	_refresh_control_point_marker()
 	_refresh_idle_worker_button()
@@ -5092,6 +5109,8 @@ func _update_hud():
 		if build_mode=="wall" and wall_line_count>1:help_label.text="%d 段木柵／木材 %d／每段一人。" % [wall_line_count,wall_line_count*30]+help_label.text
 		selection_title.text="建造 "+Rules.NAMES.get(build_mode,build_mode)
 		var escort_hint=_escort_build_zone_hint() if reason.is_empty() else ""
+		if inline_build:
+			inline_build_status=_build_inline_summary(reason,escort_hint)
 		if not escort_hint.is_empty():help_label.text=escort_hint+"；"+help_label.text
 		selection_detail.text=help_label.text
 		if build_mode=="tower":selection_detail.text+=" · 射程參考 %.1f（至目標邊緣，須可見）" % Rules.RANGE.tower
@@ -5137,6 +5156,7 @@ func _update_hud():
 	if not build_mode.is_empty():
 		var shortfall=_shortfall_for(build_mode)
 		if not shortfall.is_empty():selection_summary.text=shortfall
+		elif inline_build:selection_summary.text=inline_build_status
 	elif not touch_command and rally_building<0 and not box_select_mode and selection.size()==1:
 		var producer=selection[0]
 		if producer.owned and producer.built and Rules.PRODUCES.has(producer.kind) and producer.queue.is_empty():
@@ -6648,6 +6668,7 @@ func _update_ghost():
 			part.visible=i<wall_line_count
 			part.position=Vector3(0,0.15,i*2) if wall_line_vertical else Vector3(i*2,0.15,0)
 			part.material_override=ghost.get_child(0).material_override
+	if _inline_build_guidance(get_viewport().get_visible_rect().size):return
 	var escort_hint=_escort_build_zone_hint() if placement_ok else ""
 	if short_ui and not escort_hint.is_empty():_message(escort_hint+" · 可確認建造",1,true)
 	elif short_ui: _message(("%d 段／木材 %d。" % [wall_line_count,wall_line_count*30] if build_mode=="wall" and wall_line_count>1 else "")+(("位置已選，按確認建造。" if build_preview_held else "點選空地作預覽，再按確認建造。") if placement_ok else "不可建造："+reason),1,true)
@@ -7347,10 +7368,11 @@ func _skip_tutorial():
 
 func _refresh_tutorial():
 	if not is_instance_valid(tutorial_panel): return
-	var feedback=toast_time>0 and not toast_label.text.is_empty()
+	var inline_build=_inline_build_guidance(get_viewport().get_visible_rect().size)
+	var feedback=toast_time>0 and not toast_label.text.is_empty() and not (inline_build and toast_build_guidance)
 	var completion_expired=toast_clear_world_point.is_finite() and not feedback
 	if completion_expired:toast_clear_world_point=Vector3.INF
-	tutorial_panel.visible=(feedback or (not demo_tutorial.skipped and not tutorial_collapsed)) and not game_over and not compact_menu.visible and context_detail_kind.is_empty()
+	tutorial_panel.visible=(feedback or (not inline_build and not demo_tutorial.skipped and not tutorial_collapsed)) and not game_over and not compact_menu.visible and context_detail_kind.is_empty()
 	tutorial_label.visible=not feedback
 	toast_label.visible=feedback and tutorial_panel.visible
 	tutorial_skip.visible=not feedback
