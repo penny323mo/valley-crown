@@ -156,9 +156,14 @@ static func _milestone_lines(report: Dictionary) -> Array[String]:
 	lines.append(time_label(report.tick)+" · "+{"victory":"勝利","defeat":"失敗","draw":"和局"}.get(report.outcome,"戰役結束"))
 	return lines
 
-static func page_text(report: Dictionary,page: String) -> String:
+static func page_text(report: Dictionary,page: String,compact_overview=false) -> String:
 	if report.is_empty(): return "沒有已完成的戰役紀錄。"
 	var lines=PackedStringArray()
+	# Only the compact live summary requests this order; saved history and
+	# larger views keep the original complete report and layout.
+	if compact_overview and page=="overview":
+		lines.append_array(_milestone_lines(report))
+		lines.append("")
 	if report.has("layout_title"):lines.append("戰場："+str(report.layout_title))
 	if page=="economy":
 		lines.append("資源帳目（實際入庫／支出／退款／庫存）")
@@ -205,8 +210,9 @@ static func page_text(report: Dictionary,page: String) -> String:
 			lines.append("遠征階段　%d/5" % mini(int(mission.get("stage",0)),5))
 			for index in mission.get("stage_ticks",[]).size():
 				lines.append("%s  %s" % [time_label(mission.stage_ticks[index]),preload("res://scripts/frontier_expedition.gd").TITLES[index]])
-		lines.append("")
-		lines.append_array(_milestone_lines(report))
+		if not compact_overview:
+			lines.append("")
+			lines.append_array(_milestone_lines(report))
 		lines.append("")
 		lines.append("戰役歷時　"+time_label(report.tick))
 		lines.append("城防時代　"+("開局已有" if report.get("skirmish_mode","") in ["battle","fortress","survival","breach"] else (time_label(report.age_tick) if report.age_tick>=0 else "未完成研究")))

@@ -268,6 +268,7 @@ var end_scroll: ScrollContainer
 var end_report_label: Label
 var end_tabs: HBoxContainer
 var end_actions: GridContainer
+var end_compact_summary=false
 var aftermath_view=false
 var aftermath_bar: PanelContainer
 var end_report_page="overview"
@@ -3399,21 +3400,46 @@ func _show_match_report_page(page: String):
 	if not game_over or last_match_report.is_empty() or page not in ["overview","economy","units","buildings"]: return
 	_cancel_pointer_streams()
 	end_report_page=page; end_scroll.scroll_vertical=0
-	end_report_label.text=MatchReport.page_text(last_match_report,page)
-	if not history_write_status.is_empty() and not history_write_status.get("ok",false):end_report_label.text+="\n\n"+history_write_status.get("reason","本機戰績未儲存")
+	_render_match_report_page()
 	for button in end_tabs.get_children():
 		button.disabled=button.get_meta("report_page")==page
+
+func _render_match_report_page():
+	var overview=end_report_page=="overview"
+	# In tight landscape the title still explains the outcome on other tabs;
+	# reserve their report area for the selected data, not a repeated preface.
+	end_body.visible=not end_compact_summary or overview
+	end_report_label.text=MatchReport.page_text(last_match_report,end_report_page,end_compact_summary and overview)
+	if not history_write_status.is_empty() and not history_write_status.get("ok",false):end_report_label.text+="\n\n"+history_write_status.get("reason","本機戰績未儲存")
 
 func _layout_end_report(view_size: Vector2):
 	if not is_instance_valid(end_panel): return
 	var extent=Vector2(minf(540,view_size.x-24),minf(560,view_size.y-24))
 	end_panel.position=(view_size-extent)*0.5; end_panel.size=extent
 	var inner=extent.x-32
+	# Keep the existing two rows for portrait, desktop, and widths that
+	# cannot fit all four complete native controls without clipping.
+	var widest=44.0
+	for button in end_actions.get_children():
+		button.custom_minimum_size.y=46
+		widest=maxf(widest,button.get_combined_minimum_size().x)
+	var count=end_actions.get_child_count()
+	var needed=widest*count+end_actions.get_theme_constant("h_separation")*(count-1)
+	var compact=view_size.x>=480 and view_size.x>view_size.y and view_size.y<=430 and inner>=needed
+	if compact!=end_compact_summary:
+		end_compact_summary=compact
+		if game_over and not last_match_report.is_empty():
+			# A release started on the old layout must not activate its
+			# relocated control when live window rotation reflows the report.
+			_cancel_pointer_streams()
+			_render_match_report_page()
+	var columns=count if compact else 2
+	if end_actions.columns!=columns:end_actions.columns=columns
+	var action_height=46 if compact else 98
 	end_title.position=Vector2(16,12); end_title.size=Vector2(inner,36)
 	end_tabs.position=Vector2(16,56); end_tabs.size=Vector2(inner,46)
-	end_scroll.position=Vector2(16,112); end_scroll.size=Vector2(inner,maxf(1,extent.y-232))
-	end_actions.position=Vector2(16,extent.y-110); end_actions.size=Vector2(inner,98)
-	for button in end_actions.get_children():button.custom_minimum_size.y=46
+	end_scroll.position=Vector2(16,112); end_scroll.size=Vector2(inner,maxf(1,extent.y-action_height-134))
+	end_actions.position=Vector2(16,extent.y-action_height-12); end_actions.size=Vector2(inner,action_height)
 	if is_instance_valid(aftermath_bar):
 		aftermath_bar.position=Vector2(6,6);aftermath_bar.size=Vector2(view_size.x-12,48)
 
