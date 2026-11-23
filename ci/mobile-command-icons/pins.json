@@ -2,8 +2,8 @@
   "baseline_game_tree": "35d0f3c6aaa76eb7711682df1debd33be6338aa2",
   "build": "vc-8018c5b0e95b",
   "candidate_patch_sha256": "07b1a83f1a503ae80abdeaa8a2cfb0b6e50051081f0d4c2b68a31751fa743340",
-  "fixture_sha256": "ffb81e728acb91fd0e417f80dbb9aea5f1bfaa32825da13c876120daa4dca262",
-  "identity_note": "Build label inherited by uncommitted local candidate; not the shipped v143 binary.",
+  "fixture_sha256": "9a2a24817e0689e390e321d4a8e0bd8ba47e4a400a91d33ff37f83eff7162087",
+  "identity_note": "Exact reviewed source pin 70ad0f2, build vc-8018c5b0e95b. Headed capture is source-native, not deployed Web bytes.",
   "source_commit": "70ad0f219d41ab2f73fe740662b8a4980d159b12",
   "source_files_sha256": {
     "game/assets/mature/ui/icons/age2.svg": "81bd9a597ceeb7d8cdb670089552f1196bed54ad8feefa7592ecb7e3632c8b38",

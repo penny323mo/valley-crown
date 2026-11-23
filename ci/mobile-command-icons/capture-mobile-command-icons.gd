@@ -6,9 +6,28 @@ var game
 var out=""
 var metadata_only=false
 var dims=Vector2i.ZERO
+var started_ms=0
+const DRAW_DEADLINE_MS=45000
+const SETUP_DEADLINE_MS=75000
 var report={"checks":[],"frames":[],"scope":"Actual patched game scene and ordinary viewport-routed native input. Funded fixture; age-II eligibility is seeded for the supply scene. Native rendered UI only; not browser, physical phone, or natural campaign."}
 
-func _initialize():call_deferred("run")
+func _initialize():
+	started_ms=Time.get_ticks_msec()
+	print("VC_CAPTURE_BOOT {\"stage\":\"script_initialize\"}")
+	call_deferred("run")
+
+func checkpoint(stage,details={}):
+	var event={"stage":stage,"elapsed_ms":Time.get_ticks_msec()-started_ms,"details":details}
+	var line=JSON.stringify(event)
+	print("VC_CAPTURE_PROGRESS "+line)
+	if out.is_empty() or not DirAccess.dir_exists_absolute(out):return
+	var path=out+"/progress.jsonl"
+	var mode=FileAccess.READ_WRITE if FileAccess.file_exists(path) else FileAccess.WRITE
+	var f=FileAccess.open(path,mode)
+	if f!=null:
+		f.seek_end();f.store_line(line);f.flush();f.close()
+	else:
+		push_error("Capture progress journal could not be written: "+str(FileAccess.get_open_error()))
 
 func check(label,ok):
 	report.checks.append({"name":label,"passed":bool(ok)})
@@ -19,6 +38,7 @@ func settle(count=5):
 	for i in count:await process_frame
 
 func finish():
+	checkpoint("finish",{"states":report.frames.size()})
 	report.failed=report.checks.filter(func(x):return not x.passed).size()
 	report.png_count=report.frames.filter(func(x):return x.has("sha256")).size()
 	report.result="FAIL" if report.failed else ("METADATA_ONLY" if metadata_only else "RENDERED")
@@ -73,10 +93,27 @@ func capture(name,button,details={}):
 	frame.merge({"name":name,"button_text":button.text,"button_icon":button.icon.resource_path,"button_disabled":button.disabled,
 		"button_rect":[r.position.x,r.position.y,r.size.x,r.size.y],"tick":game.tick_count,
 		"selected":game.selected.duplicate(),"bank_milli":game.economy.bank_milli(0).duplicate(true)})
+	checkpoint("state_ready",{"state":name,"tick":game.tick_count,"queue_kind":frame.get("kind","")})
 	if not metadata_only:
-		await settle(8)
-		await RenderingServer.frame_post_draw
+		# Ordinary state preparation keeps the render loop off. Draw only this
+		# confirmed viewport, and register before enabling the loop so no signal
+		# can race an immediate await. An outer timeout still covers a driver
+		# that blocks the whole engine during frame submission or readback.
+		var draws=[0]
+		var observer=func():draws[0]+=1
+		RenderingServer.frame_post_draw.connect(observer)
+		var draw_start=Time.get_ticks_msec()
+		checkpoint("draw_begin",{"state":name,"deadline_ms":DRAW_DEADLINE_MS,"draws_needed":2})
+		RenderingServer.render_loop_enabled=true
+		while draws[0]<2 and Time.get_ticks_msec()-draw_start<DRAW_DEADLINE_MS:
+			await process_frame
+		RenderingServer.render_loop_enabled=false
+		RenderingServer.frame_post_draw.disconnect(observer)
+		checkpoint("draw_end",{"state":name,"draw_count":draws[0],"draw_ms":Time.get_ticks_msec()-draw_start})
+		if not check(name+": two confirmed renderer draws before visual deadline",draws[0]>=2):return false
+		checkpoint("readback_begin",{"state":name})
 		var img=root.get_texture().get_image()
+		checkpoint("readback_end",{"state":name,"width":img.get_width() if img!=null else -1,"height":img.get_height() if img!=null else -1})
 		if not check(name+": rendered viewport matches requested size",img!=null and not img.is_empty() and img.get_size()==dims):return false
 		var palette={}
 		for y in range(0,dims.y,17):
@@ -85,6 +122,7 @@ func capture(name,button,details={}):
 		var path=out+"/"+name+".png"
 		if not check(name+": unedited PNG saved",img.save_png(path)==OK):return false
 		frame.file=name+".png";frame.sha256=FileAccess.get_sha256(path)
+		checkpoint("png_saved",{"state":name,"sha256":frame.sha256})
 	report.frames.append(frame)
 	return true
 
@@ -95,14 +133,29 @@ func choose_house_site():
 	for y in range(maxi(80,int(dims.y*0.26)),int(dims.y*0.75),15):
 		for x in range(maxi(40,int(dims.x*0.15)),int(dims.x*0.85),18):
 			candidates.append(Vector2(x,y))
+	var count=0
+	var search_start=Time.get_ticks_msec()
 	for p in candidates:
+		if Time.get_ticks_msec()-search_start>SETUP_DEADLINE_MS:break
 		if not game._box_point_in_world(p):continue
+		# The known-world preview predicate only filters possible screen points.
+		# A normal tap still sets the position and the ordinary HUD confirms it.
+		var world=game._world_at(p)
+		if not world.is_finite():continue
+		var plot=game._snap_build_position("house",world)
+		if not game._placement_reason("house",plot,0,game._selected_builder()).is_empty():continue
+		count+=1
+		checkpoint("house_site_probe",{"tap":count,"x":p.x,"y":p.y})
 		await tap(p,61)
 		game._update_ghost();await settle()
-		if game.placement_ok and game.build_preview_held:return true
+		if game.placement_ok and game.build_preview_held:
+			checkpoint("house_site_chosen",{"taps":count});return true
+	checkpoint("house_site_unavailable",{"taps":count,"search_ms":Time.get_ticks_msec()-search_start})
 	return false
 
 func run():
+	print("VC_CAPTURE_BOOT {\"stage\":\"deferred_run\"}")
+	RenderingServer.render_loop_enabled=false
 	var args=OS.get_cmdline_user_args()
 	if args.size() not in [6,7] or (args.size()==7 and args[6]!="--metadata-only"):
 		push_error("Usage: -- OUTPUT WIDTH HEIGHT BUILD GAME_SCRIPT_SHA256 COMMAND_ICONS_SHA256 [--metadata-only]")
@@ -113,12 +166,14 @@ func run():
 		quit(2);return
 	if DirAccess.make_dir_recursive_absolute(out)!=OK:
 		push_error("Cannot create capture output");quit(2);return
+	checkpoint("output_open",{"display":DisplayServer.get_name()})
 	report.metadata_only=metadata_only
 	report.size=[dims.x,dims.y]
 	report.build=Rules.BUILD_ID
 	report.engine=Engine.get_version_info()
 	report.display=DisplayServer.get_name()
 	report.renderer=RenderingServer.get_current_rendering_method()
+	report.video_adapter=RenderingServer.get_video_adapter_name()
 	report.fixture_sha256=FileAccess.get_sha256(get_script().resource_path)
 	report.game_sha256=FileAccess.get_sha256("res://scripts/game.gd")
 	report.command_icons_sha256=FileAccess.get_sha256("res://scripts/command_icons.gd")
@@ -130,17 +185,27 @@ func run():
 		finish();return
 	if not check("real display required for native PNG output",metadata_only or report.display!="headless"):
 		finish();return
+	checkpoint("viewport_layout_begin")
 	root.size=dims;await settle()
+	checkpoint("viewport_layout_end",{"size":[root.size.x,root.size.y]})
 	if not check("requested native viewport",root.size==dims):finish();return
+	checkpoint("load_scene_begin")
 	game=load("res://main.tscn").instantiate()
-	game.skirmish_mode="practice";root.add_child(game);game.set_process(false)
+	checkpoint("load_scene_end")
+	game.skirmish_mode="practice"
+	checkpoint("attach_scene_begin")
+	root.add_child(game);game.set_process(false)
+	checkpoint("attach_scene_end")
 	game.test_mode=true;game.ai_enabled=false
 	var stock={"food":3000,"wood":3000,"stone":3000,"iron":3000}
+	checkpoint("funded_fixture_reset_begin")
 	game._test_reset([stock,stock.duplicate(true)]);game.set_process(false)
 	await settle()
+	checkpoint("funded_fixture_reset_end")
 	var keep=game._first(0,"town_center")
 	var worker=game._first(0,"villager")
 
+	checkpoint("build_fixture_begin")
 	await focus(worker.pos)
 	await refresh_and_select([worker.id])
 	var house=action_icon("house","民居")
@@ -158,6 +223,7 @@ func run():
 	if not await capture("01-house-confirm",confirm,{"build_mode":game.build_mode,"preview_held":game.build_preview_held,"placement_ok":game.placement_ok}):
 		finish();return
 
+	checkpoint("age_fixture_begin")
 	game._cancel_mode();await focus(keep.pos)
 	await refresh_and_select([keep.id])
 	var research=action_icon("age2","城防時代")
@@ -182,6 +248,7 @@ func run():
 
 	# Further stage is an explicitly seeded Age II test location, not a claim
 	# that the full 90-second research and a storehouse build were played.
+	checkpoint("supply_fixture_begin")
 	game.age_completed_tick[0]=game.tick_count-1;report.supply_fixture="Age II flag and owned completed storehouse seeded; payment and queue are not seeded"
 	var stockpile=game._spawn("storehouse",0,Vector3(-21,0,14))
 	game._navigation_rebuild();game._update_vision();await focus(stockpile.pos)

@@ -1,3 +1,4 @@
+# Sparse-render retry on llvmpipe with retained stage receipts.
 name: Capture exact Valley Crown mobile command icons
 on:
   push:
