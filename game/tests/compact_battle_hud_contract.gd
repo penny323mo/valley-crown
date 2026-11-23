@@ -8,7 +8,8 @@ func _initialize():call_deferred("run")
 func settle():
  for i in 5:await process_frame
 func tap(control):
- var p=control.get_global_rect().get_center()
+ await tap_at(control.get_global_rect().get_center())
+func tap_at(p:Vector2):
  for down in [true,false]:
   var e=InputEventMouseButton.new();e.position=p;e.global_position=p;e.button_index=MOUSE_BUTTON_LEFT;e.pressed=down
   root.push_input(e,false);await process_frame
@@ -51,8 +52,25 @@ func run():
   check(prefix+"ready queue warning stays visible while folded",g.queue_label.is_visible_in_tree() and g.queue_label.text.contains("出口受阻") and g.hud_bottom.get_global_rect().encloses(g.queue_label.get_global_rect()) and not g.context_details.visible)
   var worker=g._first(0,"villager");g._select([worker.id]);await settle()
   check(prefix+"worker building action remains immediately available",g.actions.get_children().any(func(b):return b is Button and b.text.begins_with("民居\n")))
-  g._start_build("house");g.pointer_world=keep.pos;g._update_hud();await settle()
-  check(prefix+"placement rejection visible without expanding",g.selection_summary.text.contains("不可建造") and not g.context_details.visible)
+  # Select the occupied plot through the same routed mouse input a player uses.
+  # Merely positioning the pointer never selects a site or enables confirmation.
+  g.camera_focus=keep.pos;g._camera_update()
+  g._start_build("house");await settle()
+  var bank=g.economy.bank_milli(0)
+  var seq=g.command_sequence
+  var point=g.camera.unproject_position(keep.pos)
+  var expected=g._point(g._cell(g._world_at(point)))
+  var occupied=g._occupied_cells(keep).has(g._cell(expected))
+  var before=not g.build_preview_held and g.build_confirm.disabled
+  if g.has_method("_inline_build_guidance") and size.x>=480 and size.x>size.y and size.y<560:
+   before=before and g.selection_summary.text=="點空地選位置"
+  var accepted_world=g._box_point_in_world(point)
+  if accepted_world:await tap_at(point)
+  check(prefix+"placement rejection visible without expanding",before and accepted_world and occupied
+   and g.build_mode=="house" and g.build_preview_held and g.pointer_world==expected
+   and g._build_preview_reason()=="與建築或資源重疊" and g.selection_summary.text.contains("不可建造")
+   and g.build_confirm.disabled and not g.context_details.visible
+   and g.commands==commands and g.command_sequence==seq and g.economy.bank_milli(0)==bank)
   g._cancel_mode();g.free();await settle()
  var failed=checks.filter(func(c):return not c.passed).size()
  print(JSON.stringify({"suite":"compact_battle_hud_contract","checks":checks,"failed":failed,"scope":"Native four viewport UI geometry and actual button routing; compact truthful summaries and one guidance strip, not physical-device proof"}))
