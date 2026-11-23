@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 40ed8f286d56459bd304568d6131909d00764736
+      BUILDING_RUNTIME_SOURCE_COMMIT: b7158f7a0498cec499f521aba5412fade0d7b84c
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '41fd36bf7d38950efaaf106f4192a25a7ac64501f83ea235fc733b90e150f13d  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '254762602e55edf49b724c3eedfed046780bce84612b1276602881b4799bb71a  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -643,6 +643,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/town_research_bookmarks_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/town_research_lifecycle_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/town_research_lifecycle_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/mobile_first_army_hud_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/mobile_first_army_hud_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
