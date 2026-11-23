@@ -1,0 +1,48 @@
+name: Capture matched Valley Crown Survival wave HUD
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-survival-wave.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 3c647ef1394d3fb66766d328b4db6b292fa3e3f0
+          path: reviewed-baseline
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 8c7a4085a68d94c18ce5a03c3ec65a08eb283fdf
+          path: reviewed-candidate
+          persist-credentials: false
+      - name: Install pinned Godot and known software display
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-survival-wave-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-survival-wave-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Capture identical earned Chapter 2 intermission and final wave
+        run: |
+          bash ci/mobile-survival-wave/run-survival-wave-capture.sh \
+            "$GITHUB_WORKSPACE/reviewed-baseline" "$GITHUB_WORKSPACE/reviewed-candidate" \
+            "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" ci/mobile-survival-wave/pins.json \
+            "$RUNNER_TEMP/vc-survival-wave"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-6ebac38878db-native-survival-wave
+          path: ${{ runner.temp }}/vc-survival-wave/
+          retention-days: 30
+          if-no-files-found: ignore

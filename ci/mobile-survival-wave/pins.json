@@ -1,0 +1,26 @@
+{
+  "status": "REVIEWED_FOR_CAPTURE",
+  "fixture_sha256": "f20d118238b3cc3f8d4b3dcef59455afe152033845954397752bf7a509047ac6",
+  "isolated_earned_campaign_seed": {
+    "bytes": "{\"completed\":1,\"revision\":1,\"schema\":1}",
+    "sha256": "70d1cc2e361ecede221c64099b385613928e03b5a5444a1ba8f296ca498c43d2"
+  },
+  "baseline": {
+    "commit": "3c647ef1394d3fb66766d328b4db6b292fa3e3f0",
+    "tree": "e18a909f28f790967b4f51b4a301df7fbb5e2098",
+    "game_tree": "d8df62a3ce176080a8095acdc81afa57119b61e5",
+    "build": "vc-5b3829bff321",
+    "game_sha": "cc5aa5cb2e3ffd9e1eed2da9d51ad31caa00706ecf9086f4bef0cef17a4d8b6d",
+    "rules_sha": "7edae3aae7f0fd91c88eed331c47b3c5ea65d1df3f84cf087254c1cad7df7122",
+    "director_sha": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde"
+  },
+  "candidate": {
+    "commit": "8c7a4085a68d94c18ce5a03c3ec65a08eb283fdf",
+    "tree": "b298d9a024e0b3a74d30e3afb5d0a63dbe7ac9eb",
+    "game_tree": "feb4b9a97f85e08d6d9eb14d86602077ab9bddd9",
+    "build": "vc-6ebac38878db",
+    "game_sha": "84cbcbcd2d4fca2292290a8f7b3846fc95f4db4b31c19eb0a736ea15a90bc6b7",
+    "rules_sha": "9ebdedcc1e1df79202464f06346da8547a88757b91f555205117cfa6b90ab5fc",
+    "director_sha": "c97f96da3e57833ebb6cdc6ed78785c2ce6b8f50087e0e3b3cab257fedc4f81e"
+  }
+}
