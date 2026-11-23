@@ -1,0 +1,48 @@
+name: Capture matched Valley Crown Advance cancellation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-advance-camera-notice.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: bf59f7f76d6d3bcba1cff69ef9943e1f6bcac891
+          path: reviewed-baseline
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 1c5c805401990d640a2c767d69eda802d0fe60f7
+          path: reviewed-candidate
+          persist-credentials: false
+      - name: Install pinned Godot and known software display
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-advance-camera-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-advance-camera-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Capture same paid defense and full two-finger camera pan
+        run: |
+          bash ci/mobile-advance-camera/run-advance-camera-capture.sh \
+            "$GITHUB_WORKSPACE/reviewed-baseline" "$GITHUB_WORKSPACE/reviewed-candidate" \
+            "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" ci/mobile-advance-camera/pins.json \
+            "$RUNNER_TEMP/vc-advance-camera-notice"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-7b1d4b77bf78-native-advance-camera-notice
+          path: ${{ runner.temp }}/vc-advance-camera-notice/
+          retention-days: 30
+          if-no-files-found: ignore
