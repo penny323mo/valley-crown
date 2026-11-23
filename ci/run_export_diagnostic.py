@@ -13,7 +13,7 @@ import time
 import owned_process as p
 
 ENGINE_SHA = 'f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3'
-SOURCE = 'bf59f7f76d6d3bcba1cff69ef9943e1f6bcac891'
+SOURCE = '1c5c805401990d640a2c767d69eda802d0fe60f7'
 GAME_TREE = '5d478c5414ba732f41b109515e90d45495406a1b'
 BUILD = 'vc-09c394aef6d8'
 TEMPLATE_SHA = '1446f79dc12f60ce5d244c39fb6628ec298337ca5c4f91a16491feea72aa1bc9'
