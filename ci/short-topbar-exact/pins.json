@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "source": "727bfc928d6962df34095b00076abba4a07eaf16",
+    "tree": "52a1884944705f359da7ddc4e57fac7ce90f9337",
+    "game_tree": "276bdc285d2c9a41128c3fb88d0e0926994e4678",
+    "build": "vc-21fe3bd842be",
+    "game_sha": "49cde912dc489b9bb625ed1ec38429e557fcf1aee8f4d15dc4959097cc82649f",
+    "rules_sha": "b3fbba2f177ae46729e22120681142126c0f42704ad3191ceb8e7b01ccb6d743",
+    "manifest_sha": "00ac8c3c22a62d6fba8f7d1dd412b69144bf6881a2bd07805bb103f19baea659"
+  },
+  "candidate": {
+    "source": "5afa32159c331bbafdd923fe305e4fbf97318150",
+    "tree": "6e99399cd8ac36e68df5fd1b56e32e2a1b68d055",
+    "game_tree": "6c3f8b4072228d2f7d83d72debbc7146823aad6c",
+    "build": "vc-2bf736f4bf15",
+    "game_sha": "6c470b6d0db0c59c6d8034060e44b69f60a92cb5ad53277658039491176d683c",
+    "rules_sha": "5dd455b2135d835f10cf92e0009e64adbf6c2671ac827ab66920f62135ecae2a",
+    "manifest_sha": "24d7fc8e26abda9364d3d0c7140a87f61c246f585b55b02afc1457cb9b32aa78"
+  },
+  "godot_linux_sha": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
+  "run.sh": "f0c1c62e3f0f78a91876cd0272e8c45dcb642919ae18f08ba2e3269f8ac3b321",
+  "capture.gd": "25a96ed8dd05eac35729f5f3eb9e96d0d72c98adcb7c6b476dac6d4e61756f7c",
+  "verify.py": "0b8d1938627fa0ec71a114de8fb77caef266ec712f1b5781d0b3270e0c0770a5"
+}
