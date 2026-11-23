@@ -5282,9 +5282,9 @@ func _rebuild_actions(selection):
 				train_button.set_meta("primary_train",true)
 				CommandIcons.apply(train_button,kind,true);actions.add_child(train_button)
 				if kind=="villager" and show_research_bookmarks:
-					town_research_jump=_button("研究 ›",func():_jump_town_research(ent.id,true),60)
+					town_research_jump=_button("研究 >",func():_jump_town_research(ent.id,true),60)
 					town_research_jump.name="TownResearchJump"
-					town_research_jump.tooltip_text="捲到主堡研究；不會開始研究或扣款。"
+					town_research_jump.tooltip_text="移到主堡研究；不會開始研究或扣款。"
 					actions.add_child(town_research_jump)
 			# Keep both paid training cards visible in the 390px lane; Rally
 			# follows them, within the same reachable strip.
@@ -5307,7 +5307,7 @@ func _rebuild_actions(selection):
 				safety.tooltip_text="採集村民受可見敵人襲擊時撤向附近安全主堡／守望塔；原工作區重新可見且連續安全五秒後回工。新指令優先。"
 				safety.name="WorkerSafety"; actions.add_child(safety)
 			if show_research_bookmarks:
-				town_research_return=_button("‹ 訓練",func():_jump_town_research(ent.id,false),60)
+				town_research_return=_button("< 訓練",func():_jump_town_research(ent.id,false),60)
 				town_research_return.name="TownResearchReturn"
 				town_research_return.tooltip_text="返回訓練與集合點；不會下指令。"
 				actions.add_child(town_research_return)

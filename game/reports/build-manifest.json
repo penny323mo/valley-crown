@@ -1,5 +1,5 @@
 {
-  "build": "vc-ab4b930fe35a",
+  "build": "vc-48407f5501e4",
   "engine": "4.6.3.stable.official.7d41c59c4",
   "scope": "Recursive runtime scripts/UIDs, export settings, fonts/import settings, legacy meshes, mature native scenes/textures/import metadata and explicitly deployed bush donor glTF/bin/textures/imports. Other editable/interchange art is source-archive only.",
   "source_sha256": {
@@ -288,7 +288,7 @@
     "scripts/forward_depot.gd": "a5c74cbcba7bd796d1174f34425a575f410c5d7d365f46ee0dd12b48eb831144",
     "scripts/frontier_escort.gd": "5745d81229f9a9a4b185da4711b059ee39e574e306c5364da624ddc68d4f3140",
     "scripts/frontier_expedition.gd": "878316628e53b4a590ef596e7d9fbbccfdd164797caab0d3e827900db3561585",
-    "scripts/game.gd": "5efb89e0318c33f2d9bddfd8c1d6e38475d3f4a8ee87c4b6af98cf87a03c80e5",
+    "scripts/game.gd": "ad4efcd75e48cf88cfcbc6ef3cc5b58dafa1399cd7e7ac69cf88a9b0dee8f760",
     "scripts/game.gd.uid": "3ced878a0693e950c48275df5f7cb059dff66774c5632fbe3482e5c86a4c8c52",
     "scripts/garrison_checkpoint.gd": "85b9c4696b7b632600e2fe81c083015edb482f07bf100a4c08be43fba0f88427",
     "scripts/home_defense.gd": "36a427b2f58e7ce88c9a769b11917c7e5c90faef852893ceba37a5fdc6b53f64",
@@ -331,7 +331,7 @@
     "scripts/river_landscape.gd.uid": "3cf5e46ceee29fea583011ff4da2a0512bfb126e0897697e541278d21cde00bd",
     "scripts/river_terrain.gd": "24af3eb1acd7b9de802ee8c67a0aae6bb05075472e0adc9cc1d8f8280d4f1e6a",
     "scripts/river_terrain.gd.uid": "b0aa418fa5c7372bbaf967118441d38d6419a1c3e95e72f174a24563f27f3e98",
-    "scripts/rules.gd": "9cd6836f946c08a03f986583c60cd8fef835402de420f2da9e6a38c5eb7cb7b5",
+    "scripts/rules.gd": "9fa49eb5ca0b3926ca5ba2fe3ba11157301393df348469a8e5b6b7e1ed06e709",
     "scripts/rules.gd.uid": "1bb0019053790e8d14b9a70ea78e98b4343de9cdbe7cedd88e0eaf04be837013",
     "scripts/scout_frontier.gd": "e9fcf09a85ccb6981fcb5f4cbcad096a251623a4d9794c43236eed8d3f31c6a3",
     "scripts/siege_challenge.gd": "a4d69dd247f0570ac0e4c84e026ed0da559cb2250da6de1b7f865e5dd8adffde",

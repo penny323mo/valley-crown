@@ -61,12 +61,12 @@ func observe(g,keep,expected,caption,tag):
 	var bank=g.economy.bank_milli(0).duplicate(true)
 	var initial_queue=keep.queue.duplicate(true)
 	var hud_height=g.hud_bottom.size.y
-	if not check(tag+": natural start exposes both training actions and same 44px+ research link",available(g,link) and available(g,train) and available(g,scout) and not available(g,action) and link.text=="研究 ›"):
+	if not check(tag+": natural start exposes both training actions and same 44px+ research link",available(g,link) and available(g,train) and available(g,scout) and not available(g,action) and link.text=="研究 >"):
 		return false
 	await tap(link,50)
 	var right=g.action_scroll.scroll_horizontal
 	var back=g.town_research_return
-	var jump_ok=check(tag+": one lone tap reveals first research and 44px+ back control",right>start and available(g,action) and available(g,back) and back.text=="‹ 訓練")
+	var jump_ok=check(tag+": one lone tap reveals first research and 44px+ back control",right>start and available(g,action) and available(g,back) and back.text=="< 訓練")
 	check(tag+": forward moves focus to visible return after settling",root.gui_get_focus_owner()==back)
 	check(tag+": forward stays in same lane without gameplay change",g.selected==[keep.id] and g.camera_focus==camera and not g.touch_command and g.build_mode.is_empty() and g.commands.is_empty() and g.economy.bank_milli(0)==bank and keep.queue==initial_queue and g.hud_bottom.size.y==hud_height)
 	if not jump_ok:return false
