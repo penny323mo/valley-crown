@@ -1,0 +1,25 @@
+{
+  "godot_linux_sha": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
+  "fixture_sha": "6103ed45214276cdd48f96d4c2e62e692c22a8aa376daf9afcdb16eebdc646a7",
+  "verification_sha": "5f7196d0677d46ed6b348296b1611f57b8b65a644225896022498d4779b53b68",
+  "baseline": {
+    "source": "88935d2b95ccf6a7159339e60e26eeff1784c64f",
+    "tree": "cf65e68c4b0f6ccdca487bb37e2f8ebce98ff571",
+    "game_tree": "db8c603fb178bbd5a39f954ab9cd0630f926f6dd",
+    "reported_build": "vc-e6b4b7b5efdf",
+    "game_sha": "3372a921d9e6e90a58323bf2cf516ccbc6384d395b5d453c59681c3c1c1aa5da",
+    "fog_sha": "fc079aa8a18183e5be6e73c24ee3519410b227b9a752de41bb1066c13553650d",
+    "rules_sha": "9d078d6eeb86de7c8edaf4a130cdd5866559be45acd73e31e6c90486252222e8",
+    "manifest_sha": "2a229e6db18ccdb49ad4130d34ce931138e2f2d6fc232eb9d7c52b7ffd21894e"
+  },
+  "candidate": {
+    "source": "9e5f9e9cfccb0238f2c9b7ce36d67058a3ea0394",
+    "tree": "deea6533ce5c93f69edc109e1e88f3765fe8a867",
+    "game_tree": "24e844112a8db26746f3ad722d6e06d275a91ed1",
+    "reported_build": "vc-c57441a91f81",
+    "game_sha": "25b0666e68c08db54abfeeee2c99dbcc8806fd64be286314e60af30e864b4480",
+    "fog_sha": "1e0aa2bdf6015c83f4b93e7052383b0e4cdcc86ff6daa9a4a3d44f2427fb9334",
+    "rules_sha": "5bb19f7c753f0b08c8437a71adb1405ee86a97a583b77e922b0d577d8cebfa5f",
+    "manifest_sha": "e48f74573a8893fceb23a56edabe6b5023393d69e07a8385217227852a27c561"
+  }
+}
