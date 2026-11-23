@@ -5253,6 +5253,13 @@ func _rebuild_actions(selection):
 		primary_advance.tooltip_text="點目的地；射程內迎擊，敵軍離開後繼續，不追擊。"
 		actions.add_child(primary_advance)
 		actions.add_child(_button("取消選取",func(): _select([]),76))
+	if compact_ui and has_military and type_groups.has("villager"):
+		var source=selected.duplicate()
+		var filter=_button("只選軍隊",func(): _filter_selected_military(source),90)
+		filter.name="FilterSelectedMilitary"
+		filter.set_meta("selection_source",source)
+		filter.tooltip_text="只保留目前選取的軍隊及斥候，不會選取其他單位或下指令。"
+		actions.add_child(filter)
 
 	if type_groups.size()>1:
 		for unit_kind in Rules.UNIT_KINDS:
@@ -7985,12 +7992,34 @@ func _request_construction_dispatch(building):
 
 func _refresh_unit_type_buttons():
 	var groups=UnitTypeSelection.groups(faction_views[0].records(),selected)
+	var filter=actions.get_node_or_null("FilterSelectedMilitary")
+	if is_instance_valid(filter):
+		_bind_squad_button(filter,_selected_military_subset(groups),not _squad_actions_available() or selected!=filter.get_meta("selection_source",[]))
 	for kind in unit_type_buttons:
 		var button=unit_type_buttons[kind]
 		if not is_instance_valid(button): continue
 		var ids=groups.get(kind,[])
 		_bind_squad_button(button,ids,not _squad_actions_available() or selected!=button.get_meta("selection_source",[]))
 		button.text="只選"+Rules.NAMES[kind]+" · %d" % ids.size()
+
+func _selected_military_subset(groups: Dictionary) -> Array:
+	if not groups.has("villager"):return []
+	var military_ids:Array=[]
+	for kind in Rules.UNIT_KINDS:
+		if kind!="villager":military_ids.append_array(groups.get(kind,[]))
+	return selected.filter(func(id):return id in military_ids)
+
+func _filter_selected_military(expected: Array) -> void:
+	if not _squad_actions_available() or selected!=expected:return
+	var button=actions.get_node_or_null("FilterSelectedMilitary")
+	if not is_instance_valid(button) or button.disabled or selected!=button.get_meta("selection_source",[]):return
+	var keep=_selected_military_subset(UnitTypeSelection.groups(faction_views[0].records(),selected))
+	if keep.is_empty() or keep!=button.get_meta("squad_ids",[]):
+		_refresh_unit_type_buttons();return
+	# Selection change retires any held world/GUI press; no orders, camera,
+	# payment or change to ordinary worker-inclusive box semantics.
+	_cancel_mode()
+	_select(keep)
 
 func _filter_selected_type(kind):
 	if not _squad_actions_available() or not unit_type_buttons.has(kind): return
