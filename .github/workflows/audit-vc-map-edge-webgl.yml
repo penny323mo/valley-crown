@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Verify exact formal artifacts and run stock WebGL2 renderer
+      - name: Verify exact formal artifacts and report stock WebGL2 startup phases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

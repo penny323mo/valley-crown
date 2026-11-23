@@ -68,12 +68,20 @@ def local_wrapper(folder,role,row):
 canvas{display:block;width:100vw;height:100vh}</style>
 </head><body><canvas id="canvas"></canvas><script src="index.js"></script><script>
 (async()=>{
+ const phases=window.vcEdgeLaunchPhases=[];
+ const phase=(name,details={})=>{const event={phase:name,details,ms:Math.round(performance.now())};phases.push(event);console.info("VC_WEB_EDGE_JS",JSON.stringify(event));};
  try {
+   phase("launcher_enter");
    const engine=new Engine(CONFIG);
    const response=await fetch("edge-audit.gd",{cache:"no-store"});
    if(!response.ok)throw Error("audit fetch "+response.status);
-   await engine.preloadFile(await response.arrayBuffer(),"/edge-audit.gd");
-   await engine.startGame({args:ARGS});
+   const source=await response.arrayBuffer();
+   phase("audit_file_loaded",{bytes:source.byteLength});
+   await engine.preloadFile(source,"/edge-audit.gd");
+   const args=ARGS;
+   phase("start_game_begin",{args});
+   await engine.startGame({args});
+   phase("start_game_resolved");
  } catch(e){window.vcEdgeFailure=String(e);console.error(e);}
 })();
 </script></body></html>"""
@@ -166,6 +174,10 @@ def browser(root,out,row,role,driver,chrome,web):
         receipt["stock_menu"]=True
         receipt["menu_console"]=logs()
         navigate("audit.html")
+        def snapshot():
+            return js("""return {launch:window.vcEdgeLaunchPhases||[],gdscript:window.vcEdgePhases||[],
+                last:window.vcEdgePhase||null,ready:document.readyState,visible:document.visibilityState,
+                gl:window.vcGL||null,stock_menu:typeof window.valleyMenuSnapshot==='function'};""")
         def witness():
             result=js("""return {w:window.vcEdgeWitness||null,err:window.vcEdgeFailure||null,
                    css:[window.innerWidth,window.innerHeight,window.devicePixelRatio],
@@ -174,7 +186,11 @@ def browser(root,out,row,role,driver,chrome,web):
                    gl:window.vcGL};""")
             if result["err"]:raise RuntimeError(result["err"])
             if result["w"] is not None:return result
-        observed=until(witness,95)
+        try:
+            observed=until(witness,95)
+        finally:
+            try:receipt["external_phases"]=snapshot()
+            except Exception as error:receipt["phase_snapshot_error"]=str(error)
         receipt["runtime"]=observed
         require(observed["css"]==[568,320,1] and observed["canvas"]==list(SIZE) and observed["rect"]==[0,0,568,320],"pixel-exact 568x320 game canvas")
         g=observed["gl"];w=observed["w"]
@@ -201,6 +217,11 @@ def browser(root,out,row,role,driver,chrome,web):
         receipt["pass"]=True
       except Exception as e:
         receipt["error"]=str(e)
+        if "external_phases" in receipt:
+            summary=receipt["external_phases"]
+            print("VC_WEB_EDGE_MISSING_PHASE",
+                  json.dumps({"role":role,"failure":str(e),"launch":summary["launch"],"gdscript":summary["gdscript"]},ensure_ascii=False),
+                  flush=True)
         if prefix:
             try:receipt["failure_console"]=logs()
             except Exception:pass
