@@ -256,11 +256,32 @@ def browser(root,out,row,role,driver,chrome,web):
         f=first["state"]
         require(opening_state(f) and not f["paused"] and opening_clock(f),"not an early ordinary Survival battlefield")
         receipt["first_battlefield"]={"state":f,"gl":first["gl"]}
-        # Real stock two-finger pan, not a gameplay bridge command: both
-        # points translate together, between opening toast and bottom HUD.
-        # Individual Web callbacks can update the two positions serially;
-        # small steps stay within the product's 12px pinch slop even then.
-        receipt["actual_two_finger_route"]={"starts":NORTH_FINGERS,"steps":NORTH_STEPS,"completed_swipes":0}
+        # Freeze using the genuine stock Pause button at the initial camera,
+        # before serial event acknowledgements can move the match to wave 1.
+        pause=[b for b in f["hud"]["buttons"] if b["text"]=="暫停" and not b["disabled"]]
+        require(len(pause)==1,"ordinary Pause touch target not unique")
+        tap(pause[0]["rect"])
+        def opening_frozen():
+            o=observe()
+            return o if world(o) and o["state"]["paused"] and drew(o["gl"]) else None
+        frozen_opening=until(opening_frozen,10)
+        initial=frozen_opening["state"]; frozen_auth=auth(initial)
+        pre={**auth(f),"paused":True}
+        require(opening_clock(initial) and initial["tick"]>=f["tick"] and opening_state(initial) and frozen_auth==pre,
+                "stock pause outside frozen opening bound or with real public authority drift")
+        receipt["opening_pause"]={"tick":initial["tick"],"camera":initial["hud"]["camera"],"pause_target":pause[0],
+            "gl":frozen_opening["gl"]}
+        def verify_paused_route(o):
+            s=o.get("state"); menu=o.get("menu") or {}
+            require(bool(s) and dims(o) and s["build"]==row["build"] and menu.get("match_exists") and not menu.get("visible")
+                    and s["tick"]==initial["tick"] and auth(s)==frozen_auth and drew(o["gl"]),
+                    "ordinary paused stock camera route changed clock, public authority or GL")
+            return s
+
+        # Real stock two-finger pan, not a gameplay bridge command. Godot
+        # deliberately keeps two-finger world navigation available while paused.
+        # Small matched moves stay within the live game's pinch slop.
+        receipt["actual_two_finger_route"]={"starts":NORTH_FINGERS,"steps":NORTH_STEPS,"completed_swipes":0,"frozen_checks":[]}
         def pair(dx,dy):
             return [{"x":x+dx,"y":y+dy,"id":i+1} for i,(x,y) in enumerate(NORTH_FINGERS)]
         for repeat in range(NORTH_SWIPE_COUNT):
@@ -269,27 +290,18 @@ def browser(root,out,row,role,driver,chrome,web):
                 cdp("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":pair(dx,dy)})
             cdp("Input.dispatchTouchEvent",{"type":"touchEnd","touchPoints":[]})
             receipt["actual_two_finger_route"]["completed_swipes"]+=1
+            held=verify_paused_route(observe())
+            receipt["actual_two_finger_route"]["frozen_checks"].append({"tick":held["tick"],"camera":held["hud"]["camera"]})
         def aimed():
             o=observe()
+            verify_paused_route(o)
             return o if world(o,north=True) else None
-        aimed_result=until(aimed,8)
-        aimed_state=aimed_result["state"]
+        e=until(aimed,8)
+        aimed_state=e["state"]
         receipt["actual_two_finger_route"].update(public_camera=aimed_state["hud"]["camera"],tick=aimed_state["tick"])
-        require(opening_clock(aimed_state) and not aimed_state["paused"] and auth(aimed_state)==auth(f),"ordinary pan missed actor-free opening bounds or altered non-camera authority")
-        pause=[b for b in aimed_state["hud"]["buttons"] if b["text"]=="暫停" and not b["disabled"]]
-        require(len(pause)==1,"ordinary Pause touch target not unique")
-        tap(pause[0]["rect"])
-        def frozen():
-            o=observe()
-            return o if world(o,north=True) and o["state"]["paused"] and drew(o["gl"]) else None
-        e=until(frozen,10)
-        initial=e["state"]; frozen_auth=auth(initial)
-        pre={**auth(f),"paused":True}
         receipt["early_battlefield"]={"tick":initial["tick"],"time":initial["time"],"tick_delta":initial["tick"]-f["tick"],
-            "camera":initial["hud"]["camera"],"gl":e["gl"],"public_auth_diff":{k:[pre[k],frozen_auth[k]] for k in pre if pre[k]!=frozen_auth[k]}}
+            "camera":aimed_state["hud"]["camera"],"gl":e["gl"],"public_auth_diff":{k:[pre[k],frozen_auth[k]] for k in pre if pre[k]!=frozen_auth[k]}}
         receipt["first_battlefield_png_sha256"]=diagnostic("first-battlefield")
-        require(opening_clock(initial) and initial["tick"]>=aimed_state["tick"] and opening_state(initial) and frozen_auth==pre,
-                "stock pause outside frozen opening bound or with real public authority drift")
         top=[6,6,556,54];bottom=[6,223,556,91]
         settle_started=time.monotonic()
         def settled():
