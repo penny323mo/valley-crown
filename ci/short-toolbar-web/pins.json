@@ -1,0 +1,29 @@
+{
+  "mode": "BOUND_HOSTED_TOOLBAR",
+  "fixtures": {
+    "stock-proof.py": "07ef064054d6d1a66ceb8c01de2cf8a84d67abc3a756533ca7e47bf36d16c740",
+    "gl-observe.js": "ede588f6ee877b5af8f35880d463d39d37065c92740c6f958443e10f6aceb5ad"
+  },
+  "baseline": {
+    "run_id": 45180107229,
+    "build": "vc-21fe3bd842be",
+    "artifact_id": 14823642088,
+    "zip_sha256": "7b372ca170334aae62b60ff65efeb8d09b13dcfa765c4330060aaed90599be86",
+    "metadata_sha256": "af603c994fc45334816606e8a751277092d9328939cc077395edab2503b32275",
+    "game_tree": "276bdc285d2c9a41128c3fb88d0e0926994e4678",
+    "source_commit": "727bfc928d6962df34095b00076abba4a07eaf16",
+    "formal_commit": "ab00c62b33a7dbe2a6e9a13e3ea5ddce2b848358",
+    "shader_source_sha": "1ad3a014aa20a9df87906111e2c471a635e7b589589b61d9ee2d181bc78fb3fd"
+  },
+  "candidate": {
+    "run_id": 45189526550,
+    "build": "vc-2bf736f4bf15",
+    "artifact_id": 14825589743,
+    "zip_sha256": "265afb37e9089d43892e009e979a726bf9fe0bfa5c3fd8e63e1cde310be3125b",
+    "game_tree": "6c3f8b4072228d2f7d83d72debbc7146823aad6c",
+    "source_commit": "5afa32159c331bbafdd923fe305e4fbf97318150",
+    "formal_commit": "b344d02986bdf69d1f6bfc39e67fe1205e5870b2",
+    "shader_source_sha": "1ad3a014aa20a9df87906111e2c471a635e7b589589b61d9ee2d181bc78fb3fd",
+    "metadata_sha256": "5392595a7df09765bfa11f1cadb7ffff8eead2b7a3778120e6ec122e705fb280"
+  }
+}
