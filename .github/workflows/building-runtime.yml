@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 3c647ef1394d3fb66766d328b4db6b292fa3e3f0
+      BUILDING_RUNTIME_SOURCE_COMMIT: 8c7a4085a68d94c18ce5a03c3ec65a08eb283fdf
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '2873cf4c7a87913a1767f0d63f44e5f79d4e2432fe84aaceef7c147f028a988a  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo '66c9d53c37afec2a8f37895403f7ded7e76b32c289d7fe3bf14e74b61faf75f8  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -651,6 +651,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/advance_camera_notice_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/compact_victory_report_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/compact_victory_report_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/persistent_survival_wave_hud_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/persistent_survival_wave_hud_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
