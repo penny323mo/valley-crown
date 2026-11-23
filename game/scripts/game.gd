@@ -323,6 +323,8 @@ var middle_drag=false
 var hud_bottom: PanelContainer
 var hud_top: PanelContainer
 var action_scroll: ScrollContainer
+var town_research_jump: Button
+var town_research_return: Button
 var action_selection_ids=[] # Presentation-only membership; queue/status refresh keeps scrolling.
 var action_mode_identity=[] # Transient command context, not saved gameplay state.
 var action_reveal_ids=[]
@@ -5069,8 +5071,43 @@ func _finish_context_primary_reveal(identity,generation):
 	if not all_touch_ids.is_empty() or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or action_scroll.scroll_horizontal!=0:return
 	for button in actions.get_children():
 		if button is Button and button.get_meta("primary_train",false):
-			action_scroll.ensure_control_visible(button)
+			# The compact keep's bookmark sits immediately beside primary Train.
+			# Reveal their right edge once, never during a user's active swipe.
+			action_scroll.ensure_control_visible(town_research_jump if is_instance_valid(town_research_jump) else button)
 			break
+
+# Presentation-only bookmarks in the existing scroll lane. Keep the entry
+# even while research is queued; omit it when no research remains to find.
+func _show_town_research_bookmarks(record: Dictionary) -> bool:
+	if not compact_ui or game_over or not record.get("owned",false) or not record.get("built",false) or record.get("kind","")!="town_center":return false
+	if not _age2(0):return true
+	return Rules.RESEARCH_TECHS.any(func(tech):return not military_tech_completed[0].has(tech))
+
+func _jump_town_research(building: int,to_research: bool) -> void:
+	if not _command_strip_mode_identity().is_empty() or not all_touch_ids.is_empty() or touch_gesture:return
+	if compact_menu.visible or context_details.visible:return
+	if not _show_town_research_bookmarks(_queue_selected_record(building)):return
+	if not is_instance_valid(town_research_jump) or not is_instance_valid(town_research_return):return
+	if not town_research_jump.is_inside_tree() or not town_research_return.is_inside_tree():return
+	# This accepted button release outranks a queued automatic Train reveal.
+	# Neither the focused destination nor the scroll may turn into a world tap.
+	action_reveal_generation+=1;action_reveal_ids.clear()
+	if to_research:
+		var left=town_research_return.get_global_rect().position.x-action_scroll.get_global_rect().position.x
+		action_scroll.scroll_horizontal=roundi(action_scroll.scroll_horizontal+left)
+		town_research_return.grab_focus()
+	else:
+		action_scroll.scroll_horizontal=0
+		action_scroll.ensure_control_visible(town_research_jump)
+		town_research_jump.grab_focus()
+
+func _add_producer_rally_actions(record: Dictionary) -> void:
+	var building=record.id
+	actions.add_child(_button("集合點",func():_start_ground_rally(building),100))
+	if "villager" not in Rules.products_for(record.kind):
+		actions.add_child(_button("警戒集合點",func():_start_ground_rally(building,"advance"),120))
+	if record.get("rally_point",Vector3.INF)!=Vector3.INF:
+		actions.add_child(_button("取消集合點設定",func():_submit("rally",{"building":building,"clear":true}),120))
 
 func _rebuild_actions(selection):
 	# This 44px control lives in the action strip, not a taller summary header.
@@ -5083,6 +5120,7 @@ func _rebuild_actions(selection):
 		stop_button.get_parent().remove_child(stop_button); stop_button.queue_free()
 	stop_button=null
 	for child in actions.get_children(): actions.remove_child(child); child.queue_free()
+	town_research_jump=null;town_research_return=null
 	build_confirm=null
 	clear_site_button=null
 	return_cargo_button=null
@@ -5182,16 +5220,21 @@ func _rebuild_actions(selection):
 			actions.add_child(construction_dispatch_button)
 			actions.add_child(_button("取消施工\n退回 75%",func(): _submit("cancel_build",{"building":ent.id}),130))
 		elif Rules.PRODUCES.has(ent.kind):
-			actions.add_child(_button("集合點",func(): _start_ground_rally(ent.id),100))
-			if "villager" not in Rules.products_for(ent.kind):
-				actions.add_child(_button("警戒集合點",func(): _start_ground_rally(ent.id,"advance"),120))
-			if ent.get("rally_point",Vector3.INF)!=Vector3.INF:
-				actions.add_child(_button("取消集合點設定",func(): _submit("rally",{"building":ent.id,"clear":true}),120))
+			var show_research_bookmarks=_show_town_research_bookmarks(ent)
+			if not show_research_bookmarks:_add_producer_rally_actions(ent)
 			for kind in Rules.products_for(ent.kind):
 				var choice=kind
 				var train_button=_button("訓練"+Rules.NAMES[kind]+"\n"+Rules.cost_label(kind),func(): _submit("train",{"building":ent.id,"kind":choice}),120)
 				train_button.set_meta("primary_train",true)
 				CommandIcons.apply(train_button,kind,true);actions.add_child(train_button)
+				if kind=="villager" and show_research_bookmarks:
+					town_research_jump=_button("研究 ›",func():_jump_town_research(ent.id,true),60)
+					town_research_jump.name="TownResearchJump"
+					town_research_jump.tooltip_text="捲到主堡研究；不會開始研究或扣款。"
+					actions.add_child(town_research_jump)
+			# Keep both paid training cards visible in the 390px lane; Rally
+			# follows them, within the same reachable strip.
+			if show_research_bookmarks:_add_producer_rally_actions(ent)
 			if "villager" not in Rules.products_for(ent.kind):
 				var repeat_product=Rules.PRODUCES[ent.kind]
 				var repeat_generation=ent.get("repeat_generation",0)
@@ -5209,6 +5252,11 @@ func _rebuild_actions(selection):
 				var safety=_button("村民自動避難："+("開" if worker_safety_enabled else "關"),_toggle_worker_safety,200)
 				safety.tooltip_text="採集村民受可見敵人襲擊時撤向附近安全主堡／守望塔；原工作區重新可見且連續安全五秒後回工。新指令優先。"
 				safety.name="WorkerSafety"; actions.add_child(safety)
+			if show_research_bookmarks:
+				town_research_return=_button("‹ 訓練",func():_jump_town_research(ent.id,false),60)
+				town_research_return.name="TownResearchReturn"
+				town_research_return.tooltip_text="返回訓練與集合點；不會下指令。"
+				actions.add_child(town_research_return)
 			if ent.kind=="town_center" and not _age2(0):
 				var research=_button("城防時代\n"+Rules.cost_label("age2"),func(): _submit("research",{"building":ent.id}),160)
 				CommandIcons.apply(research,"age2")
