@@ -325,6 +325,9 @@ var hud_top: PanelContainer
 var action_scroll: ScrollContainer
 var town_research_jump: Button
 var town_research_return: Button
+# Owned by an explicit bookmark jump, never by ordinary manual scrolling.
+var town_research_visit=-1
+var town_research_repair={}
 var action_selection_ids=[] # Presentation-only membership; queue/status refresh keeps scrolling.
 var action_mode_identity=[] # Transient command context, not saved gameplay state.
 var action_reveal_ids=[]
@@ -4845,6 +4848,7 @@ func _update_hud():
 		action_selection_ids=selection_ids
 		action_mode_identity=mode_identity
 		action_reveal_generation+=1
+		_reset_town_research_visit()
 		# Different context must not inherit a builder's hidden tail. A held
 		# old strip drag cannot move the replacement context after this reset.
 		action_touch_scroll.clear()
@@ -5092,7 +5096,9 @@ func _jump_town_research(building: int,to_research: bool) -> void:
 	# This accepted button release outranks a queued automatic Train reveal.
 	# Neither the focused destination nor the scroll may turn into a world tap.
 	action_reveal_generation+=1;action_reveal_ids.clear()
+	_reset_town_research_visit()
 	if to_research:
+		town_research_visit=building
 		var left=town_research_return.get_global_rect().position.x-action_scroll.get_global_rect().position.x
 		action_scroll.scroll_horizontal=roundi(action_scroll.scroll_horizontal+left)
 		town_research_return.grab_focus()
@@ -5100,6 +5106,53 @@ func _jump_town_research(building: int,to_research: bool) -> void:
 		action_scroll.scroll_horizontal=0
 		action_scroll.ensure_control_visible(town_research_jump)
 		town_research_jump.grab_focus()
+
+func _reset_town_research_visit() -> void:
+	town_research_visit=-1
+	town_research_repair.clear()
+
+func _remember_town_research_rebuild(selection: Array) -> void:
+	if town_research_visit<0 or not is_instance_valid(town_research_return):return
+	if not compact_ui or game_over or selection.size()!=1 or selection[0].id!=town_research_visit:
+		_reset_town_research_visit();return
+	var kind=""
+	if not _show_town_research_bookmarks(selection[0]):
+		# The last research completed while this explicit bookmark visit
+		# is still open. The old in-strip Back no longer has a destination.
+		kind="training"
+	elif action_scroll.get_global_rect().encloses(town_research_return.get_global_rect()):
+		# Restore a reachable Back on replacement without moving the strip.
+		kind="research_focus"
+	if kind.is_empty():return
+	town_research_repair={"building":town_research_visit,"generation":action_reveal_generation,"kind":kind}
+	_schedule_town_research_repair()
+
+func _schedule_town_research_repair() -> void:
+	if town_research_repair.is_empty() or not is_inside_tree() or is_queued_for_deletion():return
+	var frame=get_tree().process_frame
+	if not frame.is_connected(_finish_town_research_repair):frame.connect(_finish_town_research_repair,CONNECT_ONE_SHOT)
+
+func _finish_town_research_repair() -> void:
+	if town_research_repair.is_empty() or not is_inside_tree() or is_queued_for_deletion():return
+	if town_research_repair.generation!=action_reveal_generation or selected!=[town_research_repair.building] or compact_menu.visible or context_details.visible:
+		_reset_town_research_visit();return
+	# A press begun before this rebuild must not move beneath a live pointer.
+	# Existing pointer-release cleanup schedules the retained repair again.
+	if not all_touch_ids.is_empty() or not pressed_mouse_buttons.is_empty() or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):return
+	var kind=town_research_repair.kind
+	town_research_repair.clear()
+	if kind=="research_focus":
+		if is_instance_valid(town_research_return) and action_scroll.get_global_rect().encloses(town_research_return.get_global_rect()) and get_viewport().gui_get_focus_owner()==null:
+			town_research_return.grab_focus()
+		return
+	# Only an explicit, still-owned Research visit auto-returns on completion.
+	town_research_visit=-1
+	action_scroll.scroll_horizontal=0
+	for b in actions.get_children():
+		if b is Button and b.get_meta("primary_train",false):
+			action_scroll.ensure_control_visible(b)
+			if get_viewport().gui_get_focus_owner()==null:b.grab_focus()
+			break
 
 func _add_producer_rally_actions(record: Dictionary) -> void:
 	var building=record.id
@@ -5110,6 +5163,7 @@ func _add_producer_rally_actions(record: Dictionary) -> void:
 		actions.add_child(_button("取消集合點設定",func():_submit("rally",{"building":building,"clear":true}),120))
 
 func _rebuild_actions(selection):
+	_remember_town_research_rebuild(selection)
 	# This 44px control lives in the action strip, not a taller summary header.
 	if is_instance_valid(context_detail_button) and context_detail_button.get_parent():
 		context_detail_button.reparent(ui);context_detail_button.hide()
@@ -5658,8 +5712,10 @@ func _exit_tree():
 	# UI-only lifetime token invalidates both deferred and connected old reveals.
 	if is_inside_tree():
 		var frame_signal=get_tree().process_frame
+		if frame_signal.is_connected(_finish_town_research_repair):frame_signal.disconnect(_finish_town_research_repair)
 		for receiver in action_reveal_receivers:
 			if frame_signal.is_connected(receiver):frame_signal.disconnect(receiver)
+	_reset_town_research_visit()
 	action_reveal_receivers.clear()
 	action_reveal_generation+=1
 	action_reveal_ids=[]
@@ -6147,6 +6203,7 @@ func _track_pointer_input(event,viewport):
 	if event is InputEventMouseButton and not event.pressed:
 		if event.button_index==MOUSE_BUTTON_LEFT: call_deferred("_cleanup_mouse_release")
 		if event.button_index==MOUSE_BUTTON_MIDDLE: middle_drag=false
+		_schedule_town_research_repair()
 
 	if is_instance_valid(minimap):minimap.track_pointer(event,viewport)
 	_track_action_scroll(event,viewport)
@@ -6181,7 +6238,14 @@ func _track_action_scroll(event,viewport):
 			gui_touch_press.erase(event.index)
 			var control=scroll.control.get_ref()
 			if is_instance_valid(control):
-				if scroll.horizontal: control.scroll_horizontal=int(scroll.offset-delta.x)
+				if scroll.horizontal:
+					var prior=control.scroll_horizontal
+					control.scroll_horizontal=int(scroll.offset-delta.x)
+					if control==action_scroll and town_research_visit>=0 and control.scroll_horizontal!=prior:
+						# Intentional motion takes precedence over any deferred repair.
+						town_research_repair.clear()
+						if not is_instance_valid(town_research_return) or town_research_return.get_global_rect().position.x>=control.get_global_rect().end.x:
+							_reset_town_research_visit()
 				else: control.scroll_vertical=int(scroll.offset-delta.y)
 			viewport.set_input_as_handled()
 
@@ -6235,7 +6299,9 @@ func _cleanup_touch_release(index,press_epoch):
 	if touch_hold.get("index",-1)==index: _clear_touch_hold()
 	touch_points.erase(index); touch_world_epochs.erase(index)
 	_sync_touch_camera_pair()
-	if all_touch_ids.is_empty(): touch_gesture=false
+	if all_touch_ids.is_empty():
+		touch_gesture=false
+		_schedule_town_research_repair()
 
 func _cleanup_mouse_release():
 	if box_cancel_press.get("source","")=="mouse" and not pressed_mouse_buttons.has(MOUSE_BUTTON_LEFT): box_cancel_press.clear()
