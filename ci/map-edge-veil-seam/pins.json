@@ -1,0 +1,17 @@
+{
+  "source": "88935d2b95ccf6a7159339e60e26eeff1784c64f",
+  "game_tree": "db8c603fb178bbd5a39f954ab9cd0630f926f6dd",
+  "reported_build": "vc-e6b4b7b5efdf",
+  "godot_linux_sha": "f64d4ed19fc9df9440321653fcc80df8c6e365ba7b6de0a29e2cfa9fa71bfeb3",
+  "patch_sha": "95fcaff85a0997ba860e71c1a914d0548e18c6ab5bbbdd3758b5b5db3fb81eaa",
+  "fixture_sha": "8237b49e9adcc0ecb933e11fa5dce27f08c6b0ca3a3d1c2701794f2b8b029eb9",
+  "verification_sha": "f4aa04456e425f0d93e3bedcc2d38b072e0b882c7f1bd78b5b5fdfe3f2bc779f",
+  "baseline": {
+    "game_sha": "3372a921d9e6e90a58323bf2cf516ccbc6384d395b5d453c59681c3c1c1aa5da",
+    "fog_sha": "fc079aa8a18183e5be6e73c24ee3519410b227b9a752de41bb1066c13553650d"
+  },
+  "candidate": {
+    "game_sha": "25b0666e68c08db54abfeeee2c99dbcc8806fd64be286314e60af30e864b4480",
+    "fog_sha": "1e0aa2bdf6015c83f4b93e7052383b0e4cdcc86ff6daa9a4a3d44f2427fb9334"
+  }
+}
