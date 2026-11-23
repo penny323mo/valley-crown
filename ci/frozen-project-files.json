@@ -536,7 +536,7 @@
   "tests/command_mode_scroll_contract.gd": "33d0fe03fbff89c61b9bd7d2805018da71264d8502c3ab1ce6b796415738e84c",
   "tests/command_portraits_contract.gd": "bebfa0dac4ab4d472f9727ec08a0ba4fd6b69ec50f0a3c15fa2092e0e7fbd21c",
   "tests/command_portraits_contract.gd.uid": "a48fbe4dfcb988990248058588bd7f8de194c20fa832ed0a05b421105b966159",
-  "tests/compact_battle_hud_contract.gd": "e35ec9b1178a71602660e2295844ef2ac4a214f6915648fe10b9829dcfa82c32",
+  "tests/compact_battle_hud_contract.gd": "ce375e82213bc55d8a540dc509185834ef977fad6d3d05b9d181425a897bd21f",
   "tests/compact_camera_routes_contract.gd": "a32ceca70b561e2dd81687373164b321e3d35608128458f7198c02d9af8dfafd",
   "tests/compact_click_contract.gd": "21403f1a7eb19c2c42018cefd36d0dfe04a7cd47f1782aea02abc383b927c93c",
   "tests/compact_initial_camera_contract.gd": "3b92a0484ed2d79326e80335e313aaab9a1edc8e07bfd97875f8d0c562586ab6",
