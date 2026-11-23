@@ -1,0 +1,40 @@
+name: Audit Valley Crown quarry paint at matched mobile cameras
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-vc-stone-paint-visual.yml]
+permissions:
+  contents: read
+jobs:
+  visual:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 223b8678905bab8c63f1c0963f08ae5b0894b249
+          path: exact-visual-source
+          persist-credentials: false
+      - name: Prepare standard headful Godot runner
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri python3-pil
+          curl -fL --max-time 150 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Render actual stock and test-only quarry materials
+        run: |
+          export PATH="/usr/bin:$PATH"
+          bash ci/stone-paint-visual/hosted-visual-only/run-pair.sh "$GITHUB_WORKSPACE/exact-visual-source" "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" "$RUNNER_TEMP/stone-paint-visual"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: valley-crown-stone-paint-visual-evidence
+          path: ${{ runner.temp }}/stone-paint-visual/
+          retention-days: 14
+          if-no-files-found: ignore
