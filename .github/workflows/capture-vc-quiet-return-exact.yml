@@ -1,0 +1,47 @@
+name: Capture exact Valley Crown Quiet Return
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-quiet-return-exact.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 38
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: e9f3305743ae4e36a25362de87cf0437e7556da9
+          path: exact-quiet-baseline
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: d9b1262988257d235571f546fecea3207840b871
+          path: exact-quiet-candidate
+          persist-credentials: false
+      - name: Install pinned engine and known Linux software display
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-exact-quiet-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-exact-quiet-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Render identical ordinary Standard battles and the new explicit return
+        run: |
+          bash ci/quiet-return-exact/run.sh \
+            "$GITHUB_WORKSPACE/exact-quiet-baseline" "$GITHUB_WORKSPACE/exact-quiet-candidate" \
+            "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" "$RUNNER_TEMP/vc-exact-quiet"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-561fdd2865e3-native-exact-quiet-return
+          path: ${{ runner.temp }}/vc-exact-quiet/
+          retention-days: 30
+          if-no-files-found: ignore
