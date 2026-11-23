@@ -1,0 +1,39 @@
+name: Compare exact Valley Crown berry late foliage
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-berry-material-ab.yml]
+permissions:
+  contents: read
+jobs:
+  native-material-ab:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 4966433bfca3ebfd7a02f37342e9a58776d94508
+          path: reviewed-berry-base
+          persist-credentials: false
+      - name: Install pinned engine and known software display
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri python3-pil
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/godot-berry.zip"
+          unzip -q "$RUNNER_TEMP/godot-berry.zip" -d "$RUNNER_TEMP"
+      - name: Compare isolated baseline and late foliage (not a release)
+        run: |
+          bash ci/berry-material-ab/run-material-ab.sh "$GITHUB_WORKSPACE/reviewed-berry-base" "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" "$RUNNER_TEMP/vc-berry-material-ab"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-ec0980cd3908-native-berry-material-ab-diagnostic
+          path: ${{ runner.temp }}/vc-berry-material-ab/
+          retention-days: 30
+          if-no-files-found: ignore

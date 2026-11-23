@@ -1,0 +1,18 @@
+--- a/game/scripts/bush_donor_diagnostic.gd
++++ b/game/scripts/bush_donor_diagnostic.gd
+@@ -60,7 +60,14 @@
+  assert(stage>=0 and stage<=3)
+  if stages.has(stage):return stages[stage]
+  var foliage=make_mesh();var mesh=ArrayMesh.new()
+- mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,foliage.surface_get_arrays(0));mesh.surface_set_material(0,foliage.surface_get_material(0))
++ mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,foliage.surface_get_arrays(0))
++ var leaves:BaseMaterial3D=foliage.surface_get_material(0)
++ if stage==3:
++  # The remaining fruit and exact foliage cutouts still indicate harvestable.
++  # Stage mesh cache owns a single shared material, not one per plant/frame.
++  leaves=leaves.duplicate() as BaseMaterial3D
++  leaves.albedo_color=Color("9b8a51")
++ mesh.surface_set_material(0,leaves)
+  if stage<=3:
+   var st=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
+   for cluster in range(maxi(1,3-stage)):
