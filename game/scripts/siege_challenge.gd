@@ -24,5 +24,21 @@ func launch(ids: Array) -> bool:
  active=ids.duplicate();wave+=1;return true
 func caption(tick: int) -> String:
  if complete:return "守城挑戰：三波增援全部擊退。"
- if not active.is_empty():return "守城挑戰：第 %d / 3 波 · 擊退本波後有 45 秒整備；保護主堡。" % wave
- return "守城挑戰：第 %d / 3 波將於 %d 秒後抵達集結區；修塔、補兵、準備迎擊。" % [wave+1,maxi(0,ceili((next_tick-tick)/20.0))]
+ if not active.is_empty():
+  if wave==WAVES.size():return "守城挑戰：第 3 / 3 波 · 最後一波；守住主堡並擊退增援。"
+  return "守城挑戰：第 %d / 3 波 · 擊退本波後有 45 秒整備；保護主堡。" % wave
+ var seconds=_remaining_prepare_seconds(tick)
+ if seconds==0:return "守城挑戰：第 %d / 3 波 · 待出發；可繼續整備。" % (wave+1)
+ return "守城挑戰：第 %d / 3 波將於 %d 秒後抵達集結區；修塔、補兵、準備迎擊。" % [wave+1,seconds]
+
+func _remaining_prepare_seconds(tick: int) -> int:
+ return maxi(0,ceili((next_tick-tick)/20.0))
+
+## Battlefield status for the public wave schedule only. Countdown zero
+## waits for an authorized open launch cell; never implies units spawned.
+func hud_caption(tick: int) -> String:
+ if complete:return ""
+ if not active.is_empty():
+  return "3/3 最後一波" if wave==WAVES.size() else "%d/3 迎擊" % wave
+ var seconds=_remaining_prepare_seconds(tick)
+ return "%d/3 整備%d秒" % [wave+1,seconds] if seconds>0 else "%d/3 待出發" % (wave+1)

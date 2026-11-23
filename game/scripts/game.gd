@@ -350,6 +350,9 @@ var short_ui=false
 var compact_top_stack: VBoxContainer
 var compact_top_line: HBoxContainer
 var compact_brand: Label
+var survival_wave_status: Label
+var survival_resource_column: VBoxContainer
+var survival_stacked_resources_row: HBoxContainer
 var compact_bottom_stack: VBoxContainer
 var compact_narrow_info: VBoxContainer
 var compact_unit_tools: HBoxContainer
@@ -4442,6 +4445,24 @@ func _create_ui():
 	compact_brand=_label(SkirmishPolicy.title(skirmish_mode),13,GOLD); compact_brand.tooltip_text=Rules.BUILD_ID+" · "+SkirmishPolicy.title(skirmish_mode); compact_top_line.add_child(compact_brand)
 	top_resources=_label("",16); top_resources.size_flags_horizontal=Control.SIZE_EXPAND_FILL; compact_top_line.add_child(top_resources)
 	time_label=_label("",14); compact_top_line.add_child(time_label)
+	if skirmish_mode=="survival":
+		survival_resource_column=VBoxContainer.new()
+		survival_resource_column.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		survival_resource_column.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		survival_resource_column.add_theme_constant_override("separation",0)
+		survival_resource_column.alignment=BoxContainer.ALIGNMENT_CENTER
+		compact_top_line.add_child(survival_resource_column)
+		compact_top_line.move_child(survival_resource_column,top_resources.get_index())
+		survival_stacked_resources_row=HBoxContainer.new()
+		survival_stacked_resources_row.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		survival_stacked_resources_row.size_flags_horizontal=Control.SIZE_SHRINK_BEGIN
+		survival_stacked_resources_row.add_theme_constant_override("separation",6)
+		compact_top_stack.add_child(survival_stacked_resources_row)
+		compact_top_stack.move_child(survival_stacked_resources_row,0)
+		survival_wave_status=_label(siege_challenge.hud_caption(tick_count),13,GOLD)
+		survival_wave_status.name="SurvivalWaveStatus"
+		survival_wave_status.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		survival_resource_column.add_child(survival_wave_status)
 	pause_button=_button("暫停",func(): _toggle_pause(),60); compact_top_line.add_child(pause_button)
 	battle_jump_button=_button("受襲",func():_focus_battle_jump(),54); battle_jump_button.name="BattleJump";compact_top_line.add_child(battle_jump_button);battle_jump_button.hide()
 	compact_menu_button=_button("選單",func(): _toggle_compact_menu(),60); compact_top_line.add_child(compact_menu_button)
@@ -4740,6 +4761,28 @@ func _battle_top_row_fits(view_size:Vector2) -> bool:
 func _compact_build_price(size: Vector2) -> bool:
 	return not build_mode.is_empty() and size.y<=430 and size.x>=480 and size.x>size.y
 
+func _layout_survival_wave(stack_resources: bool,view_size: Vector2) -> void:
+	# Use spare room in the original resource strip. In landscape it has
+	# space for a second text line inside the 46px action row; in portrait
+	# the original resource strip already wraps and has room to its right.
+	var destination: Control=survival_stacked_resources_row if stack_resources else survival_resource_column
+	if survival_wave_status.get_parent()!=destination:survival_wave_status.reparent(destination)
+	survival_resource_column.visible=not stack_resources
+	survival_stacked_resources_row.visible=stack_resources
+	survival_wave_status.visible=not game_over and not siege_challenge.complete
+	survival_wave_status.custom_minimum_size.x=78.0 if stack_resources and survival_wave_status.visible else 0.0
+	survival_wave_status.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT if stack_resources else HORIZONTAL_ALIGNMENT_LEFT
+	if stack_resources:
+		# Keep the new line in the viewport even if an unrelated, long
+		# legacy timer enlarges the separate lower button row.
+		var margin=6.0 if view_size.y<560 or view_size.x<620 else 8.0
+		var style=hud_top.get_theme_stylebox("panel")
+		var content_width=maxf(0.0,view_size.x-2.0*margin-style.get_content_margin(SIDE_LEFT)-style.get_content_margin(SIDE_RIGHT))
+		survival_stacked_resources_row.custom_minimum_size.x=content_width
+		var status_width=survival_wave_status.get_combined_minimum_size().x if survival_wave_status.visible else 0.0
+		var gap=clampi(floori(content_width-top_resources.get_combined_minimum_size().x-status_width),0,6)
+		survival_stacked_resources_row.add_theme_constant_override("separation",gap)
+
 func _layout_ui():
 	if not is_inside_tree() or not is_instance_valid(ui): return
 	var size=get_viewport().get_visible_rect().size
@@ -4749,7 +4792,11 @@ func _layout_ui():
 	var has_alert=not game_over and not battle_alerts.peek(tick_count).is_empty()
 	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
 	var stack_resources=size.x<480 or (has_alert and not _battle_top_row_fits(size))
-	if stack_resources and top_resources.get_parent()!=compact_top_stack:
+	if is_instance_valid(survival_wave_status):
+		var resource_parent: Control=survival_stacked_resources_row if stack_resources else survival_resource_column
+		if top_resources.get_parent()!=resource_parent:
+			top_resources.reparent(resource_parent); resource_parent.move_child(top_resources,0)
+	elif stack_resources and top_resources.get_parent()!=compact_top_stack:
 		top_resources.reparent(compact_top_stack); compact_top_stack.move_child(top_resources,0)
 	elif not stack_resources and top_resources.get_parent()!=compact_top_line:
 		top_resources.reparent(compact_top_line); compact_top_line.move_child(top_resources,1)
@@ -4758,6 +4805,7 @@ func _layout_ui():
 	if is_instance_valid(tutorial_entry):tutorial_entry.visible=tutorial_top
 	compact_brand.visible=not tutorial_top and (size.x>=620 or stack_resources) and not (has_alert and size.x<1000)
 	compact_brand.size_flags_horizontal=Control.SIZE_EXPAND_FILL if stack_resources else Control.SIZE_FILL
+	if is_instance_valid(survival_wave_status):_layout_survival_wave(stack_resources,size)
 	compact_menu_button.text=_shortcut_menu_caption()
 	var stack_info=size.x<480
 	var info_parent=compact_narrow_info if stack_info else selection_row
@@ -4871,7 +4919,9 @@ func _update_hud():
 	if skirmish_mode=="escort":mission_label.text=frontier_escort.caption(tick_count)
 	elif skirmish_mode=="depot":mission_label.text=_forward_depot_help()
 	if skirmish_mode=="expedition":mission_label.text=frontier_expedition.caption(tick_count)
-	elif skirmish_mode=="survival":mission_label.text=siege_challenge.caption(tick_count)
+	elif skirmish_mode=="survival":
+		mission_label.text=siege_challenge.caption(tick_count)
+		if is_instance_valid(survival_wave_status):survival_wave_status.text=siege_challenge.hud_caption(tick_count)
 	elif victory_mode=="control": mission_label.text=control_point.caption()
 	elif victory_mode=="supply":mission_label.text="資源爭奪戰：實際送抵600糧＋400木；保護村民並截斷敵方資源。主堡被毀仍會落敗。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
