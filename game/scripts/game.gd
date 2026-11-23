@@ -4916,7 +4916,7 @@ func _update_hud():
 	mission_label.text=("城防時代：建馬廄出騎兵，建工坊出攻城車，摧毀敵方主堡。" if _age2(0) else "聚落時代：採鐵，於主堡研究城防時代，解鎖騎兵與攻城車。")
 	if completed_builds[0]==0: mission_label.text="首要任務：採集資源，再建民居與兵營。"
 	if delivered_total[0]==0: mission_label.text="首要任務：選取村民，向漿果或樹木落指令。"
-	if skirmish_mode=="escort":mission_label.text=frontier_escort.caption(tick_count)
+	if skirmish_mode=="escort":mission_label.text=frontier_escort.caption(tick_count,not game_over)
 	elif skirmish_mode=="depot":mission_label.text=_forward_depot_help()
 	if skirmish_mode=="expedition":mission_label.text=frontier_expedition.caption(tick_count)
 	elif skirmish_mode=="survival":
@@ -7848,8 +7848,11 @@ func _refresh_control_point_marker():
 		return
 	if skirmish_mode=="escort":
 		if is_instance_valid(objective_button):
-			objective_button.text=_objective_camera_prefix()+"護送拓荒隊 · "+FrontierEscort.TITLES[frontier_escort.stage]+"\n"+frontier_escort.progress_text(tick_count)
-			objective_button.tooltip_text=_authored_camera_tip()+"。"+frontier_escort.caption(tick_count)
+			# The result modal can leave part of this prior HUD visible.
+			# Do not advertise a rebuild after a settled defeat or draw.
+			var show_rebuild=not game_over
+			objective_button.text=_objective_camera_prefix()+"護送拓荒隊 · "+frontier_escort.stage_title(show_rebuild)+"\n"+frontier_escort.progress_text(tick_count,show_rebuild)
+			objective_button.tooltip_text=_authored_camera_tip()+"。"+frontier_escort.caption(tick_count,show_rebuild)
 		return
 	if skirmish_mode=="expedition":
 		if is_instance_valid(objective_button):

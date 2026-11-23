@@ -41,17 +41,31 @@ func launch(ids:Array)->bool:
   if not id is int or id<0 or unique.has(id):return false
   unique[id]=true
  counter_ids=ids.duplicate();launched=true;remaining=6;return true
-func caption(tick:int)->String:
+func awaiting_outpost_rebuild()->bool:
+ return stage==2 and launched and remaining==0 and living>0 and (not buildings.has("storehouse") or not buildings.has("tower"))
+func stage_title(show_rebuild:bool=true)->String:
+ return "反攻已擊退" if show_rebuild and awaiting_outpost_rebuild() else TITLES[stage]
+func _outpost_rebuild_names()->String:
+ if not buildings.has("storehouse"):
+  return "倉庫" if buildings.has("tower") else "倉庫及箭塔"
+ return "箭塔"
+func caption(tick:int,show_rebuild:bool=true)->String:
  var task="護送指定三名村民，至少一名抵達前哨。"
  if stage==1:task="在前哨界線內放置倉庫和箭塔中心；付費完成才計算。"
- if stage==2:task=("反攻%d秒後出發；保護村民及前哨。" % maxi(0,ceili((due-tick)/20.0))) if not launched else ("擊退餘下%d名敵軍；前哨被毀可重建。" % remaining)
+ if stage==2:
+  if show_rebuild and awaiting_outpost_rebuild():task="在前哨界線內付費重建%s，完成才計。" % _outpost_rebuild_names()
+  else:task=("反攻%d秒後出發；保護村民及前哨。" % maxi(0,ceili((due-tick)/20.0))) if not launched else ("擊退餘下%d名敵軍；前哨被毀可重建。" % remaining)
  if stage==3:task="村民與前哨存活，反攻全部擊退。"
- return "護送拓荒隊 · "+TITLES[stage]+"\n村民 %d/3 · 倉庫 %d/1 · 箭塔 %d/1\n" % [living,int(buildings.has("storehouse")),int(buildings.has("tower"))]+task
+ return "護送拓荒隊 · "+stage_title(show_rebuild)+"\n村民 %d/3 · 倉庫 %d/1 · 箭塔 %d/1\n" % [living,int(buildings.has("storehouse")),int(buildings.has("tower"))]+task
 func report()->Dictionary:
  return {"stage":stage,"stage_ticks":stage_ticks.duplicate(),"villagers_alive":living,"counter_launched":launched}
-func progress_text(tick:int)->String:
+func progress_text(tick:int,show_rebuild:bool=true)->String:
  if stage==0:return "村民 %d/3 · 點此定位" % living
  if stage==1:return "倉庫 %d/1 · 箭塔 %d/1" % [int(buildings.has("storehouse")),int(buildings.has("tower"))]
  if stage==2 and not launched:
   return ("反攻 %d 秒後出發" % ceili((due-tick)/20.0)) if tick<due else "集結區受阻 · 等候出發"
+ if show_rebuild and awaiting_outpost_rebuild():
+  var warehouse="倉庫 1/1" if buildings.has("storehouse") else "重建倉庫 0/1"
+  var tower="箭塔 1/1" if buildings.has("tower") else "重建箭塔 0/1"
+  return warehouse+" · "+tower
  return "村民 %d/3 · 敵軍 %d/6" % [living,remaining]
