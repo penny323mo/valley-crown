@@ -21,14 +21,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          echo 'd2d2642d3034e9ba53b59b3392f8ec0c7688c670c6e4214e0c0fa99d8e61d838  ci/map-edge-webgl-stock/stock-proof.py' | sha256sum --strict --check
+          echo 'aca53391f20885c40049f3f20142b693a30b560e8f625817dec19384e7fe969e  ci/map-edge-webgl-stock/stock-proof.py' | sha256sum --strict --check
           echo '073dbf3ac926c3eeedc551e64c9e2d0be869eecfadc10fba7f387e5e57ecfd5c  ci/map-edge-webgl-stock/pins.json' | sha256sum --strict --check
           google-chrome --version
           timeout --kill-after=15s 650s python3 -B ci/map-edge-webgl-stock/stock-proof.py ci/map-edge-webgl-stock/pins.json "$RUNNER_TEMP/vc-map-edge-stock"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: vc-c57441a91f81-stock-survival-chromium-webgl2-settled-menu
+          name: vc-c57441a91f81-stock-survival-chromium-webgl2-actor-free-northwest
           path: ${{ runner.temp }}/vc-map-edge-stock/
           retention-days: 30
           if-no-files-found: warn

@@ -30,6 +30,20 @@ ROLES=("baseline","candidate")
 # paid actions/order/selection/pose drift, so no synthetic tick zero claim.
 MAX_OPENING_TICK=120
 FIRST_WAVE_TICK=900
+OPENING_FOCUS=(-25,0,11)
+# Genuine normal camera input. Pinned native baseline+candidate found all 18
+# visible unit mesh bounds below y=381 and all directed shadows below y=391.
+# Guard the actual public center, not assigned coordinates or altered pixels.
+NORTH_FOCUS=(-33.8262481689453,0,-24.5124206542969)
+NORTH_FINGERS=((250,123),(350,123))
+NORTH_STEPS=((-9,20),(-18,39),(-27,58),(-36,77),(-46,96))
+NORTH_SWIPE_COUNT=5
+
+TERRAIN_SETTLE_TIMEOUT=195
+
+def northerly_camera(camera):
+    f=(camera or {}).get("focus")
+    return isinstance(f,list) and len(f)==3 and all(abs(a-b)<=.00015 for a,b in zip(f,NORTH_FOCUS)) and camera.get("zoom")==22
 INITIAL_BANK={"food":150000,"wood":200000,"stone":100000,"iron":0}
 
 # Exact settled 568x320 controls independently matched by native routing
@@ -198,10 +212,10 @@ def browser(root,out,row,role,driver,chrome,web):
             raise RuntimeError(f"stock menu would not remain settled: {page}/{identity}")
         def dims(o):
             return o["css"]==[568,320,1] and o["canvas"]==list(SIZE) and o["rect"]==[0,0,568,320]
-        def world(o):
+        def world(o, north=False):
             if not o["state"] or not o["menu"]:return False
             s=o["state"];h=s["hud"];m=o["menu"]
-            return dims(o) and m["match_exists"] and not m["visible"] and s["build"]==row["build"] and h.get("schema")==2 and h["viewport"]==list(SIZE) and h["camera"]=={"focus":[-25,0,11],"zoom":22}
+            return dims(o) and m["match_exists"] and not m["visible"] and s["build"]==row["build"] and h.get("schema")==2 and h["viewport"]==list(SIZE) and (northerly_camera(h.get("camera")) if north else h.get("camera")=={"focus":list(OPENING_FOCUS),"zoom":22})
         def auth(s):
             return {k:s[k] for k in ("victory_mode","control_ticks","paused","game_over","outcome","selected","bank_milli","age","military_techs",
                        "population","capacity","delivered","built","trained","own_pending_commands","touch_mode","build_mode")}
@@ -242,24 +256,45 @@ def browser(root,out,row,role,driver,chrome,web):
         f=first["state"]
         require(opening_state(f) and not f["paused"] and opening_clock(f),"not an early ordinary Survival battlefield")
         receipt["first_battlefield"]={"state":f,"gl":first["gl"]}
-        pause=[b for b in f["hud"]["buttons"] if b["text"]=="暫停" and not b["disabled"]]
+        # Real stock two-finger pan, not a gameplay bridge command: both
+        # points translate together, between opening toast and bottom HUD.
+        # Individual Web callbacks can update the two positions serially;
+        # small steps stay within the product's 12px pinch slop even then.
+        receipt["actual_two_finger_route"]={"starts":NORTH_FINGERS,"steps":NORTH_STEPS,"completed_swipes":0}
+        def pair(dx,dy):
+            return [{"x":x+dx,"y":y+dy,"id":i+1} for i,(x,y) in enumerate(NORTH_FINGERS)]
+        for repeat in range(NORTH_SWIPE_COUNT):
+            cdp("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":pair(0,0)})
+            for dx,dy in NORTH_STEPS:
+                cdp("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":pair(dx,dy)})
+            cdp("Input.dispatchTouchEvent",{"type":"touchEnd","touchPoints":[]})
+            receipt["actual_two_finger_route"]["completed_swipes"]+=1
+        def aimed():
+            o=observe()
+            return o if world(o,north=True) else None
+        aimed_result=until(aimed,8)
+        aimed_state=aimed_result["state"]
+        receipt["actual_two_finger_route"].update(public_camera=aimed_state["hud"]["camera"],tick=aimed_state["tick"])
+        require(opening_clock(aimed_state) and not aimed_state["paused"] and auth(aimed_state)==auth(f),"ordinary pan missed actor-free opening bounds or altered non-camera authority")
+        pause=[b for b in aimed_state["hud"]["buttons"] if b["text"]=="暫停" and not b["disabled"]]
         require(len(pause)==1,"ordinary Pause touch target not unique")
         tap(pause[0]["rect"])
         def frozen():
             o=observe()
-            return o if world(o) and o["state"]["paused"] and drew(o["gl"]) else None
+            return o if world(o,north=True) and o["state"]["paused"] and drew(o["gl"]) else None
         e=until(frozen,10)
         initial=e["state"]; frozen_auth=auth(initial)
         pre={**auth(f),"paused":True}
         receipt["early_battlefield"]={"tick":initial["tick"],"time":initial["time"],"tick_delta":initial["tick"]-f["tick"],
             "camera":initial["hud"]["camera"],"gl":e["gl"],"public_auth_diff":{k:[pre[k],frozen_auth[k]] for k in pre if pre[k]!=frozen_auth[k]}}
         receipt["first_battlefield_png_sha256"]=diagnostic("first-battlefield")
-        require(opening_clock(initial) and initial["tick"]>=f["tick"] and opening_state(initial) and frozen_auth==pre,
+        require(opening_clock(initial) and initial["tick"]>=aimed_state["tick"] and opening_state(initial) and frozen_auth==pre,
                 "stock pause outside frozen opening bound or with real public authority drift")
         top=[6,6,556,54];bottom=[6,223,556,91]
+        settle_started=time.monotonic()
         def settled():
             o=observe()
-            if not (world(o) and drew(o["gl"])):return None
+            if not (world(o,north=True) and drew(o["gl"])):return None
             s=o["state"];h=s["hud"]
             require(s["tick"]==initial["tick"] and auth(s)==frozen_auth,"post-pause tick/selection/orders/economy changed")
             # Survival skips the persistent lesson, but the real Pause toast
@@ -267,7 +302,11 @@ def browser(root,out,row,role,driver,chrome,web):
             # wait for its actual Details button to leave the world lane.
             if len(h["buttons"])>=4 and all(contains(top,b["rect"]) or contains(bottom,b["rect"]) for b in h["buttons"]) and o["gl"]["maskDrawn"]>=e["gl"]["maskDrawn"]+4:
                 return o
-        observed=until(settled,120)
+        # Pause toast is 30 simulation-display seconds at <=0.1/frame.
+        # The prior two stock roles reached its actual boundary at ~120s.
+        observed=until(settled,TERRAIN_SETTLE_TIMEOUT)
+        receipt["settle"]={"wall_seconds":round(time.monotonic()-settle_started,3),
+            "mask_draw_delta_after_pause":observed["gl"]["maskDrawn"]-e["gl"]["maskDrawn"]}
         sh=observed["state"]["hud"]
         require(contains(bottom,sh["action_scroll"]["rect"]) and sh["action_scroll"]["rect"][2]>0 and any(b["text"]=="繼續" and contains(top,b["rect"]) for b in sh["buttons"]),"paused stock HUD and bottom action strip must be visible")
         w={"camera":sh["camera"]["focus"],"zoom":sh["camera"]["zoom"],"size":list(SIZE),"map_half":40,
@@ -283,7 +322,7 @@ def browser(root,out,row,role,driver,chrome,web):
         require(not any(ERROR.search(x.get("message","")) for k in ("menu_console","audit_console") for x in receipt[k]),
                 "browser console reported a shader/GL/runtime error")
         final=observe()
-        require(world(final) and drew(final["gl"]) and final["state"]["tick"]==initial["tick"] and final["state"]["hud"]==sh and auth(final["state"])==frozen_auth,"game state or GL changed during actual canvas screenshot")
+        require(world(final,north=True) and drew(final["gl"]) and final["state"]["tick"]==initial["tick"] and final["state"]["hud"]==sh and auth(final["state"])==frozen_auth,"game state or GL changed during actual canvas screenshot")
         receipt["pass"]=True
       except Exception as e:
         receipt["error"]=str(e)
@@ -306,7 +345,7 @@ def browser(root,out,row,role,driver,chrome,web):
 
 def pixels(a,b,old,new,verify):
     require(all(old[k]==new[k] for k in ("camera","zoom","size","map_half","public_authority","public_hud","projection","top","bottom","minimap")),"matched camera, public observations and visible HUD A/B mismatch")
-    require(old["camera"]==[-25,0,11] and old["zoom"]==22 and old["size"]==list(SIZE),"original native witness dimensions/camera")
+    require(northerly_camera({"focus":old["camera"],"zoom":old["zoom"]}) and old["size"]==list(SIZE),"actual actor-free native witness dimensions/camera")
     ar,ast=verify.png(a,list(SIZE));br,bst=verify.png(b,list(SIZE))
     v=old["projection"];half=old["map_half"];limits=("top","bottom","minimap")
     c={k:0 for k in ("inside","inside_changed_over2","outside","old_bright","new_bright","seam","old_bright_seam","new_bright_seam","inner_flank","inner_changed_over2")}
@@ -365,7 +404,7 @@ def main():
         raise RuntimeError("one or both stock renderer roles did not meet proof conditions; see exact receipts")
     a,b=(json.loads((out/f"{r}-browser.json").read_text()) for r in ROLES)
     c=pixels(out/"baseline.png",out/"candidate.png",a["runtime"]["w"],b["runtime"]["w"],verify)
-    result={"pass":satisfy(c),"scope":"Exact unmodified stock exports via ordinary touch menu with paused early Survival, hosted Chrome WebGL2 and strict original canvas PNG; public observations only, not Safari/iPhone.",
+    result={"pass":satisfy(c),"scope":"Exact unmodified stock exports via ordinary touch menu with paused early Survival at the ordinary actor-free north-west camera, hosted Chrome WebGL2 and strict original canvas PNG; public observations only, not Safari/iPhone.",
         "pixels":c,"images":{q["role"]:q["unmodified_canvas_png_sha256"] for q in (a,b)}}
     jdump(out/"comparison.json",result);print(json.dumps(result))
     require(result["pass"] and len(set(result["images"].values()))==2,"measured Web west edge proof failed")
