@@ -178,6 +178,9 @@ var building_attention_cursor={}
 const IdleArmySelection=preload("res://scripts/idle_army_selection.gd")
 var idle_army_button: Button
 var idle_worker_button: Button
+var inline_idle_worker_button: Button
+var short_top_fit_key: Array=[]
+var short_top_idle_in_drawer: bool=false
 var next_id = 0
 var economy = Economy.new()
 var economy_sequence = 0
@@ -4467,6 +4470,9 @@ func _create_ui():
 		survival_resource_column.add_child(survival_wave_status)
 	pause_button=_button("暫停",func(): _toggle_pause(),60); compact_top_line.add_child(pause_button)
 	battle_jump_button=_button("受襲",func():_focus_battle_jump(),54); battle_jump_button.name="BattleJump";compact_top_line.add_child(battle_jump_button);battle_jump_button.hide()
+	inline_idle_worker_button=_button("閒置",func():_focus_idle_worker(inline_idle_worker_button),46)
+	inline_idle_worker_button.name="InlineIdleWorker";inline_idle_worker_button.tooltip_text="選取並定位下一名閒置村民，不更改指令。"
+	inline_idle_worker_button.hide();compact_top_line.add_child(inline_idle_worker_button);compact_top_line.move_child(inline_idle_worker_button,pause_button.get_index())
 	compact_menu_button=_button("選單",func(): _toggle_compact_menu(),60); compact_top_line.add_child(compact_menu_button)
 	hud_bottom=PanelContainer.new(); hud_bottom.name="CompactContextPanel"; ui.add_child(hud_bottom); hud_bottom.add_theme_stylebox_override("panel",_compact_panel_style())
 	compact_bottom_stack=VBoxContainer.new(); compact_bottom_stack.add_theme_constant_override("separation",4); hud_bottom.add_child(compact_bottom_stack)
@@ -4526,6 +4532,9 @@ func _create_ui():
 	var menu_title=HBoxContainer.new(); shortcut_header.add_child(menu_title)
 	var menu_heading=_label("霧谷王旗 · 快捷選單",17,GOLD); menu_heading.size_flags_horizontal=Control.SIZE_EXPAND_FILL; menu_title.add_child(menu_heading)
 	menu_title.add_child(_button("關閉",func(): _toggle_compact_menu(),60))
+	idle_worker_button=_button("閒置",func():_focus_idle_worker(),60)
+	idle_worker_button.name="IdleWorkerCycle"
+	idle_worker_button.tooltip_text="選取並定位下一名閒置村民，不更改指令。"
 	var category_row=HFlowContainer.new();category_row.name="ShortcutCategories";category_row.add_theme_constant_override("h_separation",4);category_row.add_theme_constant_override("v_separation",4);shortcut_header.add_child(category_row)
 	var category_names={"all":"全部","economy":"經濟","army":"軍隊","production":"生產","settings":"設定"}
 	for category in category_names:
@@ -4537,8 +4546,9 @@ func _create_ui():
 	mission_label=_label("",14,Color("c8d4b3")); mission_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; menu_box.add_child(mission_label)
 	if skirmish_mode=="escort":
 		var party_button=_button("選取拓荒村民",_select_escort_party,160);party_button.name="EscortPartyButton";menu_box.add_child(party_button)
-	idle_worker_button=_button("閒置村民 0 · 下一位",_focus_idle_worker,160); idle_worker_button.name="IdleWorkerCycle"; menu_box.add_child(idle_worker_button)
-	idle_worker_button.tooltip_text="選取一位閒置村民，不改動任何指令。"
+	menu_box.add_child(idle_worker_button)
+	idle_worker_button.text="閒置村民 0 · 下一位"
+	idle_worker_button.custom_minimum_size.x=160
 	idle_army_button=_button("待命軍隊 0 · 全選",_select_idle_army,160); idle_army_button.name="IdleArmySelect"; menu_box.add_child(idle_army_button)
 	idle_army_button.tooltip_text="選取沒有行動或待處理指令的軍隊，不改變原有防守姿態。"
 	shortfall_label=_label("",13);shortfall_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;menu_box.add_child(shortfall_label)
@@ -4741,6 +4751,70 @@ func _defer_layout():
 	call_deferred("_layout_ui")
 
 # Presentation only. Preserve both direct alert navigation and menu access.
+# Only the known short-landscape range gets the denser stock top row.
+func _short_top_view(size:Vector2) -> bool:
+	return size.x>=480 and size.x<620 and size.y<=430 and size.x>size.y
+
+func _short_top_controls(size:Vector2) -> bool:
+	return _short_top_view(size) and not (skirmish_mode=="survival" and size.x>=568)
+
+func _top_resource_copy(size:Vector2) -> void:
+	var bank=economy.bank_units_floor(0)
+	var people=_population(0);var cap=_capacity(0)
+	if _short_top_controls(size):
+		var compact="食%d 木%d 石%d 鐵%d 人口%d/%d" if is_instance_valid(survival_wave_status) else "食%d 木%d 石%d\n鐵%d 人口%d/%d"
+		top_resources.text=compact % [bank.food,bank.wood,bank.stone,bank.iron,people,cap]
+	elif size.x<480:
+		top_resources.text="食 %d  木 %d  人口 %d/%d\n石 %d  鐵 %d  %s" % [bank.food,bank.wood,people,cap,bank.stone,bank.iron,"城防時代" if _age2(0) else "聚落時代"]
+	else:
+		top_resources.text="食 %d  木 %d  石 %d  鐵 %d  人口 %d/%d" % [bank.food,bank.wood,bank.stone,bank.iron,people,cap]
+
+func _short_top_row_required(tutorial_top:bool,has_alert:bool,inline_idle:bool,resources_in_row:bool) -> float:
+	var items=[time_label,pause_button,compact_menu_button]
+	if has_alert:items.append(battle_jump_button)
+	if tutorial_top:items.append(tutorial_entry)
+	if inline_idle:items.append(inline_idle_worker_button)
+	var width=0.0
+	for item in items:width+=item.get_combined_minimum_size().x
+	if resources_in_row:
+		var resource_width=top_resources.get_combined_minimum_size().x
+		if is_instance_valid(survival_wave_status) and not game_over and not siege_challenge.complete:
+			resource_width=maxf(resource_width,survival_wave_status.get_combined_minimum_size().x)
+		width+=resource_width
+		items.append(top_resources)
+	var panel=hud_top.get_theme_stylebox("panel")
+	return width+panel.get_content_margin(SIDE_LEFT)+panel.get_content_margin(SIDE_RIGHT)+compact_top_line.get_theme_constant("separation")*(items.size()-1)
+
+func _can_inline_idle_worker() -> bool:
+	return _short_top_controls(get_viewport().get_visible_rect().size) and not game_over and application_focused and not application_suspended and not compact_menu.visible and context_detail_kind.is_empty() and _command_strip_mode_identity().is_empty() and not paused and not idle_worker_button.get_meta("idle_ids",[]).is_empty()
+
+func _set_inline_worker_visible(want:bool) -> void:
+	if inline_idle_worker_button.visible==want:return
+	for index in gui_touch_press.keys():
+		if gui_touch_press[index].button.get_ref()==inline_idle_worker_button:gui_touch_press.erase(index)
+	if inline_idle_worker_button.button_pressed:inline_idle_worker_button.disabled=true;inline_idle_worker_button.disabled=false
+	inline_idle_worker_button.visible=want
+
+func _layout_idle_drawer_entry(pin_to_header:bool) -> void:
+	if not is_instance_valid(idle_worker_button) or short_top_idle_in_drawer==pin_to_header:return
+	# Reuse the exact same owned callback and unstale bindings; preserve tab
+	# state. A press on its old parent cannot activate the moved control.
+	for index in gui_touch_press.keys():
+		if gui_touch_press[index].button.get_ref()==idle_worker_button:gui_touch_press.erase(index)
+	if idle_worker_button.button_pressed:idle_worker_button.disabled=true;idle_worker_button.disabled=false
+	short_top_idle_in_drawer=pin_to_header
+	if pin_to_header:
+		var heading=shortcut_header.get_child(0)
+		idle_worker_button.reparent(heading)
+		heading.move_child(idle_worker_button,heading.get_child_count()-2)
+	else:
+		var body=shortcut_scroll.get_child(0)
+		idle_worker_button.reparent(body)
+		body.move_child(idle_worker_button,mission_label.get_index()+(2 if skirmish_mode=="escort" else 1))
+	idle_worker_button.custom_minimum_size.x=60 if pin_to_header else 160
+	_refresh_idle_worker_button()
+	_apply_shortcut_category()
+
 func _battle_top_row_fits(view_size:Vector2) -> bool:
 	var margin=6.0 if view_size.y<560 or view_size.x<620 else 8.0
 	var required=top_resources.get_combined_minimum_size().x
@@ -4804,7 +4878,27 @@ func _layout_ui():
 	var narrow=size.x<620
 	var has_alert=not game_over and not battle_alerts.peek(tick_count).is_empty()
 	top_resources.add_theme_font_size_override("font_size",14 if narrow else 16)
-	var stack_resources=size.x<480 or (has_alert and not _battle_top_row_fits(size))
+	var short_top=_short_top_controls(size)
+	if short_top:top_resources.add_theme_constant_override("line_spacing",0)
+	elif top_resources.has_theme_constant_override("line_spacing"):top_resources.remove_theme_constant_override("line_spacing")
+	_top_resource_copy(size)
+	compact_top_line.add_theme_constant_override("separation",6 if short_top else 10)
+	var tutorial_active=is_instance_valid(tutorial_entry) and not demo_tutorial.skipped and not game_over
+	var tutorial_top=tutorial_active and not (has_alert and size.x<760)
+	# A normal 568px Survival row keeps its verified coordinates. An
+	# unusually wide exact bank/clock still gets the established stack on
+	# that size before any clipping, even without an attack alert.
+	var guarded_survival_fit=_short_top_view(size) and is_instance_valid(survival_wave_status)
+	var stack_resources=size.x<480 or ((has_alert or guarded_survival_fit) and not _battle_top_row_fits(size))
+	var idle_top=false
+	if short_top:
+		var available=size.x-12
+		# Do not increase normal row height for an optional control. Only the
+		# existing resource stack is used if essential controls otherwise clip.
+		stack_resources=_short_top_row_required(tutorial_top,has_alert,false,true)>available
+		idle_top=not stack_resources and _can_inline_idle_worker() and not has_alert and _short_top_row_required(tutorial_top,false,true,true)<=available
+	_set_inline_worker_visible(idle_top)
+	_layout_idle_drawer_entry(_short_top_view(size))
 	if is_instance_valid(survival_wave_status):
 		var resource_parent: Control=survival_stacked_resources_row if stack_resources else survival_resource_column
 		if top_resources.get_parent()!=resource_parent:
@@ -4813,10 +4907,8 @@ func _layout_ui():
 		top_resources.reparent(compact_top_stack); compact_top_stack.move_child(top_resources,0)
 	elif not stack_resources and top_resources.get_parent()!=compact_top_line:
 		top_resources.reparent(compact_top_line); compact_top_line.move_child(top_resources,1)
-	var tutorial_active=is_instance_valid(tutorial_entry) and not demo_tutorial.skipped and not game_over
-	var tutorial_top=tutorial_active and not (has_alert and size.x<760)
 	if is_instance_valid(tutorial_entry):tutorial_entry.visible=tutorial_top
-	compact_brand.visible=not tutorial_top and (size.x>=620 or stack_resources) and not (has_alert and size.x<1000)
+	compact_brand.visible=not short_top and not tutorial_top and (size.x>=620 or stack_resources) and not (has_alert and size.x<1000)
 	compact_brand.size_flags_horizontal=Control.SIZE_EXPAND_FILL if stack_resources else Control.SIZE_FILL
 	if is_instance_valid(survival_wave_status):_layout_survival_wave(stack_resources,size)
 	compact_menu_button.text=_shortcut_menu_caption()
@@ -4923,10 +5015,7 @@ func _update_hud():
 	_refresh_tutorial()
 	if game_over:
 		compact_menu.hide(); compact_menu_dismiss.hide()
-	var display_bank=economy.bank_units_floor(0)
-	top_resources.text="食 %d  木 %d  石 %d  鐵 %d  人口 %d/%d" % [display_bank.food,display_bank.wood,display_bank.stone,display_bank.iron,_population(0),_capacity(0)]
-	if compact_ui and get_viewport().get_visible_rect().size.x<480:
-		top_resources.text="食 %d  木 %d  人口 %d/%d\n石 %d  鐵 %d  %s" % [display_bank.food,display_bank.wood,_population(0),_capacity(0),display_bank.stone,display_bank.iron,"城防時代" if _age2(0) else "聚落時代"]
+	_top_resource_copy(get_viewport().get_visible_rect().size)
 	time_label.text="%02d:%02d" % [floori(game_time/60),int(game_time)%60]
 	if battle_speed!=1.0:time_label.text+=" · "+_battle_speed_text()
 	time_label.tooltip_text=SkirmishPolicy.title(skirmish_mode)+" · 戰役速度 "+_battle_speed_text()
@@ -4945,6 +5034,14 @@ func _update_hud():
 	elif victory_mode=="supply":mission_label.text="資源爭奪戰：實際送抵600糧＋400木；保護村民並截斷敵方資源。主堡被毀仍會落敗。"
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: mission_label.text="尚餘 %d 秒到達對局上限，屆時和局。" % ceili(Rules.TIME_LIMIT-game_time)
 	if game_time>=Rules.TIME_LIMIT-60 and not game_over: time_label.text+=" · 和局 %ds" % ceili(Rules.TIME_LIMIT-game_time)
+	# Resource/clock/mode growth can change the measured same-row fit.
+	if _short_top_view(get_viewport().get_visible_rect().size) and is_instance_valid(tutorial_entry):
+		var fit_key=[top_resources.get_combined_minimum_size(),time_label.get_combined_minimum_size(),
+			tutorial_entry.visible,tutorial_entry.get_combined_minimum_size(),battle_jump_button.visible,
+			battle_jump_button.get_combined_minimum_size(),_can_inline_idle_worker()]
+		if is_instance_valid(survival_wave_status):fit_key.append(survival_wave_status.get_combined_minimum_size())
+		if fit_key!=short_top_fit_key:short_top_fit_key=fit_key;_defer_layout()
+	else:short_top_fit_key.clear()
 	touch_button.text=("護送中" if unit_command_kind=="escort" else "巡邏中" if unit_command_kind=="patrol" else ("前進中" if unit_command_kind=="advance" else "指定中")) if touch_command else "指定"
 	var selection=[]
 	for id in selected:
@@ -7093,10 +7190,7 @@ func _compact_panel_style():
 
 
 func _shortcut_menu_caption() -> String:
-	if compact_menu.visible: return "收起"
-	if not game_over and not battle_alerts.peek(tick_count).is_empty(): return "受襲"
-	if not game_over and is_instance_valid(idle_worker_button) and not idle_worker_button.get_meta("idle_ids",[]).is_empty(): return "閒置"
-	return "選單"
+	return "收起" if compact_menu.visible else "選單"
 
 func _refresh_attack_alert():
 	if not is_instance_valid(attack_alert_button): return
@@ -7152,26 +7246,37 @@ func _refresh_idle_worker_button():
 	var ids=[] if game_over else IdleWorkerSelection.eligible(faction_views[0].records(),commands)
 	var target=IdleWorkerSelection.next_id(ids,idle_worker_cursor)
 	var blocked=game_over or not application_focused or application_suspended
-	# A replaced roster/target cannot inherit an old held touch or native click.
-	if idle_worker_button.get_meta("idle_ids",[])!=ids or idle_worker_button.get_meta("idle_target",-1)!=target or idle_worker_button.get_meta("idle_blocked",true)!=blocked:
-		for index in gui_touch_press.keys():
-			if gui_touch_press[index].button.get_ref()==idle_worker_button: gui_touch_press.erase(index)
-		if idle_worker_button.button_pressed:
-			idle_worker_button.disabled=true; idle_worker_button.disabled=false
-		idle_worker_button.set_meta("idle_ids",ids.duplicate())
-		idle_worker_button.set_meta("idle_target",target)
-		idle_worker_button.set_meta("idle_blocked",blocked)
-	idle_worker_button.disabled=blocked or ids.is_empty()
-	idle_worker_button.text="閒置村民 %d · 下一位" % ids.size()
+	_bind_idle_worker_button(idle_worker_button,ids,target,blocked)
+	_bind_idle_worker_button(inline_idle_worker_button,ids,target,blocked or not _can_inline_idle_worker())
+	if short_top_idle_in_drawer:
+		idle_worker_button.text="閒置%d" % ids.size()
+		idle_worker_button.visible=not ids.is_empty()
+	else:
+		idle_worker_button.text="閒置村民 %d · 下一位" % ids.size()
 
-func _focus_idle_worker():
-	# Navigation remains available while paused, exactly like ordinary selection.
-	# It never issues work, movement, retry, payment or combat commands.
-	if game_over or not application_focused or application_suspended or not compact_menu.visible or not is_instance_valid(idle_worker_button): return
+func _bind_idle_worker_button(button:Button,ids:Array,target:int,blocked:bool) -> void:
+	if not is_instance_valid(button):return
+	# A replaced roster/target cannot inherit an old held touch or native click.
+	if button.get_meta("idle_ids",[])!=ids or button.get_meta("idle_target",-1)!=target or button.get_meta("idle_blocked",true)!=blocked:
+		for index in gui_touch_press.keys():
+			if gui_touch_press[index].button.get_ref()==button:gui_touch_press.erase(index)
+		if button.button_pressed:button.disabled=true;button.disabled=false
+		button.set_meta("idle_ids",ids.duplicate())
+		button.set_meta("idle_target",target)
+		button.set_meta("idle_blocked",blocked)
+	button.disabled=blocked or ids.is_empty()
+
+func _focus_idle_worker(source:Button=null):
+	# The existing drawer action still navigates while paused. The separate
+	# inline button cannot dismiss a drawer or an active targeting action.
+	if source==null:source=idle_worker_button
+	if not is_instance_valid(source) or (source==inline_idle_worker_button and not source.is_visible_in_tree()) or game_over or not application_focused or application_suspended:return
+	if source==inline_idle_worker_button and not _can_inline_idle_worker():return
+	if source==idle_worker_button and not compact_menu.visible:return
 	var records=faction_views[0].records()
 	var ids=IdleWorkerSelection.eligible(records,commands)
 	var target=IdleWorkerSelection.next_id(ids,idle_worker_cursor)
-	if idle_worker_button.disabled or ids.is_empty() or ids!=idle_worker_button.get_meta("idle_ids",[]) or target!=idle_worker_button.get_meta("idle_target",-1):
+	if source.disabled or ids.is_empty() or ids!=source.get_meta("idle_ids",[]) or target!=source.get_meta("idle_target",-1):
 		_refresh_idle_worker_button(); return
 	idle_worker_cursor=target
 	_cancel_mode()
@@ -8393,6 +8498,7 @@ func _dispatch_idle_gather(resource):
 func _apply_shortcut_category():
 	for category in shortcut_sections:
 		for control in shortcut_sections[category]:
+			if control==idle_worker_button and short_top_idle_in_drawer:continue
 			control.visible=shortcut_category=="all" or shortcut_category==category
 	for category in shortcut_category_buttons:
 		shortcut_category_buttons[category].set_pressed_no_signal(category==shortcut_category)
