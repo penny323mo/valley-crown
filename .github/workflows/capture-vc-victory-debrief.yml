@@ -1,0 +1,48 @@
+name: Capture matched Valley Crown Chapter 1 victory reports
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-victory-debrief.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 1c5c805401990d640a2c767d69eda802d0fe60f7
+          path: reviewed-baseline
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 3c647ef1394d3fb66766d328b4db6b292fa3e3f0
+          path: reviewed-candidate
+          persist-credentials: false
+      - name: Install pinned Godot and known software display
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-victory-debrief-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-victory-debrief-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Capture the same earned Chapter 1 result and its Buildings tab
+        run: |
+          bash ci/mobile-victory-debrief/run-victory-debrief-capture.sh \
+            "$GITHUB_WORKSPACE/reviewed-baseline" "$GITHUB_WORKSPACE/reviewed-candidate" \
+            "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" ci/mobile-victory-debrief/pins.json \
+            "$RUNNER_TEMP/vc-victory-debrief"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-5b3829bff321-native-victory-debrief
+          path: ${{ runner.temp }}/vc-victory-debrief/
+          retention-days: 30
+          if-no-files-found: ignore
