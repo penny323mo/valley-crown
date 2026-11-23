@@ -1,0 +1,20 @@
+{
+  "baseline_game_tree": "35d0f3c6aaa76eb7711682df1debd33be6338aa2",
+  "build": "vc-8018c5b0e95b",
+  "candidate_patch_sha256": "07b1a83f1a503ae80abdeaa8a2cfb0b6e50051081f0d4c2b68a31751fa743340",
+  "fixture_sha256": "ffb81e728acb91fd0e417f80dbb9aea5f1bfaa32825da13c876120daa4dca262",
+  "identity_note": "Build label inherited by uncommitted local candidate; not the shipped v143 binary.",
+  "source_commit": "70ad0f219d41ab2f73fe740662b8a4980d159b12",
+  "source_files_sha256": {
+    "game/assets/mature/ui/icons/age2.svg": "81bd9a597ceeb7d8cdb670089552f1196bed54ad8feefa7592ecb7e3632c8b38",
+    "game/assets/mature/ui/icons/forged_blades.svg": "56f7868dbf76940680c333d91f938f9fc9c18e68054287ebed4e241a822a65f9",
+    "game/assets/mature/ui/icons/reinforced_armor.svg": "b7b3bae59adc649d5a6bed105671b578dde1ccd598bb1b19b1bfdb8cbf6c1031",
+    "game/assets/mature/ui/icons/supply_station.svg": "fbe870728a8abbe58bb8a01918fc4c17df730ad6e9a0d4cb070dc1c48795f88e",
+    "game/assets/mature/ui/icons/tempered_arrows.svg": "c5f8dbf88d9576ac620792917fa93207e0d88262b89c3de7223d94b21826cab2",
+    "game/assets/mature/ui/icons/wheelbarrow.svg": "0ad87e67fe0f4fb6ea9963af4d7c5bbb3a88ad840c55767d1e100267548fb6b7",
+    "game/assets/mature/ui/portraits/house.png": "1f5278777fae56057a5dffd3df533c4eadb5707907d5c86fe1db26276062fc1e",
+    "game/scripts/command_icons.gd": "bacb6908db97750bf0afeaca5658557799e03d0ec839a0956d6fd9a506991b48",
+    "game/scripts/game.gd": "97a1f462d267b42bb86026579de9cad1fe91aca738f6bb0ad2cc5be8aff97ab5",
+    "game/scripts/rules.gd": "1146958cff439126bbcb6b728547d1458c6e839d20bc028ee28b9edfd556eaf3"
+  }
+}

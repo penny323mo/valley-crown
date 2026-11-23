@@ -1,0 +1,43 @@
+name: Capture exact Valley Crown mobile command icons
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/capture-vc-mobile-command-icons.yml]
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 70ad0f219d41ab2f73fe740662b8a4980d159b12
+          path: reviewed-source
+          persist-credentials: false
+      - name: Verify immutable candidate and prepare Godot and display
+        run: |
+          set -euo pipefail
+          test "$(git -C reviewed-source rev-parse HEAD)" = 70ad0f219d41ab2f73fe740662b8a4980d159b12
+          test "$(git -C reviewed-source rev-parse 'HEAD^{tree}')" = 16b64a5de26edcd5dcabd4061d64e9804184c5a4
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb xauth libgl1-mesa-dri
+          curl -fL --max-time 180 https://github.com/godotengine/godot/releases/download/4.6.3-stable/Godot_v4.6.3-stable_linux.x86_64.zip -o "$RUNNER_TEMP/vc-engine.zip"
+          unzip -q "$RUNNER_TEMP/vc-engine.zip" -d "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64"
+      - name: Render actual native gameplay UI without overlays
+        run: |
+          bash ci/mobile-command-icons/run-capture.sh "$GITHUB_WORKSPACE/reviewed-source" \
+            "$RUNNER_TEMP/Godot_v4.6.3-stable_linux.x86_64" ci/mobile-command-icons/pins.json \
+            "$RUNNER_TEMP/vc-mobile-icons"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-8018c5b0e95b-native-mobile-command-icons
+          path: ${{ runner.temp }}/vc-mobile-icons/
+          retention-days: 30
+          if-no-files-found: ignore
