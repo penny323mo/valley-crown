@@ -19,7 +19,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'
-      BUILDING_RUNTIME_SOURCE_COMMIT: 88935d2b95ccf6a7159339e60e26eeff1784c64f
+      BUILDING_RUNTIME_SOURCE_COMMIT: 9e5f9e9cfccb0238f2c9b7ce36d67058a3ea0394
       BUILDING_RUNTIME_EXECUTION_APPROVED: 'true'
     steps:
       - name: Reject pending or unapproved pins
@@ -41,7 +41,7 @@ jobs:
       - name: Shell-only support identity check before importing Python
         run: |
           set -euo pipefail
-          echo '9a14d105fbd0e6ae733b64c4a50540b311b9b2f91846400c9128ef1a04fe981a  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
+          echo 'deec4b376f17cff801fe94dbb558a1fc8bcfe8700e7f7a10b1c234f4f5c2c83b  ci/SUPPORT_SHA256SUMS' | sha256sum --strict --check
           sha256sum --strict --check ci/SUPPORT_SHA256SUMS
           test ! -e "$RTS_WORK"
           mkdir -m 700 "$RTS_WORK"
@@ -655,6 +655,8 @@ jobs:
             ${{ env.RTS_WORK }}/product/latest-contracts/persistent_survival_wave_hud_contract/godot.log
             ${{ env.RTS_WORK }}/product/latest-contracts/escort_recovery_presentation_contract/receipt.json
             ${{ env.RTS_WORK }}/product/latest-contracts/escort_recovery_presentation_contract/godot.log
+            ${{ env.RTS_WORK }}/product/latest-contracts/map_exterior_veil_contract/receipt.json
+            ${{ env.RTS_WORK }}/product/latest-contracts/map_exterior_veil_contract/godot.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
