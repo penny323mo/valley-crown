@@ -1,0 +1,35 @@
+name: Audit exact stock 568×320 Practice construction recon in Chromium
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/audit-exact-remote-construction-browser.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  stock-remote-construction:
+    if: github.repository == 'penny323mo/valley-crown' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Touch the same naturally revealed and fogged plot, scout unpaid, then separately confirm
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo 'ecec2796fb3c72259a6f6c4e29007754ce1ccc8c33ba5b92f2dfd8e096fddb66  ci/remote-construction-web/remote-proof.py' | sha256sum --strict --check
+          echo '039f6c3323d79e29c1086d9e8e57581ef30cabc5860b4045e9830bbbf5c3deac  ci/remote-construction-web/pins.json' | sha256sum --strict --check
+          echo '07ef064054d6d1a66ceb8c01de2cf8a84d67abc3a756533ca7e47bf36d16c740  ci/map-edge-webgl-stock/stock-proof.py' | sha256sum --strict --check
+          echo 'ede588f6ee877b5af8f35880d463d39d37065c92740c6f958443e10f6aceb5ad  ci/map-edge-webgl-stock/gl-observe.js' | sha256sum --strict --check
+          google-chrome --version
+          timeout --kill-after=15s 425s python3 -B ci/remote-construction-web/remote-proof.py ci/remote-construction-web/pins.json "$RUNNER_TEMP/vc-remote-construction-web"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vc-9b7236f5e71c-stock-remote-construction-chromium-568
+          path: ${{ runner.temp }}/vc-remote-construction-web/
+          retention-days: 30
+          if-no-files-found: warn
