@@ -84,14 +84,21 @@ def run(profile, log):
                 if ready:
                     click(ready['rect'])
                     return
-                # The shortcut pane clips its long settings content. Scroll its
-                # actual body (below the Settings category), not the world.
-                opts=(snap()['g'].get('hud') or {}).get('buttons',[])
-                header=item(opts,'text','設定')
-                require(header is not None,'Shortcut drawer not visible')
-                x,y,w,h=header['rect']
-                cdp('Input.dispatchMouseEvent',type='mouseWheel',x=x+w/2,y=y+h+155,deltaX=0,deltaY=360)
-                frames(8)
+                # Exact stock canvas screenshot shows the shortcut scrollbar
+                # at x=872 in this 896x540 viewport, thumb y=178..298,
+                # track to 396. Drag inside the scrollbar, never the world.
+                o=snap()['g']['hud']
+                require(o['viewport']==[896,540] and item(o['buttons'],'text','設定'),
+                        'Shortcut viewport differs from the observed geometry')
+                cdp('Input.dispatchMouseEvent',type='mouseMoved',x=872,y=215)
+                cdp('Input.dispatchMouseEvent',type='mousePressed',x=872,y=215,button='left',buttons=1,clickCount=1)
+                frames(2)
+                for ty in (250,280,315,350,380):
+                    cdp('Input.dispatchMouseEvent',type='mouseMoved',x=872,y=ty,button='left',buttons=1)
+                    frames(2)
+                cdp('Input.dispatchMouseEvent',type='mouseReleased',x=872,y=380,button='left',buttons=0,clickCount=1)
+                frames(5)
+                break
         click(until(button,label)['rect'])
     def image(name):
         data=base64.b64decode(call('GET','/screenshot'))
