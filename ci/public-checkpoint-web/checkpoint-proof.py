@@ -62,17 +62,18 @@ def run(profile, log):
         js(f"const done=arguments[arguments.length-1];let n={n};const step=()=>--n?requestAnimationFrame(step):done(true);requestAnimationFrame(step);", True)
     def click(rect):
         x,y,w,h=rect
-        require(w>=24 and h>=24 and 0<=x+w/2<896 and 0<=y+h/2<540,'Invalid touch rectangle')
-        cdp('Input.dispatchTouchEvent',type='touchStart',touchPoints=[{'x':x+w/2,'y':y+h/2,'id':1}])
+        require(w>=24 and h>=24 and 0<=x+w/2<896 and 0<=y+h/2<540,'Invalid pointer rectangle')
+        cdp('Input.dispatchMouseEvent',type='mouseMoved',x=x+w/2,y=y+h/2)
+        cdp('Input.dispatchMouseEvent',type='mousePressed',x=x+w/2,y=y+h/2,button='left',buttons=1,clickCount=1)
         frames(2)
-        cdp('Input.dispatchTouchEvent',type='touchEnd',touchPoints=[])
+        cdp('Input.dispatchMouseEvent',type='mouseReleased',x=x+w/2,y=y+h/2,button='left',buttons=0,clickCount=1)
         frames(4)
     def item(items, field, label):
         visible = [x for x in items if x[field]==label and min(x['rect'][2:])>=24 and not x.get('disabled')]
         return visible[0] if len(visible)==1 else None
     def menu_click(page, identity):
         i=until(lambda:item(menu(page)['buttons'],'id',identity), identity)
-        click(i['rect']); proof['checks'].append(f'tapped {page}/{identity}')
+        click(i['rect']); proof['checks'].append(f'clicked {page}/{identity}')
     def hud_click(label, scroll=False):
         def button():
             g=snap()['g'] or {}
@@ -140,7 +141,7 @@ def run(profile, log):
         caps={'browserName':'chrome','pageLoadStrategy':'eager',
             'goog:chromeOptions':{'binary':chrome,'args':['--headless','--disable-background-networking',
             '--no-first-run',f'--user-data-dir={profile}','--use-gl=angle','--use-angle=swiftshader'],
-            'mobileEmulation':{'deviceMetrics':{'width':896,'height':540,'pixelRatio':1,'mobile':True,'touch':True}}}}
+            'mobileEmulation':{'deviceMetrics':{'width':896,'height':540,'pixelRatio':1,'mobile':False,'touch':False}}}}
         s=api('POST','/session',{'capabilities':{'alwaysMatch':caps}})
         prefix='/session/'+s['sessionId']; proof['browser']=s['capabilities']['browserVersion']
         args=cdp('Browser.getBrowserCommandLine')['arguments']
