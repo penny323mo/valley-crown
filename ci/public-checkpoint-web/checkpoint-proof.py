@@ -73,10 +73,24 @@ def run(profile, log):
     def menu_click(page, identity):
         i=until(lambda:item(menu(page)['buttons'],'id',identity), identity)
         click(i['rect']); proof['checks'].append(f'tapped {page}/{identity}')
-    def hud_click(label):
+    def hud_click(label, scroll=False):
         def button():
             g=snap()['g'] or {}
             return item((g.get('hud') or {}).get('buttons',[]),'text',label)
+        if scroll:
+            for _ in range(5):
+                ready=button()
+                if ready:
+                    click(ready['rect'])
+                    return
+                # The shortcut pane clips its long settings content. Scroll its
+                # actual body (below the Settings category), not the world.
+                opts=(snap()['g'].get('hud') or {}).get('buttons',[])
+                header=item(opts,'text','設定')
+                require(header is not None,'Shortcut drawer not visible')
+                x,y,w,h=header['rect']
+                cdp('Input.dispatchMouseEvent',type='mouseWheel',x=x+w/2,y=y+h+155,deltaX=0,deltaY=360)
+                frames(8)
         click(until(button,label)['rect'])
     def image(name):
         data=base64.b64decode(call('GET','/screenshot'))
@@ -142,7 +156,7 @@ def run(profile, log):
         game(lambda g:g['build']==OLD and not g['paused'] and g['tick']>=60,'run ordinary Recon Practice')
         hud_click('選單')
         hud_click('設定')
-        hud_click('主選單')
+        hud_click('主選單',scroll=True)
         menu('home',True)
         original=signature(game(lambda g:g['build']==OLD and g['paused'],'ordinary paused game'))
         menu_click('home','CheckpointMenuButton')
