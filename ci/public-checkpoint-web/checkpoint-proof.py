@@ -58,11 +58,15 @@ def run(profile, log):
             g=snap()['g'] or {}
             return g if g and test(g) else None
         return until(current, detail)
+    def frames(n):
+        js(f"const done=arguments[arguments.length-1];let n={n};const step=()=>--n?requestAnimationFrame(step):done(true);requestAnimationFrame(step);", True)
     def click(rect):
         x,y,w,h=rect
-        require(w>=24 and h>=24 and 0<=x+w/2<568 and 0<=y+h/2<320,'Invalid touch rectangle')
+        require(w>=24 and h>=24 and 0<=x+w/2<896 and 0<=y+h/2<540,'Invalid touch rectangle')
         cdp('Input.dispatchTouchEvent',type='touchStart',touchPoints=[{'x':x+w/2,'y':y+h/2,'id':1}])
+        frames(2)
         cdp('Input.dispatchTouchEvent',type='touchEnd',touchPoints=[])
+        frames(4)
     def item(items, field, label):
         visible = [x for x in items if x[field]==label and min(x['rect'][2:])>=24 and not x.get('disabled')]
         return visible[0] if len(visible)==1 else None
@@ -122,7 +126,7 @@ def run(profile, log):
         caps={'browserName':'chrome','pageLoadStrategy':'eager',
             'goog:chromeOptions':{'binary':chrome,'args':['--headless','--disable-background-networking',
             '--no-first-run',f'--user-data-dir={profile}','--use-gl=angle','--use-angle=swiftshader'],
-            'mobileEmulation':{'deviceMetrics':{'width':568,'height':320,'pixelRatio':1,'mobile':True,'touch':True}}}}
+            'mobileEmulation':{'deviceMetrics':{'width':896,'height':540,'pixelRatio':1,'mobile':True,'touch':True}}}}
         s=api('POST','/session',{'capabilities':{'alwaysMatch':caps}})
         prefix='/session/'+s['sessionId']; proof['browser']=s['capabilities']['browserVersion']
         args=cdp('Browser.getBrowserCommandLine')['arguments']
@@ -137,8 +141,7 @@ def run(profile, log):
         menu_click('setup','LaunchMatchButton')
         game(lambda g:g['build']==OLD and not g['paused'] and g['tick']>=60,'run ordinary Recon Practice')
         hud_click('選單')
-        if not item((snap()['g'].get('hud') or {}).get('buttons',[]),'text','主選單'):
-            hud_click('設定')
+        hud_click('設定')
         hud_click('主選單')
         menu('home',True)
         original=signature(game(lambda g:g['build']==OLD and g['paused'],'ordinary paused game'))
