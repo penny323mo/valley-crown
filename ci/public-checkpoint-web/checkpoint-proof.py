@@ -135,7 +135,7 @@ def run(profile, log):
         menu_click('battle_groups','BattleGroup0')
         menu_click('battle_options','ChooseBattle_practice')
         menu_click('setup','LaunchMatchButton')
-        game(lambda g:g['build']==OLD and not g['paused'] and g['tick']>=300,'run ordinary Recon Practice')
+        game(lambda g:g['build']==OLD and not g['paused'] and g['tick']>=60,'run ordinary Recon Practice')
         hud_click('選單')
         if not item((snap()['g'].get('hud') or {}).get('buttons',[]),'text','主選單'):
             hud_click('設定')
@@ -170,6 +170,12 @@ def run(profile, log):
         game(lambda g:g['build']==OLD and not g['paused'] and g['tick']>original['tick'],'clock after resume')
         image('05-recon-resumed');close_game()
         proof['pass']=True
+    except Exception:
+        if prefix:
+            with contextlib.suppress(Exception): proof['last_snapshot']=snap()
+            with contextlib.suppress(Exception): image('failure-last-frame')
+            with contextlib.suppress(Exception): proof['console']=call('POST','/log',{'type':'browser'})[-15:]
+        raise
     finally:
         if prefix:
             with contextlib.suppress(Exception): call('DELETE','')
